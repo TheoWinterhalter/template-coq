@@ -18,6 +18,12 @@ Definition ssnoc (Γ : scontext) (d : scontext_decl) := d :: Γ.
 Notation " Γ ,, d " := (ssnoc Γ d) (at level 20, d at next level) : s_scope.
 Delimit Scope s_scope with s.
 
+Inductive ForallT2 {A B} (R : A -> B -> Type) : list A -> list B -> Type :=
+| ForallT2_nil : ForallT2 R [] []
+| ForallT2_cons :
+    forall (x : A) (y : B) (l : list A) (l' : list B),
+      R x y -> ForallT2 R l l' -> ForallT2 R (x :: l) (y :: l').
+
 (* It assumes it is given a pure context without bodies. *)
 (* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
 Fixpoint Prods (Γ : scontext) (T : sterm) : sterm :=
@@ -303,15 +309,15 @@ Fixpoint srels_of {A} (Γ : list A) acc : list sterm :=
   | [] => []
   end.
 
-Fail Definition stypes_of_case ind pars p decl :=
+Definition stypes_of_case ind pars p decl :=
   match sdestArity [] decl.(sind_type) with
   | Some (args, s) =>
     let pred :=
-        Lams args _ (* Here we need to get the sort that types the
-                       inductive... *)
+        Lams args (sSort 0) (* FIXME Here we need to get the sort that types the
+                               inductive... *)
              (sProd (nNamed decl.(sind_name))
                     (Apps (sInd ind) args (sSort s) (pars ++ srels_of args 0))
-                    (sSort _) (* Here I have no idea what's going on... *)
+                    (sSort 0) (* FIXME Here I have no idea what's going on... *)
              )
     in
     let brs :=

@@ -58,17 +58,17 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-x (sConstruct ind i)
              : stype_of_constructor (fst Σ) (ind, i) univs decl isdecl
 
-(* | type_Case Γ ind npar p c brs args : *)
-(*     forall decl (isdecl : sdeclared_minductive (fst Σ) (inductive_mind ind) decl), *)
-(*     forall univs decl' (isdecl' : declared_inductive (fst Σ) ind univs decl'), *)
-(*     decl.(ind_npars) = npar -> *)
-(*     let pars := List.firstn npar args in *)
-(*     forall pty s btys, types_of_case ind u pars p decl' = Some (pty,s,btys) -> *)
-(*     List.Exists (fun sf => universe_family s = sf) decl'.(ind_kelim) -> *)
-(*     Σ ;;; Γ |- p : pty -> *)
-(*     Σ ;;; Γ |- c : mkApps (sInd ind) args -> *)
-(*     Forall2 (fun x y => fst x = fst y /\ squash (Σ ;;; Γ |- snd x : snd y)) brs btys -> *)
-(*     Σ ;;; Γ |-x sCase (ind, npar) p c brs : tApp p (List.skipn npar args ++ [c]) *)
+| type_Case Γ ind npar p c brs args :
+    forall decl (isdecl : sdeclared_minductive (fst Σ) (inductive_mind ind) decl),
+    forall univs decl' (isdecl' : sdeclared_inductive (fst Σ) ind univs decl'),
+    decl.(sind_npars) = npar ->
+    let pars := List.firstn npar args in
+    forall pty s btys, stypes_of_case ind pars p decl' = Some (pty,s,btys) ->
+    (* List.Exists (fun sf => universe_family s = sf) decl'.(ind_kelim) -> *)
+    Σ ;;; Γ |-x p : pty ->
+    Σ ;;; Γ |-x c : Apps (sInd ind) _ _ args ->
+    ForallT2 (fun x y => (fst x = fst y) * (Σ ;;; Γ |-x snd x : snd y)) brs btys ->
+    Σ ;;; Γ |-x sCase (ind, npar) p c brs : Apps p _ _ (List.skipn npar args ++ [c])
 
 | type_conv Γ t A B s :
     Σ ;;; Γ |-x t : A ->
