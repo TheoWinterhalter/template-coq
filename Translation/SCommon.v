@@ -297,25 +297,28 @@ Fixpoint sdestArity Γ (t : sterm) :=
 (*        sLambda d.(sdecl_name) d.(sdecl_type) _ acc *)
 (*     ) l t. *)
 
-(* Definition stypes_of_case ind pars p decl := *)
-(*   match sdestArity [] decl.(sind_type) with *)
-(*   | Some (args, s) => *)
-(*     let pred := *)
-(*         Lams args (sSort s) *)
-(*              (sProd (nNamed decl.(ind_name)) *)
-(*                     () *)
-(*              ) *)
+Fixpoint srels_of {A} (Γ : list A) acc : list sterm :=
+  match Γ with
+  | _ :: Γ' => sRel acc :: srels_of Γ' (S acc)
+  | [] => []
+  end.
 
-(*         it_mkLambda_or_LetIn args *)
-(*           (tProd (nNamed decl.(ind_name)) *)
-(*                  (mkApps (sInd ind) (pars ++ rels_of args 0)) *)
-(*                  (tSort [(Level.Level "large", false)]))    (* FIXME *) *)
-(*     in *)
-(*     let brs := *)
-(*       List.map (fun '(id, t, ar) => (ar, substl (p :: pars) t)) decl.(ind_ctors) *)
-(*     in Some (pred, s, brs) *)
-(*   | None => None *)
-(*   end. *)
+Fail Definition stypes_of_case ind pars p decl :=
+  match sdestArity [] decl.(sind_type) with
+  | Some (args, s) =>
+    let pred :=
+        Lams args _ (* Here we need to get the sort that types the
+                       inductive... *)
+             (sProd (nNamed decl.(sind_name))
+                    (Apps (sInd ind) args (sSort s) (pars ++ srels_of args 0))
+                    (sSort _) (* Here I have no idea what's going on... *)
+             )
+    in
+    let brs :=
+      List.map (fun '(id, t, ar) => (ar, substl (p :: pars) t)) decl.(sind_ctors)
+    in Some (pred, s, brs)
+  | None => None
+  end.
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},
