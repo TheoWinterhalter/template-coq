@@ -168,6 +168,7 @@ Admitted.
 
 Definition pn := nNamed "pppp".
 
+(* TODO Replace by Prods ans Lams of SCommon *)
 Fixpoint multiProd (bl : list sterm) :=
   match bl with
   | [] => sSort (succ_sort 0)

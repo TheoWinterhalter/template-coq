@@ -18,6 +18,32 @@ Definition ssnoc (Γ : scontext) (d : scontext_decl) := d :: Γ.
 Notation " Γ ,, d " := (ssnoc Γ d) (at level 20, d at next level) : s_scope.
 Delimit Scope s_scope with s.
 
+(* It assumes it is given a pure context without bodies. *)
+(* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
+Fixpoint Prods (Γ : scontext) (T : sterm) : sterm :=
+  match Γ with
+  | [] => T
+  | A :: Γ => Prods Γ (sProd A.(sdecl_name) A.(sdecl_type) T)
+  end.
+
+(* If Γ ⊢ t : T then ⊢ Lams Γ T t : Prods Γ T *)
+Fixpoint Lams (Γ : scontext) (T t : sterm) : sterm :=
+  match Γ with
+  | [] => t
+  | A :: Γ => Lams Γ (sProd A.(sdecl_name) A.(sdecl_type) T)
+                  (sLambda A.(sdecl_name) A.(sdecl_type) T t)
+  end.
+
+(* If ⊢ u : Prods Γ T and ⊢ l : Γ then ⊢ Apps u Γ T l : T[l] *)
+Fixpoint Apps (u : sterm) (Γ : scontext) (T : sterm) (l : list sterm) : sterm :=
+  match Γ, l with
+  | [], _ => u
+  | _, [] => u
+  | A :: Γ, t :: l =>
+    sApp (Apps u Γ (sProd A.(sdecl_name) A.(sdecl_type) T) l)
+         A.(sdecl_name) A.(sdecl_type) T t
+  end.
+
 Record squash (A : Set) : Prop := { _ : A }.
 
 (* Common lemmata *)
@@ -253,6 +279,43 @@ Next Obligation.
   eapply H0.
   simpl. unfold filtered_var. unfold mind. rewrite H''. reflexivity.
 Defined.
+
+Fixpoint sdestArity Γ (t : sterm) :=
+  match t with
+  | sProd na A B => sdestArity (Γ ,, svass na A) B
+  | sSort s => Some (Γ, s)
+  | _ => None
+  end.
+
+(* Fixpoint sit_mkLambda_or_LetIn (l : scontext) (t : sterm) := *)
+(*   List.fold_left *)
+(*     (fun acc d => *)
+(*        (* match d.(sdecl_body) with *) *)
+(*        (* | None => tLambda d.(decl_name) d.(decl_type) acc *) *)
+(*        (* | Some b => tLetIn d.(decl_name) b d.(decl_type) acc *) *)
+(*        (* end *) *)
+(*        sLambda d.(sdecl_name) d.(sdecl_type) _ acc *)
+(*     ) l t. *)
+
+(* Definition stypes_of_case ind pars p decl := *)
+(*   match sdestArity [] decl.(sind_type) with *)
+(*   | Some (args, s) => *)
+(*     let pred := *)
+(*         Lams args (sSort s) *)
+(*              (sProd (nNamed decl.(ind_name)) *)
+(*                     () *)
+(*              ) *)
+
+(*         it_mkLambda_or_LetIn args *)
+(*           (tProd (nNamed decl.(ind_name)) *)
+(*                  (mkApps (sInd ind) (pars ++ rels_of args 0)) *)
+(*                  (tSort [(Level.Level "large", false)]))    (* FIXME *) *)
+(*     in *)
+(*     let brs := *)
+(*       List.map (fun '(id, t, ar) => (ar, substl (p :: pars) t)) decl.(ind_ctors) *)
+(*     in Some (pred, s, brs) *)
+(*   | None => None *)
+(*   end. *)
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},
