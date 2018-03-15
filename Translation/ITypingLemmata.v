@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst SCommon ITyping.
+From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping.
 
 (* Lemmata about typing *)
 
@@ -71,8 +71,10 @@ Proof.
   intros Σ Γ t T h.
   dependent induction h.
   all: try (cbn in * ; repeat erewrite_assumption ; reflexivity).
-  unfold closed_above. case_eq (n <? #|Γ|) ; intro e ; bprop e ; try omega.
-  reflexivity.
+  - unfold closed_above. case_eq (n <? #|Γ|) ; intro e ; bprop e ; try omega.
+    reflexivity.
+  - cbn. repeat erewrite_assumption.
+
 Defined.
 
 Fact type_ctxempty_closed :

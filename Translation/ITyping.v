@@ -232,6 +232,21 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i (sConstruct ind i)
              : stype_of_constructor (fst Σ) (ind, i) univs decl isdecl
 
+| type_Case Γ ind npar p c brs args :
+    forall decl (isdecl : sdeclared_minductive (fst Σ) (inductive_mind ind) decl),
+    forall univs decl' (isdecl' : sdeclared_inductive (fst Σ) ind univs decl'),
+    decl.(sind_npars) = npar ->
+    let pars := List.firstn npar args in
+    forall pty, Σ ;;; Γ |-i p : pty ->
+    forall indctx inds pctx ps btys,
+      stypes_of_case pars p pty decl' = Some (indctx, inds, pctx, ps, btys) ->
+      scheck_correct_arity decl' ind indctx inds pars pctx = true ->
+      (* List.Exists (fun sf => universe_family ps = sf) decl'.(ind_kelim) -> *)
+      Σ ;;; Γ |-i c : Apps (sInd ind) indctx (sSort inds) args ->
+      ForallT2 (fun x y => (fst x = fst y) * (Σ ;;; Γ |-i snd x : snd y)) brs btys ->
+      Σ ;;; Γ |-i sCase (ind, npar) p c brs
+               : Apps p pctx (sSort ps) (List.skipn npar args ++ [c])
+
 | type_conv Γ t A B s :
     Σ ;;; Γ |-i t : A ->
     Σ ;;; Γ |-i B : sSort s ->
@@ -494,6 +509,22 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ |-i p1 = p2 : sPack A1 A2 ->
     Σ ;;; Γ |-i sProjTe p1 = sProjTe p2 : sHeq A1 (sProjT1 p1) A2 (sProjT2 p1)
+
+| cong_Case Γ ind npar p p' c c' brs brs' args :
+    forall decl (isdecl : sdeclared_minductive (fst Σ) (inductive_mind ind) decl),
+    forall univs decl' (isdecl' : sdeclared_inductive (fst Σ) ind univs decl'),
+    decl.(sind_npars) = npar ->
+    let pars := List.firstn npar args in
+    forall pty, Σ ;;; Γ |-i p = p' : pty ->
+    forall indctx inds pctx ps btys,
+      stypes_of_case pars p pty decl' = Some (indctx, inds, pctx, ps, btys) ->
+      scheck_correct_arity decl' ind indctx inds pars pctx = true ->
+      (* List.Exists (fun sf => universe_family ps = sf) decl'.(ind_kelim) -> *)
+      Σ ;;; Γ |-i c = c' : Apps (sInd ind) indctx (sSort inds) args ->
+      ForallT3 (fun x y z => (fst x = fst y) * (fst y = fst z) * (Σ ;;; Γ |-i snd x = snd y : snd z)) brs brs' btys ->
+      Σ ;;; Γ |-i sCase (ind, npar) p c brs
+               = sCase (ind, npar) p' c' brs'
+               : Apps p pctx (sSort ps) (List.skipn npar args ++ [c])
 
 | eq_HeqToEqRefl Γ s A u :
     Σ ;;; Γ |-i A : sSort s ->

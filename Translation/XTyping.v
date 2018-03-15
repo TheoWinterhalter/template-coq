@@ -157,6 +157,22 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
     Σ ;;; Γ |-x u1 = u2 : A1 ->
     Σ ;;; Γ |-x sRefl A1 u1 = sRefl A2 u2 : sEq A1 u1 u1
 
+| cong_Case Γ ind npar p p' c c' brs brs' args :
+    forall decl (isdecl : sdeclared_minductive (fst Σ) (inductive_mind ind) decl),
+    forall univs decl' (isdecl' : sdeclared_inductive (fst Σ) ind univs decl'),
+    decl.(sind_npars) = npar ->
+    let pars := List.firstn npar args in
+    forall pty, Σ ;;; Γ |-x p = p' : pty ->
+    forall indctx inds pctx ps btys,
+      stypes_of_case pars p pty decl' = Some (indctx, inds, pctx, ps, btys) ->
+      scheck_correct_arity decl' ind indctx inds pars pctx = true ->
+      (* List.Exists (fun sf => universe_family ps = sf) decl'.(ind_kelim) -> *)
+      Σ ;;; Γ |-x c = c' : Apps (sInd ind) indctx (sSort inds) args ->
+      ForallT3 (fun x y z => (fst x = fst y) * (fst y = fst z) * (Σ ;;; Γ |-x snd x = snd y : snd z)) brs brs' btys ->
+      Σ ;;; Γ |-x sCase (ind, npar) p c brs
+               = sCase (ind, npar) p' c' brs'
+               : Apps p pctx (sSort ps) (List.skipn npar args ++ [c])
+
 | reflection Γ A u v e :
     Σ ;;; Γ |-x e : sEq A u v ->
     Σ ;;; Γ |-x u = v : A

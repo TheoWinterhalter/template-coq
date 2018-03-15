@@ -24,6 +24,15 @@ Inductive ForallT2 {A B} (R : A -> B -> Type) : list A -> list B -> Type :=
     forall (x : A) (y : B) (l : list A) (l' : list B),
       R x y -> ForallT2 R l l' -> ForallT2 R (x :: l) (y :: l').
 
+Inductive ForallT3 {A B C} (R : A -> B -> C -> Type)
+  : list A -> list B -> list C -> Type :=
+| ForallT3_nil : ForallT3 R [] [] []
+| ForallT3_cons :
+    forall (x : A) (y : B) (z : C) (l : list A) (l' : list B) (l'' : list C),
+      R x y z ->
+      ForallT3 R l l' l'' ->
+      ForallT3 R (x :: l) (y :: l') (z :: l'').
+
 (* It assumes it is given a pure context without bodies. *)
 (* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
 Fixpoint Prods (Γ : scontext) (T : sterm) : sterm :=
