@@ -293,38 +293,65 @@ Fixpoint sdestArity Γ (t : sterm) :=
   | _ => None
   end.
 
-(* Fixpoint sit_mkLambda_or_LetIn (l : scontext) (t : sterm) := *)
-(*   List.fold_left *)
-(*     (fun acc d => *)
-(*        (* match d.(sdecl_body) with *) *)
-(*        (* | None => tLambda d.(decl_name) d.(decl_type) acc *) *)
-(*        (* | Some b => tLetIn d.(decl_name) b d.(decl_type) acc *) *)
-(*        (* end *) *)
-(*        sLambda d.(sdecl_name) d.(sdecl_type) _ acc *)
-(*     ) l t. *)
-
 Fixpoint srels_of {A} (Γ : list A) acc : list sterm :=
   match Γ with
   | _ :: Γ' => sRel acc :: srels_of Γ' (S acc)
   | [] => []
   end.
 
-Definition stypes_of_case ind pars p decl :=
-  match sdestArity [] decl.(sind_type) with
-  | Some (args, s) =>
-    let pred :=
-        Lams args (sSort 0) (* FIXME Here we need to get the sort that types the
-                               inductive... *)
-             (sProd (nNamed decl.(sind_name))
-                    (Apps (sInd ind) args (sSort s) (pars ++ srels_of args 0))
-                    (sSort 0) (* FIXME Here I have no idea what's going on... *)
-             )
-    in
+Definition stypes_of_case pars p pty decl :=
+  match sdestArity [] decl.(sind_type), sdestArity [] pty with
+  | Some (args, s), Some (args', s') =>
     let brs :=
       List.map (fun '(id, t, ar) => (ar, substl (p :: pars) t)) decl.(sind_ctors)
-    in Some (pred, s, brs)
-  | None => None
+    in Some (args, args', s', brs)
+  | _,_ => None
   end.
+
+(* We only need to look at ETT syntax for this (for now). *)
+Fixpoint eq_term (t u : sterm) {struct t} :=
+  match t, u with
+  | sRel n, sRel n' => eq_nat n n'
+  | sSort s, sSort s' => eq_nat s s'
+  | sProd _ A B, sProd _ A' B' => eq_term A A' && eq_term B B'
+  | sLambda _ A B t, sLambda _ A' B' t' =>
+    eq_term A A' && eq_term B B' && eq_term t t'
+  | sApp u _ A B v, sApp u' _ A' B' v' =>
+    eq_term u u' && eq_term A A' && eq_term B B' && eq_term v v'
+  | sEq A u v, sEq A' u' v' =>
+    eq_term A A' && eq_term u u' && eq_term v v'
+  | sRefl A u, sRefl A' u' => eq_term A A' && eq_term u u'
+  | sInd i, sInd i' => eq_ind i i'
+  | sConstruct i k, sConstruct i' k' => eq_ind i i' && eq_nat k k'
+  | sCase (ind, par) p c brs, sCase (ind', par') p' c' brs' =>
+    eq_ind ind ind' && eq_nat par par' &&
+    eq_term p p' && eq_term c c' &&
+    forallb2 (fun '(a,b) '(a',b') => eq_term b b') brs brs'
+  | _, _ => false
+  end.
+
+Definition eq_opt_term (t u : option sterm) :=
+  match t, u with
+  | Some t, Some u => eq_term t u
+  | None, None => true
+  | _, _ => false
+  end.
+
+Definition eq_decl (d d' : scontext_decl) :=
+  eq_opt_term d.(sdecl_body) d'.(sdecl_body) &&
+  eq_term d.(sdecl_type) d'.(sdecl_type).
+
+Definition eq_context (Γ Δ : scontext) :=
+  forallb2 eq_decl Γ Δ.
+
+(* Canoot find the right instance! *)
+(* Definition scheck_correct_arity decl ind ctx pars pctx := *)
+(*   let inddecl := *)
+(*    {| sdecl_name := nNamed decl.(sind_name); *)
+(*       sdecl_body := None; *)
+(*       sdecl_type := Apps (sInd ind) _ _ (pars ++ srels_of ctx 0) *)
+(*    |} *)
+(*   in eq_context (inddecl :: ctx) pctx. *)
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},
