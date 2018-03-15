@@ -2,7 +2,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
-     Require Import SAst SLiftSubst SCommon XTyping ITyping
+     Require Import SAst SInduction SLiftSubst SCommon XTyping ITyping
                     ITypingLemmata ITypingMore PackLifts.
 
 Section Translation.
@@ -65,6 +65,12 @@ Inductive trel : sterm -> sterm -> Type :=
 | trel_Construct ind i :
     sConstruct ind i ∼ sConstruct ind i
 
+| trel_Case indn p1 p2 c1 c2 brs1 brs2 :
+    p1 ∼ p2 ->
+    c1 ∼ c2 ->
+    ForallT2 (fun '(_,t1) '(_,t2) => t1 ∼ t2) brs1 brs2 ->
+    sCase indn p1 c1 brs1 ∼ sCase indn p2 c2 brs2
+
 where " t1 ∼ t2 " := (trel t1 t2).
 
 Derive Signature for trel.
@@ -123,7 +129,67 @@ Inductive inrel : sterm -> sterm -> Type :=
 | inrel_Construct ind i :
     sConstruct ind i ⊏ sConstruct ind i
 
+| inrel_Case indn p1 p2 c1 c2 brs1 brs2 :
+    p1 ⊏ p2 ->
+    c1 ⊏ c2 ->
+    ForallT2 (fun '(_,t1) '(_,t2) => t1 ⊏ t2) brs1 brs2 ->
+    sCase indn p1 c1 brs1 ⊏ sCase indn p2 c2 brs2
+
 where " t ⊏ t' " := (inrel t t').
+
+(* Deriving a strong enough induction principle *)
+(* Definition sCaseBrsT2 *)
+(*   (P : sterm -> sterm -> Type) (brs1 brs2 : list (nat * sterm)) := *)
+(*   ForallT2 (fun x y => P (snd x) (snd y)) brs1 brs2. *)
+
+(* Inductive sCaseBrsRec2 (R : sterm -> sterm -> Type) (P : forall u v, R u v -> Type) : *)
+(*   forall (brs1 brs2 : list (nat * sterm)), sCaseBrsT2 P brs1 brs2 -> Type := *)
+(* | sCaseBrsRec2_nil : sCaseBrsRec2 R P [] [] ForallT2_nil. *)
+
+(* Definition sCaseBrsRec2 *)
+(*   (R : sterm -> sterm -> Type) (P : forall u v, R u v -> Type) *)
+(*   (brs1 brs2 : list (nat * sterm)) (p : sCaseBrsT2 P brs1 brs2) := *)
+
+(* Lemma inrel_rect_list : *)
+(*   forall P : forall s s0 : sterm, s ⊏ s0 -> Type, *)
+(*     (forall x : nat, P (sRel x) (sRel x) (inrel_Rel x)) -> *)
+(*     (forall (t t' T1 T2 p : sterm) (i : t ⊏ t'), P t t' i -> *)
+(*      P t (sTransport T1 T2 p t') (inrel_Transport t t' T1 T2 p i)) -> *)
+(*     (forall (n n' : name) (A A' B B' : sterm) (i : A ⊏ A'), *)
+(*      P A A' i -> forall i0 : B ⊏ B', P B B' i0 -> *)
+(*      P (sProd n A B) (sProd n' A' B') (inrel_Prod n n' A A' B B' i i0)) -> *)
+(*     (forall (A A' u u' v v' : sterm) (i : A ⊏ A'), P A A' i -> *)
+(*      forall i0 : u ⊏ u', P u u' i0 -> *)
+(*      forall i1 : v ⊏ v', P v v' i1 -> *)
+(*      P (sEq A u v) (sEq A' u' v') (inrel_Eq A A' u u' v v' i i0 i1)) -> *)
+(*     (forall s : sort, P (sSort s) (sSort s) (inrel_Sort s)) -> *)
+(*     (forall (n n' : name) (A A' B B' u u' : sterm) (i : A ⊏ A'), P A A' i -> *)
+(*      forall i0 : B ⊏ B', P B B' i0 -> *)
+(*      forall i1 : u ⊏ u', P u u' i1 -> *)
+(*      P (sLambda n A B u) (sLambda n' A' B' u') *)
+(*        (inrel_Lambda n n' A A' B B' u u' i i0 i1)) -> *)
+(*     (forall (u u' : sterm) (n n' : name) (A A' B B' v v' : sterm) (i : u ⊏ u'), *)
+(*      P u u' i -> *)
+(*      forall i0 : A ⊏ A', P A A' i0 -> *)
+(*      forall i1 : B ⊏ B', P B B' i1 -> *)
+(*      forall i2 : v ⊏ v', P v v' i2 -> *)
+(*      P (sApp u n A B v) (sApp u' n' A' B' v') *)
+(*        (inrel_App u u' n n' A A' B B' v v' i i0 i1 i2)) -> *)
+(*     (forall (A A' u u' : sterm) (i : A ⊏ A'), P A A' i -> *)
+(*      forall i0 : u ⊏ u', P u u' i0 -> *)
+(*      P (sRefl A u) (sRefl A' u') (inrel_Refl A A' u u' i i0)) -> *)
+(*     (forall ind : inductive, P (sInd ind) (sInd ind) (inrel_Ind ind)) -> *)
+(*     (forall (ind : inductive) (i : nat), *)
+(*      P (sConstruct ind i) (sConstruct ind i) (inrel_Construct ind i)) -> *)
+(*     (forall (indn : inductive * nat) (p1 p2 c1 c2 : sterm) *)
+(*        (brs1 brs2 : list (nat * sterm)) (i : p1 ⊏ p2), *)
+(*      P p1 p2 i -> *)
+(*      forall i0 : c1 ⊏ c2, P c1 c2 i0 -> *)
+(*      forall f9 : ForallT2 (fun pat0 pat : nat * sterm => pi2_ _ _ pat0 ⊏ pi2_ _ _ pat) brs1 brs2, *)
+(*      ForallT3 (fun x y r => P (snd x) (snd y) ) brs1 brs2 f9 -> *)
+(*      (* sCaseBrsT2 P brs1 brs2 -> *) *)
+(*      P (sCase indn p1 c1 brs1) (sCase indn p2 c2 brs2) (inrel_Case indn p1 p2 c1 c2 brs1 brs2 i i0 f9)) -> *)
+(*     forall (s s0 : sterm) (i : s ⊏ s0), P s s0 i. *)
 
 Lemma inrel_trel :
   forall {t t'}, t ⊏ t' -> t ∼ t'.
@@ -675,6 +741,9 @@ Proof.
     + eapply cong_Heq.
       all: try (apply eq_reflexivity).
       all: easy.
+
+  (* Case *)
+  -
 
   Unshelve.
   all: cbn ; try rewrite !length_cat ; omega.
