@@ -24,6 +24,9 @@ Inductive ForallT2 {A B} (R : A -> B -> Type) : list A -> list B -> Type :=
     forall (x : A) (y : B) (l : list A) (l' : list B),
       R x y -> ForallT2 R l l' -> ForallT2 R (x :: l) (y :: l').
 
+Arguments ForallT2_nil {_ _ _}.
+Arguments ForallT2_cons {_ _ _}.
+
 Inductive ForallT3 {A B C} (R : A -> B -> C -> Type)
   : list A -> list B -> list C -> Type :=
 | ForallT3_nil : ForallT3 R [] [] []
