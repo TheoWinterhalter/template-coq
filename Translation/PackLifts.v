@@ -1298,6 +1298,7 @@ Proof.
         + eassumption.
       - cbn. erewrite llift_type_of_constructor by eassumption.
         eapply type_Construct. eapply wf_llift' ; eassumption.
+      - cheat.
       - eapply type_conv ; emh.
     }
 
@@ -1415,6 +1416,7 @@ Proof.
       - cbn. eapply cong_ProjT1 with (A2 := llift #|Γm| #|Δ| A2) ; emh.
       - cbn. eapply cong_ProjT2 with (A1 := llift #|Γm| #|Δ| A1) ; emh.
       - cbn. eapply cong_ProjTe ; emh.
+      - cheat.
       - cbn. eapply eq_HeqToEqRefl ; emh.
     }
 
@@ -1543,6 +1545,7 @@ Proof.
         + eassumption.
       - cbn. erewrite rlift_type_of_constructor by eassumption.
         eapply type_Construct. eapply wf_rlift' ; eassumption.
+      - cheat.
       - eapply type_conv ; emh.
     }
 
@@ -1660,6 +1663,7 @@ Proof.
       - cbn. eapply cong_ProjT1 with (A2 := rlift #|Γm| #|Δ| A2) ; emh.
       - cbn. eapply cong_ProjT2 with (A1 := rlift #|Γm| #|Δ| A1) ; emh.
       - cbn. eapply cong_ProjTe ; emh.
+      - cheat.
       - cbn. eapply eq_HeqToEqRefl ; emh.
     }
 

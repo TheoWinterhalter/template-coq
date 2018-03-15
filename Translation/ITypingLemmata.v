@@ -63,6 +63,9 @@ Ltac erewrite_assumption :=
     erewrite H by omega
   end.
 
+Axiom cheating : forall {A}, A.
+Tactic Notation "cheat" := apply cheating.
+
 Fact type_ctx_closed_above :
   forall {Σ Γ t T},
     Σ ;;; Γ |-i t : T ->
@@ -74,7 +77,7 @@ Proof.
   - unfold closed_above. case_eq (n <? #|Γ|) ; intro e ; bprop e ; try omega.
     reflexivity.
   - cbn. repeat erewrite_assumption.
-
+    simpl. cheat. (* We need a stronger induction principle. *)
 Defined.
 
 Fact type_ctxempty_closed :
@@ -236,6 +239,28 @@ Proof.
           instantiate (1 := isdecl').
           cbn in *.
           eapply stype_of_constructor_cons. assumption.
+      - (* destruct isdecl' as [d' [[? ?] ?]] eqn:eq. *)
+        (* eapply type_Case. *)
+        (* + cbn in *. unfold sdeclared_minductive in *. *)
+        (*   cbn. erewrite ident_neq_fresh by eassumption. *)
+        (*   eassumption. *)
+        (* + cbn. exists d'. repeat split. *)
+        (*   * cbn in *. unfold sdeclared_minductive in *. *)
+        (*     cbn. erewrite ident_neq_fresh by eassumption. *)
+        (*     eassumption. *)
+        (*   * eassumption. *)
+        (* +  *)
+        (* eapply type_Case. *)
+        (* + cbn in *. unfold sdeclared_minductive in *. *)
+        (*   cbn. erewrite ident_neq_fresh by eassumption. *)
+        (*   eassumption. *)
+        (* + cbn. exists decl. repeat split. *)
+        (*   * cbn in *. unfold sdeclared_minductive in *. *)
+        (*     cbn. erewrite ident_neq_fresh by eassumption. *)
+        (*     eassumption. *)
+        (*   * unfold sdeclared_minductive in *. cbn in *. *)
+        (* + *)
+        cheat.
     }
 
   (* weak_glob_eq *)
@@ -249,6 +274,7 @@ Proof.
         all: try apply weak_glob_eq ; try apply weak_glob_type ; eassumption.
       - eapply cong_ProjT2 with (A1 := A1).
         all: try apply weak_glob_eq ; try apply weak_glob_type ; eassumption.
+      - cheat.
     }
 
   (* weak_glob_wf *)
@@ -624,6 +650,7 @@ Proof.
         + eassumption.
       - cbn. erewrite lift_type_of_constructor by eassumption.
         eapply type_Construct. now apply wf_lift.
+      - cheat.
       - eapply type_conv ; eih.
     }
 
@@ -744,6 +771,7 @@ Proof.
       - cbn. eapply cong_ProjT1 with (A2 := lift #|Δ| #|Ξ| A2) ; eih.
       - cbn. eapply cong_ProjT2 with (A1 := lift #|Δ| #|Ξ| A1) ; eih.
       - cbn. eapply cong_ProjTe ; eih.
+      - cheat.
       - cbn. eapply eq_HeqToEqRefl ; eih.
     }
 
@@ -1086,6 +1114,7 @@ Proof.
         + eassumption.
       - cbn. erewrite subst_type_of_constructor by eassumption.
         eapply type_Construct. now eapply wf_subst.
+      - cheat.
       - cbn. eapply type_conv ; esh.
     }
 
@@ -1200,6 +1229,7 @@ Proof.
       - cbn. eapply cong_ProjT1 with (A2 := A2{ #|Δ| := u }) ; esh.
       - cbn. eapply cong_ProjT2 with (A1 := A1{ #|Δ| := u }) ; esh.
       - cbn. eapply cong_ProjTe ; esh.
+      - cheat.
       - cbn. eapply eq_HeqToEqRefl ; esh.
     }
 
@@ -1540,6 +1570,7 @@ Proof.
     erewrite subst_type_of_constructor by eassumption.
     eapply type_Construct.
     eapply wf_subst ; eassumption.
+  - cheat.
   - eapply eq_conv.
     + eapply IHht1 ; assumption.
     + eapply @cong_subst with (A := sSort s) ; eassumption.
@@ -1766,6 +1797,7 @@ Proof.
       * assumption.
       * rewrite nil_cat. assumption.
     + cbn. apply nil_cat.
+  - cheat.
   - exists s. assumption.
 Defined.
 
@@ -2661,6 +2693,8 @@ Proof.
     + eapply eq_symmetry. eapply cong_Heq ; try eapply eq_reflexivity ; try eassumption.
       * eapply cong_ProjT1 with (A2 := A2) ; eassumption.
       * eapply cong_ProjT2 with (A1 := A1) ; eassumption.
+  - cheat.
+  - cheat.
   - eapply type_HeqToEq ; try eassumption.
     eapply type_HeqRefl ; eassumption.
 Defined.
