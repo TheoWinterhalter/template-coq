@@ -304,7 +304,7 @@ Definition stypes_of_case pars p pty decl :=
   | Some (args, s), Some (args', s') =>
     let brs :=
       List.map (fun '(id, t, ar) => (ar, substl (p :: pars) t)) decl.(sind_ctors)
-    in Some (args, args', s', brs)
+    in Some (args, s, args', s', brs)
   | _,_ => None
   end.
 
@@ -344,14 +344,13 @@ Definition eq_decl (d d' : scontext_decl) :=
 Definition eq_context (Γ Δ : scontext) :=
   forallb2 eq_decl Γ Δ.
 
-(* Canoot find the right instance! *)
-(* Definition scheck_correct_arity decl ind ctx pars pctx := *)
-(*   let inddecl := *)
-(*    {| sdecl_name := nNamed decl.(sind_name); *)
-(*       sdecl_body := None; *)
-(*       sdecl_type := Apps (sInd ind) _ _ (pars ++ srels_of ctx 0) *)
-(*    |} *)
-(*   in eq_context (inddecl :: ctx) pctx. *)
+Definition scheck_correct_arity decl ind ctx s pars pctx :=
+  let inddecl :=
+   {| sdecl_name := nNamed decl.(sind_name);
+      sdecl_body := None;
+      sdecl_type := Apps (sInd ind) ctx (sSort s) (pars ++ srels_of ctx 0)
+   |}
+  in eq_context (inddecl :: ctx) pctx.
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},

@@ -64,14 +64,14 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     decl.(sind_npars) = npar ->
     let pars := List.firstn npar args in
     forall pty, Σ ;;; Γ |-x p : pty ->
-    forall indctx pctx ps btys,
-      stypes_of_case pars p pty decl' = Some (indctx, pctx, ps, btys) ->
-      (* scheck_correct_arity decl' ind indctx pars pctx = true -> *) (* TODO *)
+    forall indctx inds pctx ps btys,
+      stypes_of_case pars p pty decl' = Some (indctx, inds, pctx, ps, btys) ->
+      scheck_correct_arity decl' ind indctx inds pars pctx = true ->
       (* List.Exists (fun sf => universe_family ps = sf) decl'.(ind_kelim) -> *)
-      Σ ;;; Γ |-x c : Apps (sInd ind) _ _ args ->
+      Σ ;;; Γ |-x c : Apps (sInd ind) indctx (sSort inds) args ->
       ForallT2 (fun x y => (fst x = fst y) * (Σ ;;; Γ |-x snd x : snd y)) brs btys ->
       Σ ;;; Γ |-x sCase (ind, npar) p c brs
-               : Apps p _ _ (List.skipn npar args ++ [c])
+               : Apps p pctx (sSort ps) (List.skipn npar args ++ [c])
 
 | type_conv Γ t A B s :
     Σ ;;; Γ |-x t : A ->
