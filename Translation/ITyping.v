@@ -586,6 +586,7 @@ Inductive type_constructors (Σ : sglobal_context) (Γ : scontext) :
 | type_cnstrs_nil : type_constructors Σ Γ []
 | type_cnstrs_cons id t n l :
     isType Σ Γ t ->
+    Xcomp t ->
     type_constructors Σ Γ l ->
     (** TODO: check it has n products ending in a tRel application *)
     type_constructors Σ Γ ((id, t, n) :: l).
@@ -599,8 +600,24 @@ Inductive type_projections (Σ : sglobal_context) (Γ : scontext) :
     type_projections Σ Γ l ->
     type_projections Σ Γ ((id, t) :: l).
 
+Definition rev {A} (l : list A) : list A :=
+  let fix aux (l : list A) (acc : list A) : list A :=
+    match l with
+    | [] => acc
+    | x :: l => aux l (x :: acc)
+    end
+  in aux l [].
+
+Definition rev_map {A B} (f : A -> B) (l : list A) : list B :=
+  let fix aux (l : list A) (acc : list B) : list B :=
+    match l with
+    | [] => acc
+    | x :: l => aux l (f x :: acc)
+    end
+  in aux l [].
+
 Definition arities_context (l : list sone_inductive_body) :=
-  List.map (fun ind => svass (nNamed ind.(sind_name)) ind.(sind_type)) l.
+  rev_map (fun ind => svass (nNamed ind.(sind_name)) ind.(sind_type)) l.
 
 Definition isArity Σ Γ T :=
   isType Σ Γ T (* FIXME  /\ decompose_prod_n *).
