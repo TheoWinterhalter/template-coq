@@ -117,6 +117,35 @@ Proof.
       eapply eq_conv ; eassumption.
 Defined.
 
+Lemma inversionCase :
+  forall {Σ Γ ind npar p c brs T},
+    type_glob Σ ->
+    Σ ;;; Γ |-i sCase (ind, npar) p c brs : T ->
+    ∑ args decl (isdecl : sdeclared_minductive (fst Σ) (inductive_mind ind) decl)
+      univs decl' (isdecl' : sdeclared_inductive (fst Σ) ind univs decl'),
+      (decl.(sind_npars) = npar) *
+      (let pars := List.firstn npar args in
+       ∑ pty, (Σ ;;; Γ |-i p : pty) *
+       ∑ indctx inds pctx ps btys s,
+         (stypes_of_case pars p pty decl' = Some (indctx, inds, pctx, ps, btys)) *
+         (scheck_correct_arity decl' ind indctx inds pars pctx = true) *
+         (Σ ;;; Γ |-i c : Apps (sInd ind) indctx (sSort inds) args) *
+         (ForallT2 (fun x y => (fst x = fst y) * (Σ ;;; Γ |-i snd x : snd y)) brs btys) *
+         (Σ ;;; Γ |-i Apps p pctx (sSort ps) (List.skipn npar args ++ [c]) = T : sSort s)
+      ).
+Proof.
+  intros Σ Γ ind npar p c brs T hg h.
+  dependent induction h.
+
+  - exists args, decl, isdecl, univs, decl', isdecl'.
+    split.
+    + assumption.
+    + exists pty. split.
+      * assumption.
+      * exists indctx, inds, pctx, ps, btys.
+        (* We need to know that the type of case is a type. *)
+Abort.
+
 Lemma inversionProd :
   forall {Σ Γ n A B T},
     type_glob Σ ->
