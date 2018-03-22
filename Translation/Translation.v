@@ -75,6 +75,64 @@ where " t1 ∼ t2 " := (trel t1 t2).
 
 Derive Signature for trel.
 
+Definition sCaseBrsT2
+  (P : sterm -> sterm -> Type) (brs1 brs2 : list (nat * sterm)) :=
+  ForallT2 (fun x y => P (snd x) (snd y)) brs1 brs2.
+
+Lemma trel_rect_list :
+  forall P : forall s s0 : sterm, Type,
+    (forall x : nat, P (sRel x) (sRel x)) ->
+    (forall (t1 t2 T1 T2 p : sterm) (i : t1 ∼ t2), P t1 t2 ->
+     P (sTransport T1 T2 p t1) t2) ->
+    (forall (t1 t2 T1 T2 p : sterm) (i : t1 ∼ t2), P t1 t2 ->
+     P t1 (sTransport T1 T2 p t2)) ->
+    (forall (n1 n2 : name) (A1 A2 B1 B2 : sterm) (i : A1 ∼ A2),
+     P A1 A2 -> forall i0 : B1 ∼ B2, P B1 B2 ->
+     P (sProd n1 A1 B1) (sProd n2 A2 B2)) ->
+    (forall (A1 A2 u1 u2 v1 v2 : sterm) (i : A1 ∼ A2), P A1 A2 ->
+     forall i0 : u1 ∼ u2, P u1 u2 ->
+     forall i1 : v1 ∼ v2, P v1 v2 ->
+     P (sEq A1 u1 v1) (sEq A2 u2 v2)) ->
+    (forall s : sort, P (sSort s) (sSort s)) ->
+    (forall (n1 n2 : name) (A1 A2 B1 B2 u1 u2 : sterm) (i : A1 ∼ A2), P A1 A2 ->
+     forall i0 : B1 ∼ B2, P B1 B2 ->
+     forall i1 : u1 ∼ u2, P u1 u2 ->
+     P (sLambda n1 A1 B1 u1) (sLambda n2 A2 B2 u2)) ->
+    (forall (u1 u2 : sterm) (n1 n2 : name) (A1 A2 B1 B2 v1 v2 : sterm) (i : u1 ∼ u2),
+     P u1 u2 ->
+     forall i0 : A1 ∼ A2, P A1 A2 ->
+     forall i1 : B1 ∼ B2, P B1 B2 ->
+     forall i2 : v1 ∼ v2, P v1 v2 ->
+     P (sApp u1 n1 A1 B1 v1) (sApp u2 n2 A2 B2 v2)) ->
+    (forall (A1 A2 u1 u2 : sterm) (i : A1 ∼ A2), P A1 A2 ->
+     forall i0 : u1 ∼ u2, P u1 u2 ->
+     P (sRefl A1 u1) (sRefl A2 u2)) ->
+    (forall ind : inductive, P (sInd ind) (sInd ind)) ->
+    (forall (ind : inductive) (i : nat),
+     P (sConstruct ind i) (sConstruct ind i)) ->
+    (forall (indn : inductive * nat) (p1 p2 c1 c2 : sterm)
+       (brs1 brs2 : list (nat * sterm)) (i : p1 ∼ p2),
+     P p1 p2 ->
+     forall i0 : c1 ∼ c2, P c1 c2 ->
+     sCaseBrsT2 P brs1 brs2 ->
+     P (sCase indn p1 c1 brs1) (sCase indn p2 c2 brs2)) ->
+    forall (s s0 : sterm) (i : s ∼ s0), P s s0.
+Proof.
+  intros. revert s s0 i.
+  fix aux 1.
+  move aux at top.
+  intros t1 t2 h ; destruct h ;
+  match goal with
+  | H : _ |- _ => apply H
+  end ; auto.
+  revert brs1 brs2 f.
+  fix aux' 1.
+  intros brs1 brs2 f.
+  destruct f ; constructor ; [| apply aux' ].
+  - apply aux. assumption.
+  - assumption.
+Admitted.
+
 (* We also define a biased relation that only allows transports on one side,
    the idea being that the term on the other side belongs to the source.
    This might be unnecessary as transport isn't typable in the source but
@@ -138,10 +196,6 @@ Inductive inrel : sterm -> sterm -> Type :=
 where " t ⊏ t' " := (inrel t t').
 
 (* Deriving a strong enough induction principle *)
-Definition sCaseBrsT2
-  (P : sterm -> sterm -> Type) (brs1 brs2 : list (nat * sterm)) :=
-  ForallT2 (fun x y => P (snd x) (snd y)) brs1 brs2.
-
 Lemma inrel_rect_list :
   forall P : forall s s0 : sterm, Type,
     (forall x : nat, P (sRel x) (sRel x)) ->
@@ -192,13 +246,13 @@ Proof.
   destruct f ; constructor ; [| apply aux' ].
   - apply aux. assumption.
   - assumption.
-Abort.
+Admitted.
 
 Lemma inrel_trel :
   forall {t t'}, t ⊏ t' -> t ∼ t'.
 Proof.
   intros t t' h.
-  induction h ; try now constructor.
+  induction h using inrel_rect_list ; now constructor.
 Defined.
 
 Lemma trel_to_heq' :
@@ -216,7 +270,8 @@ Lemma trel_to_heq' :
                                    (rlift0 #|Γm| t2).
 Proof.
   intros Σ t1 t2 hg sim.
-  induction sim ; intros Γ Γ1 Γ2 Γm U1 U2 hm h1 h2.
+  induction sim using trel_rect_list
+  ; intros Γ Γ1 Γ2 Γm U1 U2 hm h1 h2.
 
   (* Variable case *)
   - unfold llift at 2. unfold rlift at 2.
@@ -746,7 +801,8 @@ Proof.
       all: easy.
 
   (* Case *)
-  -
+  - (* Need inversionCase *)
+    cheat.
 
   Unshelve.
   all: cbn ; try rewrite !length_cat ; omega.
