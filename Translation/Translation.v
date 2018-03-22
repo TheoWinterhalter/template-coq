@@ -179,8 +179,19 @@ Lemma inrel_rect_list :
      P (sCase indn p1 c1 brs1) (sCase indn p2 c2 brs2)) ->
     forall (s s0 : sterm) (i : s ⊏ s0), P s s0.
 Proof.
-  intros. induction i ; eauto.
-  apply X9 ; try assumption.
+  intros. revert s s0 i.
+  fix aux 1.
+  move aux at top.
+  intros t1 t2 h ; destruct h ;
+  match goal with
+  | H : _ |- _ => apply H
+  end ; auto.
+  revert brs1 brs2 f.
+  fix aux' 1.
+  intros brs1 brs2 f.
+  destruct f ; constructor ; [| apply aux' ].
+  - apply aux. assumption.
+  - assumption.
 Abort.
 
 Lemma inrel_trel :
