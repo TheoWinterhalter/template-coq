@@ -3,7 +3,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
-From Translation Require Import SAst SLiftSubst SCommon ITyping Quotes.
+From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping Quotes.
 
 Import MonadNotation.
 
@@ -53,7 +53,7 @@ Fixpoint sort_to_universe (s : sort) : Universe.t :=
   end.
 
 Definition hnf (Σ : global_context) (Γ : context) (t : term) : typing_result term :=
-  r <- hnf_stack (fst Σ) Γ t ;;
+  r <- hnf_stack (Datatypes.fst Σ) Γ t ;;
   ret (zip r).
 
 Definition myret (Σ : global_context) (Γ : context) (t : term) : tsl_result term :=
@@ -67,6 +67,18 @@ Definition infer_hnf fuel Σ Γ t :=
   @infer (Build_Fuel fuel) Σ Γ t.
   (* t' <- @infer (Build_Fuel fuel) Σ Γ t ;; *)
   (* hnf Σ Γ t'. *)
+
+Fixpoint brs_repack (l : list (nat * tsl_result term)) :
+  tsl_result (list (prod nat term)) :=
+  match l with
+  | [] => Success []
+  | (n, Success t) :: tl =>
+    match brs_repack tl with
+    | Success tl' => Success ((pair n t) :: tl')
+    | Error e => Error e
+    end
+  | (_, Error e) :: _ => Error e
+  end.
 
 Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {struct fuel}
   : tsl_result term :=
@@ -276,6 +288,16 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "ProjTe" p p' T)
       | TypeError t => raise (TypingError t)
       end
+    | sInd ind =>
+      ret (tInd ind [])
+    | sConstruct ind i =>
+      ret (tConstruct ind i [])
+    | sCase (ind, n) p c brs =>
+      (* TODO Check the contexts here! *)
+      p' <- tsl_rec fuel Σ Γ p ;;
+      c' <- tsl_rec fuel Σ Γ c ;;
+      brs' <- brs_repack (map (on_snd (tsl_rec fuel Σ Γ)) brs) ;;
+      ret (tCase (pair ind n) p' c' brs')
     end
   end.
 
@@ -315,38 +337,42 @@ Definition glob_term :=
   let _ := @cong_refl in
   let _ := @eq_to_heq in
   let _ := @heq_type_eq in
+  (* More for the sake of examples *)
+  let _ := @nat in
+  let _ := @bool in
+  let _ := @vec in
   Type.
 
 Quote Recursively Definition glob_prog := @glob_term.
 Definition Σ : global_context :=
   (* reconstruct_global_context (fst glob_prog). *)
-  (fst glob_prog, init_graph).
+  pair (Datatypes.fst glob_prog) init_graph.
 
 Arguments Σ : simpl never.
 
 (* Checking for the sake of checking *)
-Compute (infer Σ [] tEq).
-Compute (infer Σ [] tJ).
-Compute (infer Σ [] tTransport).
-Compute (infer Σ [] tK).
-Compute (infer Σ [] tFunext).
-Compute (infer Σ [] tHeq).
-Compute (infer Σ [] tHeqToEq).
-Compute (infer Σ [] tHeqRefl).
-Compute (infer Σ [] tHeqSym).
-Compute (infer Σ [] tHeqTrans).
-Compute (infer Σ [] tHeqTransport).
-Compute (infer Σ [] tPack).
-Compute (infer Σ [] tProjT1).
-Compute (infer Σ [] tProjT2).
-Compute (infer Σ [] tProjTe).
-Compute (infer Σ [] tCongProd).
-Compute (infer Σ [] tCongLambda).
-Compute (infer Σ [] tCongApp).
-Compute (infer Σ [] tCongEq).
-Compute (infer Σ [] tCongRefl).
-Compute (infer Σ [] tEqToHeq).
-Compute (infer Σ [] tHeqTypeEq).
+(* Compute (infer Σ [] tEq). *)
+(* Compute (infer Σ [] tJ). *)
+(* Compute (infer Σ [] tTransport). *)
+(* Compute (infer Σ [] tK). *)
+(* Compute (infer Σ [] tFunext). *)
+(* Compute (infer Σ [] tHeq). *)
+(* Compute (infer Σ [] tHeqToEq). *)
+(* Compute (infer Σ [] tHeqRefl). *)
+(* Compute (infer Σ [] tHeqSym). *)
+(* Compute (infer Σ [] tHeqTrans). *)
+(* Compute (infer Σ [] tHeqTransport). *)
+(* Compute (infer Σ [] tPack). *)
+(* Compute (infer Σ [] tProjT1). *)
+(* Compute (infer Σ [] tProjT2). *)
+(* Compute (infer Σ [] tProjTe). *)
+(* Compute (infer Σ [] tCongProd). *)
+(* Compute (infer Σ [] tCongLambda). *)
+(* Compute (infer Σ [] tCongApp). *)
+(* Compute (infer Σ [] tCongEq). *)
+(* Compute (infer Σ [] tCongRefl). *)
+(* Compute (infer Σ [] tEqToHeq). *)
+(* Compute (infer Σ [] tHeqTypeEq). *)
 
 (* Theorem soundness : *)
 (*   forall {Γ t A}, *)

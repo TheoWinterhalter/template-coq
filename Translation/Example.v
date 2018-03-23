@@ -5,148 +5,12 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
-From Translation Require Import SAst SLiftSubst SCommon ITyping XTyping
-                                Translation Reduction FinalTranslation.
+From Translation Require Import SAst SLiftSubst SCommon ITyping
+                                ITypingLemmata ITypingMore XTyping
+                                Translation Reduction FinalTranslation
+                                ExamplesUtil.
 
 Open Scope string_scope.
-
-(*! General utilities to build ETT derivations and terms *)
-
-Definition pn := nNamed "pppp".
-
-Fixpoint multiProd (bl : list sterm) :=
-  match bl with
-  | [] => sSort (succ_sort 0)
-  | [ A ] => A
-  | A :: bl => sProd pn A (multiProd bl)
-  end.
-
-Fixpoint multiLam (bl : list sterm) (t : sterm) :=
-  match bl with
-  | [] => sSort 0
-  | [ A ] => t
-  | A :: bl => sLambda pn A (multiProd bl) (multiLam bl t)
-  end.
-
-Inductive wfb : scontext -> list sterm -> Type :=
-| wfb_nil Γ : wfb Γ []
-| wfb_cons Γ A s bl :
-    Σ ;;; Γ |-x A : sSort s ->
-    wfb (svass pn A :: Γ) bl ->
-    wfb Γ (A :: bl).
-
-Derive Signature for wfb.
-
-Lemma type_multiProd :
-  forall {bl Γ},
-    wf Σ Γ ->
-    wfb Γ bl ->
-    ∑ s,
-      Σ ;;; Γ |-x multiProd bl : sSort s.
-Proof.
-  intro bl. induction bl ; intros Γ hwf h.
-  - cbn. exists (succ_sort (succ_sort 0)). apply type_Sort. assumption.
-  - destruct bl.
-    + cbn. dependent destruction h.
-      eexists. eassumption.
-    + change (multiProd (a :: s :: bl))
-        with (sProd pn a (multiProd (s :: bl))).
-      dependent destruction h.
-      dependent destruction h.
-      destruct (IHbl (ssnoc Γ0 (svass pn A))) as [z hz].
-      * econstructor.
-        -- assumption.
-        -- eassumption.
-      * econstructor.
-        -- eassumption.
-        -- assumption.
-      * eexists. eapply type_Prod.
-        -- eassumption.
-        -- exact hz.
-Defined.
-
-Inductive wbtm : scontext -> list sterm -> sterm -> Type :=
-| wbtm_nil Γ t : wbtm Γ [] t
-| wbtm_one Γ A s t :
-    Σ ;;; Γ |-x A : sSort s ->
-    Σ ;;; Γ |-x t : A ->
-    wbtm Γ [ A ] t
-| wbtm_cons Γ A B s bl t :
-    Σ ;;; Γ |-x A : sSort s ->
-    wbtm (svass pn A :: Γ) (B :: bl) t ->
-    wbtm Γ (A :: B :: bl) t.
-
-Derive Signature for wbtm.
-
-Lemma wbtm_wfb :
-  forall {bl Γ t},
-    wbtm Γ bl t ->
-    wfb Γ bl.
-Proof.
-  intro bl. induction bl ; intros Γ t h.
-  - constructor.
-  - destruct bl.
-    + dependent destruction h.
-      econstructor.
-      * eassumption.
-      * constructor.
-    + dependent destruction h.
-      econstructor.
-      * eassumption.
-      * eapply IHbl. eassumption.
-Defined.
-
-Lemma type_multiLam :
-  forall {bl Γ t},
-    wf Σ Γ ->
-    wbtm Γ bl t ->
-    Σ ;;; Γ |-x multiLam bl t : multiProd bl.
-Proof.
-  intro bl. induction bl ; intros Γ t hwf hwb.
-  - cbn. apply type_Sort. assumption.
-  - destruct bl.
-    + cbn. dependent destruction hwb. assumption.
-    + change (multiProd (a :: s :: bl))
-        with (sProd pn a (multiProd (s :: bl))).
-      change (multiLam (a :: s :: bl) t)
-        with (sLambda pn a (multiProd (s :: bl)) (multiLam (s :: bl) t)).
-      dependent destruction hwb.
-      destruct (@type_multiProd (B :: bl0) (ssnoc Γ0 (svass pn A))) as [z hz].
-      * econstructor.
-        -- assumption.
-        -- eassumption.
-      * eapply wbtm_wfb. eassumption.
-      * eapply type_Lambda.
-        -- eassumption.
-        -- eassumption.
-        -- eapply IHbl.
-           ++ econstructor.
-              ** assumption.
-              ** eassumption.
-           ++ assumption.
-Defined.
-
-Lemma type_conv'' :
-  forall {Γ t A B s},
-    Σ ;;; Γ |-x t : A ->
-    Σ ;;; Γ |-x A = B : sSort s ->
-    Σ ;;; Γ |-x B : sSort s ->
-    Σ ;;; Γ |-x t : B.
-Proof.
-  intros Γ t A B s H H0 H1.
-  eapply type_conv ; eassumption.
-Defined.
-
-Fact istrans_nil :
-  ctxtrans Σ nil nil.
-Proof.
-  split.
-  - constructor.
-  - constructor.
-Defined.
-
-Definition type_translation {Σ Γ t A} h {Γ'} hΓ :=
-  pi2_ _ _ (pi1_ _ _ (@complete_translation Σ)) Γ t A h Γ' hΓ.
 
 (*! EXAMPLE 1:
     λ A B e x ⇒ x : ∀ (A B : Type), A = B → A → B
@@ -169,7 +33,7 @@ Definition ty : sterm := multiProd tyl.
 
 Definition tm : sterm := multiLam tyl (sRel 0).
 
-Fact tmty : Σ ;;; [] |-x tm : ty.
+Fact tmty : Σi ;;; [] |-x tm : ty.
 Proof.
   eapply type_multiLam.
   - constructor.
@@ -257,7 +121,7 @@ Definition ty0 : sterm := multiProd tyl0.
 
 Definition tm0 : sterm := multiLam tyl0 (sRel 0).
 
-Lemma tmty0 : Σ ;;; [] |-x tm0 : ty0.
+Lemma tmty0 : Σi ;;; [] |-x tm0 : ty0.
 Proof.
   eapply type_multiLam.
   - constructor.
@@ -302,3 +166,197 @@ Make Definition coq_red_tm0 :=
               end)
       in exact t
   ).
+
+(*! EXAMPLE 3: (trivial for now)
+    nat
+    It gets translated to itself.
+*)
+
+Lemma natty :
+  Σi ;;; [] |-x sNat : sSort 0.
+Proof.
+  eapply xmeta_conv.
+  - eapply type_Ind.
+    + constructor.
+    + Unshelve.
+      repeat econstructor;
+      try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+      clear H; apply H'; try trivial.
+  - cbn. reflexivity.
+Defined.
+
+Definition itt_nat : sterm.
+  destruct (type_translation natty istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+Definition itt_nat' := ltac:(let t := eval lazy in itt_nat in exact t).
+
+Definition tc_nat : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] itt_nat'.
+
+Definition tc_nat' := ltac:(let t := eval lazy in tc_nat in exact t).
+
+Make Definition coq_nat :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_nat' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
+
+(*! EXAMPLE 4:
+    vec
+    It gets translated to itself.
+*)
+
+Lemma vecty :
+  Σi ;;; [] |-x sVec : vec_type.
+Proof.
+  eapply xmeta_conv.
+  - eapply type_Ind.
+    + constructor.
+    + Unshelve.
+      repeat econstructor;
+      try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+      clear H; apply H'; try trivial.
+  - cbn. reflexivity.
+Defined.
+
+Definition itt_vec : sterm.
+  destruct (type_translation vecty istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+Definition itt_vec' := ltac:(let t := eval lazy in itt_vec in exact t).
+
+Definition tc_vec : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] itt_vec'.
+
+Definition tc_vec' := ltac:(let t := eval lazy in tc_vec in exact t).
+
+Make Definition coq_vec :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_vec' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
+
+(*! EXAMPLE 4':
+    vec bool
+    It gets translated to itself.
+*)
+
+Lemma vecbty :
+  Σi ;;; [] |-x sApp sVec (nNamed "A") (sSort 0) vec_cod sBool : vec_cod.
+Proof.
+  eapply type_App with (s1 := 1) (s2 := max 0 1).
+  - repeat constructor.
+  - unfold vec_cod. eapply type_Prod.
+    + eapply xmeta_conv.
+      * eapply type_Ind.
+        -- econstructor.
+           ++ constructor.
+           ++ repeat constructor.
+        -- Unshelve.
+           repeat econstructor;
+           try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+           clear H; apply H'; try trivial.
+      * cbn. reflexivity.
+    + repeat econstructor.
+  - eapply xmeta_conv.
+    + eapply type_Ind.
+      * constructor.
+      * Unshelve.
+        repeat econstructor;
+        try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+        clear H; apply H'; try trivial.
+    + cbn. reflexivity.
+  - eapply xmeta_conv.
+    + eapply type_Ind.
+      * constructor.
+      * Unshelve.
+        repeat econstructor;
+        try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+        clear H; apply H'; try trivial.
+    + cbn. reflexivity.
+Defined.
+
+Definition itt_vecb : sterm.
+  destruct (type_translation vecbty istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+(* For some reason we have efficiency issues again. *)
+
+(* Definition itt_vecb' := ltac:(let t := eval lazy in itt_vecb in exact t). *)
+
+(* Definition tc_vecb : tsl_result term := *)
+(*   tsl_rec (2 ^ 18) Σ [] itt_vecb'. *)
+
+(* Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t). *)
+
+(* Make Definition coq_vecb := *)
+(*   ltac:( *)
+(*     let t := eval lazy in *)
+(*              (match tc_vecb' with *)
+(*               | Success t => t *)
+(*               | _ => tSort Universe.type0 *)
+(*               end) *)
+(*       in exact t *)
+(*   ). *)
+
+(*! EXAMPLE 4'':
+    vec bool zero
+    It gets translated to itself.
+*)
+
+Lemma vecbzty :
+  Σi ;;; [] |-x sApp (sApp sVec (nNamed "A") (sSort 0) vec_cod sBool)
+               nAnon sNat (sSort 0)
+               sZero
+             : sSort 0.
+Proof.
+  eapply type_App with (s1 := 0) (s2 := max 0 1).
+  - apply natty.
+  - repeat constructor.
+    econstructor.
+    + constructor.
+    + apply natty.
+  - apply vecbty.
+  - unfold sZero. unfold sNat.
+    eapply xmeta_conv.
+    + eapply type_Construct. constructor.
+    + Unshelve.
+      (* repeat econstructor; *)
+      (* try (simpl; omega); assert(H':=type_Construct Σi [] iNat 0 _ _ _ _ _); simpl in H'; *)
+      (* clear H; apply H'; try trivial. *)
+      all:admit.
+Admitted.
+
+Definition itt_vecbz : sterm.
+  destruct (type_translation vecbzty istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+(* Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t). *)
+
+(* Definition tc_vecb : tsl_result term := *)
+(*   tsl_rec (2 ^ 18) Σ [] itt_vecb'. *)
+
+(* Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t). *)
+
+(* Make Definition coq_vecb := *)
+(*   ltac:( *)
+(*     let t := eval lazy in *)
+(*              (match tc_vecb' with *)
+(*               | Success t => t *)
+(*               | _ => tSort Universe.type0 *)
+(*               end) *)
+(*       in exact t *)
+(*   ). *)

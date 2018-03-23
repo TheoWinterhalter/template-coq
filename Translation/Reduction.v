@@ -6,10 +6,11 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega Bool_nat.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
-From Translation Require Import SAst SLiftSubst SCommon ITyping.
+From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping
+                                ITypingLemmata ITypingMore.
 
 Definition proj_1 {A} {P : A -> Prop} : {a:A | P a} -> A :=
-  fun X => match X with exist _ a _ => a end. 
+  fun X => match X with exist _ a _ => a end.
 
 Fixpoint sterm_eq (t u : sterm) : bool :=
   match t, u with
@@ -51,10 +52,10 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq pA pA' && sterm_eq pB pB && sterm_eq pt pt'
   | sCongApp B1 B2 pu pA pB pv , sCongApp B1' B2' pu' pA' pB' pv'=>
       sterm_eq B1 B1' && sterm_eq B2 B2' && sterm_eq pA pA' && sterm_eq pB pB &&
-      sterm_eq pu pu' && sterm_eq pv pv'    
+      sterm_eq pu pu' && sterm_eq pv pv'
   | sCongEq pA pu pv, sCongEq pA' pu' pv' =>
-      sterm_eq pA pA' && sterm_eq pu pu' && sterm_eq pv pv'    
-  | sCongRefl pA pu, sCongRefl pA' pu' => 
+      sterm_eq pA pA' && sterm_eq pu pu' && sterm_eq pv pv'
+  | sCongRefl pA pu, sCongRefl pA' pu' =>
       sterm_eq pA pA' && sterm_eq pu pu'
   | sEqToHeq p, sEqToHeq p' =>
       sterm_eq p p'
@@ -68,6 +69,10 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq p p'
   | sProjTe p, sProjTe p' =>
       sterm_eq p p'
+  | sInd i, sInd i' =>
+      eq_ind i i'
+  | sConstruct i k, sConstruct i' k' =>
+      eq_ind i i' && eq_nat k k'
   | _ , _ => false
   end.
 
@@ -131,7 +136,7 @@ Fixpoint reduce (t : sterm) : sterm :=
     let p' := reduce p in
     match p' with
     | sHeqRefl A a => sRefl A a
-    | sEqToHeq a => a                            
+    | sEqToHeq a => a
     | _ => sHeqToEq p'
     end
   | sHeqRefl A a =>
@@ -249,161 +254,11 @@ Fixpoint reduce (t : sterm) : sterm :=
   | sProjTe p =>
     let p' := reduce p in
     sProjTe p'
+  | sInd ind => sInd ind
+  | sConstruct ind i => sConstruct ind i
+  | sCase indn p c brs =>
+    let p' := reduce p in
+    let c' := reduce c in
+    let brs' := map (on_snd reduce) brs in
+    sCase indn p' c' brs'
   end.
-
-
-(* TODO: Show soundness/subject-reduction.
-
-   There are several options.
-   One of them is to show that t : A implies red t : red A.
-   Another is to add all these equations to ITyping and then show
-   t = red t. The wanted result will be derived from eq_typing.
-
- *)
-
-Axiom cheating : forall {A}, A.
-Tactic Notation "cheat" := apply cheating.
-
-Fixpoint injectiveEq {Σ Γ A u v A' u' v' T} (h : Σ ;;; Γ |-i sEq A u v = sEq A' u' v' : T) {struct h} :
-  (Σ ;;; Γ |-i A = A' : T) *
-  (Σ ;;; Γ |-i u = u' : A) *
-  (Σ ;;; Γ |-i v = v' : A)
-
-with injectiveEqL {Σ Γ A u v E T} (h : Σ ;;; Γ |-i sEq A u v = E : T) {struct h} :
-  forall {A' u' v'},
-    Σ ;;; Γ |-i E = sEq A' u' v' : T ->
-    (Σ ;;; Γ |-i A = A' : T) *
-    (Σ ;;; Γ |-i u = u' : A) *
-    (Σ ;;; Γ |-i v = v' : A)
-
-with injectiveEqR {Σ Γ A u v E T} (h : Σ ;;; Γ |-i E = sEq A u v : T) {struct h} :
-  forall {A' u' v'},
-    Σ ;;; Γ |-i sEq A' u' v' = E : T ->
-    (Σ ;;; Γ |-i A = A' : T) *
-    (Σ ;;; Γ |-i u = u' : A) *
-    (Σ ;;; Γ |-i v = v' : A)
-.
-Proof.
-  (* injectiveEq *)
-  - { dependent destruction h.
-      - destruct (inversionEq t) as [s [[[? ?] ?] ?]].
-        split ; [ split | .. ] ; eapply eq_reflexivity ; try assumption.
-        eapply type_conv' ; eassumption.
-      - destruct (injectiveEq _ _ _ _ _ _ _ _ _ h) as [[? ?] ?].
-        destruct (eq_typing h) as [_ hE].
-        destruct (inversionEq hE) as [s [[[? ?] ?] ?]].
-        split ; [ split | .. ] ; eapply eq_symmetry.
-        + assumption.
-        + eapply eq_conv ; try eassumption.
-          eapply eq_conv ; try eassumption.
-          eapply eq_symmetry. eassumption.
-        + eapply eq_conv ; try eassumption.
-          eapply eq_conv ; try eassumption.
-          eapply eq_symmetry. eassumption.
-      - destruct (injectiveEqL _ _ _ _ _ _ _ h1 _ _ _ h2) as [[? ?] ?].
-        split ; [ split | .. ] ; assumption.
-      - destruct (injectiveEq _ _ _ _ _ _ _ _ _ h1) as [[? ?] ?].
-        split ; [ split | .. ] ; try assumption.
-        eapply eq_conv ; eassumption.
-      - split ; [ split | .. ] ; assumption.
-    }
-
-  (* injectiveEqL *)
-  - { dependent destruction h ; intros A' u' v' h'.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-    }
-
-  (* injectiveEqR *)
-  - cheat.
-Abort.
-
-Lemma eq_red :
-  forall {Σ t Γ A},
-    Σ ;;; Γ |-i t : A ->
-    Σ ;;; Γ |-i t = reduce t : A.
-Proof.
-  intros Σ t Γ A ht.
-  induction ht.
-  all: try (eapply eq_reflexivity ; econstructor ; eassumption).
-  - cbn. eapply cong_Prod ; assumption.
-  - cbn. eapply cong_Lambda ; eassumption.
-  - cbn. eapply cong_App ; eassumption.
-  - cbn. eapply cong_Eq ; eassumption.
-  - cbn. eapply cong_Refl ; eassumption.
-  - cbn. eapply cong_J ; eassumption.
-  - cbn. destruct (reduce p).
-    (* all: try (eapply cong_Transport ; eassumption). *)
-    (* rename s0_1 into A, s0_2 into x. *)
-    (* eapply eq_transitivity. *)
-    (* + eapply cong_Transport with (A2 := x) (B2 := x) (p2 := sRefl (sSort s) x). *)
-    (*   * (* Seems I still need injectivity of Eq... *) *)
-    (*     admit. *)
-    (*   * admit. *)
-    (*   * eapply eq_transitivity ; [ eassumption | .. ]. *)
-    (*     admit. *)
-    (*   * eapply eq_reflexivity ; eassumption. *)
-    (* + eapply eq_transitivity. *)
-    (*   * eapply eq_conv. *)
-    (*     -- eapply eq_TransportRefl ; admit. *)
-    (*     -- admit. *)
-    (*   * admit. *)
-Abort.
-
-Definition red_decl (d : scontext_decl) :=
-  {| sdecl_name := sdecl_name d ;
-     sdecl_body := option_map reduce (sdecl_body d) ;
-     sdecl_type := reduce (sdecl_type d)
-  |}.
-
-Fixpoint red (Γ : scontext) : scontext :=
-  match Γ with
-  | [] => []
-  | a :: Γ => red_decl a :: red Γ
-  end.
-
-(* It seems this presentation is the wrong one. I believe now that these rules
-   should be added to the conversion.
- *)
-Lemma validity :
-  forall {Σ t Γ A},
-    Σ ;;; Γ |-i t : A ->
-    Σ ;;; red Γ |-i reduce t : reduce A.
-Proof.
-  intros Σ t Γ A ht.
-  induction ht.
-  - cbn. admit.
-  - cbn. eapply type_Sort. admit.
-  - cbn. eapply type_Prod.
-    + apply IHht1.
-    + apply IHht2.
-  - cbn. eapply type_Lambda.
-    + apply IHht1.
-    + apply IHht2.
-    + apply IHht3.
-  - cbn. admit.
-  - cbn. eapply type_Eq ; assumption.
-  - cbn. eapply type_Refl ; eassumption.
-  - cbn. admit.
-  - cbn. destruct (reduce p).
-    all: try (eapply type_Transport ; eassumption).
-  (*   destruct (inversionRefl IHht3) as [s' [[? ?] h]]. *)
-  (*   cbn in h. *)
-  (*   (* This probably requires injectivity of Eq. *) *)
-  (*   admit. *)
-  (* - cbn. eapply type_Heq ; eassumption. *)
-  (* - cbn. destruct (reduce p). *)
-  (*   all: try (eapply type_HeqToEq ; eassumption). *)
-  (*   (* pose (inversionHeqRefl IHht1). *) *)
-  (*   (* I would also need inversion of HeqRefl, and then some injectivity... *) *)
-  (*   admit. *)
-  (* - cbn. eapply type_HeqRefl ; eassumption. *)
-  (* - cbn. destruct (reduce p). *)
-  (*   all: try (eapply type_HeqSym ; eassumption). *)
-  (*   cbn in IHht5. *)
-  (*   (* Same kind of troubles *) *)
-  (*   admit. *)
-Abort.

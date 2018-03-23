@@ -15,12 +15,16 @@ To build the project, you only need to `make`.
 
 - `SAst.v` describes common syntax (in a similar fashion to `Ast.v` of
    `theories`) to both ETT and ITT.
+- `SInduction.v` is about an induction principle on the AST that gives
+  properties to the lists of terms.
 - `SLiftSubst.v` describes meta-operations on the syntax (namely lifting and substitution).
 - `SCommon.v` states common definitions like context.
 
 - `ITyping.v` contains the typing rules of ITT.
 - `XTyping.v` contains the typing rules of ETT.
 
+- `ITypingLemmata.v` contains lemmata regarding typing in ITT.
+- `ITypingLemmata.v` contains inversion and admissibility lemmata in ITT.
 - `PackLifts.v` contains the necessary lifts to deal with packing.
 
 - `Translation.v` contains the translation itself and the necessary
@@ -31,5 +35,6 @@ To build the project, you only need to `make`.
 - `Quotes.v` contains quotations of terms for the final translation.
 - `FinalTranslation.v` containes the transaltion from ITT to
   TemplateCoq (meaning we can reify terms of ITT).
+- `ExamplesUtil.v` contains utils for the examples.
 - `Example.v` contains an example of the two translations chained to
   build a Coq term from an ETT derivation.

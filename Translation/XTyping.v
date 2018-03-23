@@ -8,7 +8,7 @@ Reserved Notation " Σ ;;; Γ '|-x' t = u : T " (at level 50, Γ, t, u, T at nex
 
 Open Scope s_scope.
 
-Inductive typing (Σ : global_context) : scontext -> sterm -> sterm -> Type :=
+Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 | type_Rel Γ n :
     wf Σ Γ ->
     forall (isdecl : n < List.length Γ),
@@ -47,6 +47,17 @@ Inductive typing (Σ : global_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-x u : A ->
     Σ ;;; Γ |-x sRefl A u : sEq A u u
 
+| type_Ind Γ ind :
+    wf Σ Γ ->
+    forall univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
+      Σ ;;; Γ |-x sInd ind : decl.(sind_type)
+
+| type_Construct Γ ind i :
+    wf Σ Γ ->
+    forall univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
+    Σ ;;; Γ |-x (sConstruct ind i)
+             : stype_of_constructor (fst Σ) (ind, i) univs decl isdecl
+
 | type_conv Γ t A B s :
     Σ ;;; Γ |-x t : A ->
     Σ ;;; Γ |-x B : sSort s ->
@@ -55,7 +66,7 @@ Inductive typing (Σ : global_context) : scontext -> sterm -> sterm -> Type :=
 
 where " Σ ;;; Γ '|-x' t : T " := (@typing Σ Γ t T) : x_scope
 
-with wf (Σ : global_context) : scontext -> Type :=
+with wf (Σ : sglobal_context) : scontext -> Type :=
 | wf_nil :
     wf Σ nil
 
@@ -64,7 +75,7 @@ with wf (Σ : global_context) : scontext -> Type :=
     Σ ;;; Γ |-x A : sSort s ->
     wf Σ (Γ ,, svass x A)
 
-with eq_term (Σ : global_context) : scontext -> sterm -> sterm -> sterm -> Type :=
+with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Type :=
 | eq_reflexivity Γ u A :
     Σ ;;; Γ |-x u : A ->
     Σ ;;; Γ |-x u = u : A
