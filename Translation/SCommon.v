@@ -20,6 +20,28 @@ Delimit Scope s_scope with s.
 
 Record squash (A : Set) : Prop := { _ : A }.
 
+(* TODO Extend *)
+Fixpoint eq_term (t u : sterm) {struct t} :=
+  match t, u with
+  | sRel n, sRel n' => eq_nat n n'
+  | sSort s, sSort s' => eq_nat s s'
+  | sProd _ A B, sProd _ A' B' => eq_term A A' && eq_term B B'
+  | sLambda _ A B t, sLambda _ A' B' t' =>
+    eq_term A A' && eq_term B B' && eq_term t t'
+  | sApp u _ A B v, sApp u' _ A' B' v' =>
+    eq_term u u' && eq_term A A' && eq_term B B' && eq_term v v'
+  | sEq A u v, sEq A' u' v' =>
+    eq_term A A' && eq_term u u' && eq_term v v'
+  | sRefl A u, sRefl A' u' => eq_term A A' && eq_term u u'
+  | sInd i, sInd i' => eq_ind i i'
+  | sConstruct i k, sConstruct i' k' => eq_ind i i' && eq_nat k k'
+  | sCase (ind, par) p c brs, sCase (ind', par') p' c' brs' =>
+    eq_ind ind ind' && eq_nat par par' &&
+    eq_term p p' && eq_term c c' &&
+    forallb2 (fun '(a,b) '(a',b') => eq_term b b') brs brs'
+  | _, _ => false
+  end.
+
 (* Common lemmata *)
 
 Definition max_sort := max.

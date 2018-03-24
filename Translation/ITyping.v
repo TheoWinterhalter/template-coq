@@ -96,10 +96,22 @@ Inductive red Σ Γ t : sterm -> Prop :=
 
 (*! Conversion *)
 
-(* Reserved Notation " Σ ;;; Γ '|-i' t = u " (at level 50, Γ, t, u at next level). *)
+Reserved Notation " Σ ;;; Γ '|-i' t <= u " (at level 50, Γ, t, u at next level).
 
-(* Inductive *)
-(* Should I go with cumul with eq_term instead of leq, or do conv directly? *)
+Inductive cumul (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :=
+| cumul_refl t u : eq_term t u = true -> Σ ;;; Γ |-i t <= u
+| cumul_red_l t u v : red1 (fst Σ) Γ t v -> Σ ;;; Γ |-i v <= u -> Σ ;;; Γ |-i t <= u
+| cumul_red_r t u v : Σ ;;; Γ |-i t <= v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |-i t <= u
+
+where " Σ ;;; Γ '|-i' t <= u " := (@cumul Σ Γ t u) : i_scope.
+
+Open Scope i_scope.
+
+Definition conv Σ Γ T U :=
+  Σ ;;; Γ |-i T <= U /\ Σ ;;; Γ |-i U <= T.
+
+Notation " Σ ;;; Γ |-i t = u " :=
+  (@conv Σ Γ t u) (at level 50, Γ, t, u at next level) : i_scope.
 
 (*! Typing *)
 
