@@ -73,26 +73,35 @@ Fixpoint eq_term (t u : sterm) {struct t} :=
   | _, _ => false
   end.
 
-Lemma string_dec_refl :
-  forall s, ∑ p, string_dec s s = left p.
-Proof.
-  intro s. induction s.
-  - eexists. reflexivity.
-  - destruct IHs as [p e].
-    simpl. case (Ascii.ascii_dec a a).
-    + intro q. simpl. rewrite e.
-      eexists. reflexivity.
-    + intro neq. exfalso. apply neq. reflexivity.
-Qed.
+(* Lemma string_dec_refl : *)
+(*   forall s, ∑ p, string_dec s s = left p. *)
+(* Proof. *)
+(*   intro s. induction s. *)
+(*   - eexists. reflexivity. *)
+(*   - destruct IHs as [p e]. *)
+(*     simpl. case (Ascii.ascii_dec a a). *)
+(*     + intro q. simpl. rewrite e. *)
+(*       eexists. reflexivity. *)
+(*     + intro neq. exfalso. apply neq. reflexivity. *)
+(* Qed. *)
 
 Lemma eq_string_refl :
   forall s, eq_string s s = true.
 Proof.
-  intro s.
-  destruct (string_dec_refl s) as [p h].
   unfold eq_string.
-  rewrite h. reflexivity.
+  intros s. case (string_dec s s).
+  - intro e. reflexivity.
+  - intros neq. exfalso. apply neq. reflexivity.
 Qed.
+
+(* Lemma eq_string_refl : *)
+(*   forall s, eq_string s s = true. *)
+(* Proof. *)
+(*   intro s. *)
+(*   destruct (string_dec_refl s) as [p h]. *)
+(*   unfold eq_string. *)
+(*   rewrite h. reflexivity. *)
+(* Qed. *)
 
 Lemma eq_nat_refl :
   forall n, eq_nat n n = true.
@@ -108,7 +117,7 @@ Proof.
   apply andb_true_intro. split.
   - apply eq_string_refl.
   - apply eq_nat_refl.
-Defined.
+Qed.
 
 Ltac rewrite_assumption :=
   match goal with
@@ -132,7 +141,118 @@ Proof.
   cbn. induction X.
   - constructor.
   - cbn. rewrite p. cbn. apply IHX.
-Defined.
+Qed.
+
+Fact eq_nat_trans :
+  forall {i j k},
+    eq_nat i j = true ->
+    eq_nat j k = true ->
+    eq_nat i k = true.
+Proof.
+  unfold eq_nat.
+  intros i j k h1 h2.
+  bprop h1. bprop h2. propb. omega.
+Qed.
+
+(* This lemma is useless... *)
+(* Fact string_dec_trans : *)
+(*   forall {s1 s2 p}, string_dec s1 s2 = left p -> *)
+(*   forall {s3 q}, string_dec s2 s3 = left q -> *)
+(*   ∑ e, string_dec s1 s3 = left e. *)
+(* Proof. *)
+(*   intro s1. *)
+(*   induction s1 ; intros [| a2 s2] p h1 ; try (cbn in h1 ; discriminate) ; *)
+(*   intros [| a3 s3] q h2 ; try (cbn in h2 ; discriminate). *)
+(*   - eexists. reflexivity. *)
+(*   - simpl. *)
+(*     case (Ascii.ascii_dec a a3) ; *)
+(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
+(*     intro e. revert h1 h2. simpl. *)
+(*     case (Ascii.ascii_dec a a2) ; *)
+(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
+(*     intro e1. simpl. *)
+(*     case (Ascii.ascii_dec a2 a3) ; *)
+(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
+(*     intro e2. simpl. *)
+(*     case (string_dec s1 s2) ; *)
+(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
+(*     intro e3. simpl. *)
+(*     case (string_dec s2 s3) ; *)
+(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
+(*     intro e4. simpl. *)
+(*     case (string_dec s1 s3) ; *)
+(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
+(*     intros e5. simpl. intros h1 h2. *)
+(*     eexists. reflexivity. *)
+(* Defined. *)
+
+Fact eq_string_trans :
+  forall {s1 s2 s3},
+    eq_string s1 s2 = true ->
+    eq_string s2 s3 = true ->
+    eq_string s1 s3 = true.
+Proof.
+  unfold eq_string.
+  intros s1 s2 s3.
+  case (string_dec s1 s2) ; try discriminate. intro e1.
+  case (string_dec s2 s3) ; try discriminate. intros e _ _.
+  subst. apply eq_string_refl.
+Qed.
+
+Fact eq_ind_trans :
+  forall {i1 i2 i3},
+    eq_ind i1 i2 = true ->
+    eq_ind i2 i3 = true ->
+    eq_ind i1 i3 = true.
+Proof.
+  unfold eq_ind.
+  intros [i1 n1] [i2 n2] [i3 n3] h1 h2.
+  repeat destruct_andb. apply andb_true_intro. split.
+  - eapply eq_string_trans ; eassumption.
+  - eapply eq_nat_trans ; eassumption.
+Qed.
+
+Ltac erewrite_assumption :=
+  match goal with
+  | H : _, e : _ = _ |- _ => erewrite H
+  end.
+
+Ltac erewrite_assumptions :=
+  erewrite_assumption ; [ try erewrite_assumptions | .. ].
+
+(* Fact eq_term_trans : *)
+(*   forall {t u}, eq_term t u = true -> forall {v}, eq_term u v = true -> eq_term t v = true. *)
+(* Proof. *)
+(*   intro t. *)
+(*   induction t using sterm_rect_list. *)
+(*   all: intro u ; destruct u ; intro h1 ; cbn in h1 ; try discriminate h1. *)
+(*   all: intro v ; destruct v ; intro h2 ; cbn in h2 ; try discriminate h2. *)
+(*   all: try (cbn ; repeat destruct_andb ; *)
+(*             erewrite_assumptions ; [ reflexivity | eassumption .. ]). *)
+(*   - cbn. eapply eq_nat_trans ; eassumption. *)
+(*   - cbn. eapply eq_nat_trans ; eassumption. *)
+(*   - cbn. eapply eq_ind_trans ; eassumption. *)
+(*   - cbn. repeat destruct_andb. apply andb_true_intro. split. *)
+(*     + eapply eq_ind_trans ; eassumption. *)
+(*     + eapply eq_nat_trans ; eassumption. *)
+(*   - cbn. repeat destruct_andb. *)
+(*     destruct indn as [i1 n1]. destruct indn1 as [i2 n2]. *)
+(*     destruct indn0 as [i3 n3]. *)
+(*     assert (eq_nat n1 n2 = true) by (eapply eq_nat_trans ; eassumption). *)
+(*     assert (eq_ind i1 i2 = true) by (eapply eq_ind_trans ; eassumption). *)
+(*     erewrite_assumptions ; [ idtac | eassumption .. ]. cbn. *)
+(*     induction X. *)
+(*     + destruct brs0 ; inversion H5. *)
+(*       destruct brs1 ; inversion H0. *)
+(*       constructor. *)
+(*     + destruct brs0 ; inversion H5. *)
+(*       destruct brs1 ; inversion H0. cbn. *)
+(*       destruct x as [m1 c1]. *)
+(*       destruct p1 as [m2 c2]. *)
+(*       destruct p0 as [m3 c3]. *)
+(*       repeat destruct_andb. rewrite_assumptions. *)
+(* Abort. *)
+
 
 (* Common lemmata *)
 
