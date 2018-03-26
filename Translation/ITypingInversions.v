@@ -233,3 +233,56 @@ Proof.
     exists s'. splits 2 ; try assumption.
     eapply conv_trans ; eassumption.
 Defined.
+
+(*Corollary: Uniqueness of typing *)
+
+Ltac ttinv h :=
+  let s := fresh "s" in
+  let s1 := fresh "s1" in
+  let s2 := fresh "s2" in
+  let his := fresh "is" in
+  let nx := fresh "nx" in
+  let ne := fresh "ne" in
+  let hh := fresh "h" in
+  match type of h with
+  | _ ;;; _ |-i ?t : _ =>
+    match t with
+    | sRel _ => destruct (inversionRel h) as [his hh]
+    | sSort _ => pose proof (inversionSort h) as hh
+    | sProd _ _ _ => destruct (inversionProd h) as [s1 [s2 [[? ?] ?]]]
+    | sLambda _ _ _ _ => destruct (inversionLambda h) as [s1 [s2 [[[? ?] ?] ?]]]
+    | sApp _ _ _ _ _ => destruct (inversionApp h) as [s1 [s2 [[[[? ?] ?] ?] ?]]]
+    | sEq _ _ _ => destruct (inversionEq h) as [s [[[? ?] ?] ?]]
+    | sRefl _ _ => destruct (inversionRefl h) as [s [[? ?] ?]]
+    | sJ _ _ _ _ _ _ => destruct (inversionJ h)
+        as [s1 [s2 [nx [ne [[[[[[? ?] ?] ?] ?] ?] ?]]]]]
+    | sTransport _ _ _ _ => destruct (inversionTransport h)
+        as [s [[[[? ?] ?] ?] ?]]
+    | sHeq _ _ _ _ => destruct (inversionHeq h) as [s [[[[? ?] ?] ?] ?]]
+    (* TODO: Add more, this means proving more inversions as well. *)
+    end
+  end.
+
+Ltac unitac h1 h2 :=
+  ttinv h1 ; ttinv h2 ;
+  eapply conv_trans ; [
+    eapply conv_sym ; eassumption
+  | idtac
+  ].
+
+Lemma uniqueness :
+  forall {Σ Γ A B u},
+    Σ ;;; Γ |-i u : A ->
+    Σ ;;; Γ |-i u : B ->
+    Σ ;;; Γ |-i A = B.
+Proof.
+  intros Σ Γ A B u h1 h2.
+  destruct u.
+  all: try unitac h1 h2. all: try assumption.
+  - cbn in *. erewrite @safe_nth_irr with (isdecl' := is) in h0. assumption.
+  - admit.
+  - (* Maybe this isn't the right way to prove it.
+       Indeed, with inversion, we lose the uniqueness of the sorts and extra it
+       returns.
+     *)
+Abort.
