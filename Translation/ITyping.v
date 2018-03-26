@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst SCommon.
+From Translation Require Import SAst SInduction SLiftSubst SCommon.
 
 Open Scope s_scope.
 
@@ -110,6 +110,18 @@ Definition conv Σ Γ T U :=
 
 Notation " Σ ;;; Γ |-i t = u " :=
   (@conv Σ Γ t u) (at level 50, Γ, t, u at next level) : i_scope.
+
+Lemma cumul_reflexivity :
+  forall Σ Γ t, Σ ;;; Γ |-i t <= t.
+Proof.
+  intros Σ Γ t. destruct t ; apply cumul_refl ; apply eq_term_refl.
+Defined.
+
+Lemma conv_refl :
+  forall Σ Γ t, Σ ;;; Γ |-i t = t.
+Proof.
+  intros Σ Γ t. destruct t ; split ; apply cumul_reflexivity.
+Defined.
 
 (*! Typing *)
 
