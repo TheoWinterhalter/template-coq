@@ -277,12 +277,16 @@ Lemma uniqueness :
     Σ ;;; Γ |-i A = B.
 Proof.
   intros Σ Γ A B u h1 h2.
-  destruct u.
+  revert Γ A B h1 h2.
+  induction u ; intros Γ A B h1 h2.
   all: try unitac h1 h2. all: try assumption.
   - cbn in *. erewrite @safe_nth_irr with (isdecl' := is) in h0. assumption.
-  - admit.
+  - specialize (IHu1 _ _ _ pi1_ pi1_0).
+    specialize (IHu2 _ _ _ pi2_ pi2_1).
+    eapply conv_trans ; try eapply pi2_2.
+    admit.
   - (* Maybe this isn't the right way to prove it.
        Indeed, with inversion, we lose the uniqueness of the sorts and extra it
        returns.
      *)
-Abort.
+Admitted.
