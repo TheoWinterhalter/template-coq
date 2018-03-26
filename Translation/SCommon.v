@@ -73,18 +73,6 @@ Fixpoint eq_term (t u : sterm) {struct t} :=
   | _, _ => false
   end.
 
-(* Lemma string_dec_refl : *)
-(*   forall s, ∑ p, string_dec s s = left p. *)
-(* Proof. *)
-(*   intro s. induction s. *)
-(*   - eexists. reflexivity. *)
-(*   - destruct IHs as [p e]. *)
-(*     simpl. case (Ascii.ascii_dec a a). *)
-(*     + intro q. simpl. rewrite e. *)
-(*       eexists. reflexivity. *)
-(*     + intro neq. exfalso. apply neq. reflexivity. *)
-(* Qed. *)
-
 Lemma eq_string_refl :
   forall s, eq_string s s = true.
 Proof.
@@ -93,15 +81,6 @@ Proof.
   - intro e. reflexivity.
   - intros neq. exfalso. apply neq. reflexivity.
 Qed.
-
-(* Lemma eq_string_refl : *)
-(*   forall s, eq_string s s = true. *)
-(* Proof. *)
-(*   intro s. *)
-(*   destruct (string_dec_refl s) as [p h]. *)
-(*   unfold eq_string. *)
-(*   rewrite h. reflexivity. *)
-(* Qed. *)
 
 Lemma eq_nat_refl :
   forall n, eq_nat n n = true.
@@ -153,38 +132,6 @@ Proof.
   intros i j k h1 h2.
   bprop h1. bprop h2. propb. omega.
 Qed.
-
-(* This lemma is useless... *)
-(* Fact string_dec_trans : *)
-(*   forall {s1 s2 p}, string_dec s1 s2 = left p -> *)
-(*   forall {s3 q}, string_dec s2 s3 = left q -> *)
-(*   ∑ e, string_dec s1 s3 = left e. *)
-(* Proof. *)
-(*   intro s1. *)
-(*   induction s1 ; intros [| a2 s2] p h1 ; try (cbn in h1 ; discriminate) ; *)
-(*   intros [| a3 s3] q h2 ; try (cbn in h2 ; discriminate). *)
-(*   - eexists. reflexivity. *)
-(*   - simpl. *)
-(*     case (Ascii.ascii_dec a a3) ; *)
-(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
-(*     intro e. revert h1 h2. simpl. *)
-(*     case (Ascii.ascii_dec a a2) ; *)
-(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
-(*     intro e1. simpl. *)
-(*     case (Ascii.ascii_dec a2 a3) ; *)
-(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
-(*     intro e2. simpl. *)
-(*     case (string_dec s1 s2) ; *)
-(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
-(*     intro e3. simpl. *)
-(*     case (string_dec s2 s3) ; *)
-(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
-(*     intro e4. simpl. *)
-(*     case (string_dec s1 s3) ; *)
-(*       try (intro neq; exfalso; apply neq; inversion p ; inversion q; auto). *)
-(*     intros e5. simpl. intros h1 h2. *)
-(*     eexists. reflexivity. *)
-(* Defined. *)
 
 Fact eq_string_trans :
   forall {s1 s2 s3},

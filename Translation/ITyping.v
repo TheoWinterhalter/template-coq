@@ -123,6 +123,22 @@ Proof.
   intros Σ Γ t. destruct t ; split ; apply cumul_reflexivity.
 Defined.
 
+Lemma cumul_trans :
+  forall {Σ Γ t u}, Σ ;;; Γ |-i t <= u -> forall {v}, Σ ;;; Γ |-i u <= v ->
+    Σ ;;; Γ |-i t <= v.
+Proof.
+  intros Σ Γ t u h1. induction h1 ; intros w h2.
+  - admit.
+  - specialize (IHh1 _ h2). eapply cumul_red_l ; eassumption.
+  - admit.
+Admitted.
+
+Axiom conv_trans :
+  forall {Σ Γ t u v},
+    Σ ;;; Γ |-i t = u ->
+    Σ ;;; Γ |-i u = v ->
+    Σ ;;; Γ |-i t = v.
+
 (*! Typing *)
 
 Reserved Notation " Σ ;;; Γ '|-i' t : T " (at level 50, Γ, t, T at next level).
