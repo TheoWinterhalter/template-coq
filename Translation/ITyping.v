@@ -133,11 +133,30 @@ Proof.
   - admit.
 Admitted.
 
-Axiom conv_trans :
+Lemma conv_trans :
   forall {Σ Γ t u v},
     Σ ;;; Γ |-i t = u ->
     Σ ;;; Γ |-i u = v ->
     Σ ;;; Γ |-i t = v.
+Proof.
+  intros Σ Γ t u v h1 h2.
+  split.
+  - eapply cumul_trans.
+    + apply h1.
+    + apply h2.
+  - eapply cumul_trans.
+    + apply h2.
+    + apply h1.
+Defined.
+
+Lemma conv_sym :
+  forall {Σ Γ t u},
+    Σ ;;; Γ |-i t = u ->
+    Σ ;;; Γ |-i u = t.
+Proof.
+  intros Σ Γ t u [h1 h2].
+  split ; eassumption.
+Defined.
 
 (*! Typing *)
 
