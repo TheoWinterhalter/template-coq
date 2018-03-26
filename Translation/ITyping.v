@@ -92,8 +92,6 @@ Inductive red Σ Γ t : sterm -> Prop :=
 | refl_red : red Σ Γ t t
 | trans_red u v : red Σ Γ t u -> red1 Σ Γ u v -> red Σ Γ t v.
 
-(* TODO Pull eq_term from case branch, it will probably remain in SCommon *)
-
 (*! Conversion *)
 
 Reserved Notation " Σ ;;; Γ '|-i' t <= u " (at level 50, Γ, t, u at next level).

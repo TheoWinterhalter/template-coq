@@ -372,6 +372,8 @@ Ltac bprop' H H' :=
   | (?x ?= ?y) = Gt => pose proof (nat_compare_Gt_gt _ _ H) as H'
   | (?x ?= ?y) = Eq => pose proof (Nat.compare_eq _ _ H) as H'
   | (?x ?= ?y) = Lt => pose proof (nat_compare_Lt_lt _ _ H) as H'
+  | (?x =? ?y) = true => pose proof (beq_nat_true x y H) as H'
+  | (?x =? ?y) = false => pose proof (beq_nat_false x y H) as H'
   end.
 
 (* Doesn't work. :( *)
@@ -388,6 +390,8 @@ Ltac propb :=
   | |- (_ ?= _) = Lt => apply Nat.compare_lt_iff
   | |- (_ ?= _) = Eq => apply Nat.compare_eq_iff
   | |- (_ ?= _) = Gt => apply Nat.compare_gt_iff
+  | |- (_ =? _) = true => apply Nat.eqb_eq
+  | |- (_ =? _) = false => apply beq_nat_false
   end.
 
 Lemma liftP3 :

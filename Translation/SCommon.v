@@ -1,6 +1,6 @@
 From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst.
+From Translation Require Import SAst SInduction SLiftSubst.
 
 Record scontext_decl := { sdecl_name : name ;
                           sdecl_body : option sterm ;
@@ -20,7 +20,6 @@ Delimit Scope s_scope with s.
 
 Record squash (A : Set) : Prop := { _ : A }.
 
-(* TODO Extend *)
 Fixpoint eq_term (t u : sterm) {struct t} :=
   match t, u with
   | sRel n, sRel n' => eq_nat n n'
@@ -33,6 +32,38 @@ Fixpoint eq_term (t u : sterm) {struct t} :=
   | sEq A u v, sEq A' u' v' =>
     eq_term A A' && eq_term u u' && eq_term v v'
   | sRefl A u, sRefl A' u' => eq_term A A' && eq_term u u'
+  | sJ A u P w v p, sJ A' u' P' w' v' p' =>
+    eq_term A A' && eq_term u u' && eq_term P P' &&
+    eq_term w w' && eq_term v v' && eq_term p p'
+  | sTransport T1 T2 p t, sTransport T1' T2' p' t' =>
+    eq_term T1 T1' && eq_term T2 T2' &&
+    eq_term p p' && eq_term t t'
+  | sHeq A a B b, sHeq A' a' B' b' =>
+    eq_term A A' && eq_term a a' &&
+    eq_term B B' && eq_term b b'
+  | sHeqToEq p, sHeqToEq p' => eq_term p p'
+  | sHeqRefl A a, sHeqRefl A' a' => eq_term A A' && eq_term a a'
+  | sHeqSym p, sHeqSym p' => eq_term p p'
+  | sHeqTrans p q, sHeqTrans p' q' => eq_term p p' && eq_term q q'
+  | sHeqTransport p t, sHeqTransport p' t' => eq_term p p' && eq_term t t'
+  | sCongProd B1 B2 pA pB, sCongProd B1' B2' pA' pB' =>
+    eq_term B1 B1' && eq_term B2 B2' && eq_term pA pA' && eq_term pB pB'
+  | sCongLambda B1 B2 t1 t2 pA pB pt, sCongLambda B1' B2' t1' t2' pA' pB' pt' =>
+    eq_term B1 B1' && eq_term B2 B2' && eq_term t1 t1' && eq_term t2 t2' &&
+    eq_term pA pA' && eq_term pB pB' && eq_term pt pt'
+  | sCongApp B1 B2 pu pA pB pv, sCongApp B1' B2' pu' pA' pB' pv' =>
+    eq_term B1 B1' && eq_term B2 B2' && eq_term pu pu' &&
+    eq_term pA pA' && eq_term pB pB' && eq_term pv pv'
+  | sCongEq pA pu pv, sCongEq pA' pu' pv' =>
+    eq_term pA pA' && eq_term pu pu' && eq_term pv pv'
+  | sCongRefl pA pu, sCongRefl pA' pu' =>
+    eq_term pA pA' && eq_term pu pu'
+  | sEqToHeq p, sEqToHeq p' => eq_term p p'
+  | sHeqTypeEq p, sHeqTypeEq p' => eq_term p p'
+  | sPack A1 A2, sPack A1' A2' => eq_term A1 A1' && eq_term A2 A2'
+  | sProjT1 p, sProjT1 p' => eq_term p p'
+  | sProjT2 p, sProjT2 p' => eq_term p p'
+  | sProjTe p, sProjTe p' => eq_term p p'
   | sInd i, sInd i' => eq_ind i i'
   | sConstruct i k, sConstruct i' k' => eq_ind i i' && eq_nat k k'
   | sCase (ind, par) p c brs, sCase (ind', par') p' c' brs' =>
@@ -41,6 +72,67 @@ Fixpoint eq_term (t u : sterm) {struct t} :=
     forallb2 (fun '(a,b) '(a',b') => eq_term b b') brs brs'
   | _, _ => false
   end.
+
+Lemma string_dec_refl :
+  forall s, ∑ p, string_dec s s = left p.
+Proof.
+  intro s. induction s.
+  - eexists. reflexivity.
+  - destruct IHs as [p e].
+    simpl. case (Ascii.ascii_dec a a).
+    + intro q. simpl. rewrite e.
+      eexists. reflexivity.
+    + intro neq. exfalso. apply neq. reflexivity.
+Qed.
+
+Lemma eq_string_refl :
+  forall s, eq_string s s = true.
+Proof.
+  intro s.
+  destruct (string_dec_refl s) as [p h].
+  unfold eq_string.
+  rewrite h. reflexivity.
+Qed.
+
+Lemma eq_nat_refl :
+  forall n, eq_nat n n = true.
+Proof.
+  intro n. unfold eq_nat.
+  propb. reflexivity.
+Qed.
+
+Lemma eq_ind_refl :
+  forall i, eq_ind i i = true.
+Proof.
+  unfold eq_ind. destruct i as [i n].
+  apply andb_true_intro. split.
+  - apply eq_string_refl.
+  - apply eq_nat_refl.
+Defined.
+
+Ltac rewrite_assumption :=
+  match goal with
+  | H : _, e : _ = _ |- _ => rewrite H
+  | H : _ = _ |- _ => rewrite H
+  end.
+
+Ltac rewrite_assumptions :=
+  repeat rewrite_assumption.
+
+Fact eq_term_refl :
+  forall {t}, eq_term t t = true.
+Proof.
+  intro t. induction t using sterm_rect_list.
+  all: try (cbn ; rewrite_assumptions ;
+            try rewrite eq_nat_refl ;
+            try rewrite eq_string_refl ;
+            try rewrite eq_ind_refl ; reflexivity).
+  cbn. destruct indn as [i n].
+  rewrite_assumptions. rewrite eq_ind_refl. rewrite eq_nat_refl.
+  cbn. induction X.
+  - constructor.
+  - cbn. rewrite p. cbn. apply IHX.
+Defined.
 
 (* Common lemmata *)
 
