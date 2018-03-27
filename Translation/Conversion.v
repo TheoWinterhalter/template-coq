@@ -445,6 +445,37 @@ Defined.
 
 (*! Congruences for conversion *)
 
+Ltac cong_rewrite h :=
+  let h' := fresh "h" in
+  match type of h with
+  | _ ;;; _ |-i ?A = ?B =>
+    lazymatch goal with
+    | |- ?Σ ;;; ?Γ |-i ?ctx = _ =>
+      lazymatch ctx with
+      | context T [A] =>
+        let T1 := context T[A] in
+        let T2 := context T[B] in
+        assert (h' : Σ ;;; Γ |-i T1 = T2)
+          by (induction h ; [
+                apply conv_eq ; cbn ; rewrite !eq_term_refl ;
+                rewrite_assumption ; reflexivity
+              | eapply conv_red_l ; [
+                  constructor ; eassumption
+                | eassumption
+                ]
+              | eapply conv_red_r ; [
+                  eassumption
+                | constructor ; eassumption
+                ]
+             ]) ;
+        apply (conv_trans h') ;
+        clear h'
+      | _ => fail "sorry..."
+      end
+    | _ => fail "Wrong goal"
+    end
+  end.
+
 Lemma cong_Heq :
   forall {Σ Γ A a B b A' a' B' b'},
     Σ ;;; Γ |-i A = A' ->
@@ -454,45 +485,23 @@ Lemma cong_Heq :
     Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b'.
 Proof.
   intros Σ Γ A a B b A' a' B' b' hA ha hB hb.
-  assert (h : Σ ;;; Γ |-i sHeq A a B b = sHeq A' a B b).
-  { induction hA.
-    - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
-    - eapply conv_red_l.
-      + constructor ; eassumption.
-      + assumption.
-    - eapply conv_red_r.
-      + eassumption.
-      + constructor ; eassumption.
-  }
-  apply (conv_trans h). clear A hA h.
-  assert (h : Σ ;;; Γ |-i sHeq A' a B b = sHeq A' a' B b).
-  { induction ha.
-    - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
-    - eapply conv_red_l.
-      + constructor ; eassumption.
-      + assumption.
-    - eapply conv_red_r.
-      + eassumption.
-      + constructor ; eassumption.
-  }
-  apply (conv_trans h). clear a ha h.
-  assert (h : Σ ;;; Γ |-i sHeq A' a' B b = sHeq A' a' B' b).
-  { induction hB.
-    - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
-    - eapply conv_red_l.
-      + constructor ; eassumption.
-      + assumption.
-    - eapply conv_red_r.
-      + eassumption.
-      + constructor ; eassumption.
-  }
-  apply (conv_trans h). clear B hB h.
-  induction hb.
-  - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
-  - eapply conv_red_l.
-    + constructor ; eassumption.
-    + assumption.
-  - eapply conv_red_r.
-    + eassumption.
-    + constructor ; eassumption.
+  cong_rewrite hA.
+  cong_rewrite ha.
+  cong_rewrite hB.
+  cong_rewrite hb.
+  apply conv_refl.
+Defined.
+
+Lemma cong_Eq :
+  forall {Σ Γ A u v A' u' v'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ |-i u = u' ->
+    Σ ;;; Γ |-i v = v' ->
+    Σ ;;; Γ |-i sEq A u v = sEq A' u' v'.
+Proof.
+  intros Σ Γ A u v A' u' v' hA hu hv.
+  cong_rewrite hA.
+  cong_rewrite hu.
+  cong_rewrite hv.
+  apply conv_refl.
 Defined.
