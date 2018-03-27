@@ -25,6 +25,14 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
 (*     red1 Σ Γ (sCase (ind, pars) p (Apps (sConstruct ind c) _ _ args) brs) *)
 (*          (iota_red pars c args brs) *)
 
+(** J-Refl *)
+| red_JRefl A u P w v A' u' :
+    red1 Σ Γ (sJ A u P w v (sRefl A' u')) w
+
+(** Transport of Refl *)
+| red_TransportRefl A A' A'' T t :
+    red1 Σ Γ (sTransport A A' (sRefl T A'') t) t
+
 (*! Subterm reduction *)
 
 (** Lambda *)
@@ -75,7 +83,115 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
     red1 Σ (Γ,, svass na A) B B' ->
     red1 Σ Γ (sProd na A B) (sProd na' A B')
 
-(* TODO: The other terms that we added, plus the corresponding computations. *)
+(** Eq *)
+| eq_red_ty A A' u v :
+    red1 Σ Γ A A' ->
+    red1 Σ Γ (sEq A u v) (sEq A' u v)
+
+| eq_red_l A u u' v :
+    red1 Σ Γ u u' ->
+    red1 Σ Γ (sEq A u v) (sEq A u' v)
+
+| eq_red_r A u v v' :
+    red1 Σ Γ v v' ->
+    red1 Σ Γ (sEq A u v) (sEq A u v')
+
+(** Refl *)
+| refl_red_ty A A' u :
+    red1 Σ Γ A A' ->
+    red1 Σ Γ (sRefl A u) (sRefl A' u)
+
+| refl_red_tm A u u' :
+    red1 Σ Γ u u' ->
+    red1 Σ Γ (sRefl A u) (sRefl A u')
+
+(** J *)
+| j_red_ty A A' u v P p w :
+    red1 Σ Γ A A' ->
+    red1 Σ Γ (sJ A u P w v p) (sJ A' u P w v p)
+
+| j_red_l A u u' v P p w :
+    red1 Σ Γ u u' ->
+    red1 Σ Γ (sJ A u P w v p) (sJ A u' P w v p)
+
+| j_red_pred A u v P P' p w nx ne :
+    red1 Σ (Γ,, svass nx A ,, svass ne (sEq (lift0 1 A) (lift0 1 u) (sRel 0)))
+         P P' ->
+    red1 Σ Γ (sJ A u P w v p) (sJ A u P' w v p)
+
+| j_red_prf A u v P p w w' :
+    red1 Σ Γ w w' ->
+    red1 Σ Γ (sJ A u P w v p) (sJ A u P w' v p)
+
+| j_red_r A u v v' P p w :
+    red1 Σ Γ v v' ->
+    red1 Σ Γ (sJ A u P w v p) (sJ A u P w v' p)
+
+| j_red_eq A u v P p p' w :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sJ A u P w v p) (sJ A u P w v p')
+
+(** Transport *)
+| transport_red_ty_l A A' B p t :
+    red1 Σ Γ A A' ->
+    red1 Σ Γ (sTransport A B p t) (sTransport A' B p t)
+
+| transport_red_ty_r A B B' p t :
+    red1 Σ Γ B B' ->
+    red1 Σ Γ (sTransport A B p t) (sTransport A B' p t)
+
+| transport_red_eq A B p p' t :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sTransport A B p t) (sTransport A B p' t)
+
+| transport_red_tm A B p t t' :
+    red1 Σ Γ t t' ->
+    red1 Σ Γ (sTransport A B p t) (sTransport A B p t')
+
+(** Heq *)
+| heq_red_ty_l A A' a B b :
+    red1 Σ Γ A A' ->
+    red1 Σ Γ (sHeq A a B b) (sHeq A' a B b)
+
+| heq_red_tm_l A a a' B b :
+    red1 Σ Γ a a' ->
+    red1 Σ Γ (sHeq A a B b) (sHeq A a' B b)
+
+| heq_red_ty_r A a B B' b :
+    red1 Σ Γ B B' ->
+    red1 Σ Γ (sHeq A a B b) (sHeq A a B' b)
+
+| heq_red_tm_r A a B b b' :
+    red1 Σ Γ b b' ->
+    red1 Σ Γ (sHeq A a B b) (sHeq A a B b')
+
+(** HeqToEq *)
+| heqtoeq_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sHeqToEq p) (sHeqToEq p')
+
+(** HeqRefl *)
+| heqrefl_red_ty A A' a :
+    red1 Σ Γ A A' ->
+    red1 Σ Γ (sHeqRefl A a) (sHeqRefl A' a)
+
+| heqrefl_red_tm A a a' :
+    red1 Σ Γ a a' ->
+    red1 Σ Γ (sHeqRefl A a) (sHeqRefl A a')
+
+(** HeqSym *)
+| heqsym_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sHeqSym p) (sHeqSym p')
+
+(** HeqTrans *)
+| heqtrans_red_l p p' q :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sHeqTrans p q) (sHeqTrans p' q)
+
+| heqtrans_red_r p q q' :
+    red1 Σ Γ q q' ->
+    red1 Σ Γ (sHeqTrans p q) (sHeqTrans p q')
 
 with redbrs1 (Σ : sglobal_declarations) (Γ : scontext) :
        list (nat * sterm) -> list (nat * sterm) -> Prop :=
