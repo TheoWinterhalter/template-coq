@@ -94,43 +94,34 @@ Inductive red Σ Γ t : sterm -> Prop :=
 
 (*! Conversion *)
 
-Reserved Notation " Σ ;;; Γ '|-i' t <= u " (at level 50, Γ, t, u at next level).
+Reserved Notation " Σ ;;; Γ '|-i' t = u " (at level 50, Γ, t, u at next level).
 
-Inductive cumul (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :=
-| cumul_refl t u : eq_term t u = true -> Σ ;;; Γ |-i t <= u
-| cumul_red_l t u v : red1 (fst Σ) Γ t v -> Σ ;;; Γ |-i v <= u -> Σ ;;; Γ |-i t <= u
-| cumul_red_r t u v : Σ ;;; Γ |-i t <= v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |-i t <= u
+Inductive conv (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :=
+| conv_refl t u : eq_term t u = true -> Σ ;;; Γ |-i t = u
+| conv_red_l t u v : red1 (fst Σ) Γ t v -> Σ ;;; Γ |-i v = u -> Σ ;;; Γ |-i t = u
+| conv_red_r t u v : Σ ;;; Γ |-i t = v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |-i t = u
 
-where " Σ ;;; Γ '|-i' t <= u " := (@cumul Σ Γ t u) : i_scope.
+where " Σ ;;; Γ '|-i' t = u " := (@conv Σ Γ t u) : i_scope.
 
 Open Scope i_scope.
 
-Definition conv Σ Γ T U :=
-  Σ ;;; Γ |-i T <= U /\ Σ ;;; Γ |-i U <= T.
-
-Notation " Σ ;;; Γ |-i t = u " :=
-  (@conv Σ Γ t u) (at level 50, Γ, t, u at next level) : i_scope.
-
-Lemma cumul_reflexivity :
-  forall Σ Γ t, Σ ;;; Γ |-i t <= t.
-Proof.
-  intros Σ Γ t. destruct t ; apply cumul_refl ; apply eq_term_refl.
-Defined.
-
-Lemma conv_refl :
+Lemma conv_reflexivity :
   forall Σ Γ t, Σ ;;; Γ |-i t = t.
 Proof.
-  intros Σ Γ t. destruct t ; split ; apply cumul_reflexivity.
+  intros Σ Γ t.
+  apply conv_refl. apply eq_term_refl.
 Defined.
 
-Lemma cumul_trans :
-  forall {Σ Γ t u}, Σ ;;; Γ |-i t <= u -> forall {v}, Σ ;;; Γ |-i u <= v ->
-    Σ ;;; Γ |-i t <= v.
+Lemma conv_sym :
+  forall {Σ Γ t u},
+    Σ ;;; Γ |-i t = u ->
+    Σ ;;; Γ |-i u = t.
 Proof.
-  intros Σ Γ t u h1. induction h1 ; intros w h2.
+  intros Σ Γ t u h.
+  induction h.
   - admit.
-  - specialize (IHh1 _ h2). eapply cumul_red_l ; eassumption.
-  - admit.
+  - eapply conv_red_r ; eassumption.
+  - eapply conv_red_l ; eassumption.
 Admitted.
 
 Lemma conv_trans :
@@ -140,23 +131,11 @@ Lemma conv_trans :
     Σ ;;; Γ |-i t = v.
 Proof.
   intros Σ Γ t u v h1 h2.
-  split.
-  - eapply cumul_trans.
-    + apply h1.
-    + apply h2.
-  - eapply cumul_trans.
-    + apply h2.
-    + apply h1.
-Defined.
-
-Lemma conv_sym :
-  forall {Σ Γ t u},
-    Σ ;;; Γ |-i t = u ->
-    Σ ;;; Γ |-i u = t.
-Proof.
-  intros Σ Γ t u [h1 h2].
-  split ; eassumption.
-Defined.
+  revert v h2. induction h1 ; intros w h2.
+  - admit.
+  - specialize (IHh1 _ h2). eapply conv_red_l ; eassumption.
+  - admit.
+Admitted.
 
 (*! Typing *)
 
