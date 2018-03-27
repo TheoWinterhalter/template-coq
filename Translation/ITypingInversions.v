@@ -312,18 +312,49 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionCongProd :
+  forall {Σ Γ B1 B2 pA pB T},
+    Σ ;;; Γ |-i sCongProd B1 B2 pA pB : T ->
+    ∑ s z nx ny np A1 A2,
+      (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
+      (Σ ;;; Γ ,, svass np (sPack A1 A2)
+       |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                    (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
+      (Σ ;;; Γ |-i A1 : sSort s) *
+      (Σ ;;; Γ |-i A2 : sSort s) *
+      (Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ |-i sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
+                       (sSort (max_sort s z)) (sProd ny A2 B2)
+                = T).
+Proof.
+  intros Σ Γ B1 B2 pA pB T h.
+  dependent induction h.
+  - exists s, z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+    apply conv_refl.
+  - destruct IHh1 as (s' & z & nx & ny & np & A1 & A2 & ?).
+    split_hyps.
+    exists s', z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 (*Corollary: Uniqueness of typing *)
 
 Ltac ttinv h :=
   let s := fresh "s" in
   let s1 := fresh "s1" in
   let s2 := fresh "s2" in
+  let z := fresh "z" in
   let his := fresh "is" in
   let nx := fresh "nx" in
+  let ny := fresh "ny" in
+  let np := fresh "np" in
   let ne := fresh "ne" in
   let A := fresh "A" in
   let B := fresh "B" in
   let C := fresh "C" in
+  let A1 := fresh "A1" in
+  let A2 := fresh "A2" in
   let u := fresh "u" in
   let v := fresh "v" in
   let a := fresh "a" in
@@ -358,8 +389,10 @@ Ltac ttinv h :=
       splits_one hh
     | sHeqTransport _ _ =>
       destruct (inversionHeqTransport h) as (A & B & s & hh) ;
-      splits_one  hh
-    (* TODO: Add more, this means proving more inversions as well. *)
+      splits_one hh
+    | sCongProd _ _ _ _ =>
+      destruct (inversionCongProd h) as (s & z & nx & ny & np & A1 & A2 & hh) ;
+      splits_one hh
     end
   end.
 
@@ -413,7 +446,10 @@ Proof.
     + apply conv_refl.
     + apply cong_Transport ; try assumption.
       all: apply conv_refl.
-  - admit.
+  - (* specialize (IHu1 _ _ _ h5 h12). *)
+    (* Context conversion problems? *)
+    (* Check first that we need this hypothesis! *)
+    admit.
   - admit.
   - admit.
   - admit.
