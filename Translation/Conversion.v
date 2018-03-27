@@ -445,7 +445,7 @@ Defined.
 
 (*! Congruences for conversion *)
 
-Ltac cong_rewrite h :=
+Ltac conv_rewrite h :=
   let h' := fresh "h" in
   match type of h with
   | _ ;;; _ |-i ?A = ?B =>
@@ -476,6 +476,31 @@ Ltac cong_rewrite h :=
     end
   end.
 
+(* Ltac conv_rewrites hl := *)
+(*   match hl with *)
+(*   (* | ?h ?l => conv_rewrite h ; conv_rewrites l *) *)
+(*   | ?h => conv_rewrite h *)
+(*   end. *)
+
+Tactic Notation "conv" "rewrite" hyp(h) := conv_rewrite h.
+(* Tactic Notation "conv" "rewrite" hyp_list(hl) := conv_rewrites hl. *)
+(* Tactic Notation "conv" "rewrite" ne_hyp_list(hl) := conv_rewrites hl. *)
+Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) :=
+  conv rewrite h1 ; conv rewrite h2.
+Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) :=
+  conv rewrite h1 ; conv rewrite h2, h3.
+Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4) :=
+  conv rewrite h1 ; conv rewrite h2, h3, h4.
+Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) :=
+  conv rewrite h1 ; conv rewrite h2, h3, h4, h5.
+Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) "," hyp(h6) :=
+  conv rewrite h1 ; conv rewrite h2, h3, h4, h5, h6.
+Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) "," hyp(h6) "," hyp(h7) :=
+  conv rewrite h1 ; conv rewrite h2, h3, h4, h5, h6, h7.
+
 Lemma cong_Heq :
   forall {Σ Γ A a B b A' a' B' b'},
     Σ ;;; Γ |-i A = A' ->
@@ -485,10 +510,7 @@ Lemma cong_Heq :
     Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b'.
 Proof.
   intros Σ Γ A a B b A' a' B' b' hA ha hB hb.
-  cong_rewrite hA.
-  cong_rewrite ha.
-  cong_rewrite hB.
-  cong_rewrite hb.
+  conv rewrite hA, ha, hB, hb.
   apply conv_refl.
 Defined.
 
@@ -500,8 +522,6 @@ Lemma cong_Eq :
     Σ ;;; Γ |-i sEq A u v = sEq A' u' v'.
 Proof.
   intros Σ Γ A u v A' u' v' hA hu hv.
-  cong_rewrite hA.
-  cong_rewrite hu.
-  cong_rewrite hv.
+  conv rewrite hA, hu, hv.
   apply conv_refl.
 Defined.
