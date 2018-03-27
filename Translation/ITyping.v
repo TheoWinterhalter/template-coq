@@ -97,7 +97,7 @@ Inductive red Σ Γ t : sterm -> Prop :=
 Reserved Notation " Σ ;;; Γ '|-i' t = u " (at level 50, Γ, t, u at next level).
 
 Inductive conv (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :=
-| conv_refl t u : eq_term t u = true -> Σ ;;; Γ |-i t = u
+| conv_eq t u : eq_term t u = true -> Σ ;;; Γ |-i t = u
 | conv_red_l t u v : red1 (fst Σ) Γ t v -> Σ ;;; Γ |-i v = u -> Σ ;;; Γ |-i t = u
 | conv_red_r t u v : Σ ;;; Γ |-i t = v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |-i t = u
 
@@ -105,11 +105,11 @@ where " Σ ;;; Γ '|-i' t = u " := (@conv Σ Γ t u) : i_scope.
 
 Open Scope i_scope.
 
-Lemma conv_reflexivity :
+Lemma conv_refl :
   forall Σ Γ t, Σ ;;; Γ |-i t = t.
 Proof.
   intros Σ Γ t.
-  apply conv_refl. apply eq_term_refl.
+  apply conv_eq. apply eq_term_refl.
 Defined.
 
 Lemma conv_sym :

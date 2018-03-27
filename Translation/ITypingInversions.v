@@ -5,6 +5,20 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation Require Import SAst SLiftSubst SCommon ITyping.
 
+Ltac splits n :=
+  match n with
+  | S ?n => split ; [ splits n |]
+  | _ => idtac
+  end.
+
+Ltac split_hyp :=
+  match goal with
+  | H : _ * _ |- _ => destruct H
+  end.
+
+Ltac split_hyps :=
+  repeat split_hyp.
+
 Lemma inversionRel :
   forall {Σ Γ n T},
     Σ ;;; Γ |-i sRel n : T ->
@@ -83,9 +97,7 @@ Proof.
   intros Σ Γ na A B t T h.
   dependent induction h.
   - exists s1, s2. split ; [ split ; [ split | .. ] | ..] ; try assumption.
-    split.
-    + apply cumul_refl. cbn. rewrite !eq_term_refl. reflexivity.
-    + apply cumul_refl. cbn. rewrite !eq_term_refl. reflexivity.
+    apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
   - destruct IHh1 as [s1 [s2 [[[? ?] ?] ?]]].
     exists s1, s2. split ; [ split ; [ split | .. ] | ..] ; try assumption.
     eapply conv_trans ; eassumption.
@@ -144,20 +156,6 @@ Proof.
     exists s'. split ; [ split |] ; try assumption.
     eapply conv_trans ; eassumption.
 Defined.
-
-Ltac splits n :=
-  match n with
-  | S ?n => split ; [ splits n |]
-  | _ => idtac
-  end.
-
-Ltac split_hyp :=
-  match goal with
-  | H : _ * _ |- _ => destruct H
-  end.
-
-Ltac split_hyps :=
-  repeat split_hyp.
 
 Lemma inversionJ :
   forall {Σ Γ A u P w v p T},
@@ -234,7 +232,71 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionHeqToEq :
+  forall {Σ Γ p T},
+    Σ ;;; Γ |-i sHeqToEq p : T ->
+    ∑ A u v s,
+     (Σ ;;; Γ |-i p : sHeq A u A v) *
+     (Σ ;;; Γ |-i A : sSort s) *
+     (Σ ;;; Γ |-i u : A) *
+     (Σ ;;; Γ |-i v : A) *
+     (Σ ;;; Γ |-i sEq A u v = T).
+Proof.
+  intros Σ Γ p T h.
+  dependent induction h.
+  - exists A, u, v, s. splits 4. all: try assumption.
+    apply conv_refl.
+  - destruct IHh1 as (A' & u & v & s' & ?). split_hyps.
+    exists A', u, v, s'. splits 4. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
+Lemma inversionHeqRefl :
+  forall {Σ Γ A a T},
+    Σ ;;; Γ |-i sHeqRefl A a : T ->
+    ∑ s,
+      (Σ ;;; Γ |-i A : sSort s) *
+      (Σ ;;; Γ |-i a : A) *
+      (Σ ;;; Γ |-i sHeq A a A a = T).
+Proof.
+  intros Σ Γ A a T h.
+  dependent induction h.
+  - exists s. splits 2. all: try assumption. apply conv_refl.
+  - destruct IHh1 as [s' ?]. split_hyps. exists s'.
+    splits 2. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
+Lemma inversionHeqSym :
+  forall {Σ Γ p T},
+    Σ ;;; Γ |-i sHeqSym p : T ->
+    ∑ A a B b s,
+      (Σ ;;; Γ |-i A : sSort s) *
+      (Σ ;;; Γ |-i B : sSort s) *
+      (Σ ;;; Γ |-i a : A) *
+      (Σ ;;; Γ |-i b : B) *
+      (Σ ;;; Γ |-i p : sHeq A a B b) *
+      (Σ ;;; Γ |-i sHeq B b A a = T).
+Proof.
+  intros Σ Γ p T h.
+  dependent induction h.
+  - exists A, a, B, b, s. splits 5. all: try assumption. apply conv_refl.
+  - destruct IHh1 as (A' & a & B' & b & s' & ?). split_hyps.
+    exists A', a, B', b, s'. splits 5. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 (*Corollary: Uniqueness of typing *)
+
+Ltac splits_one h :=
+  match type of h with
+  | _ * _ => let h1 := fresh "h" in
+            let h2 := fresh "h" in
+            destruct h as [h1 h2] ;
+            splits_one h1 ;
+            splits_one h2
+  | _ => idtac
+  end.
 
 Ltac ttinv h :=
   let s := fresh "s" in
@@ -243,22 +305,32 @@ Ltac ttinv h :=
   let his := fresh "is" in
   let nx := fresh "nx" in
   let ne := fresh "ne" in
+  let A := fresh "A" in
+  let u := fresh "u" in
+  let v := fresh "v" in
   let hh := fresh "h" in
   match type of h with
   | _ ;;; _ |-i ?t : _ =>
     match t with
     | sRel _ => destruct (inversionRel h) as [his hh]
     | sSort _ => pose proof (inversionSort h) as hh
-    | sProd _ _ _ => destruct (inversionProd h) as [s1 [s2 [[? ?] ?]]]
-    | sLambda _ _ _ _ => destruct (inversionLambda h) as [s1 [s2 [[[? ?] ?] ?]]]
-    | sApp _ _ _ _ _ => destruct (inversionApp h) as [s1 [s2 [[[[? ?] ?] ?] ?]]]
-    | sEq _ _ _ => destruct (inversionEq h) as [s [[[? ?] ?] ?]]
-    | sRefl _ _ => destruct (inversionRefl h) as [s [[? ?] ?]]
-    | sJ _ _ _ _ _ _ => destruct (inversionJ h)
-        as [s1 [s2 [nx [ne [[[[[[? ?] ?] ?] ?] ?] ?]]]]]
-    | sTransport _ _ _ _ => destruct (inversionTransport h)
-        as [s [[[[? ?] ?] ?] ?]]
-    | sHeq _ _ _ _ => destruct (inversionHeq h) as [s [[[[? ?] ?] ?] ?]]
+    | sProd _ _ _ => destruct (inversionProd h) as (s1 & s2 & hh) ; splits_one hh
+    | sLambda _ _ _ _ => destruct (inversionLambda h) as (s1 & s2 & hh) ;
+                        splits_one hh
+    | sApp _ _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & hh) ;
+                       splits_one hh
+    | sEq _ _ _ => destruct (inversionEq h) as (s & hh) ; splits_one hh
+    | sRefl _ _ => destruct (inversionRefl h) as (s & hh) ; splits_one hh
+    | sJ _ _ _ _ _ _ => destruct (inversionJ h) as (s1 & s2 & nx & ne & hh) ;
+                       splits_one hh
+    | sTransport _ _ _ _ => destruct (inversionTransport h) as (s & hh) ;
+                           splits_one hh
+    | sHeq _ _ _ _ => destruct (inversionHeq h) as (s & hh) ; splits_one hh
+    | sHeqToEq _ => destruct (inversionHeqToEq h) as (A & u & v & s & hh) ;
+                   splits_one hh
+    | sHeqRefl _ _ => destruct (inversionHeqRefl h) as (s & hh) ; splits_one hh
+    | sHeqSym _ => destruct (inversionHeqSym h) as (A & a & B & b & s & hh) ;
+                  splits_one hh
     (* TODO: Add more, this means proving more inversions as well. *)
     end
   end.
@@ -281,12 +353,9 @@ Proof.
   induction u ; intros Γ A B h1 h2.
   all: try unitac h1 h2. all: try assumption.
   - cbn in *. erewrite @safe_nth_irr with (isdecl' := is) in h0. assumption.
-  - specialize (IHu1 _ _ _ pi1_ pi1_0).
-    specialize (IHu2 _ _ _ pi2_ pi2_1).
-    eapply conv_trans ; try eapply pi2_2.
+  - specialize (IHu1 _ _ _ h h0).
+    specialize (IHu2 _ _ _ h4 h7).
+    eapply conv_trans ; try eapply h6.
     admit.
-  - (* Maybe this isn't the right way to prove it.
-       Indeed, with inversion, we lose the uniqueness of the sorts and extra it
-       returns.
-     *)
+  -
 Admitted.
