@@ -193,6 +193,155 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
     red1 Σ Γ q q' ->
     red1 Σ Γ (sHeqTrans p q) (sHeqTrans p q')
 
+(** HeqTransport *)
+| heqtransport_red_eq p p' t :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sHeqTransport p t) (sHeqTransport p' t)
+
+| heqtransport_red_tm p t t' :
+    red1 Σ Γ t t' ->
+    red1 Σ Γ (sHeqTransport p t) (sHeqTransport p t')
+
+(** CongProd *)
+| congprod_red_ty_l B1 B1' B2 pA pB :
+    red1 Σ Γ B1 B1' ->
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1' B2 pA pB)
+
+| congprod_red_ty_r B1 B2 B2' pA pB :
+    red1 Σ Γ B2 B2' ->
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2' pA pB)
+
+| congprod_red_tm_l B1 B2 pA pA' pB :
+    red1 Σ Γ pA pA' ->
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA' pB)
+
+| congprod_red_tm_r B1 B2 pA pB pB' :
+    red1 Σ Γ pB pB' ->
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA pB')
+
+(** CongLambda *)
+| conglambda_red_ty_l B1 B2 t1 t2 pA pB pt B1' :
+    red1 Σ Γ B1 B1' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1' B2 t1 t2 pA pB pt)
+
+| conglambda_red_ty_r B1 B2 t1 t2 pA pB pt B2' :
+    red1 Σ Γ B2 B2' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1 B2' t1 t2 pA pB pt)
+
+| conglambda_red_tm_l B1 B2 t1 t2 pA pB pt t1' :
+    red1 Σ Γ t1 t1' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1 B2 t1' t2 pA pB pt)
+
+| conglambda_red_tm_r B1 B2 t1 t2 pA pB pt t2' :
+    red1 Σ Γ t2 t2' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1 B2 t1 t2' pA pB pt)
+
+| conglambda_red_eq_dom B1 B2 t1 t2 pA pB pt pA' :
+    red1 Σ Γ pA pA' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1 B2 t1 t2 pA' pB pt)
+
+| conglambda_red_eq_codom B1 B2 t1 t2 pA pB pt pB' :
+    red1 Σ Γ pB pB' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1 B2 t1 t2 pA pB' pt)
+
+| conglambda_red_eq_tm B1 B2 t1 t2 pA pB pt pt' :
+    red1 Σ Γ pt pt' ->
+    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+             (sCongLambda B1 B2 t1 t2 pA pB pt')
+
+(** CongApp *)
+| congapp_red_ty_l B1 B2 pu pA pB pv B1' :
+    red1 Σ Γ B1 B1' ->
+    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+             (sCongApp B1' B2 pu pA pB pv)
+
+| congapp_red_ty_r B1 B2 pu pA pB pv B2' :
+    red1 Σ Γ B2 B2' ->
+    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+             (sCongApp B1 B2' pu pA pB pv)
+
+| congapp_red_eq_fun B1 B2 pu pA pB pv pu' :
+    red1 Σ Γ pu pu' ->
+    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+             (sCongApp B1 B2 pu' pA pB pv)
+
+| congapp_red_eq_dom B1 B2 pu pA pB pv pA' :
+    red1 Σ Γ pA pA' ->
+    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+             (sCongApp B1 B2 pu pA' pB pv)
+
+| congapp_red_eq_codom B1 B2 pu pA pB pv pB' :
+    red1 Σ Γ pB pB' ->
+    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+             (sCongApp B1 B2 pu pA pB' pv)
+
+| congapp_red_eq_arg B1 B2 pu pA pB pv pv' :
+    red1 Σ Γ pv pv' ->
+    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+             (sCongApp B1 B2 pu pA pB pv')
+
+(** CongEq *)
+| congeq_red_eq_ty pA pu pv pA' :
+    red1 Σ Γ pA pA' ->
+    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA' pu pv)
+
+| congeq_red_eq_tm_l pA pu pv pu' :
+    red1 Σ Γ pu pu' ->
+    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu' pv)
+
+| congeq_red_eq_tm_r pA pu pv pv' :
+    red1 Σ Γ pv pv' ->
+    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu pv')
+
+(** CongRefl *)
+| congrefl_red_ty pA pu pA' :
+    red1 Σ Γ pA pA' ->
+    red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA' pu)
+
+| congrefl_red_tm pA pu pu' :
+    red1 Σ Γ pu pu' ->
+    red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA pu')
+
+(** EqToHeq *)
+| eqtoheq_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sEqToHeq p) (sEqToHeq p')
+
+(** HeqTypeEq *)
+| heqtypeeq_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sHeqTypeEq p) (sHeqTypeEq p')
+
+(** Pack *)
+| pack_red_l A1 A2 A1' :
+    red1 Σ Γ A1 A1' ->
+    red1 Σ Γ (sPack A1 A2) (sPack A1' A2)
+
+| pack_red_r A1 A2 A2' :
+    red1 Σ Γ A2 A2' ->
+    red1 Σ Γ (sPack A1 A2) (sPack A1 A2')
+
+(** ProjT1 *)
+| projt1_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sProjT1 p) (sProjT1 p')
+
+(** ProjT2 *)
+| projt2_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sProjT2 p) (sProjT2 p')
+
+(** ProjTe *)
+| projte_red p p' :
+    red1 Σ Γ p p' ->
+    red1 Σ Γ (sProjTe p) (sProjTe p')
+
 with redbrs1 (Σ : sglobal_declarations) (Γ : scontext) :
        list (nat * sterm) -> list (nat * sterm) -> Prop :=
 | redbrs1_hd n hd hd' tl :
