@@ -342,5 +342,5 @@ Proof.
   - specialize (IHu _ _ _ h h0).
     pose proof (heq_conv_inv IHu) as e. split_hyps.
     eapply conv_trans ; try exact h8.
-    admit.
+    apply cong_Eq.
 Admitted.

@@ -442,3 +442,57 @@ Proof.
     split_hyps ; repeat split ; try assumption ;
     eapply conv_red_r ; eassumption.
 Defined.
+
+(*! Congruences for conversion *)
+
+Lemma cong_Heq :
+  forall {Σ Γ A a B b A' a' B' b'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ |-i a = a' ->
+    Σ ;;; Γ |-i B = B' ->
+    Σ ;;; Γ |-i b = b' ->
+    Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b'.
+Proof.
+  intros Σ Γ A a B b A' a' B' b' hA ha hB hb.
+  assert (h : Σ ;;; Γ |-i sHeq A a B b = sHeq A' a B b).
+  { induction hA.
+    - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
+    - eapply conv_red_l.
+      + constructor ; eassumption.
+      + assumption.
+    - eapply conv_red_r.
+      + eassumption.
+      + constructor ; eassumption.
+  }
+  apply (conv_trans h). clear A hA h.
+  assert (h : Σ ;;; Γ |-i sHeq A' a B b = sHeq A' a' B b).
+  { induction ha.
+    - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
+    - eapply conv_red_l.
+      + constructor ; eassumption.
+      + assumption.
+    - eapply conv_red_r.
+      + eassumption.
+      + constructor ; eassumption.
+  }
+  apply (conv_trans h). clear a ha h.
+  assert (h : Σ ;;; Γ |-i sHeq A' a' B b = sHeq A' a' B' b).
+  { induction hB.
+    - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
+    - eapply conv_red_l.
+      + constructor ; eassumption.
+      + assumption.
+    - eapply conv_red_r.
+      + eassumption.
+      + constructor ; eassumption.
+  }
+  apply (conv_trans h). clear B hB h.
+  induction hb.
+  - apply conv_eq. cbn. rewrite !eq_term_refl. rewrite H. reflexivity.
+  - eapply conv_red_l.
+    + constructor ; eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + constructor ; eassumption.
+Defined.
