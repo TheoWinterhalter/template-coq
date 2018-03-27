@@ -423,6 +423,18 @@ Proof.
   - inversion H.
 Defined.
 
+Ltac invconv h :=
+  dependent induction h ; [
+    cbn in * ; repeat destruct_andb ;
+    repeat split ; apply conv_eq ; assumption
+  | dependent destruction H ;
+    split_hyps ; repeat split ; try assumption ;
+    eapply conv_red_l ; eassumption
+  | dependent destruction H ;
+    split_hyps ; repeat split ; try assumption ;
+    eapply conv_red_r ; eassumption
+  ].
+
 Lemma heq_conv_inv :
   forall {Σ Γ A a B b A' a' B' b'},
     Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b' ->
@@ -432,15 +444,18 @@ Lemma heq_conv_inv :
     (Σ ;;; Γ |-i b = b').
 Proof.
   intros Σ Γ A a B b A' a' B' b' h.
-  dependent induction h.
-  - cbn in H. repeat destruct_andb.
-    repeat split ; apply conv_eq ; assumption.
-  - dependent destruction H ;
-    split_hyps ; repeat split ; try assumption ;
-    eapply conv_red_l ; eassumption.
-  - dependent destruction H ;
-    split_hyps ; repeat split ; try assumption ;
-    eapply conv_red_r ; eassumption.
+  invconv h.
+Defined.
+
+Lemma eq_conv_inv :
+  forall {Σ Γ A u v A' u' v'},
+    Σ ;;; Γ |-i sEq A u v = sEq A' u' v' ->
+    (Σ ;;; Γ |-i A = A') *
+    (Σ ;;; Γ |-i u = u') *
+    (Σ ;;; Γ |-i v = v').
+Proof.
+  intros Σ Γ A u v A' u' v' h.
+  invconv h.
 Defined.
 
 (*! Congruences for conversion *)
@@ -523,5 +538,18 @@ Lemma cong_Eq :
 Proof.
   intros Σ Γ A u v A' u' v' hA hu hv.
   conv rewrite hA, hu, hv.
+  apply conv_refl.
+Defined.
+
+Lemma cong_Transport :
+  forall {Σ Γ A B p t A' B' p' t'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ |-i B = B' ->
+    Σ ;;; Γ |-i p = p' ->
+    Σ ;;; Γ |-i t = t' ->
+    Σ ;;; Γ |-i sTransport A B p t = sTransport A' B' p' t'.
+Proof.
+  intros Σ Γ A B p t A' B' p' t' hA hB hp ht.
+  conv rewrite hA, hB, hp, ht.
   apply conv_refl.
 Defined.

@@ -272,6 +272,46 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionHeqTrans :
+  forall {Σ Γ p q T},
+    Σ ;;; Γ |-i sHeqTrans p q : T ->
+    ∑ A a B b C c s,
+      (Σ ;;; Γ |-i A : sSort s) *
+      (Σ ;;; Γ |-i B : sSort s) *
+      (Σ ;;; Γ |-i C : sSort s) *
+      (Σ ;;; Γ |-i a : A) *
+      (Σ ;;; Γ |-i b : B) *
+      (Σ ;;; Γ |-i c : C) *
+      (Σ ;;; Γ |-i p : sHeq A a B b) *
+      (Σ ;;; Γ |-i q : sHeq B b C c) *
+      (Σ ;;; Γ |-i sHeq A a C c = T).
+Proof.
+  intros Σ Γ p q T h.
+  dependent induction h.
+  - exists A, a, B, b, C, c, s. repeat split. all: try assumption. apply conv_refl.
+  - destruct IHh1 as (A' & a & B' & b & C & c' & s' & hh). split_hyps.
+    exists A', a, B', b, C, c', s'. repeat split. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
+Lemma inversionHeqTransport :
+  forall {Σ Γ p t T},
+    Σ ;;; Γ |-i sHeqTransport p t : T ->
+    ∑ A B s,
+      (Σ ;;; Γ |-i A : sSort s) *
+      (Σ ;;; Γ |-i B : sSort s) *
+      (Σ ;;; Γ |-i t : A) *
+      (Σ ;;; Γ |-i p : sEq (sSort s) A B) *
+      (Σ ;;; Γ |-i sHeq A t B (sTransport A B p t) = T).
+Proof.
+  intros Σ Γ p t T h.
+  dependent induction h.
+  - exists A, B, s. repeat split. all: try assumption. apply conv_refl.
+  - destruct IHh1 as (A' & B' & s' & ?). split_hyps.
+    exists A', B', s'. repeat split. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 (*Corollary: Uniqueness of typing *)
 
 Ltac ttinv h :=
@@ -282,12 +322,18 @@ Ltac ttinv h :=
   let nx := fresh "nx" in
   let ne := fresh "ne" in
   let A := fresh "A" in
+  let B := fresh "B" in
+  let C := fresh "C" in
   let u := fresh "u" in
   let v := fresh "v" in
+  let a := fresh "a" in
+  let b := fresh "b" in
+  let c := fresh "c" in
+  let t := fresh "t" in
   let hh := fresh "h" in
   match type of h with
-  | _ ;;; _ |-i ?t : _ =>
-    match t with
+  | _ ;;; _ |-i ?term : _ =>
+    match term with
     | sRel _ => destruct (inversionRel h) as [his hh]
     | sSort _ => pose proof (inversionSort h) as hh
     | sProd _ _ _ => destruct (inversionProd h) as (s1 & s2 & hh) ; splits_one hh
@@ -307,6 +353,12 @@ Ltac ttinv h :=
     | sHeqRefl _ _ => destruct (inversionHeqRefl h) as (s & hh) ; splits_one hh
     | sHeqSym _ => destruct (inversionHeqSym h) as (A & a & B & b & s & hh) ;
                   splits_one hh
+    | sHeqTrans _ _ =>
+      destruct (inversionHeqTrans h) as (A & a & B & b & C & c & s & hh) ;
+      splits_one hh
+    | sHeqTransport _ _ =>
+      destruct (inversionHeqTransport h) as (A & B & s & hh) ;
+      splits_one  hh
     (* TODO: Add more, this means proving more inversions as well. *)
     end
   end.
@@ -342,5 +394,37 @@ Proof.
   - specialize (IHu _ _ _ h h0).
     pose proof (heq_conv_inv IHu) as e. split_hyps.
     eapply conv_trans ; try exact h8.
-    apply cong_Eq.
+    apply cong_Eq ; assumption.
+  - specialize (IHu _ _ _ h4 h10).
+    pose proof (heq_conv_inv IHu) as e. split_hyps.
+    eapply conv_trans ; [ | exact h9 ].
+    apply cong_Heq ; assumption.
+  - specialize (IHu1 _ _ _ h5 h14).
+    specialize (IHu2 _ _ _ h4 h13).
+    pose proof (heq_conv_inv IHu1) as e1.
+    pose proof (heq_conv_inv IHu2) as e2. split_hyps.
+    eapply conv_trans ; [ | exact h12 ].
+    apply cong_Heq ; assumption.
+  - specialize (IHu1 _ _ _ h4 h9).
+    specialize (IHu2 _ _ _ h5 h10).
+    pose proof (eq_conv_inv IHu1) as e1. split_hyps.
+    eapply conv_trans ; [| exact h8 ].
+    apply cong_Heq ; try assumption.
+    + apply conv_refl.
+    + apply cong_Transport ; try assumption.
+      all: apply conv_refl.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
 Admitted.
