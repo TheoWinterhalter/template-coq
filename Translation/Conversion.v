@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SInduction SLiftSubst SCommon.
+From Translation Require Import util SAst SInduction SLiftSubst SCommon.
 
 Open Scope s_scope.
 

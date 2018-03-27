@@ -3,21 +3,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst SCommon Conversion ITyping.
-
-Ltac splits n :=
-  match n with
-  | S ?n => split ; [ splits n |]
-  | _ => idtac
-  end.
-
-Ltac split_hyp :=
-  match goal with
-  | H : _ * _ |- _ => destruct H
-  end.
-
-Ltac split_hyps :=
-  repeat split_hyp.
+From Translation Require Import util SAst SLiftSubst SCommon Conversion ITyping.
 
 Lemma inversionRel :
   forall {Σ Γ n T},
@@ -287,16 +273,6 @@ Proof.
 Defined.
 
 (*Corollary: Uniqueness of typing *)
-
-Ltac splits_one h :=
-  match type of h with
-  | _ * _ => let h1 := fresh "h" in
-            let h2 := fresh "h" in
-            destruct h as [h1 h2] ;
-            splits_one h1 ;
-            splits_one h2
-  | _ => idtac
-  end.
 
 Ltac ttinv h :=
   let s := fresh "s" in

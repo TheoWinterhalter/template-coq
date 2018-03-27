@@ -3,6 +3,7 @@
 -R . Translation
 -arg "-w default,-notation-overridden"
 
+util.v
 SAst.v
 SInduction.v
 SLiftSubst.v
