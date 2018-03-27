@@ -352,6 +352,11 @@ with redbrs1 (Σ : sglobal_declarations) (Γ : scontext) :
     redbrs1 Σ Γ (hd :: tl) (hd :: tl')
 .
 
+Derive Signature for red1.
+
+Notation " Σ ;;; Γ '|-i' t ▷ u " :=
+  (red1 Σ Γ t u) (at level 50, Γ, t, u at next level).
+
 (* Reflexive and transitive closure of 1-step reduction. *)
 Inductive red Σ Γ t : sterm -> Prop :=
 | refl_red : red Σ Γ t t
@@ -407,7 +412,7 @@ Admitted.
 
 (*! Inversion results about conversion *)
 
-Lemma sort_conv :
+Lemma sort_conv_inv :
   forall {Σ Γ s1 s2},
     Σ ;;; Γ |-i sSort s1 = sSort s2 ->
     s1 = s2.
@@ -416,4 +421,24 @@ Proof.
   - cbn in H. unfold eq_nat in H. bprop H. assumption.
   - inversion H.
   - inversion H.
+Defined.
+
+Lemma heq_conv_inv :
+  forall {Σ Γ A a B b A' a' B' b'},
+    Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b' ->
+    (Σ ;;; Γ |-i A = A') *
+    (Σ ;;; Γ |-i a = a') *
+    (Σ ;;; Γ |-i B = B') *
+    (Σ ;;; Γ |-i b = b').
+Proof.
+  intros Σ Γ A a B b A' a' B' b' h.
+  dependent induction h.
+  - cbn in H. repeat destruct_andb.
+    repeat split ; apply conv_eq ; assumption.
+  - dependent destruction H ;
+    split_hyps ; repeat split ; try assumption ;
+    eapply conv_red_l ; eassumption.
+  - dependent destruction H ;
+    split_hyps ; repeat split ; try assumption ;
+    eapply conv_red_r ; eassumption.
 Defined.

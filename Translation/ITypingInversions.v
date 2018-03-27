@@ -332,14 +332,15 @@ Proof.
   - specialize (IHu1 _ _ _ h h0).
     specialize (IHu2 _ _ _ h4 h7).
     eapply conv_trans ; try eapply h6.
-    pose proof (sort_conv IHu1) as e1.
-    pose proof (sort_conv IHu2) as e2.
+    pose proof (sort_conv_inv IHu1) as e1.
+    pose proof (sort_conv_inv IHu2) as e2.
     subst. apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h6).
-    pose proof (sort_conv IHu1) as e. subst. assumption.
+    pose proof (sort_conv_inv IHu1) as e. subst. assumption.
   - specialize (IHu1 _ _ _ h h0).
-    pose proof (sort_conv IHu1) as e. subst. assumption.
+    pose proof (sort_conv_inv IHu1) as e. subst. assumption.
   - specialize (IHu _ _ _ h h0).
-    (* We need a similar inversion lemma for injectivity of Heq *)
+    pose proof (heq_conv_inv IHu) as e. split_hyps.
+    eapply conv_trans ; try exact h8.
     admit.
 Admitted.
