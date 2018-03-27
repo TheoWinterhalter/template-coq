@@ -7,6 +7,7 @@ SAst.v
 SInduction.v
 SLiftSubst.v
 SCommon.v
+Conversion.v
 XTyping.v
 ITyping.v
 ITypingInversions.v

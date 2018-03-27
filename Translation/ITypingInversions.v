@@ -3,7 +3,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst SCommon ITyping.
+From Translation Require Import SAst SLiftSubst SCommon Conversion ITyping.
 
 Ltac splits n :=
   match n with
@@ -356,6 +356,14 @@ Proof.
   - specialize (IHu1 _ _ _ h h0).
     specialize (IHu2 _ _ _ h4 h7).
     eapply conv_trans ; try eapply h6.
+    pose proof (sort_conv IHu1) as e1.
+    pose proof (sort_conv IHu2) as e2.
+    subst. apply conv_refl.
+  - specialize (IHu1 _ _ _ h0 h6).
+    pose proof (sort_conv IHu1) as e. subst. assumption.
+  - specialize (IHu1 _ _ _ h h0).
+    pose proof (sort_conv IHu1) as e. subst. assumption.
+  - specialize (IHu _ _ _ h h0).
+    (* We need a similar inversion lemma for injectivity of Heq *)
     admit.
-  -
 Admitted.
