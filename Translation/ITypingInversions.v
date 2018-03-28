@@ -611,7 +611,7 @@ Ltac ttinv h :=
       destruct (inversionCongEq h) as (s & A1 & A2 & u1 & u2 & v1 & v2 & hh) ;
       splits_one hh
     | sCongRefl _ _ =>
-      destruct (inversionCongRefl) as (s & A1 & A2 & u1 & u2 & hh) ;
+      destruct (inversionCongRefl h) as (s & A1 & A2 & u1 & u2 & hh) ;
       splits_one hh
     | sEqToHeq _ =>
       destruct (inversionEqToHeq h) as (A & u & v & s & hh) ;
@@ -692,10 +692,12 @@ Proof.
     pose proof (sort_conv_inv pi1_). subst.
     eapply conv_trans ; [| exact h10 ].
     apply cong_Heq ; try assumption.
-    + admit.
+    + (* Need context conversion, or a sort label to conclude. *)
+      admit.
     + apply cong_Prod ; try assumption.
       apply conv_refl.
-    + admit.
+    + (* Same *)
+      admit.
     + apply cong_Prod ; try assumption. apply conv_refl.
   - specialize (IHu5 _ _ _ h0 h12).
     pose proof (heq_conv_inv IHu5) as e5. split_hyps.
@@ -706,16 +708,72 @@ Proof.
     + apply cong_Lambda ; try assumption. all: apply conv_refl.
     + apply cong_Prod ; try assumption. apply conv_refl.
     + apply cong_Lambda ; try assumption. all: apply conv_refl.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
+  - eapply conv_trans ; [| exact h16 ].
+    apply cong_Heq ; try assumption.
+    + (* Need cong_subst *) admit.
+    + (* Need cong_App *) admit.
+    + (* Need cong_subst *) admit.
+    + (* Need cong_App *) admit.
+  - specialize (IHu1 _ _ _ h0 h12).
+    specialize (IHu2 _ _ _ h11 h21).
+    specialize (IHu3 _ _ _ h10 h20).
+    pose proof (heq_conv_inv IHu1).
+    pose proof (heq_conv_inv IHu2).
+    pose proof (heq_conv_inv IHu3).
+    split_hyps. subst.
+    eapply conv_trans ; [| exact h13 ].
+    apply cong_Heq ; try assumption.
+    + apply cong_Eq ; assumption.
+    + apply cong_Eq ; assumption.
+  - specialize (IHu1 _ _ _ h h0).
+    specialize (IHu2 _ _ _ h8 h15).
+    pose proof (heq_conv_inv IHu1).
+    pose proof (heq_conv_inv IHu2).
+    split_hyps.
+    pose proof (sort_conv_inv pi1_0). subst.
+    eapply conv_trans ; [| exact h10 ].
+    apply cong_Heq.
+    + apply cong_Eq ; assumption.
+    + (* Need cong_Refl *) admit.
+    + apply cong_Eq ; assumption.
+    + (* Need cong_Refl *) admit.
+  - specialize (IHu _ _ _ h h0).
+    pose proof (eq_conv_inv IHu). split_hyps.
+    eapply conv_trans ; [| exact h8 ].
+    apply cong_Heq ; assumption.
+  - specialize (IHu _ _ _ h0 h8).
+    pose proof (heq_conv_inv IHu). split_hyps.
+    eapply conv_trans ; [| exact h9 ].
+    apply cong_Eq ; try assumption.
+    (* Problem, missing hypothesis to conclude equality of sorts.
+       Maybe we should label it with a sort?
+     *)
+    admit.
+  - specialize (IHu1 _ _ _ h h0).
+    eapply conv_trans ; [| exact h6 ].
+    assumption.
+  - specialize (IHu _ _ _ h4 h8).
+    (* Need pack_conv_inv *)
+    eapply conv_trans ; [| exact h7 ].
+    admit.
+  - specialize (IHu _ _ _ h4 h8).
+    (* Need pack_conv_inv *)
+    eapply conv_trans ; [| exact h7 ].
+    admit.
+  - specialize (IHu _ _ _ h4 h8).
+    (* Need pack_conv_inv *)
+    eapply conv_trans ; [| exact h7 ].
+    apply cong_Heq ; try assumption.
+    + admit.
+    + apply conv_refl.
+    + admit.
+    + apply conv_refl.
+  - eapply conv_trans ; [| exact h0 ].
+    (* Now we need some irrelevance property. *)
+    admit.
+  - eapply conv_trans ; [| exact h0 ].
+    (* Now we need some irrelevance property. *)
+    admit.
+  - (* We need an inversion principle that says this cannot happen... *)
+    admit.
 Admitted.
