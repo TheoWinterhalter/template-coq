@@ -470,24 +470,25 @@ Ltac conv_rewrite h :=
       | context T [A] =>
         let T1 := context T[A] in
         let T2 := context T[B] in
-        assert (h' : Σ ;;; Γ |-i T1 = T2)
-          by (induction h ; [
-                apply conv_eq ; cbn ; rewrite !eq_term_refl ;
-                rewrite_assumption ; reflexivity
-              | eapply conv_red_l ; [
-                  constructor ; eassumption
-                | eassumption
-                ]
-              | eapply conv_red_r ; [
-                  eassumption
-                | constructor ; eassumption
-                ]
-             ]) ;
-        apply (conv_trans h') ;
-        clear h'
-      | _ => fail "sorry..."
+        assert (h' : Σ ;;; Γ |-i T1 = T2) ; [
+          clear - h ;
+          induction h ; [
+            apply conv_eq ; cbn ; rewrite !eq_term_refl ;
+            rewrite_assumption ; reflexivity
+          | eapply conv_red_l ; [
+              constructor ; eassumption
+            | eassumption
+            ]
+          | eapply conv_red_r ; [
+              eassumption
+            | constructor ; eassumption
+            ]
+          ]
+        | apply (conv_trans h') ; clear h'
+        ]
+      | _ => fail "Lhs doesn't contain " A
       end
-    | _ => fail "Wrong goal"
+    | _ => fail "conv rewrite cannot apply to this goal"
     end
   end.
 
@@ -552,4 +553,15 @@ Proof.
   intros Σ Γ A B p t A' B' p' t' hA hB hp ht.
   conv rewrite hA, hB, hp, ht.
   apply conv_refl.
+Defined.
+
+Lemma cong_Prod :
+  forall {Σ Γ nx A B nx' A' B'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ,, svass nx A |-i B = B' ->
+    Σ ;;; Γ |-i sProd nx A B = sProd nx' A' B'.
+Proof.
+  intros Σ Γ nx A B nx' A' B' hA hB.
+  conv rewrite hB, hA.
+  apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
 Defined.
