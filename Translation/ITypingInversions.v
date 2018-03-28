@@ -323,9 +323,9 @@ Proof.
 Defined.
 
 Lemma inversionCongProd :
-  forall {Σ Γ B1 B2 pA pB T},
-    Σ ;;; Γ |-i sCongProd B1 B2 pA pB : T ->
-    ∑ s z nx ny np A1 A2,
+  forall {Σ Γ z B1 B2 pA pB T},
+    Σ ;;; Γ |-i sCongProd z B1 B2 pA pB : T ->
+    ∑ s nx ny np A1 A2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ ,, svass np (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
@@ -338,13 +338,13 @@ Lemma inversionCongProd :
                        (sSort (max_sort s z)) (sProd ny A2 B2)
                 = T).
 Proof.
-  intros Σ Γ B1 B2 pA pB T h.
+  intros Σ Γ z B1 B2 pA pB T h.
   dependent induction h.
-  - exists s, z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+  - exists s, nx, ny, np, A1, A2. repeat split. all: try assumption.
     apply conv_refl.
-  - destruct IHh1 as (s' & z & nx & ny & np & A1 & A2 & ?).
+  - destruct IHh1 as (s' & nx & ny & np & A1 & A2 & ?).
     split_hyps.
-    exists s', z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+    exists s', nx, ny, np, A1, A2. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -478,9 +478,9 @@ Proof.
 Defined.
 
 Lemma inversionHeqTypeEq :
-  forall {Σ Γ p T},
-    Σ ;;; Γ |-i sHeqTypeEq p : T ->
-    ∑ A u B v s,
+  forall {Σ Γ s p T},
+    Σ ;;; Γ |-i sHeqTypeEq s p : T ->
+    ∑ A u B v,
       (Σ ;;; Γ |-i p : sHeq A u B v) *
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
@@ -488,11 +488,11 @@ Lemma inversionHeqTypeEq :
       (Σ ;;; Γ |-i v : B) *
       (Σ ;;; Γ |-i sEq (sSort s) A B = T).
 Proof.
-  intros Σ Γ p T h.
+  intros Σ Γ s p T h.
   dependent induction h.
-  - exists A, u, B, v, s. repeat split. all: try assumption. apply conv_refl.
-  - destruct IHh1 as (A' & u & B' & v & s' & ?). split_hyps.
-    exists A', u, B', v, s'. repeat split. all: try assumption.
+  - exists A, u, B, v. repeat split. all: try assumption. apply conv_refl.
+  - destruct IHh1 as (A' & u & B' & v & ?). split_hyps.
+    exists A', u, B', v. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -606,8 +606,8 @@ Ltac ttinv h :=
     | sHeqTransport _ _ =>
       destruct (inversionHeqTransport h) as (A & B & s & hh) ;
       splits_one hh
-    | sCongProd _ _ _ _ =>
-      destruct (inversionCongProd h) as (s & z & nx & ny & np & A1 & A2 & hh) ;
+    | sCongProd _ _ _ _ _ =>
+      destruct (inversionCongProd h) as (s & nx & ny & np & A1 & A2 & hh) ;
       splits_one hh
     | sCongLambda _ _ _ _ _ _ _ =>
       destruct (inversionCongLambda h)
@@ -626,8 +626,8 @@ Ltac ttinv h :=
     | sEqToHeq _ =>
       destruct (inversionEqToHeq h) as (A & u & v & s & hh) ;
       splits_one hh
-    | sHeqTypeEq _ =>
-      destruct (inversionHeqTypeEq h) as (A & u & B & v & s & hh) ;
+    | sHeqTypeEq _ _ =>
+      destruct (inversionHeqTypeEq h) as (A & u & B & v & hh) ;
       splits_one hh
     | sPack _ _ => destruct (inversionPack h) as (s & hh) ; splits_one hh
     | sProjT1 _ =>
@@ -694,20 +694,15 @@ Proof.
     + apply conv_refl.
     + apply cong_Transport ; try assumption.
       all: apply conv_refl.
-  - (* specialize (IHu1 _ _ _ h5 h12). *)
-    (* Context conversion problems? *)
-    (* We need at least something to conclude the two sorts are the same! *)
-    specialize (IHu3 _ _ _ h h0).
+  - specialize (IHu3 _ _ _ h h0).
     pose proof (heq_conv_inv IHu3) as e3. split_hyps.
     pose proof (sort_conv_inv pi1_). subst.
     eapply conv_trans ; [| exact h10 ].
     apply cong_Heq ; try assumption.
-    + (* Need context conversion, or a sort label to conclude. *)
-      admit.
+    + apply conv_refl.
     + apply cong_Prod ; try assumption.
       apply conv_refl.
-    + (* Same *)
-      admit.
+    + apply conv_refl.
     + apply cong_Prod ; try assumption. apply conv_refl.
   - specialize (IHu5 _ _ _ h0 h12).
     pose proof (heq_conv_inv IHu5) as e5. split_hyps.
@@ -762,13 +757,7 @@ Proof.
     pose proof (heq_conv_inv IHu). split_hyps.
     eapply conv_trans ; [| exact h9 ].
     apply cong_Eq ; try assumption.
-    (* Problem, missing hypothesis to conclude equality of sorts.
-       Maybe we should label it with a sort?
-
-       Another option would be to prove subject reduction to deduce s = s0
-       from A0 : s, A1 : s0 and A0 = A1?
-     *)
-    admit.
+    apply conv_refl.
   - specialize (IHu1 _ _ _ h h0).
     eapply conv_trans ; [| exact h6 ].
     assumption.

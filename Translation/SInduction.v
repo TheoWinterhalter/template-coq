@@ -126,11 +126,11 @@ Lemma sterm_rect_list :
     (forall p : sterm, P p -> P (sHeqSym p)) ->
     (forall p : sterm, P p -> forall q : sterm, P q -> P (sHeqTrans p q)) ->
     (forall p : sterm, P p -> forall t : sterm, P t -> P (sHeqTransport p t)) ->
-    (forall B1 : sterm, P B1 ->
+    (forall (z : sort) (B1 : sterm), P B1 ->
      forall B2 : sterm, P B2 ->
      forall pA : sterm, P pA ->
      forall pB : sterm, P pB ->
-       P (sCongProd B1 B2 pA pB)) ->
+       P (sCongProd z B1 B2 pA pB)) ->
     (forall B1 : sterm, P B1 ->
      forall B2 : sterm, P B2 ->
      forall t1 : sterm, P t1 ->
@@ -150,7 +150,7 @@ Lemma sterm_rect_list :
        P (sCongEq pA pu pv)) ->
     (forall pA : sterm, P pA -> forall pu : sterm, P pu -> P (sCongRefl pA pu)) ->
     (forall p : sterm, P p -> P (sEqToHeq p)) ->
-    (forall p : sterm, P p -> P (sHeqTypeEq p)) ->
+    (forall (z : sort) (p : sterm), P p -> P (sHeqTypeEq z p)) ->
     (forall A1 : sterm, P A1 -> forall A2 : sterm, P A2 -> P (sPack A1 A2)) ->
     (forall p : sterm, P p -> P (sProjT1 p)) ->
     (forall p : sterm, P p -> P (sProjT2 p)) ->
