@@ -458,6 +458,15 @@ Proof.
   invconv h.
 Defined.
 
+Lemma pack_conv_inv :
+  forall {Σ Γ A1 A2 A1' A2'},
+    Σ ;;; Γ |-i sPack A1 A2 = sPack A1' A2' ->
+    (Σ ;;; Γ |-i A1 = A1') * (Σ ;;; Γ |-i A2 = A2').
+Proof.
+  intros Σ Γ A1 A2 A1' A2' h.
+  invconv h.
+Defined.
+
 (*! Congruences for conversion *)
 
 Ltac conv_rewrite h :=
@@ -576,4 +585,27 @@ Proof.
   intros Σ Γ nx A B t nx' A' B' t' hA hB ht.
   conv rewrite hB, ht, hA.
   apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+Defined.
+
+Lemma cong_App :
+  forall {Σ Γ u nx A B v u' nx' A' B' v'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ,, svass nx A |-i B = B' ->
+    Σ ;;; Γ |-i u = u' ->
+    Σ ;;; Γ |-i v = v' ->
+    Σ ;;; Γ |-i sApp u nx A B v = sApp u' nx' A' B' v'.
+Proof.
+  intros Σ Γ u nx A B v u' nx' A' B' v' hA hB hu hv.
+  conv rewrite hB, hu, hv, hA.
+  apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+Defined.
+
+Lemma cong_Refl :
+  forall {Σ Γ A u A' u'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ |-i u = u' ->
+    Σ ;;; Γ |-i sRefl A u = sRefl A' u'.
+Proof.
+  intros Σ Γ A u A' u' hA hu.
+  conv rewrite hA, hu. apply conv_refl.
 Defined.

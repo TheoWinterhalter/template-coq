@@ -55,6 +55,16 @@ Proof.
     exists univs, decl, isdecl. eapply conv_trans ; eassumption.
 Defined.
 
+(* TMP *)
+Lemma inversionCase :
+  forall {Σ Γ ind npar p c brs T},
+    Σ ;;; Γ |-i sCase (ind, npar) p c brs : T ->
+    False.
+Proof.
+  intros Σ Γ ind npar p c brs T h.
+  dependent induction h. assumption.
+Defined.
+
 Lemma inversionProd :
   forall {Σ Γ n A B T},
     Σ ;;; Γ |-i sProd n A B : T ->
@@ -734,9 +744,9 @@ Proof.
     eapply conv_trans ; [| exact h10 ].
     apply cong_Heq.
     + apply cong_Eq ; assumption.
-    + (* Need cong_Refl *) admit.
+    + apply cong_Refl ; assumption.
     + apply cong_Eq ; assumption.
-    + (* Need cong_Refl *) admit.
+    + apply cong_Refl ; assumption.
   - specialize (IHu _ _ _ h h0).
     pose proof (eq_conv_inv IHu). split_hyps.
     eapply conv_trans ; [| exact h8 ].
@@ -753,27 +763,25 @@ Proof.
     eapply conv_trans ; [| exact h6 ].
     assumption.
   - specialize (IHu _ _ _ h4 h8).
-    (* Need pack_conv_inv *)
+    pose proof (pack_conv_inv IHu).
+    split_hyps.
     eapply conv_trans ; [| exact h7 ].
-    admit.
+    assumption.
   - specialize (IHu _ _ _ h4 h8).
-    (* Need pack_conv_inv *)
+    pose proof (pack_conv_inv IHu).
+    split_hyps.
     eapply conv_trans ; [| exact h7 ].
-    admit.
+    assumption.
   - specialize (IHu _ _ _ h4 h8).
-    (* Need pack_conv_inv *)
+    pose proof (pack_conv_inv IHu).
+    split_hyps.
     eapply conv_trans ; [| exact h7 ].
-    apply cong_Heq ; try assumption.
-    + admit.
-    + apply conv_refl.
-    + admit.
-    + apply conv_refl.
+    apply cong_Heq ; try assumption ; apply conv_refl.
   - eapply conv_trans ; [| exact h0 ].
     (* Now we need some irrelevance property. *)
     admit.
   - eapply conv_trans ; [| exact h0 ].
     (* Now we need some irrelevance property. *)
     admit.
-  - (* We need an inversion principle that says this cannot happen... *)
-    admit.
+  - pose proof (inversionCase h1). easy.
 Admitted.
