@@ -565,3 +565,15 @@ Proof.
   conv rewrite hB, hA.
   apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
 Defined.
+
+Lemma cong_Lambda :
+  forall {Σ Γ nx A B t nx' A' B' t'},
+    Σ ;;; Γ |-i A = A' ->
+    Σ ;;; Γ,, svass nx A |-i B = B' ->
+    Σ ;;; Γ,, svass nx A |-i t = t' ->
+    Σ ;;; Γ |-i sLambda nx A B t = sLambda nx' A' B' t'.
+Proof.
+  intros Σ Γ nx A B t nx' A' B' t' hA hB ht.
+  conv rewrite hB, ht, hA.
+  apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+Defined.
