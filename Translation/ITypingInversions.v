@@ -795,19 +795,6 @@ Proof.
     rewrite hn1 in hn2. inversion hn2. subst.
     apply conv_refl.
   - eapply conv_trans ; [| exact h0 ].
-    assert (hh : (univs = univs0) * (decl = decl0)).
-    { destruct isdecl as [d1 [[d1' [[hd1' ?] hn1']] hn1]].
-      destruct isdecl0 as [d2 [[d2' [[hd2' ?] hn2']] hn2]].
-      unfold sdeclared_minductive in *.
-      clear h0 h.
-      rewrite hd1' in hd2'. inversion hd2'. subst.
-      rewrite hn1' in hn2'. inversion hn2'. subst.
-      split ; [ reflexivity |].
-      rewrite hn1 in hn2. inversion hn2. subst.
-      reflexivity.
-    }
-    destruct hh. subst.
-    (* Now we need some irrelevance property. *)
-    admit.
+    erewrite stype_of_constructor_eq. apply conv_refl.
   - pose proof (inversionCase h1). easy.
 Admitted.

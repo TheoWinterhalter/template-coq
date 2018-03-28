@@ -1,4 +1,5 @@
 From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
+From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation Require Import util SAst SInduction SLiftSubst.
 
@@ -454,6 +455,40 @@ Proof.
   unfold sdeclared_minductive in h1, h2.
   rewrite h1 in h2. inversion h2. subst.
   rewrite j1 in j2. now inversion j2.
+Defined.
+
+Fact stype_of_constructor_irr :
+  forall {Σ ind n univs decl}
+    {is1 is2 : sdeclared_constructor Σ (ind, n) univs decl},
+    stype_of_constructor Σ (ind, n) univs decl is1 =
+    stype_of_constructor Σ (ind, n) univs decl is2.
+Proof.
+  intros Σ ind n univs decl is1 is2.
+  funelim (stype_of_constructor Σ (ind, n) univs decl is1) ; try bang.
+  funelim (stype_of_constructor Σ (ind, n) univs decl is2) ; try bang.
+  reflexivity.
+Defined.
+
+Fact stype_of_constructor_eq :
+  forall {Σ ind n u1 u2 d1 d2}
+    {is1 : sdeclared_constructor Σ (ind, n) u1 d1}
+    {is2 : sdeclared_constructor Σ (ind, n) u2 d2},
+    stype_of_constructor Σ (ind, n) u1 d1 is1 =
+    stype_of_constructor Σ (ind, n) u2 d2 is2.
+Proof.
+  intros Σ ind n u1 u2 d1 d2 is1 is2.
+  assert (hh : (u1 = u2) * (d1 = d2)).
+  { destruct is1 as [? [[d1' [[hd1' ?] hn1']] hn1]].
+    destruct is2 as [? [[d2' [[hd2' ?] hn2']] hn2]].
+    unfold sdeclared_minductive in *.
+    rewrite hd1' in hd2'. inversion hd2'. subst.
+    rewrite hn1' in hn2'. inversion hn2'. subst.
+    split ; [ reflexivity |].
+    rewrite hn1 in hn2. inversion hn2. subst.
+    reflexivity.
+  }
+  destruct hh. subst.
+  apply stype_of_constructor_irr.
 Defined.
 
 (* Lifting of context *)
