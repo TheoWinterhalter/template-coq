@@ -360,7 +360,10 @@ Notation " Σ ;;; Γ '|-i' t ▷ u " :=
 (* Reflexive and transitive closure of 1-step reduction. *)
 Inductive red Σ Γ t : sterm -> Prop :=
 | refl_red : red Σ Γ t t
-| trans_red u v : red Σ Γ t u -> red1 Σ Γ u v -> red Σ Γ t v.
+| trans_red u v : red1 Σ Γ t u -> red Σ Γ u v -> red Σ Γ t v.
+
+Notation " Σ ;;; Γ '|-i' t ▷⃰ u " :=
+  (red Σ Γ t u) (at level 50, Γ, t, u at next level).
 
 (*! Conversion *)
 
@@ -615,3 +618,62 @@ Proof.
   intros Σ Γ A u A' u' hA hu.
   conv rewrite hA, hu. apply conv_refl.
 Defined.
+
+Lemma subst_red :
+  forall {Σ Γ t1 t2 u n},
+    Σ ;;; Γ |-i t1 ▷ t2 ->
+    Σ ;;; Γ |-i t1{ n := u } ▷⃰ t2{ n := u }.
+Proof.
+  intros Σ Γ t1 t2 u n h. revert u n.
+  induction h ; intros m uu.
+  - cbn. econstructor.
+    + eapply red_beta.
+    + rewrite <- substP4. cbn. constructor.
+  - cbn. econstructor.
+    + eapply red_JRefl.
+    + constructor.
+  - cbn. econstructor.
+    + eapply red_TransportRefl.
+    + constructor.
+  - cbn. econstructor ; [
+           econstructor
+         | constructor
+         ].
+Abort.
+
+Lemma meta_red_eq :
+  forall {Σ Γ t u u'},
+    Σ ;;; Γ |-i t ▷ u ->
+    u = u' ->
+    Σ ;;; Γ |-i t ▷ u'.
+Proof.
+  intros Σ Γ t u u' h e. destruct e. assumption.
+Defined.
+
+Lemma subst_red :
+  forall {Σ Γ t1 t2 u n},
+    Σ ;;; Γ |-i t1 ▷ t2 ->
+    Σ ;;; Γ |-i t1{ n := u } ▷ t2{ n := u }.
+Proof.
+  intros Σ Γ t1 t2 u n h. revert u n.
+  induction h ; intros m uu.
+  all: try (cbn ; constructor ; easy).
+  - cbn. eapply meta_red_eq.
+    + eapply red_beta.
+    + rewrite <- substP4. cbn. reflexivity.
+  - cbn.
+    (* Of course we need to account for the context!
+       It is also affected by the substitution.
+     *)
+Abort.
+
+Lemma cong_subst_sb :
+  forall {Σ Γ t1 t2 u n},
+    Σ ;;; Γ |-i t1 = t2 ->
+    Σ ;;; Γ |-i t1{ n := u } = t2{ n := u }.
+Proof.
+  intros Σ Γ t1 t2 u n ht. revert u n.
+  induction ht.
+  - intros v n. apply conv_eq. admit.
+  - intros w n.
+Abort.
