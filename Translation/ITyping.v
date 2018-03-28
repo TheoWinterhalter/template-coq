@@ -118,7 +118,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
     Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
-    Σ ;;; Γ |-i sCongProd z B1 B2 pA pB :
+    Σ ;;; Γ |-i sCongProd B1 B2 pA pB :
     sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
          (sSort (max_sort s z)) (sProd ny A2 B2)
 
@@ -197,7 +197,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : B ->
-    Σ ;;; Γ |-i sHeqTypeEq s p : sEq (sSort s) A B
+    Σ ;;; Γ |-i sHeqTypeEq p : sEq (sSort s) A B
 
 | type_Pack Γ A1 A2 s :
     Σ ;;; Γ |-i A1 : sSort s ->

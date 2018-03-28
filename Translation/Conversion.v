@@ -203,21 +203,21 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
     red1 Σ Γ (sHeqTransport p t) (sHeqTransport p t')
 
 (** CongProd *)
-| congprod_red_ty_l z B1 B1' B2 pA pB :
+| congprod_red_ty_l B1 B1' B2 pA pB :
     red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1' B2 pA pB)
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1' B2 pA pB)
 
-| congprod_red_ty_r z B1 B2 B2' pA pB :
+| congprod_red_ty_r B1 B2 B2' pA pB :
     red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1 B2' pA pB)
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2' pA pB)
 
-| congprod_red_tm_l z B1 B2 pA pA' pB :
+| congprod_red_tm_l B1 B2 pA pA' pB :
     red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1 B2 pA' pB)
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA' pB)
 
-| congprod_red_tm_r z B1 B2 pA pB pB' :
+| congprod_red_tm_r B1 B2 pA pB pB' :
     red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1 B2 pA pB')
+    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA pB')
 
 (** CongLambda *)
 | conglambda_red_ty_l B1 B2 t1 t2 pA pB pt B1' :
@@ -314,9 +314,9 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
     red1 Σ Γ (sEqToHeq p) (sEqToHeq p')
 
 (** HeqTypeEq *)
-| heqtypeeq_red z p p' :
+| heqtypeeq_red p p' :
     red1 Σ Γ p p' ->
-    red1 Σ Γ (sHeqTypeEq z p) (sHeqTypeEq z p')
+    red1 Σ Γ (sHeqTypeEq p) (sHeqTypeEq p')
 
 (** Pack *)
 | pack_red_l A1 A2 A1' :
