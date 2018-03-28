@@ -718,12 +718,19 @@ Proof.
     + apply cong_Lambda ; try assumption. all: apply conv_refl.
     + apply cong_Prod ; try assumption. apply conv_refl.
     + apply cong_Lambda ; try assumption. all: apply conv_refl.
-  - eapply conv_trans ; [| exact h16 ].
+  - specialize (IHu3 _ _ _ h13 h26).
+    specialize (IHu4 _ _ _ h h0).
+    specialize (IHu6 _ _ _ h12 h25).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu4).
+    pose proof (heq_conv_inv IHu6).
+    split_hyps.
+    eapply conv_trans ; [| exact h16 ].
     apply cong_Heq ; try assumption.
     + (* Need cong_subst *) admit.
-    + (* Need cong_App *) admit.
+    + apply cong_App ; try assumption. apply conv_refl.
     + (* Need cong_subst *) admit.
-    + (* Need cong_App *) admit.
+    + apply cong_App ; try assumption. apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h12).
     specialize (IHu2 _ _ _ h11 h21).
     specialize (IHu3 _ _ _ h10 h20).
@@ -757,6 +764,9 @@ Proof.
     apply cong_Eq ; try assumption.
     (* Problem, missing hypothesis to conclude equality of sorts.
        Maybe we should label it with a sort?
+
+       Another option would be to prove subject reduction to deduce s = s0
+       from A0 : s, A1 : s0 and A0 = A1?
      *)
     admit.
   - specialize (IHu1 _ _ _ h h0).
@@ -778,9 +788,25 @@ Proof.
     eapply conv_trans ; [| exact h7 ].
     apply cong_Heq ; try assumption ; apply conv_refl.
   - eapply conv_trans ; [| exact h0 ].
-    (* Now we need some irrelevance property. *)
-    admit.
+    destruct isdecl as [d1 [[hd1 ?] hn1]].
+    destruct isdecl0 as [d2 [[hd2 ?] hn2]].
+    unfold sdeclared_minductive in *.
+    rewrite hd1 in hd2. inversion hd2. subst.
+    rewrite hn1 in hn2. inversion hn2. subst.
+    apply conv_refl.
   - eapply conv_trans ; [| exact h0 ].
+    assert (hh : (univs = univs0) * (decl = decl0)).
+    { destruct isdecl as [d1 [[d1' [[hd1' ?] hn1']] hn1]].
+      destruct isdecl0 as [d2 [[d2' [[hd2' ?] hn2']] hn2]].
+      unfold sdeclared_minductive in *.
+      clear h0 h.
+      rewrite hd1' in hd2'. inversion hd2'. subst.
+      rewrite hn1' in hn2'. inversion hn2'. subst.
+      split ; [ reflexivity |].
+      rewrite hn1 in hn2. inversion hn2. subst.
+      reflexivity.
+    }
+    destruct hh. subst.
     (* Now we need some irrelevance property. *)
     admit.
   - pose proof (inversionCase h1). easy.

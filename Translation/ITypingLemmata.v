@@ -128,6 +128,7 @@ Proof.
     + eapply IHΣ ; eassumption.
 Defined.
 
+(* TODO Use bang instead? *)
 Ltac contrad :=
   match goal with
   | |- context [False_rect _ ?p] => exfalso ; apply p

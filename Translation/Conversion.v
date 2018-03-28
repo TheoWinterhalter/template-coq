@@ -384,6 +384,8 @@ Proof.
   apply conv_eq. apply eq_term_refl.
 Defined.
 
+(* TODO Anonymise terms before comparing them so that eq_term reflects
+   equality *)
 Lemma conv_sym :
   forall {Σ Γ t u},
     Σ ;;; Γ |-i t = u ->
@@ -396,17 +398,21 @@ Proof.
   - eapply conv_red_l ; eassumption.
 Admitted.
 
+(* This result require confluence of CIC. *)
 Lemma conv_trans :
   forall {Σ Γ t u v},
     Σ ;;; Γ |-i t = u ->
     Σ ;;; Γ |-i u = v ->
     Σ ;;; Γ |-i t = v.
-Proof.
-  intros Σ Γ t u v h1 h2.
-  revert v h2. induction h1 ; intros w h2.
-  - admit.
-  - specialize (IHh1 _ h2). eapply conv_red_l ; eassumption.
-  - admit.
+(* Proof. *)
+(*   intros Σ Γ t u v h1 h2. *)
+(*   revert v h2. induction h1 ; intros w h2. *)
+(*   - admit. *)
+(*   - specialize (IHh1 _ h2). eapply conv_red_l ; eassumption. *)
+(*   - apply IHh1. clear IHh1 h1 t. induction h2. *)
+(*     + admit. *)
+(*     + clear IHh2. *)
+(*     + eapply conv_red_r ; [| exact H0 ]. apply IHh2. assumption. *)
 Admitted.
 
 
