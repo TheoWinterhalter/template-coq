@@ -651,20 +651,22 @@ Proof.
 Defined.
 
 Lemma subst_red :
-  forall {Σ Γ t1 t2 u n},
+  forall {Σ Γ t1 t2 u Δ},
     Σ ;;; Γ |-i t1 ▷ t2 ->
-    Σ ;;; Γ |-i t1{ n := u } ▷ t2{ n := u }.
+    Σ ;;; Γ ,,, subst_context u Δ |-i t1{ #|Δ| := u } ▷ t2{ #|Δ| := u }.
 Proof.
-  intros Σ Γ t1 t2 u n h. revert u n.
-  induction h ; intros m uu.
+  intros Σ Γ t1 t2 u Δ h. revert u Δ.
+  induction h ; intros uu Δ.
   all: try (cbn ; constructor ; easy).
   - cbn. eapply meta_red_eq.
     + eapply red_beta.
     + rewrite <- substP4. cbn. reflexivity.
-  - cbn.
-    (* Of course we need to account for the context!
-       It is also affected by the substitution.
-     *)
+  - cbn. eapply meta_red_eq.
+    + eapply abs_red_codom.
+      specialize (IHh uu (Δ,, svass na A)).
+      cbn in IHh. rewrite subst_decl_svass in IHh.
+      (* apply IHh. *)
+      (* Problem with Γ on the induction hypothesis. *)
 Abort.
 
 Lemma cong_subst_sb :
