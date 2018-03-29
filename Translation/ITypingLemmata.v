@@ -1,7 +1,9 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping.
+From Translation
+Require Import util SAst SInduction SLiftSubst SCommon Conversion
+               ITyping ITypingInversions.
 
 (* Lemmata about typing *)
 
@@ -19,16 +21,6 @@ Proof.
   rewrite <- e. exact h.
 Defined.
 
-Lemma meta_eqctx_conv :
-  forall {Σ Γ Δ t1 t2 A},
-    Σ ;;; Γ |-i t1 = t2 : A ->
-    Γ = Δ ->
-    Σ ;;; Δ |-i t1 = t2 : A.
-Proof.
-  intros Σ Γ Δ t1 t2 A h e.
-  rewrite <- e. exact h.
-Defined.
-
 Lemma meta_conv :
   forall {Σ Γ t A B},
     Σ ;;; Γ |-i t : A ->
@@ -36,16 +28,6 @@ Lemma meta_conv :
     Σ ;;; Γ |-i t : B.
 Proof.
   intros Σ Γ t A B h e.
-  rewrite <- e. exact h.
-Defined.
-
-Lemma meta_eqconv :
-  forall {Σ Γ t t' A B},
-    Σ ;;; Γ |-i t = t' : A ->
-    A = B ->
-    Σ ;;; Γ |-i t = t' : B.
-Proof.
-  intros Σ Γ t t' A B h e.
   rewrite <- e. exact h.
 Defined.
 
@@ -57,12 +39,6 @@ Proof.
   intros Σ Γ t T H. induction H ; easy.
 Defined.
 
-Ltac erewrite_assumption :=
-  match goal with
-  | H : _ = _ |- _ =>
-    erewrite H by omega
-  end.
-
 Fact type_ctx_closed_above :
   forall {Σ Γ t T},
     Σ ;;; Γ |-i t : T ->
@@ -70,7 +46,7 @@ Fact type_ctx_closed_above :
 Proof.
   intros Σ Γ t T h.
   dependent induction h.
-  all: try (cbn in * ; repeat erewrite_assumption ; reflexivity).
+  all: try (cbn in * ; repeat (erewrite_assumption by omega) ; reflexivity).
   unfold closed_above. case_eq (n <? #|Γ|) ; intro e ; bprop e ; try omega.
   reflexivity.
 Defined.
@@ -128,12 +104,6 @@ Proof.
     + eapply IHΣ ; eassumption.
 Defined.
 
-(* TODO Use bang instead? *)
-Ltac contrad :=
-  match goal with
-  | |- context [False_rect _ ?p] => exfalso ; apply p
-  end.
-
 Lemma stype_of_constructor_eq :
   forall {Σ id' decl' ind i univs decl}
     {isdecl : sdeclared_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl},
@@ -144,7 +114,7 @@ Lemma stype_of_constructor_eq :
 Proof.
   intros Σ id' decl' ind i univs decl isdecl h.
   funelim (stype_of_constructor (SInductiveDecl id' decl' :: Σ) (ind, i) univs decl isdecl)
-  ; try contrad.
+  ; try bang.
   cbn. cbn in H. rewrite h in H. inversion H. subst. reflexivity.
 Defined.
 
@@ -164,20 +134,42 @@ Proof.
     rewrite neq. reflexivity.
   }
   funelim (stype_of_constructor (d :: Σ) (ind, i) univs decl isdecl')
-  ; try contrad.
-  funelim (stype_of_constructor Σ0 (ind, i) univs decl isdecl) ; try contrad.
+  ; try bang.
+  funelim (stype_of_constructor Σ0 (ind, i) univs decl isdecl) ; try bang.
   rewrite <- eq in H. inversion H. subst. reflexivity.
+Defined.
+
+Fixpoint weak_glob_red1 {Σ d Γ t1 t2} (h : Σ ;;; Γ |-i t1 ▷ t2) :
+  (d::Σ) ;;; Γ |-i t1 ▷ t2
+
+with weak_glob_redbrs1 {Σ d Γ b1 b2} (h : redbrs1 Σ Γ b1 b2) :
+  redbrs1 (d::Σ) Γ b1 b2.
+Proof.
+  - induction h ; try (econstructor ; eassumption).
+    econstructor. eapply weak_glob_redbrs1. assumption.
+  - destruct h.
+    + econstructor. eapply weak_glob_red1. assumption.
+    + econstructor. eapply weak_glob_redbrs1. assumption.
+Defined.
+
+Lemma weak_glob_conv :
+  forall {Σ ϕ d Γ t1 t2},
+    (Σ, ϕ) ;;; Γ |-i t1 = t2 ->
+    (* fresh_global (sglobal_decl_ident d) Σ -> *)
+    (d::Σ, ϕ) ;;; Γ |-i t1 = t2.
+Proof.
+  intros Σ ϕ d Γ t1 t2 h. induction h.
+  all: try (econstructor ; eassumption).
+  - cbn in *. eapply conv_red_l ; try eassumption.
+    cbn. eapply weak_glob_red1. assumption.
+  - cbn in *. eapply conv_red_r ; try eassumption.
+    cbn. eapply weak_glob_red1. assumption.
 Defined.
 
 Fixpoint weak_glob_type {Σ ϕ Γ t A} (h : (Σ,ϕ) ;;; Γ |-i t : A) :
   forall {d},
     fresh_global (sglobal_decl_ident d) Σ ->
     (d::Σ, ϕ) ;;; Γ |-i t : A
-
-with weak_glob_eq {Σ ϕ Γ t1 t2 A} (h : (Σ,ϕ) ;;; Γ |-i t1 = t2 : A) :
-  forall {d},
-    fresh_global (sglobal_decl_ident d) Σ ->
-    (d::Σ, ϕ) ;;; Γ |-i t1 = t2 : A
 
 with weak_glob_wf {Σ ϕ Γ} (h : wf (Σ,ϕ) Γ) :
   forall {d},
@@ -188,7 +180,7 @@ Proof.
   - { dependent destruction h ; intros d fd.
       all: try (econstructor ; try apply weak_glob_wf ;
                 try apply weak_glob_type ;
-                try apply weak_glob_eq ;
+                try apply weak_glob_conv ;
                 eassumption
                ).
       - eapply type_HeqTrans with (B := B) (b := b).
@@ -225,19 +217,6 @@ Proof.
           instantiate (1 := isdecl').
           cbn in *.
           eapply stype_of_constructor_cons. assumption.
-    }
-
-  (* weak_glob_eq *)
-  - { dependent destruction h ; intros d fd.
-      all: try (econstructor ; try apply weak_glob_wf ;
-                try apply weak_glob_type ;
-                try apply weak_glob_eq ;
-                eassumption
-               ).
-      - eapply cong_HeqTrans with (B := B) (b := b).
-        all: try apply weak_glob_eq ; try apply weak_glob_type ; eassumption.
-      - eapply cong_ProjT2 with (A1 := A1).
-        all: try apply weak_glob_eq ; try apply weak_glob_type ; eassumption.
     }
 
   (* weak_glob_wf *)
@@ -556,7 +535,7 @@ Proof.
   intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
   cbn in hg.
   induction hg ; intros ind i decl univs isdecl.
-  - cbn. contrad.
+  - cbn. bang.
   - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
     + intro e.
       destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].
@@ -663,7 +642,7 @@ Proof.
   intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
   cbn in hg.
   induction hg ; intros ind i decl univs isdecl.
-  - cbn. contrad.
+  - cbn. bang.
   - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
     + intro e.
       destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].
@@ -1842,7 +1821,7 @@ Proof.
   intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
   cbn in hg.
   induction hg ; intros ind i decl univs isdecl.
-  - cbn. contrad.
+  - cbn. bang.
   - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
     + intro e.
       destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].

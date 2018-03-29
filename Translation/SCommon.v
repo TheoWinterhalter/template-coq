@@ -99,15 +99,6 @@ Proof.
   - apply eq_nat_refl.
 Qed.
 
-Ltac rewrite_assumption :=
-  match goal with
-  | H : _, e : _ = _ |- _ => rewrite H
-  | H : _ = _ |- _ => rewrite H
-  end.
-
-Ltac rewrite_assumptions :=
-  repeat rewrite_assumption.
-
 Fact eq_term_refl :
   forall {t}, eq_term t t = true.
 Proof.
@@ -159,14 +150,6 @@ Proof.
   - eapply eq_string_trans ; eassumption.
   - eapply eq_nat_trans ; eassumption.
 Qed.
-
-Ltac erewrite_assumption :=
-  match goal with
-  | H : _, e : _ = _ |- _ => erewrite H
-  end.
-
-Ltac erewrite_assumptions :=
-  erewrite_assumption ; [ try erewrite_assumptions | .. ].
 
 (* Fact eq_term_trans : *)
 (*   forall {t u}, eq_term t u = true -> forall {v}, eq_term u v = true -> eq_term t v = true. *)
