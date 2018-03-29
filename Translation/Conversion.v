@@ -645,56 +645,70 @@ Admitted.
 
 (** Congruence with substitution *)
 
-Lemma subst_red :
-  forall {Σ Γ t1 t2 u n},
-    Σ ;;; Γ |-i t1 ▷ t2 ->
-    Σ ;;; Γ |-i t1{ n := u } ▷⃰ t2{ n := u }.
+Fixpoint subst_red1 {Σ Γ Δ nx B t1 t2 u}
+  (h : Σ ;;; Γ ,, svass nx B ,,, Δ |-i t1 ▷ t2) :
+  Σ ;;; Γ ,,, subst_context u Δ |-i t1{ #|Δ| := u } ▷ t2{ #|Δ| := u }
+
+with subst_redbrs1 {Σ Γ Δ nx B b1 b2 u}
+  (h : redbrs1 Σ (Γ ,, svass nx B ,,, Δ) b1 b2) :
+  redbrs1 Σ (Γ ,,, subst_context u Δ)
+          (map (on_snd (subst u #|Δ|)) b1) (map (on_snd (subst u #|Δ|)) b2).
 Proof.
-  intros Σ Γ t1 t2 u n h. revert u n.
-  induction h ; intros m uu.
-  - cbn. econstructor.
-    + eapply red_beta.
-    + rewrite <- substP4. cbn. constructor.
-  - cbn. econstructor.
-    + eapply red_JRefl.
-    + constructor.
-  - cbn. econstructor.
-    + eapply red_TransportRefl.
-    + constructor.
-  - cbn. econstructor ; [
-           econstructor
-         | constructor
-         ].
-Abort.
+  - { destruct h ; cbn ;
+      try match goal with
+          | h : _ ;;; ?Γ'' |-i ?t ▷ _ |- _ ;;; _ |-i ?tt ▷ _ =>
+            match tt with
+            | context [t] =>
+              econstructor ;
+              eapply meta_red_ctx ; [
+                match Γ'' with
+                | ?Γ' ,, svass ?nx' ?B' ,,, ?Δ' =>
+                  eapply subst_red1 with (Γ := Γ') (Δ := Δ')
+                | (?Γ' ,, svass ?nx' ?B' ,,, ?Δ') ,, ?d' =>
+                  eapply subst_red1 with (Γ := Γ') (Δ := Δ',, d')
+                | (?Γ' ,, svass ?nx' ?B' ,,, ?Δ') ,, ?d' ,, ?d'' =>
+                  eapply subst_red1 with (Γ := Γ') (Δ := (Δ',, d'),, d'')
+                end ;
+                [ exact h | .. ]
+              | try (cbn ; reflexivity)
+              ]
+            end
+          end.
+      (* all: try (eapply meta_red_eq ; [ econstructor ; assumption | cbn ; reflexivity ]). *)
+      - eapply meta_red_eq ; [ econstructor |].
+        rewrite <- substP4. cbn. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor | reflexivity ].
+        eapply subst_redbrs1. eassumption.
+      - cbn. rewrite !subst_decl_svass. unfold ssnoc. cbn.
+        f_equal. f_equal. f_equal.
+        + replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+          apply substP2. omega.
+        + replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+          apply substP2. omega.
+    }
 
+  - { destruct h.
+      - econstructor. eapply subst_red1. eassumption.
+      - econstructor. eapply subst_redbrs1. eassumption.
+    }
+Defined.
 
-
-Lemma subst_red :
-  forall {Σ Γ t1 t2 u Δ},
-    Σ ;;; Γ |-i t1 ▷ t2 ->
-    Σ ;;; Γ ,,, subst_context u Δ |-i t1{ #|Δ| := u } ▷ t2{ #|Δ| := u }.
+Lemma subst_conv :
+  forall {Σ Γ Δ nx B u t1 t2},
+    Σ ;;; Γ ,, svass nx B ,,, Δ |-i t1 = t2 ->
+    Σ ;;; Γ ,,, subst_context u Δ
+    |-i t1{ #|Δ| := u } = t2{ #|Δ| := u }.
 Proof.
-  intros Σ Γ t1 t2 u Δ h. revert u Δ.
-  induction h ; intros uu Δ.
-  all: try (cbn ; constructor ; easy).
-  - cbn. eapply meta_red_eq.
-    + eapply red_beta.
-    + rewrite <- substP4. cbn. reflexivity.
-  - cbn. eapply meta_red_eq.
-    + eapply abs_red_codom.
-      specialize (IHh uu (Δ,, svass na A)).
-      cbn in IHh. rewrite subst_decl_svass in IHh.
-      (* apply IHh. *)
-      (* Problem with Γ on the induction hypothesis. *)
-Abort.
-
-Lemma cong_subst_sb :
-  forall {Σ Γ t1 t2 u n},
-    Σ ;;; Γ |-i t1 = t2 ->
-    Σ ;;; Γ |-i t1{ n := u } = t2{ n := u }.
-Proof.
-  intros Σ Γ t1 t2 u n ht. revert u n.
-  induction ht.
-  - intros v n. apply conv_eq. admit.
-  - intros w n.
-Abort.
+  intros Σ Γ Δ nx B u t1 t2 h.
+  induction h.
+  - admit.
+  - eapply conv_red_l.
+    + eapply subst_red1. eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + eapply subst_red1. eassumption.
+  - eapply conv_trans ; eassumption.
+Admitted.
