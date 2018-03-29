@@ -373,10 +373,13 @@ Inductive conv (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :
 | conv_eq t u : eq_term t u = true -> Σ ;;; Γ |-i t = u
 | conv_red_l t u v : red1 (fst Σ) Γ t v -> Σ ;;; Γ |-i v = u -> Σ ;;; Γ |-i t = u
 | conv_red_r t u v : Σ ;;; Γ |-i t = v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |-i t = u
+| conv_trans t u v : Σ ;;; Γ |-i t = u -> Σ ;;; Γ |-i u = v -> Σ ;;; Γ |-i t = v
 
 where " Σ ;;; Γ '|-i' t = u " := (@conv Σ Γ t u) : i_scope.
 
 Derive Signature for conv.
+
+Arguments conv_trans {_ _ _ _ _} _ _.
 
 Open Scope i_scope.
 
@@ -399,82 +402,9 @@ Proof.
   - admit.
   - eapply conv_red_r ; eassumption.
   - eapply conv_red_l ; eassumption.
+  - eapply conv_trans ; eassumption.
 Admitted.
 
-(* This result require confluence of CIC. *)
-Lemma conv_trans :
-  forall {Σ Γ t u v},
-    Σ ;;; Γ |-i t = u ->
-    Σ ;;; Γ |-i u = v ->
-    Σ ;;; Γ |-i t = v.
-(* Proof. *)
-(*   intros Σ Γ t u v h1 h2. *)
-(*   revert v h2. induction h1 ; intros w h2. *)
-(*   - admit. *)
-(*   - specialize (IHh1 _ h2). eapply conv_red_l ; eassumption. *)
-(*   - apply IHh1. clear IHh1 h1 t. induction h2. *)
-(*     + admit. *)
-(*     + clear IHh2. *)
-(*     + eapply conv_red_r ; [| exact H0 ]. apply IHh2. assumption. *)
-Admitted.
-
-
-(*! Inversion results about conversion *)
-
-Lemma sort_conv_inv :
-  forall {Σ Γ s1 s2},
-    Σ ;;; Γ |-i sSort s1 = sSort s2 ->
-    s1 = s2.
-Proof.
-  intros Σ Γ s1 s2 h. dependent induction h.
-  - cbn in H. unfold eq_nat in H. bprop H. assumption.
-  - inversion H.
-  - inversion H.
-Defined.
-
-Ltac invconv h :=
-  dependent induction h ; [
-    cbn in * ; repeat destruct_andb ;
-    repeat split ; apply conv_eq ; assumption
-  | dependent destruction H ;
-    split_hyps ; repeat split ; try assumption ;
-    eapply conv_red_l ; eassumption
-  | dependent destruction H ;
-    split_hyps ; repeat split ; try assumption ;
-    eapply conv_red_r ; eassumption
-  ].
-
-Lemma heq_conv_inv :
-  forall {Σ Γ A a B b A' a' B' b'},
-    Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b' ->
-    (Σ ;;; Γ |-i A = A') *
-    (Σ ;;; Γ |-i a = a') *
-    (Σ ;;; Γ |-i B = B') *
-    (Σ ;;; Γ |-i b = b').
-Proof.
-  intros Σ Γ A a B b A' a' B' b' h.
-  invconv h.
-Defined.
-
-Lemma eq_conv_inv :
-  forall {Σ Γ A u v A' u' v'},
-    Σ ;;; Γ |-i sEq A u v = sEq A' u' v' ->
-    (Σ ;;; Γ |-i A = A') *
-    (Σ ;;; Γ |-i u = u') *
-    (Σ ;;; Γ |-i v = v').
-Proof.
-  intros Σ Γ A u v A' u' v' h.
-  invconv h.
-Defined.
-
-Lemma pack_conv_inv :
-  forall {Σ Γ A1 A2 A1' A2'},
-    Σ ;;; Γ |-i sPack A1 A2 = sPack A1' A2' ->
-    (Σ ;;; Γ |-i A1 = A1') * (Σ ;;; Γ |-i A2 = A2').
-Proof.
-  intros Σ Γ A1 A2 A1' A2' h.
-  invconv h.
-Defined.
 
 (*! Congruences for conversion *)
 
@@ -501,6 +431,7 @@ Ltac conv_rewrite h :=
               eassumption
             | constructor ; eassumption
             ]
+          | eapply conv_trans ; eassumption
           ]
         | apply (conv_trans h') ; clear h'
         ]
