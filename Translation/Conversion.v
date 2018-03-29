@@ -206,111 +206,111 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
    One question remains: why would we do it?
  *)
 (** CongProd *)
-| congprod_red_ty_l B1 B1' B2 pA pB :
-    (* red1 Σ (Γ ,, svass nx A1) B1 B1' -> *)
-    red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1' B2 pA pB)
+(* | congprod_red_ty_l B1 B1' B2 pA pB : *)
+(*     (* red1 Σ (Γ ,, svass nx A1) B1 B1' -> *) *)
+(*     red1 Σ Γ B1 B1' -> *)
+(*     red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1' B2 pA pB) *)
 
-| congprod_red_ty_r B1 B2 B2' pA pB :
-    red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2' pA pB)
+(* | congprod_red_ty_r B1 B2 B2' pA pB : *)
+(*     red1 Σ Γ B2 B2' -> *)
+(*     red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2' pA pB) *)
 
-| congprod_red_tm_l B1 B2 pA pA' pB :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA' pB)
+(* | congprod_red_tm_l B1 B2 pA pA' pB : *)
+(*     red1 Σ Γ pA pA' -> *)
+(*     red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA' pB) *)
 
-| congprod_red_tm_r B1 B2 pA pB pB' :
-    red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA pB')
+(* | congprod_red_tm_r B1 B2 pA pB pB' : *)
+(*     red1 Σ Γ pB pB' -> *)
+(*     red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA pB') *)
 
 (** CongLambda *)
-| conglambda_red_ty_l B1 B2 t1 t2 pA pB pt B1' :
-    red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1' B2 t1 t2 pA pB pt)
+(* | conglambda_red_ty_l B1 B2 t1 t2 pA pB pt B1' : *)
+(*     red1 Σ Γ B1 B1' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1' B2 t1 t2 pA pB pt) *)
 
-| conglambda_red_ty_r B1 B2 t1 t2 pA pB pt B2' :
-    red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1 B2' t1 t2 pA pB pt)
+(* | conglambda_red_ty_r B1 B2 t1 t2 pA pB pt B2' : *)
+(*     red1 Σ Γ B2 B2' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1 B2' t1 t2 pA pB pt) *)
 
-| conglambda_red_tm_l B1 B2 t1 t2 pA pB pt t1' :
-    red1 Σ Γ t1 t1' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1 B2 t1' t2 pA pB pt)
+(* | conglambda_red_tm_l B1 B2 t1 t2 pA pB pt t1' : *)
+(*     red1 Σ Γ t1 t1' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1 B2 t1' t2 pA pB pt) *)
 
-| conglambda_red_tm_r B1 B2 t1 t2 pA pB pt t2' :
-    red1 Σ Γ t2 t2' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1 B2 t1 t2' pA pB pt)
+(* | conglambda_red_tm_r B1 B2 t1 t2 pA pB pt t2' : *)
+(*     red1 Σ Γ t2 t2' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1 B2 t1 t2' pA pB pt) *)
 
-| conglambda_red_eq_dom B1 B2 t1 t2 pA pB pt pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1 B2 t1 t2 pA' pB pt)
+(* | conglambda_red_eq_dom B1 B2 t1 t2 pA pB pt pA' : *)
+(*     red1 Σ Γ pA pA' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1 B2 t1 t2 pA' pB pt) *)
 
-| conglambda_red_eq_codom B1 B2 t1 t2 pA pB pt pB' :
-    red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1 B2 t1 t2 pA pB' pt)
+(* | conglambda_red_eq_codom B1 B2 t1 t2 pA pB pt pB' : *)
+(*     red1 Σ Γ pB pB' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1 B2 t1 t2 pA pB' pt) *)
 
-| conglambda_red_eq_tm B1 B2 t1 t2 pA pB pt pt' :
-    red1 Σ Γ pt pt' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
-             (sCongLambda B1 B2 t1 t2 pA pB pt')
+(* | conglambda_red_eq_tm B1 B2 t1 t2 pA pB pt pt' : *)
+(*     red1 Σ Γ pt pt' -> *)
+(*     red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt) *)
+(*              (sCongLambda B1 B2 t1 t2 pA pB pt') *)
 
 (** CongApp *)
-| congapp_red_ty_l B1 B2 pu pA pB pv B1' :
-    red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
-             (sCongApp B1' B2 pu pA pB pv)
+(* | congapp_red_ty_l B1 B2 pu pA pB pv B1' : *)
+(*     red1 Σ Γ B1 B1' -> *)
+(*     red1 Σ Γ (sCongApp B1 B2 pu pA pB pv) *)
+(*              (sCongApp B1' B2 pu pA pB pv) *)
 
-| congapp_red_ty_r B1 B2 pu pA pB pv B2' :
-    red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
-             (sCongApp B1 B2' pu pA pB pv)
+(* | congapp_red_ty_r B1 B2 pu pA pB pv B2' : *)
+(*     red1 Σ Γ B2 B2' -> *)
+(*     red1 Σ Γ (sCongApp B1 B2 pu pA pB pv) *)
+(*              (sCongApp B1 B2' pu pA pB pv) *)
 
-| congapp_red_eq_fun B1 B2 pu pA pB pv pu' :
-    red1 Σ Γ pu pu' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
-             (sCongApp B1 B2 pu' pA pB pv)
+(* | congapp_red_eq_fun B1 B2 pu pA pB pv pu' : *)
+(*     red1 Σ Γ pu pu' -> *)
+(*     red1 Σ Γ (sCongApp B1 B2 pu pA pB pv) *)
+(*              (sCongApp B1 B2 pu' pA pB pv) *)
 
-| congapp_red_eq_dom B1 B2 pu pA pB pv pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
-             (sCongApp B1 B2 pu pA' pB pv)
+(* | congapp_red_eq_dom B1 B2 pu pA pB pv pA' : *)
+(*     red1 Σ Γ pA pA' -> *)
+(*     red1 Σ Γ (sCongApp B1 B2 pu pA pB pv) *)
+(*              (sCongApp B1 B2 pu pA' pB pv) *)
 
-| congapp_red_eq_codom B1 B2 pu pA pB pv pB' :
-    red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
-             (sCongApp B1 B2 pu pA pB' pv)
+(* | congapp_red_eq_codom B1 B2 pu pA pB pv pB' : *)
+(*     red1 Σ Γ pB pB' -> *)
+(*     red1 Σ Γ (sCongApp B1 B2 pu pA pB pv) *)
+(*              (sCongApp B1 B2 pu pA pB' pv) *)
 
-| congapp_red_eq_arg B1 B2 pu pA pB pv pv' :
-    red1 Σ Γ pv pv' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
-             (sCongApp B1 B2 pu pA pB pv')
+(* | congapp_red_eq_arg B1 B2 pu pA pB pv pv' : *)
+(*     red1 Σ Γ pv pv' -> *)
+(*     red1 Σ Γ (sCongApp B1 B2 pu pA pB pv) *)
+(*              (sCongApp B1 B2 pu pA pB pv') *)
 
 (** CongEq *)
-| congeq_red_eq_ty pA pu pv pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA' pu pv)
+(* | congeq_red_eq_ty pA pu pv pA' : *)
+(*     red1 Σ Γ pA pA' -> *)
+(*     red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA' pu pv) *)
 
-| congeq_red_eq_tm_l pA pu pv pu' :
-    red1 Σ Γ pu pu' ->
-    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu' pv)
+(* | congeq_red_eq_tm_l pA pu pv pu' : *)
+(*     red1 Σ Γ pu pu' -> *)
+(*     red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu' pv) *)
 
-| congeq_red_eq_tm_r pA pu pv pv' :
-    red1 Σ Γ pv pv' ->
-    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu pv')
+(* | congeq_red_eq_tm_r pA pu pv pv' : *)
+(*     red1 Σ Γ pv pv' -> *)
+(*     red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu pv') *)
 
-(** CongRefl *)
-| congrefl_red_ty pA pu pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA' pu)
+(* (** CongRefl *) *)
+(* | congrefl_red_ty pA pu pA' : *)
+(*     red1 Σ Γ pA pA' -> *)
+(*     red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA' pu) *)
 
-| congrefl_red_tm pA pu pu' :
-    red1 Σ Γ pu pu' ->
-    red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA pu')
+(* | congrefl_red_tm pA pu pu' : *)
+(*     red1 Σ Γ pu pu' -> *)
+(*     red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA pu') *)
 
 (** EqToHeq *)
 | eqtoheq_red p p' :
@@ -372,6 +372,9 @@ Notation " Σ ;;; Γ '|-i' t ▷⃰ u " :=
 (*! Conversion *)
 
 Reserved Notation " Σ ;;; Γ '|-i' t = u " (at level 50, Γ, t, u at next level).
+
+(* TODO: Stop using eq_term but instead something that compares the nameless
+   terms. *)
 
 Inductive conv (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :=
 | conv_eq t u : eq_term t u = true -> Σ ;;; Γ |-i t = u
@@ -574,9 +577,6 @@ Proof.
   intros Σ Γ Γ' t u h e. destruct e. assumption.
 Defined.
 
-Axiom cheating : forall {A}, A.
-Tactic Notation "cheat" := apply cheating.
-
 Fixpoint lift_red1 {Σ Γ Δ Ξ t1 t2} (h : Σ ;;; Γ ,,, Ξ |-i t1 ▷ t2) :
   Σ ;;; Γ ,,, Δ ,,, lift_context #|Δ| Ξ |-i lift #|Δ| #|Ξ| t1 ▷ lift #|Δ| #|Ξ| t2
 
@@ -617,18 +617,6 @@ Proof.
           apply liftP2. omega.
         + replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
           apply liftP2. omega.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
-      - cheat.
     }
 
   - { destruct h.
@@ -637,6 +625,23 @@ Proof.
     }
 Defined.
 
+Lemma lift_conv :
+  forall {Σ Γ Δ Ξ t1 t2},
+    Σ ;;; Γ ,,, Ξ |-i t1 = t2 ->
+    Σ ;;; Γ ,,, Δ ,,, lift_context #|Δ| Ξ
+    |-i lift #|Δ| #|Ξ| t1 = lift #|Δ| #|Ξ| t2.
+Proof.
+  intros Σ Γ Δ Ξ t1 t2 h.
+  induction h.
+  - admit.
+  - eapply conv_red_l.
+    + eapply lift_red1. eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + eapply lift_red1. eassumption.
+  - eapply conv_trans ; eassumption.
+Admitted.
 
 (** Congruence with substitution *)
 
