@@ -1517,41 +1517,6 @@ Proof.
       * assumption.
 Defined.
 
-Inductive eqctx Σ : scontext -> scontext -> Type :=
-| eqnil : eqctx Σ nil nil
-| eqsnoc Γ na A Δ nb B :
-    eqctx Σ Γ Δ ->
-    Σ ;;; Γ |-i A = B ->
-    eqctx Σ (Γ ,, svass na A) (Δ ,, svass nb B).
-
-Fact eqctx_refl :
-  forall {Σ Γ},
-    wf Σ Γ ->
-    eqctx Σ Γ Γ.
-Proof.
-  intros Σ Γ h.
-  dependent induction Γ.
-  - constructor.
-  - dependent destruction h.
-    econstructor.
-    + now apply IHΓ.
-    + apply conv_refl.
-Defined.
-
-Lemma ctx_conv :
-  forall {Σ Γ Δ t A},
-    Σ ;;; Γ |-i t : A ->
-    eqctx Σ Γ Δ ->
-    Σ ;;; Δ |-i t : A.
-Admitted.
-
-Lemma eqctx_conv :
-  forall {Σ Γ Δ t u},
-    Σ ;;; Γ |-i t = u ->
-    eqctx Σ Γ Δ ->
-    Σ ;;; Δ |-i t = u.
-Admitted.
-
 Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->
@@ -1580,12 +1545,7 @@ Proof.
            ++ eassumption.
   - exists (succ_sort (succ_sort s)). now apply type_Sort.
   - exists (succ_sort (max_sort s1 s2)). apply type_Sort. apply (typing_wf H).
-  - exists (max_sort s1 s2). apply type_Prod.
-    + assumption.
-    + eapply ctx_conv ; [ eassumption |].
-      econstructor.
-      * apply eqctx_refl. now apply (typing_wf H).
-      * apply conv_refl.
+  - exists (max_sort s1 s2). apply type_Prod ; assumption.
   - exists s2. change (sSort s2) with ((sSort s2){ 0 := u }).
     eapply typing_subst ; eassumption.
   - exists (succ_sort s). apply type_Sort. apply (typing_wf H).

@@ -27,8 +27,8 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 
 | type_Lambda Γ n n' t b s1 s2 bty :
     Σ ;;; Γ |-i t : sSort s1 ->
-    Σ ;;; Γ ,, svass n t |-i bty : sSort s2 ->
-    Σ ;;; Γ ,, svass n t |-i b : bty ->
+    Σ ;;; Γ ,, svass n' t |-i bty : sSort s2 ->
+    Σ ;;; Γ ,, svass n' t |-i b : bty ->
     Σ ;;; Γ |-i (sLambda n t bty b) : sProd n' t bty
 
 | type_App Γ n s1 s2 t A B u :

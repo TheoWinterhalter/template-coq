@@ -84,18 +84,18 @@ Defined.
 Lemma inversionLambda :
   forall {Σ Γ na A B t T},
     Σ ;;; Γ |-i sLambda na A B t : T ->
-      ∑ s1 s2,
+      ∑ s1 s2 na',
         (Σ ;;; Γ |-i A : sSort s1) *
-        (Σ ;;; Γ ,, svass na A |-i B : sSort s2) *
-        (Σ ;;; Γ ,, svass na A |-i t : B) *
-        (Σ ;;; Γ |-i sProd na A B = T).
+        (Σ ;;; Γ ,, svass na' A |-i B : sSort s2) *
+        (Σ ;;; Γ ,, svass na' A |-i t : B) *
+        (Σ ;;; Γ |-i sProd na' A B = T).
 Proof.
   intros Σ Γ na A B t T h.
   dependent induction h.
-  - exists s1, s2. split ; [ split ; [ split | .. ] | ..] ; try assumption.
+  - exists s1, s2, n'. split ; [ split ; [ split | .. ] | ..] ; try assumption.
     apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
-  - destruct IHh1 as [s1 [s2 [[[? ?] ?] ?]]].
-    exists s1, s2. split ; [ split ; [ split | .. ] | ..] ; try assumption.
+  - destruct IHh1 as (s1 & s2 & na' & ?). split_hyps.
+    exists s1, s2, na'. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -584,7 +584,7 @@ Ltac ttinv h :=
     | sRel _ => destruct (inversionRel h) as [his hh]
     | sSort _ => pose proof (inversionSort h) as hh
     | sProd _ _ _ => destruct (inversionProd h) as (s1 & s2 & hh) ; splits_one hh
-    | sLambda _ _ _ _ => destruct (inversionLambda h) as (s1 & s2 & hh) ;
+    | sLambda _ _ _ _ => destruct (inversionLambda h) as (s1 & s2 & na & hh) ;
                         splits_one hh
     | sApp _ _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & hh) ;
                        splits_one hh
