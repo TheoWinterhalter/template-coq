@@ -155,7 +155,6 @@ Defined.
 Lemma weak_glob_conv :
   forall {Σ ϕ d Γ t1 t2},
     (Σ, ϕ) ;;; Γ |-i t1 = t2 ->
-    (* fresh_global (sglobal_decl_ident d) Σ -> *)
     (d::Σ, ϕ) ;;; Γ |-i t1 = t2.
 Proof.
   intros Σ ϕ d Γ t1 t2 h. induction h.

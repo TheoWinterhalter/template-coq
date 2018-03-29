@@ -202,8 +202,12 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
     red1 Σ Γ t t' ->
     red1 Σ Γ (sHeqTransport p t) (sHeqTransport p t')
 
+(* We are missing annotations to reduce CongProd properly.
+   One question remains: why would we do it?
+ *)
 (** CongProd *)
 | congprod_red_ty_l B1 B1' B2 pA pB :
+    (* red1 Σ (Γ ,, svass nx A1) B1 B1' -> *)
     red1 Σ Γ B1 B1' ->
     red1 Σ Γ (sCongProd B1 B2 pA pB) (sCongProd B1' B2 pA pB)
 
@@ -550,6 +554,92 @@ Proof.
   conv rewrite hA, hu. apply conv_refl.
 Defined.
 
+(** Congruence with lift *)
+
+Lemma meta_red_eq :
+  forall {Σ Γ t u u'},
+    Σ ;;; Γ |-i t ▷ u ->
+    u = u' ->
+    Σ ;;; Γ |-i t ▷ u'.
+Proof.
+  intros Σ Γ t u u' h e. destruct e. assumption.
+Defined.
+
+Lemma meta_red_ctx :
+  forall {Σ Γ Γ' t u},
+    Σ ;;; Γ |-i t ▷ u ->
+    Γ = Γ' ->
+    Σ ;;; Γ' |-i t ▷ u.
+Proof.
+  intros Σ Γ Γ' t u h e. destruct e. assumption.
+Defined.
+
+Axiom cheating : forall {A}, A.
+Tactic Notation "cheat" := apply cheating.
+
+Fixpoint lift_red1 {Σ Γ Δ Ξ t1 t2} (h : Σ ;;; Γ ,,, Ξ |-i t1 ▷ t2) :
+  Σ ;;; Γ ,,, Δ ,,, lift_context #|Δ| Ξ |-i lift #|Δ| #|Ξ| t1 ▷ lift #|Δ| #|Ξ| t2
+
+with lift_redbrs1 {Σ Γ Δ Ξ b1 b2} (h : redbrs1 Σ (Γ ,,, Ξ) b1 b2) :
+  redbrs1 Σ (Γ ,,, Δ ,,, lift_context #|Δ| Ξ)
+          (map (on_snd (lift #|Δ| #|Ξ|)) b1) (map (on_snd (lift #|Δ| #|Ξ|)) b2).
+Proof.
+  - { destruct h ; cbn ;
+      try match goal with
+          | h : _ ;;; ?Γ'' |-i ?t ▷ _ |- _ ;;; _ |-i ?tt ▷ _ =>
+            match tt with
+            | context [t] =>
+              econstructor ;
+              eapply meta_red_ctx ; [
+                match Γ'' with
+                | ?Γ' ,,, ?Ξ' =>
+                  eapply lift_red1 with (Γ := Γ') (Ξ := Ξ')
+                | (?Γ' ,,, ?Ξ'),, ?d' =>
+                  eapply lift_red1 with (Γ := Γ') (Ξ := Ξ',, d')
+                | (?Γ' ,,, ?Ξ'),, ?d',, ?d'' =>
+                  eapply lift_red1 with (Γ := Γ') (Ξ := (Ξ',, d'),, d'')
+                end ;
+                [ exact h | .. ]
+              | try (cbn ; reflexivity)
+              ]
+            end
+          end.
+      (* all: try (eapply meta_red_eq ; [ econstructor ; assumption | cbn ; reflexivity ]). *)
+      - eapply meta_red_eq ; [ econstructor |].
+        rewrite <- substP1. cbn. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor | reflexivity ].
+        eapply lift_redbrs1. assumption.
+      - cbn. rewrite !lift_decl_svass. unfold ssnoc. cbn.
+        f_equal. f_equal. f_equal.
+        + replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
+          apply liftP2. omega.
+        + replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
+          apply liftP2. omega.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+      - cheat.
+    }
+
+  - { destruct h.
+      - econstructor. eapply lift_red1. assumption.
+      - econstructor. eapply lift_redbrs1. assumption.
+    }
+Defined.
+
+
+(** Congruence with substitution *)
+
 Lemma subst_red :
   forall {Σ Γ t1 t2 u n},
     Σ ;;; Γ |-i t1 ▷ t2 ->
@@ -572,14 +662,7 @@ Proof.
          ].
 Abort.
 
-Lemma meta_red_eq :
-  forall {Σ Γ t u u'},
-    Σ ;;; Γ |-i t ▷ u ->
-    u = u' ->
-    Σ ;;; Γ |-i t ▷ u'.
-Proof.
-  intros Σ Γ t u u' h e. destruct e. assumption.
-Defined.
+
 
 Lemma subst_red :
   forall {Σ Γ t1 t2 u Δ},
