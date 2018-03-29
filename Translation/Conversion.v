@@ -428,15 +428,15 @@ Ltac conv_rewrite h :=
         assert (h' : Σ ;;; Γ |-i T1 = T2) ; [
           clear - h ;
           induction h ; [
-            apply conv_eq ; cbn ; rewrite !eq_term_refl ;
+            apply conv_eq ; cbn ; rewrite ?eq_term_refl ;
             rewrite_assumption ; reflexivity
           | eapply conv_red_l ; [
-              constructor ; eassumption
+              econstructor ; eassumption
             | eassumption
             ]
           | eapply conv_red_r ; [
               eassumption
-            | constructor ; eassumption
+            | econstructor ; eassumption
             ]
           | eapply conv_trans ; eassumption
           ]
@@ -643,6 +643,16 @@ Proof.
   - eapply conv_trans ; eassumption.
 Admitted.
 
+Corollary cong_lift01 :
+  forall {Σ Γ t1 t2 x B},
+    Σ ;;; Γ |-i t1 = t2 ->
+    Σ ;;; Γ ,, svass x B |-i lift0 1 t1 = lift0 1 t2.
+Proof.
+  intros Σ Γ t1 t2 x B h.
+  apply @lift_conv with (Δ := [ svass x B ]) (Ξ := nil).
+  cbn. assumption.
+Defined.
+
 (** Congruence with substitution *)
 
 Fixpoint subst_red1 {Σ Γ Δ nx B t1 t2 u}
@@ -711,4 +721,133 @@ Proof.
     + eassumption.
     + eapply subst_red1. eassumption.
   - eapply conv_trans ; eassumption.
+Admitted.
+
+
+(** Congruence of equal substitutions *)
+
+Section conv_substs.
+
+  Ltac sp h Δ :=
+    match goal with
+    | hu : _ ;;; _ |-i _ ▷ _ |- _ =>
+      specialize (h _ Δ _ _ hu) ;
+      cbn in h ;
+      try rewrite !subst_decl_svass in h
+    end.
+
+  Ltac conv_rewrite' h :=
+  let h' := fresh "h" in
+  match type of h with
+  | _ ;;; _ |-i ?A = ?B =>
+    lazymatch goal with
+    | |- ?Σ ;;; ?Γ |-i ?ctx = _ =>
+      lazymatch ctx with
+      | context T [A] =>
+        let T1 := context T[A] in
+        let T2 := context T[B] in
+        assert (h' : Σ ;;; Γ |-i T1 = T2) ; [
+          clear - h ;
+          induction h ; idtac
+        | idtac
+        ]
+      | _ => fail "Lhs doesn't contain " A
+      end
+    | _ => fail "conv rewrite cannot apply to this goal"
+    end
+  end.
+
+  Lemma substs_red1 {Σ} (t : sterm) :
+    forall {Γ} Δ {u1 u2},
+      (fst Σ) ;;; Γ |-i u1 ▷ u2 ->
+                     Σ ;;; Γ ,,, subst_context u1 Δ |-i t{ #|Δ| := u1 } = t{ #|Δ| := u2 }.
+  Proof.
+    induction t using sterm_rect_list ; intros Γ Δ u1 u2 h.
+    - cbn. case_eq (#|Δ| ?= n) ; intro e ; bprop e.
+      + replace #|Δ| with #|subst_context u1 Δ|
+          by (now rewrite subst_context_length).
+        eapply @lift_conv with (Δ := subst_context u1 Δ) (Ξ := []).
+        eapply conv_red_l ; try eassumption. apply conv_refl.
+      + apply conv_refl.
+      + apply conv_refl.
+    - cbn. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 (Δ,, svass nx t1).
+      conv rewrite IHt2, IHt1. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 (Δ,, svass nx t1). sp IHt3 (Δ,, svass nx t1).
+      conv rewrite IHt3, IHt2, IHt1. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ. sp IHt3 (Δ,, svass nx t2). sp IHt4 Δ.
+      conv rewrite IHt4, IHt3, IHt2, IHt1. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ. sp IHt3 Δ.
+      conv rewrite IHt3, IHt2, IHt1. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ.
+      conv rewrite IHt2, IHt1. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ. sp IHt4 Δ. sp IHt5 Δ. sp IHt6 Δ.
+      sp IHt3 (Δ,, svass nAnon t1 ,, svass nAnon (sEq (lift0 1 t1) (lift0 1 t2) (sRel 0))).
+      cbn in *. replace (S #|Δ|) with (1 + #|Δ|)%nat in * by omega.
+      rewrite !substP2 in * by omega.
+      conv rewrite IHt6, IHt5, IHt4, IHt3, IHt2, IHt1.
+      apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ. sp IHt3 Δ. sp IHt4 Δ.
+      conv rewrite IHt4, IHt3, IHt2, IHt1.
+      apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ. sp IHt3 Δ. sp IHt4 Δ.
+      conv rewrite IHt4, IHt3, IHt2, IHt1.
+      apply conv_refl.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ.
+      conv rewrite IHt2, IHt1.
+      apply conv_refl.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ.
+      conv rewrite IHt2, IHt1.
+      apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ.
+      conv rewrite IHt2, IHt1.
+      apply conv_refl.
+    - (* Since I removed the context rules for CongProd and such, I cannot
+         conclude like I want here.
+         There are two options to be able to put them back:
+         - Remove context from reduction, we don't have lets anyway.
+           But that would mean giving up on them in the future.
+         - Add annotations for CongProd and co.
+       *)
+      admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. sp IHt1 Δ. sp IHt2 Δ.
+      conv rewrite IHt2, IHt1.
+      apply conv_refl.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. sp IHt Δ. conv rewrite IHt. apply conv_refl.
+    - cbn. apply conv_refl.
+    - cbn. apply conv_refl.
+    - cbn. (* Tedious? *)
+      admit.
+  Admitted.
+
+End conv_substs.
+
+Lemma substs_conv :
+  forall {Σ Γ Δ u1 u2 t},
+    Σ ;;; Γ |-i u1 = u2 ->
+    Σ ;;; Γ ,,, subst_context u1 Δ
+    |-i t{ #|Δ| := u1 } = t{ #|Δ| := u2 }.
+Proof.
+  intros Σ Γ Δ u1 u2 t h.
+  induction h.
+  - apply conv_eq. admit.
+  - pose proof (substs_red1 t Δ H).
+    eapply conv_trans ; try eassumption.
+    (* Once again, contexts are being a pain. *)
+    admit.
+  - pose proof (substs_red1 t Δ H).
+    eapply conv_trans ; try eassumption.
+    admit.
+  - eapply conv_trans ; try eassumption.
+    admit.
 Admitted.
