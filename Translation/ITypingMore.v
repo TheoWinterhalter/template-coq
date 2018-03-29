@@ -1,22 +1,107 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst SCommon ITyping ITypingLemmata.
+From Translation
+Require Import util SAst SLiftSubst SCommon Conversion ITyping ITypingInversions
+               ITypingLemmata.
 
 (* We state some admissible typing rules *)
-Lemma type_conv' :
-  forall {Σ Γ t A B s},
-    type_glob Σ ->
-    Σ ;;; Γ |-i t : A ->
-    Σ ;;; Γ |-i A = B : sSort s ->
-    Σ ;;; Γ |-i t : B.
+
+(* Fixpoint sort_conv_l {Σ Γ s T} (h : Σ ;;; Γ |-i sSort s = T) : *)
+(*   fst Σ ;;; Γ |-i T ▷⃰ sSort s *)
+
+(* with sort_conv_r {Σ Γ s T} (h : Σ ;;; Γ |-i T = sSort s) : *)
+(*   fst Σ ;;; Γ |-i T ▷⃰ sSort s. *)
+(* Proof. *)
+(*   - dependent induction h. *)
+(*     + destruct u ; cbn in H ; inversion H. *)
+(*       unfold eq_nat in H. bprop H. subst. *)
+(*       constructor. *)
+(*     + inversion H. *)
+(*     + econstructor ; eassumption. *)
+(*     +  *)
+
+Lemma sort_conv :
+  forall {Σ Γ s T},
+    Σ ;;; Γ |-i sSort s = T ->
+    fst Σ ;;; Γ |-i T ▷⃰ sSort s.
 Proof.
-  intros Σ Γ t A B s hg ht eq.
-  eapply type_conv.
-  - eassumption.
-  - apply (eq_typing hg eq).
-  - assumption.
-Defined.
+  intros Σ Γ s T h.
+  dependent induction h.
+  - (* destruct u ; cbn in H ; inversion H. *)
+    (* unfold eq_nat in H. bprop H. subst. *)
+    (* constructor. *)
+    admit.
+  - inversion H.
+  - econstructor ; eassumption.
+  -
+Abort.
+
+(* Lemma sort_conv : *)
+(*   forall {Σ Γ s T U}, *)
+(*     Σ ;;; Γ |-i sSort s = T -> *)
+(*     Σ ;;; Γ |-i T = U -> *)
+(*     fst Σ ;;; Γ |-i U ▷⃰ sSort s. *)
+(* Proof. *)
+(*   intros Σ Γ s T U h. revert U. *)
+(*   dependent induction h ; intros U hU. *)
+(*   - destruct u ; cbn in H ; inversion H. *)
+(*     unfold eq_nat in H. bprop H. subst. *)
+(*     constructor. *)
+(*   - inversion H. *)
+(*   - econstructor ; eassumption. *)
+(*   - *)
+
+Lemma sort_conv :
+  forall {Σ Γ s T},
+    Σ ;;; Γ |-i T = sSort s ->
+    fst Σ ;;; Γ |-i T ▷⃰ sSort s.
+Proof.
+  intros Σ Γ s T h.
+  dependent induction h.
+  - (* destruct u ; cbn in H ; inversion H. *)
+    (* unfold eq_nat in H. bprop H. subst. *)
+    (* constructor. *)
+    admit.
+  - econstructor ; eassumption.
+  - inversion H.
+  -
+Abort.
+
+Lemma sort_conv :
+  forall {Σ Γ s T U},
+    Σ ;;; Γ |-i T = U ->
+    fst Σ ;;; Γ |-i U ▷⃰ sSort s ->
+    fst Σ ;;; Γ |-i T ▷⃰ sSort s.
+Proof.
+  intros Σ Γ s T U h. revert s.
+  dependent induction h ; intros s hs.
+  - admit.
+  - specialize (IHh _ hs).
+    econstructor ; eassumption.
+  - (* Might be solved by symmetry with a mutual fixpoint *)
+    admit.
+  - apply IHh1. apply IHh2. assumption.
+Abort.
+
+Fixpoint sort_red_l {Σ Γ T U} (h : Σ ;;; Γ |-i T = U) :
+  forall {s},
+    fst Σ ;;; Γ |-i U ▷⃰ sSort s ->
+    fst Σ ;;; Γ |-i T ▷⃰ sSort s
+
+with sort_red_r {Σ Γ T U} (h : Σ ;;; Γ |-i T = U) :
+  forall {s},
+    fst Σ ;;; Γ |-i T ▷⃰ sSort s ->
+    fst Σ ;;; Γ |-i U ▷⃰ sSort s.
+Proof.
+  - { dependent induction h ; intros s hs.
+      - admit.
+      - specialize (IHh _ hs).
+        econstructor ; eassumption.
+      -
+Abort.
+
+
 
 Lemma heq_sort :
   forall {Σ Γ s1 s2 A B p},
@@ -26,6 +111,9 @@ Lemma heq_sort :
 Proof.
   intros Σ Γ s1 s2 A B p hg h.
   destruct (istype_type hg h) as [? i].
+  ttinv i.
+  ttinv h0. ttinv h5.
+
   destruct (inversionHeq hg i) as [? [[[[e1 e2] ?] ?] ?]].
   pose proof (sorts_in_sort e2 e1) as eq.
   eapply type_conv'.
