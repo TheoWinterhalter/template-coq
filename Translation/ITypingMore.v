@@ -113,15 +113,27 @@ Proof.
   destruct (istype_type hg h) as [? i].
   ttinv i.
   ttinv h0. ttinv h5.
-
-  destruct (inversionHeq hg i) as [? [[[[e1 e2] ?] ?] ?]].
-  pose proof (sorts_in_sort e2 e1) as eq.
-  eapply type_conv'.
-  - assumption.
+  eapply type_conv.
   - eassumption.
+  - apply type_Heq ; try eassumption.
+    admit.
   - apply cong_Heq.
-    all: try (apply eq_reflexivity ; eassumption).
-    assumption.
+    all: try (apply conv_refl).
+    (* Same thing here...
+       We need to say s1 = s2, knowing they live in the same sort.
+       But this doesn't seem to be true unless we are able to prove
+       confluence.
+     *)
+    admit.
+
+  (* destruct (inversionHeq hg i) as [? [[[[e1 e2] ?] ?] ?]]. *)
+  (* pose proof (sorts_in_sort e2 e1) as eq. *)
+  (* eapply type_conv'. *)
+  (* - assumption. *)
+  (* - eassumption. *)
+  (* - apply cong_Heq. *)
+  (*   all: try (apply eq_reflexivity ; eassumption). *)
+  (*   assumption. *)
 Defined.
 
 Lemma type_HeqToEq' :
