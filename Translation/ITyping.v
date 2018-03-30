@@ -70,7 +70,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i a : A ->
     Σ ;;; Γ |-i b : B ->
-    Σ ;;; Γ |-i sHeq A a B b : sSort (succ_sort s)
+    Σ ;;; Γ |-i sHeq A a B b : sSort s
 
 | type_HeqToEq Γ A u v p s :
     Σ ;;; Γ |-i p : sHeq A u A v ->

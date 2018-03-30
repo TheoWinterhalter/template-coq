@@ -202,7 +202,7 @@ Lemma inversionHeq :
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i a : A) *
       (Σ ;;; Γ |-i b : B) *
-      (Σ ;;; Γ |-i sSort (succ_sort s) = T).
+      (Σ ;;; Γ |-i sSort s = T).
 Proof.
   intros Σ Γ A B a b T h.
   dependent induction h.

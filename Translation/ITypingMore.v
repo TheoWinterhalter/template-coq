@@ -7,102 +7,6 @@ Require Import util SAst SLiftSubst SCommon Conversion ITyping ITypingInversions
 
 (* We state some admissible typing rules *)
 
-(* Fixpoint sort_conv_l {Σ Γ s T} (h : Σ ;;; Γ |-i sSort s = T) : *)
-(*   fst Σ ;;; Γ |-i T ▷⃰ sSort s *)
-
-(* with sort_conv_r {Σ Γ s T} (h : Σ ;;; Γ |-i T = sSort s) : *)
-(*   fst Σ ;;; Γ |-i T ▷⃰ sSort s. *)
-(* Proof. *)
-(*   - dependent induction h. *)
-(*     + destruct u ; cbn in H ; inversion H. *)
-(*       unfold eq_nat in H. bprop H. subst. *)
-(*       constructor. *)
-(*     + inversion H. *)
-(*     + econstructor ; eassumption. *)
-(*     +  *)
-
-Lemma sort_conv :
-  forall {Σ Γ s T},
-    Σ ;;; Γ |-i sSort s = T ->
-    fst Σ ;;; Γ |-i T ▷⃰ sSort s.
-Proof.
-  intros Σ Γ s T h.
-  dependent induction h.
-  - (* destruct u ; cbn in H ; inversion H. *)
-    (* unfold eq_nat in H. bprop H. subst. *)
-    (* constructor. *)
-    admit.
-  - inversion H.
-  - econstructor ; eassumption.
-  -
-Abort.
-
-(* Lemma sort_conv : *)
-(*   forall {Σ Γ s T U}, *)
-(*     Σ ;;; Γ |-i sSort s = T -> *)
-(*     Σ ;;; Γ |-i T = U -> *)
-(*     fst Σ ;;; Γ |-i U ▷⃰ sSort s. *)
-(* Proof. *)
-(*   intros Σ Γ s T U h. revert U. *)
-(*   dependent induction h ; intros U hU. *)
-(*   - destruct u ; cbn in H ; inversion H. *)
-(*     unfold eq_nat in H. bprop H. subst. *)
-(*     constructor. *)
-(*   - inversion H. *)
-(*   - econstructor ; eassumption. *)
-(*   - *)
-
-Lemma sort_conv :
-  forall {Σ Γ s T},
-    Σ ;;; Γ |-i T = sSort s ->
-    fst Σ ;;; Γ |-i T ▷⃰ sSort s.
-Proof.
-  intros Σ Γ s T h.
-  dependent induction h.
-  - (* destruct u ; cbn in H ; inversion H. *)
-    (* unfold eq_nat in H. bprop H. subst. *)
-    (* constructor. *)
-    admit.
-  - econstructor ; eassumption.
-  - inversion H.
-  -
-Abort.
-
-Lemma sort_conv :
-  forall {Σ Γ s T U},
-    Σ ;;; Γ |-i T = U ->
-    fst Σ ;;; Γ |-i U ▷⃰ sSort s ->
-    fst Σ ;;; Γ |-i T ▷⃰ sSort s.
-Proof.
-  intros Σ Γ s T U h. revert s.
-  dependent induction h ; intros s hs.
-  - admit.
-  - specialize (IHh _ hs).
-    econstructor ; eassumption.
-  - (* Might be solved by symmetry with a mutual fixpoint *)
-    admit.
-  - apply IHh1. apply IHh2. assumption.
-Abort.
-
-Fixpoint sort_red_l {Σ Γ T U} (h : Σ ;;; Γ |-i T = U) :
-  forall {s},
-    fst Σ ;;; Γ |-i U ▷⃰ sSort s ->
-    fst Σ ;;; Γ |-i T ▷⃰ sSort s
-
-with sort_red_r {Σ Γ T U} (h : Σ ;;; Γ |-i T = U) :
-  forall {s},
-    fst Σ ;;; Γ |-i T ▷⃰ sSort s ->
-    fst Σ ;;; Γ |-i U ▷⃰ sSort s.
-Proof.
-  - { dependent induction h ; intros s hs.
-      - admit.
-      - specialize (IHh _ hs).
-        econstructor ; eassumption.
-      -
-Abort.
-
-
-
 Lemma heq_sort :
   forall {Σ Γ s1 s2 A B p},
     type_glob Σ ->
@@ -208,9 +112,17 @@ Proof.
   destruct (istype_type hg h2) as [? i2].
   ttinv i2.
   eapply type_HeqTrans. all: try eassumption.
-  (* We wish not to use uniqueness in such a place.
-     Instead we will lower the universe of Heq.
-   *)
+  eapply type_conv.
+  - eassumption.
+  - eapply type_Sort. eapply typing_wf ; eassumption.
+  - eapply conv_trans ; try eassumption.
+    eapply conv_sym.
+    (* Unfortunately we didn't solve our problems by lowering
+       the universe of heq...
+       We can always prove a weaker HeqTrans' and then hope to only use it
+       in places where uniqueness is true (meaning on a specific piece of
+       syntax).
+     *)
 
   destruct (uniqueness iB2 iB1) as [? eq].
   eapply type_conv ; [ eassumption | idtac | eassumption ].

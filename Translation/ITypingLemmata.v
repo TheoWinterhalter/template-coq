@@ -1559,48 +1559,48 @@ Proof.
     + cbn. rewrite !lift_subst, lift00.
       assumption.
   - eexists. eassumption.
-  - exists (succ_sort (succ_sort s)). apply type_Sort. apply (typing_wf H).
+  - exists (succ_sort s). apply type_Sort. apply (typing_wf H).
   - exists s. apply type_Eq ; assumption.
-  - exists (succ_sort s). apply type_Heq ; assumption.
-  - exists (succ_sort s). apply type_Heq ; assumption.
-  - exists (succ_sort s). apply type_Heq ; assumption.
-  - exists (succ_sort s). apply type_Heq. all: try assumption.
+  - exists s. apply type_Heq ; assumption.
+  - exists s. apply type_Heq ; assumption.
+  - exists s. apply type_Heq ; assumption.
+  - exists s. apply type_Heq. all: try assumption.
     eapply type_Transport ; eassumption.
-  - exists (succ_sort (succ_sort (max_sort s z))).
+  - exists (succ_sort (max_sort s z)).
     apply type_Heq.
     + eapply type_Sort. apply (typing_wf H).
     + eapply type_Sort. apply (typing_wf H).
     + apply type_Prod ; assumption.
     + apply type_Prod ; assumption.
-  - exists (succ_sort (max_sort s z)). apply type_Heq.
+  - exists (max_sort s z). apply type_Heq.
     + apply type_Prod ; assumption.
     + apply type_Prod ; assumption.
     + eapply type_Lambda ; eassumption.
     + eapply type_Lambda ; eassumption.
-  - exists (succ_sort z). apply type_Heq.
+  - exists z. apply type_Heq.
     + change (sSort z) with ((sSort z){ 0 := v1 }).
       eapply typing_subst ; eassumption.
     + change (sSort z) with ((sSort z){ 0 := v2 }).
       eapply typing_subst ; eassumption.
     + eapply type_App ; eassumption.
     + eapply type_App ; eassumption.
-  - exists (succ_sort (succ_sort s)). apply type_Heq.
-    + apply type_Sort ; apply (typing_wf H).
-    + apply type_Sort ; apply (typing_wf H).
-    + apply type_Eq ; assumption.
-    + apply type_Eq ; assumption.
   - exists (succ_sort s). apply type_Heq.
+    + apply type_Sort ; apply (typing_wf H).
+    + apply type_Sort ; apply (typing_wf H).
+    + apply type_Eq ; assumption.
+    + apply type_Eq ; assumption.
+  - exists s. apply type_Heq.
     + apply type_Eq ; assumption.
     + apply type_Eq ; assumption.
     + eapply type_Refl ; eassumption.
     + eapply type_Refl ; eassumption.
-  - exists (succ_sort s). apply type_Heq ; assumption.
+  - exists s. apply type_Heq ; assumption.
   - exists (succ_sort s). eapply type_Eq ; try assumption.
     apply type_Sort. apply (typing_wf H).
   - exists (succ_sort s). apply type_Sort. apply (typing_wf H).
   - exists s. assumption.
   - exists s. assumption.
-  - exists (succ_sort s). apply type_Heq ; try assumption.
+  - exists s. apply type_Heq ; try assumption.
     + eapply type_ProjT1 ; eassumption.
     + eapply @type_ProjT2 with (A1 := A1) ; eassumption.
   - destruct (typed_ind_type hg isdecl) as [s h].
