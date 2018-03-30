@@ -139,11 +139,11 @@ Proof.
   rewrite <- eq in H. inversion H. subst. reflexivity.
 Defined.
 
-Fixpoint weak_glob_red1 {Σ d Γ t1 t2} (h : Σ ;;; Γ |-i t1 ▷ t2) :
-  (d::Σ) ;;; Γ |-i t1 ▷ t2
+Fixpoint weak_glob_red1 {Σ d t1 t2} (h : Σ |-i t1 ▷ t2) :
+  (d::Σ) |-i t1 ▷ t2
 
-with weak_glob_redbrs1 {Σ d Γ b1 b2} (h : redbrs1 Σ Γ b1 b2) :
-  redbrs1 (d::Σ) Γ b1 b2.
+with weak_glob_redbrs1 {Σ d b1 b2} (h : redbrs1 Σ b1 b2) :
+  redbrs1 (d::Σ) b1 b2.
 Proof.
   - induction h ; try (econstructor ; eassumption).
     econstructor. eapply weak_glob_redbrs1. assumption.
@@ -153,11 +153,11 @@ Proof.
 Defined.
 
 Lemma weak_glob_conv :
-  forall {Σ ϕ d Γ t1 t2},
-    (Σ, ϕ) ;;; Γ |-i t1 = t2 ->
-    (d::Σ, ϕ) ;;; Γ |-i t1 = t2.
+  forall {Σ ϕ d t1 t2},
+    (Σ, ϕ) |-i t1 = t2 ->
+    (d::Σ, ϕ) |-i t1 = t2.
 Proof.
-  intros Σ ϕ d Γ t1 t2 h. induction h.
+  intros Σ ϕ d t1 t2 h. induction h.
   all: try (econstructor ; eassumption).
   - cbn in *. eapply conv_red_l ; try eassumption.
     cbn. eapply weak_glob_red1. assumption.
