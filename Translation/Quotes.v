@@ -5,6 +5,17 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 (* From Translation Require Import SAst SLiftSubst SCommon ITyping. *)
 
+(* Proof of concept: It is possible for heq to live in the same universe has its
+   arguments. Meaning we can lower the universe in our definition.
+ *)
+(* Definition transport {T1 T2 : Set} (p : T1 = T2) (t : T1) : T2 := *)
+(*   match p with *)
+(*   | eq_refl => fun x => x *)
+(*   end t. *)
+
+(* Inductive heq {A : Set} (a : A) {B : Set} (b : B) : Set := *)
+(*   heqPair (p : A = B) (e : transport p a = b). *)
+
 Definition J (A : Type) (u : A) (P : forall (x : A), u = x -> Type)
            (w : P u (@eq_refl A u)) (v : A) (p : u = v) : P v p :=
   match p with

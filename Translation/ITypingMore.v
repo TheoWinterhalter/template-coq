@@ -134,7 +134,8 @@ Proof.
   (* - apply cong_Heq. *)
   (*   all: try (apply eq_reflexivity ; eassumption). *)
   (*   assumption. *)
-Defined.
+(* Defined. *)
+Admitted.
 
 Lemma type_HeqToEq' :
   forall {Σ Γ A u v p},
@@ -144,7 +145,7 @@ Lemma type_HeqToEq' :
 Proof.
   intros Σ Γ A u v p hg h.
   destruct (istype_type hg h) as [? i].
-  destruct (inversionHeq hg i) as [? [[[[? ?] ?] ?] ?]].
+  ttinv i.
   eapply type_HeqToEq ; eassumption.
 Defined.
 
@@ -156,7 +157,7 @@ Fact sort_heq :
 Proof.
   intros Σ Γ s1 s2 A B e hg h.
   destruct (istype_type hg h) as [? hty].
-  destruct (inversionHeq hg hty) as [? [[[[? ?] ?] ?] ?]].
+  ttinv hty.
   eapply type_HeqToEq' ; try assumption.
   eapply heq_sort ; eassumption.
 Defined.
@@ -190,7 +191,7 @@ Lemma type_HeqSym' :
 Proof.
   intros Σ Γ A a B b p hg h.
   destruct (istype_type hg h) as [? hty].
-  destruct (inversionHeq hg hty) as [? [[[[? ?] ?] ?] ?]].
+  ttinv hty.
   now eapply type_HeqSym.
 Defined.
 
@@ -203,10 +204,14 @@ Lemma type_HeqTrans' :
 Proof.
   intros Σ Γ A a B b C c p q hg h1 h2.
   destruct (istype_type hg h1) as [? i1].
-  destruct (inversionHeq hg i1) as [? [[[[? iB1] ?] ?] ?]].
+  ttinv i1.
   destruct (istype_type hg h2) as [? i2].
-  destruct (inversionHeq hg i2) as [? [[[[iB2 ?] ?] ?] ?]].
+  ttinv i2.
   eapply type_HeqTrans. all: try eassumption.
+  (* We wish not to use uniqueness in such a place.
+     Instead we will lower the universe of Heq.
+   *)
+
   destruct (uniqueness iB2 iB1) as [? eq].
   eapply type_conv ; [ eassumption | idtac | eassumption ].
   apply (eq_typing hg eq).
