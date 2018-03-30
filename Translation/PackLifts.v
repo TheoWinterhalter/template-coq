@@ -2,8 +2,9 @@
 
 From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
 From Template Require Import Ast utils LiftSubst Typing.
-From Translation Require Import SAst SInduction SLiftSubst SCommon XTyping ITyping
-                                ITypingLemmata ITypingMore.
+From Translation
+Require Import util SAst SInduction SLiftSubst SCommon XTyping Conversion
+               ITyping ITypingLemmata ITypingMore.
 
 (* In order to do things properly we need to extend the context heterogenously,
    this is done by extending the context with packed triples
@@ -959,6 +960,108 @@ Proof.
   eassumption.
 Defined.
 
+Fixpoint llift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
+  Σ |-i llift n k t1 ▷ llift n k t2
+
+with llift_redbrs1 {Σ n k b1 b2} (h : redbrs1 Σ b1 b2) :
+  redbrs1 Σ
+          (map (on_snd (llift n k)) b1) (map (on_snd (llift n k)) b2).
+Proof.
+  - { destruct h ; cbn ;
+      try match goal with
+          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
+            match tt with
+            | context [t] =>
+              econstructor ;
+              eapply llift_red1 ; [ exact h | .. ]
+            end
+          end.
+      - eapply meta_red_eq ; [ econstructor |].
+        replace k with (k + 0)%nat by omega.
+        rewrite llift_subst.
+        replace (k + 0)%nat with k by omega.
+        replace (S k + 0)%nat with (S k) by omega.
+        reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor | reflexivity ].
+        eapply llift_redbrs1. assumption.
+    }
+
+  - { destruct h.
+      - econstructor. eapply llift_red1. assumption.
+      - cbn. econstructor. eapply llift_redbrs1. assumption.
+    }
+Defined.
+
+Lemma llift_conv :
+  forall {Σ n k t1 t2},
+    Σ |-i t1 = t2 ->
+    Σ |-i llift n k t1 = llift n k t2.
+Proof.
+  intros Σ n k t1 t2 h.
+  induction h.
+  - apply conv_eq. admit.
+  - eapply conv_red_l.
+    + eapply llift_red1. eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + eapply llift_red1. eassumption.
+  - eapply conv_trans ; eassumption.
+Admitted.
+
+Fixpoint rlift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
+  Σ |-i rlift n k t1 ▷ rlift n k t2
+
+with rlift_redbrs1 {Σ n k b1 b2} (h : redbrs1 Σ b1 b2) :
+  redbrs1 Σ
+          (map (on_snd (rlift n k)) b1) (map (on_snd (rlift n k)) b2).
+Proof.
+  - { destruct h ; cbn ;
+      try match goal with
+          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
+            match tt with
+            | context [t] =>
+              econstructor ;
+              eapply rlift_red1 ; [ exact h | .. ]
+            end
+          end.
+      - eapply meta_red_eq ; [ econstructor |].
+        replace k with (k + 0)%nat by omega.
+        rewrite rlift_subst.
+        replace (k + 0)%nat with k by omega.
+        replace (S k + 0)%nat with (S k) by omega.
+        reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor | reflexivity ].
+        eapply rlift_redbrs1. assumption.
+    }
+
+  - { destruct h.
+      - econstructor. eapply rlift_red1. assumption.
+      - cbn. econstructor. eapply rlift_redbrs1. assumption.
+    }
+Defined.
+
+Lemma rlift_conv :
+  forall {Σ n k t1 t2},
+    Σ |-i t1 = t2 ->
+    Σ |-i rlift n k t1 = rlift n k t2.
+Proof.
+  intros Σ n k t1 t2 h.
+  induction h.
+  - apply conv_eq. admit.
+  - eapply conv_red_l.
+    + eapply rlift_red1. eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + eapply rlift_red1. eassumption.
+  - eapply conv_trans ; eassumption.
+Admitted.
+
 Ltac lh h :=
   lazymatch goal with
   | [ type_llift' :
@@ -967,14 +1070,7 @@ Ltac lh h :=
           type_glob Σ ->
           ismix' Σ Γ Γ1 Γ2 Γm ->
           Σ;;; Γ ,,, Γm ,,, llift_context #|Γm| Δ
-          |-i llift #|Γm| #|Δ| t : llift #|Γm| #|Δ| A,
-      cong_llift' :
-        forall (Σ : sglobal_context) (Γ Γ1 Γ2 Γm Δ : scontext) (t1 t2 A : sterm),
-          Σ;;; Γ ,,, Γ1 ,,, Δ |-i t1 = t2 : A ->
-          type_glob Σ ->
-          ismix' Σ Γ Γ1 Γ2 Γm ->
-          Σ;;; Γ ,,, Γm ,,, llift_context #|Γm| Δ |-i llift #|Γm| #|Δ| t1
-          = llift #|Γm| #|Δ| t2 : llift #|Γm| #|Δ| A
+          |-i llift #|Γm| #|Δ| t : llift #|Γm| #|Δ| A
     |- _ ] =>
     lazymatch type of h with
     | _ ;;; ?Γ' ,,, ?Γ1' ,,, ?Δ' |-i _ : ?T' =>
@@ -1007,38 +1103,8 @@ Ltac lh h :=
           ]
         | .. ]
       | .. ]
-    | _ ;;; ?Γ' ,,, ?Γ1' ,,, ?Δ' |-i _ = _ : ?T' =>
-      eapply meta_eqconv ; [
-        eapply meta_eqctx_conv ; [
-          eapply cong_llift' with (Γ := Γ') (Γ1 := Γ1') (Δ := Δ') (A := T') ; [
-            exact h
-          | eassumption
-          | eassumption
-          ]
-        | .. ]
-      | .. ]
-    | _ ;;; (?Γ' ,,, ?Γ1' ,,, ?Δ'),, ?d' |-i _ = _ : ?T' =>
-      eapply meta_eqconv ; [
-        eapply meta_eqctx_conv ; [
-          eapply cong_llift' with (Γ := Γ') (Γ1 := Γ1') (Δ := Δ',, d') (A := T') ; [
-            exact h
-          | eassumption
-          | eassumption
-          ]
-        | .. ]
-      | .. ]
-    | _ ;;; (?Γ' ,,, ?Γ1' ,,, ?Δ'),, ?d',, ?d'' |-i _ = _ : ?T' =>
-      eapply meta_eqconv ; [
-        eapply meta_eqctx_conv ; [
-          eapply cong_llift' with (Γ := Γ') (Γ1 := Γ1') (Δ := (Δ',, d'),, d'') (A := T') ; [
-            exact h
-          | eassumption
-          | eassumption
-          ]
-        | .. ]
-      | .. ]
     end ; try (cbn ; reflexivity)
-  | _ => fail "Cannot retrieve type_llift' or cong_llift'"
+  | _ => fail "Cannot retrieve type_llift'"
   end.
 
 Ltac rh h :=
@@ -1049,14 +1115,7 @@ Ltac rh h :=
           type_glob Σ ->
           ismix' Σ Γ Γ1 Γ2 Γm ->
           Σ;;; Γ ,,, Γm ,,, rlift_context #|Γm| Δ
-          |-i rlift #|Γm| #|Δ| t : rlift #|Γm| #|Δ| A,
-      cong_rlift' :
-        forall (Σ : sglobal_context) (Γ Γ1 Γ2 Γm Δ : scontext) (t1 t2 A : sterm),
-          Σ;;; Γ ,,, Γ2 ,,, Δ |-i t1 = t2 : A ->
-          type_glob Σ ->
-          ismix' Σ Γ Γ1 Γ2 Γm ->
-          Σ;;; Γ ,,, Γm ,,, rlift_context #|Γm| Δ |-i rlift #|Γm| #|Δ| t1
-          = rlift #|Γm| #|Δ| t2 : rlift #|Γm| #|Δ| A
+          |-i rlift #|Γm| #|Δ| t : rlift #|Γm| #|Δ| A
     |- _ ] =>
     lazymatch type of h with
     | _ ;;; ?Γ' ,,, ?Γ2' ,,, ?Δ' |-i _ : ?T' =>
@@ -1089,48 +1148,14 @@ Ltac rh h :=
           ]
         | .. ]
       | .. ]
-    | _ ;;; ?Γ' ,,, ?Γ2' ,,, ?Δ' |-i _ = _ : ?T' =>
-      eapply meta_eqconv ; [
-        eapply meta_eqctx_conv ; [
-          eapply cong_rlift' with (Γ := Γ') (Γ2 := Γ2') (Δ := Δ') (A := T') ; [
-            exact h
-          | eassumption
-          | eassumption
-          ]
-        | .. ]
-      | .. ]
-    | _ ;;; (?Γ' ,,, ?Γ2' ,,, ?Δ'),, ?d' |-i _ = _ : ?T' =>
-      eapply meta_eqconv ; [
-        eapply meta_eqctx_conv ; [
-          eapply cong_rlift' with (Γ := Γ') (Γ2 := Γ2') (Δ := Δ',, d') (A := T') ; [
-            exact h
-          | eassumption
-          | eassumption
-          ]
-        | .. ]
-      | .. ]
-    | _ ;;; (?Γ' ,,, ?Γ2' ,,, ?Δ'),, ?d',, ?d'' |-i _ = _ : ?T' =>
-      eapply meta_eqconv ; [
-        eapply meta_eqctx_conv ; [
-          eapply cong_rlift' with (Γ := Γ') (Γ2 := Γ2') (Δ := (Δ',, d'),, d'') (A := T') ; [
-            exact h
-          | eassumption
-          | eassumption
-          ]
-        | .. ]
-      | .. ]
     end ; try (cbn ; reflexivity)
-  | _ => fail "Cannot retrieve type_rlift' or cong_rlift'"
+  | _ => fail "Cannot retrieve type_rlift'"
   end.
 
 Ltac emh :=
   lazymatch goal with
   | h : _ ;;; _ |-i ?t : _ |- _ ;;; _ |-i llift _ _ ?t : _ => lh h
-  | h : _ ;;; _ |-i ?t = _ : _ |- _ ;;; _ |-i llift _ _ ?t = _ : _ =>
-    lh h
   | h : _ ;;; _ |-i ?t : _ |- _ ;;; _ |-i rlift _ _ ?t : _ => rh h
-  | h : _ ;;; _ |-i ?t = _ : _ |- _ ;;; _ |-i rlift _ _ ?t = _ : _ =>
-    rh h
   | _ => fail "Not a case for emh"
   end.
 
@@ -1141,26 +1166,12 @@ Fixpoint type_llift' {Σ Γ Γ1 Γ2 Γm Δ t A}
   Σ ;;; Γ ,,, Γm ,,, llift_context #|Γm| Δ
   |-i llift #|Γm| #|Δ| t : llift #|Γm| #|Δ| A
 
-with cong_llift' {Σ Γ Γ1 Γ2 Γm Δ t1 t2 A}
-  (h : Σ ;;; Γ ,,, Γ1 ,,, Δ |-i t1 = t2 : A) {struct h} :
-  type_glob Σ ->
-  ismix' Σ Γ Γ1 Γ2 Γm ->
-  Σ ;;; Γ ,,, Γm ,,, llift_context #|Γm| Δ
-  |-i llift #|Γm| #|Δ| t1 = llift #|Γm| #|Δ| t2 : llift #|Γm| #|Δ| A
-
 with type_rlift' {Σ Γ Γ1 Γ2 Γm Δ t A}
   (h : Σ ;;; Γ ,,, Γ2 ,,, Δ |-i t : A) {struct h} :
   type_glob Σ ->
   ismix' Σ Γ Γ1 Γ2 Γm ->
   Σ ;;; Γ ,,, Γm ,,, rlift_context #|Γm| Δ
   |-i rlift #|Γm| #|Δ| t : rlift #|Γm| #|Δ| A
-
-with cong_rlift' {Σ Γ Γ1 Γ2 Γm Δ t1 t2 A}
-  (h : Σ ;;; Γ ,,, Γ2 ,,, Δ |-i t1 = t2 : A) {struct h} :
-  type_glob Σ ->
-  ismix' Σ Γ Γ1 Γ2 Γm ->
-  Σ ;;; Γ ,,, Γm ,,, rlift_context #|Γm| Δ
-  |-i rlift #|Γm| #|Δ| t1 = rlift #|Γm| #|Δ| t2 : rlift #|Γm| #|Δ| A
 
 with wf_llift' {Σ Γ Γ1 Γ2 Γm Δ} (h : wf Σ (Γ ,,, Γ1 ,,, Δ)) {struct h} :
   type_glob Σ ->
@@ -1298,124 +1309,8 @@ Proof.
         + eassumption.
       - cbn. erewrite llift_type_of_constructor by eassumption.
         eapply type_Construct. eapply wf_llift' ; eassumption.
-      - eapply type_conv ; emh.
-    }
-
-  (* cong_llift' *)
-  - { dependent destruction h ; intros hg hm.
-      - apply eq_reflexivity. emh.
-      - apply eq_symmetry ; emh.
-      - eapply eq_transitivity ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite 2!llift_subst. cbn.
-        replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        eapply eq_beta ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite llift_subst.
-        replace (S #|Δ| + 0)%nat with (#|Δ| + 1)%nat by omega.
-        rewrite llift_subst.
-        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
-        eapply eq_JRefl ; emh.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !llift_decl_svass. cbn. f_equal. f_equal. f_equal.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_llift3 by omega. reflexivity.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_llift3 by omega. reflexivity.
-        + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
-          rewrite <- llift_subst.
-          change (sRefl (llift #|Γm| #|Δ| A) (llift #|Γm| #|Δ| u))
-            with (llift #|Γm| #|Δ| (sRefl A u)).
-          replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
-          rewrite <- llift_subst. f_equal. omega.
-      - cbn. eapply eq_TransportRefl ; emh.
-      - eapply eq_conv ; emh.
-      - cbn. eapply cong_Prod ; emh.
-      - cbn. eapply cong_Lambda ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite llift_subst. cbn.
-        replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        eapply cong_App ; emh.
-      - cbn. eapply cong_Eq ; emh.
-      - cbn. eapply cong_Refl ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite llift_subst.
-        replace (S #|Δ| + 0)%nat with (#|Δ| + 1)%nat by omega.
-        rewrite llift_subst.
-        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
-        eapply cong_J ; emh.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !llift_decl_svass. cbn. f_equal. f_equal. f_equal.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_llift3 by omega. reflexivity.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_llift3 by omega. reflexivity.
-        + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
-          rewrite <- llift_subst.
-          change (sRefl (llift #|Γm| #|Δ| A1) (llift #|Γm| #|Δ| u1))
-            with (llift #|Γm| #|Δ| (sRefl A1 u1)).
-          replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
-          rewrite <- llift_subst. f_equal. omega.
-      - cbn. eapply cong_Transport ; emh.
-      - cbn. eapply cong_Heq ; emh.
-      - cbn. eapply cong_Pack ; emh.
-      - cbn. eapply cong_HeqToEq ; emh.
-      - cbn. eapply cong_HeqRefl ; emh.
-      - cbn. eapply cong_HeqSym ; emh.
-      - cbn.
-        eapply cong_HeqTrans
-          with (B := llift #|Γm| #|Δ| B) (b := llift #|Γm| #|Δ| b) ; emh.
-      - cbn. eapply cong_HeqTransport ; emh.
-      - cbn. eapply cong_CongProd ; emh.
-        cbn. f_equal.
-        + rewrite lift_llift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite llift_subst. cbn. reflexivity.
-        + rewrite lift_llift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite llift_subst. cbn. reflexivity.
-      - cbn. eapply cong_CongLambda ; emh.
-        + cbn. f_equal.
-          * rewrite lift_llift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite llift_subst. cbn. reflexivity.
-          * rewrite lift_llift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite llift_subst. cbn. reflexivity.
-        + cbn. f_equal.
-          * rewrite lift_llift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite llift_subst. cbn. reflexivity.
-          * rewrite lift_llift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite llift_subst. cbn. reflexivity.
-          * rewrite lift_llift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite llift_subst. cbn. reflexivity.
-          * rewrite lift_llift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite llift_subst. cbn. reflexivity.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite 2!llift_subst. cbn.
-        replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        eapply cong_CongApp ; emh.
-        cbn. f_equal.
-        + rewrite lift_llift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite llift_subst. cbn. reflexivity.
-        + rewrite lift_llift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite llift_subst. cbn. reflexivity.
-      - cbn. eapply cong_CongEq ; emh.
-      - cbn. eapply cong_CongRefl ; emh.
-      - cbn. eapply cong_EqToHeq ; emh.
-      - cbn. eapply cong_HeqTypeEq ; emh.
-      - cbn. eapply cong_ProjT1 with (A2 := llift #|Γm| #|Δ| A2) ; emh.
-      - cbn. eapply cong_ProjT2 with (A1 := llift #|Γm| #|Δ| A1) ; emh.
-      - cbn. eapply cong_ProjTe ; emh.
-      - cbn. eapply eq_HeqToEqRefl ; emh.
+      - eapply type_conv ; try emh.
+        eapply llift_conv. assumption.
     }
 
   (* type_rlift' *)
@@ -1543,124 +1438,8 @@ Proof.
         + eassumption.
       - cbn. erewrite rlift_type_of_constructor by eassumption.
         eapply type_Construct. eapply wf_rlift' ; eassumption.
-      - eapply type_conv ; emh.
-    }
-
-  (* cong_rlift' *)
-  - { dependent destruction h ; intros hg hm.
-      - apply eq_reflexivity. emh.
-      - apply eq_symmetry ; emh.
-      - eapply eq_transitivity ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite 2!rlift_subst. cbn.
-        replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        eapply eq_beta ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite rlift_subst.
-        replace (S #|Δ| + 0)%nat with (#|Δ| + 1)%nat by omega.
-        rewrite rlift_subst.
-        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
-        eapply eq_JRefl ; emh.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !rlift_decl_svass. cbn. f_equal. f_equal. f_equal.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_rlift3 by omega. reflexivity.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_rlift3 by omega. reflexivity.
-        + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
-          rewrite <- rlift_subst.
-          change (sRefl (rlift #|Γm| #|Δ| A) (rlift #|Γm| #|Δ| u))
-            with (rlift #|Γm| #|Δ| (sRefl A u)).
-          replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
-          rewrite <- rlift_subst. f_equal. omega.
-      - cbn. eapply eq_TransportRefl ; emh.
-      - eapply eq_conv ; emh.
-      - cbn. eapply cong_Prod ; emh.
-      - cbn. eapply cong_Lambda ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite rlift_subst. cbn.
-        replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        eapply cong_App ; emh.
-      - cbn. eapply cong_Eq ; emh.
-      - cbn. eapply cong_Refl ; emh.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite rlift_subst.
-        replace (S #|Δ| + 0)%nat with (#|Δ| + 1)%nat by omega.
-        rewrite rlift_subst.
-        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
-        eapply cong_J ; emh.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !rlift_decl_svass. cbn. f_equal. f_equal. f_equal.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_rlift3 by omega. reflexivity.
-          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
-            rewrite lift_rlift3 by omega. reflexivity.
-        + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
-          rewrite <- rlift_subst.
-          change (sRefl (rlift #|Γm| #|Δ| A1) (rlift #|Γm| #|Δ| u1))
-            with (rlift #|Γm| #|Δ| (sRefl A1 u1)).
-          replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
-          rewrite <- rlift_subst. f_equal. omega.
-      - cbn. eapply cong_Transport ; emh.
-      - cbn. eapply cong_Heq ; emh.
-      - cbn. eapply cong_Pack ; emh.
-      - cbn. eapply cong_HeqToEq ; emh.
-      - cbn. eapply cong_HeqRefl ; emh.
-      - cbn. eapply cong_HeqSym ; emh.
-      - cbn.
-        eapply cong_HeqTrans
-          with (B := rlift #|Γm| #|Δ| B) (b := rlift #|Γm| #|Δ| b) ; emh.
-      - cbn. eapply cong_HeqTransport ; emh.
-      - cbn. eapply cong_CongProd ; emh.
-        cbn. f_equal.
-        + rewrite lift_rlift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite rlift_subst. cbn. reflexivity.
-        + rewrite lift_rlift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite rlift_subst. cbn. reflexivity.
-      - cbn. eapply cong_CongLambda ; emh.
-        + cbn. f_equal.
-          * rewrite lift_rlift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite rlift_subst. cbn. reflexivity.
-          * rewrite lift_rlift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite rlift_subst. cbn. reflexivity.
-        + cbn. f_equal.
-          * rewrite lift_rlift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite rlift_subst. cbn. reflexivity.
-          * rewrite lift_rlift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite rlift_subst. cbn. reflexivity.
-          * rewrite lift_rlift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite rlift_subst. cbn. reflexivity.
-          * rewrite lift_rlift3 by omega.
-            replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-            rewrite rlift_subst. cbn. reflexivity.
-      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
-        rewrite 2!rlift_subst. cbn.
-        replace (#|Δ| + 0)%nat with #|Δ| by omega.
-        eapply cong_CongApp ; emh.
-        cbn. f_equal.
-        + rewrite lift_rlift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite rlift_subst. cbn. reflexivity.
-        + rewrite lift_rlift3 by omega.
-          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
-          rewrite rlift_subst. cbn. reflexivity.
-      - cbn. eapply cong_CongEq ; emh.
-      - cbn. eapply cong_CongRefl ; emh.
-      - cbn. eapply cong_EqToHeq ; emh.
-      - cbn. eapply cong_HeqTypeEq ; emh.
-      - cbn. eapply cong_ProjT1 with (A2 := rlift #|Γm| #|Δ| A2) ; emh.
-      - cbn. eapply cong_ProjT2 with (A1 := rlift #|Γm| #|Δ| A1) ; emh.
-      - cbn. eapply cong_ProjTe ; emh.
-      - cbn. eapply eq_HeqToEqRefl ; emh.
+      - eapply type_conv ; try emh.
+        eapply rlift_conv. assumption.
     }
 
   (* wf_llift' *)
@@ -1754,21 +1533,6 @@ Proof.
   - eapply ismix_ismix' ; eassumption.
 Defined.
 
-Corollary cong_llift :
-  forall {Σ Γ Γ1 Γ2 Γm Δ t1 t2 A},
-    type_glob Σ ->
-    Σ ;;; Γ ,,, Γ1 ,,, Δ |-i t1 = t2 : A ->
-    ismix Σ Γ Γ1 Γ2 Γm ->
-    Σ ;;; Γ ,,, Γm ,,, llift_context #|Γm| Δ
-    |-i llift #|Γm| #|Δ| t1 = llift #|Γm| #|Δ| t2 : llift #|Γm| #|Δ| A.
-Proof.
-  intros Σ Γ Γ1 Γ2 Γm Δ t1 t2 A hg ht hm.
-  eapply cong_llift'.
-  - eassumption.
-  - assumption.
-  - eapply ismix_ismix' ; eassumption.
-Defined.
-
 Corollary wf_llift :
   forall {Σ Γ Γ1 Γ2 Γm Δ},
     type_glob Σ ->
@@ -1793,21 +1557,6 @@ Corollary type_rlift :
 Proof.
   intros Σ Γ Γ1 Γ2 Γm Δ t A hg ht hm.
   eapply type_rlift'.
-  - eassumption.
-  - assumption.
-  - eapply ismix_ismix' ; eassumption.
-Defined.
-
-Corollary cong_rlift :
-  forall {Σ Γ Γ1 Γ2 Γm Δ t1 t2 A},
-    type_glob Σ ->
-    Σ ;;; Γ ,,, Γ2 ,,, Δ |-i t1 = t2 : A ->
-    ismix Σ Γ Γ1 Γ2 Γm ->
-    Σ ;;; Γ ,,, Γm ,,, rlift_context #|Γm| Δ
-    |-i rlift #|Γm| #|Δ| t1 = rlift #|Γm| #|Δ| t2 : rlift #|Γm| #|Δ| A.
-Proof.
-  intros Σ Γ Γ1 Γ2 Γm Δ t1 t2 A hg ht hm.
-  eapply cong_rlift'.
   - eassumption.
   - assumption.
   - eapply ismix_ismix' ; eassumption.
@@ -1885,17 +1634,6 @@ Proof.
   - eassumption.
 Defined.
 
-Corollary cong_llift0 :
-  forall {Σ Γ Γ1 Γ2 Γm t1 t2 A},
-    type_glob Σ ->
-    Σ ;;; Γ ,,, Γ1 |-i t1 = t2 : A ->
-    ismix Σ Γ Γ1 Γ2 Γm ->
-    Σ ;;; Γ ,,, Γm |-i llift0 #|Γm| t1 = llift0 #|Γm| t2 : llift0 #|Γm| A.
-Proof.
-  intros Σ Γ Γ1 Γ2 Γm t1 t2 A hg ht hm.
-  eapply @cong_llift with (Δ := nil) ; eassumption.
-Defined.
-
 Corollary type_rlift0 :
   forall {Σ Γ Γ1 Γ2 Γm t A},
     type_glob Σ ->
@@ -1920,17 +1658,6 @@ Proof.
   - assumption.
   - exact ht.
   - eassumption.
-Defined.
-
-Corollary cong_rlift0 :
-  forall {Σ Γ Γ1 Γ2 Γm t1 t2 A},
-    type_glob Σ ->
-    Σ ;;; Γ ,,, Γ2 |-i t1 = t2 : A ->
-    ismix Σ Γ Γ1 Γ2 Γm ->
-    Σ ;;; Γ ,,, Γm |-i rlift0 #|Γm| t1 = rlift0 #|Γm| t2 : rlift0 #|Γm| A.
-Proof.
-  intros Σ Γ Γ1 Γ2 Γm t1 t2 A hg ht hm.
-  eapply @cong_rlift with (Δ := nil) ; eassumption.
 Defined.
 
 (* More lemmata about exchange.
