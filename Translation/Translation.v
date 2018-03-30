@@ -2,8 +2,8 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
-     Require Import SAst SLiftSubst SCommon XTyping ITyping
-                    ITypingLemmata ITypingMore PackLifts.
+Require Import util SAst SLiftSubst SCommon Conversion XTyping ITyping
+               ITypingInversions ITypingLemmata ITypingMore PackLifts.
 
 Section Translation.
 
@@ -156,12 +156,38 @@ Proof.
     change (0 + #|Γm|)%nat with #|Γm|.
     case_eq (x <? #|Γm|) ; intro e0 ; bprop e0.
     + exists (sProjTe (sRel x)). apply type_ProjTe' ; try assumption.
-      destruct (inversionRel hg h1) as [is1 [s1 hx1]].
-      destruct (inversionRel hg h2) as [is2 [s2 hx2]].
+      ttinv h1. ttinv h2.
+      rename is into is1, is0 into is2, h into hx1, h0 into hx2.
       assert (is1' : x < #|Γ1|) by (erewrite mix_length1 in e1 ; eassumption).
       assert (is2' : x < #|Γ2|) by (erewrite mix_length2 in e1 ; eassumption).
       cbn in hx1. erewrite @safe_nth_lt with (isdecl' := is1') in hx1.
       cbn in hx2. erewrite @safe_nth_lt with (isdecl' := is2') in hx2.
+      destruct (istype_type hg h1) as [s1 ?].
+      destruct (istype_type hg h2) as [s2 ?].
+      eapply type_conv.
+      * eapply type_Rel. eapply @wf_llift with (Δ := []) ; try eassumption.
+        eapply typing_wf ; eassumption.
+      * eapply type_Pack.
+        -- match goal with
+           | |- _ ;;; _ |-i _ : ?S => change S with (llift0 #|Γm| S)
+           end.
+           eapply type_llift0 ; eassumption.
+        -- match goal with
+           | |- _ ;;; _ |-i _ : ?S => change S with (rlift0 #|Γm| S)
+           end.
+           eapply type_rlift0 ; try eassumption.
+           (* We go back to old problems!
+              This time it isn't even clear how to get out of it...
+              Even with uniqueness we don't have enough to go.
+
+              We know from ismix that the two lhs of hx1/2 are in the same sort.
+              However, this result doesn't get inherited by U1 and U2
+              unfortunately. This would be an instance of subject reduction.
+              Would it be worth proving then?
+            *)
+           fail.
+
+
       eapply type_conv'.
       * assumption.
       * eapply type_Rel. eapply @wf_llift with (Δ := []) ; try eassumption.
