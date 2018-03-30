@@ -1,7 +1,8 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import util SAst SInduction SLiftSubst SCommon Conversion.
+From Translation
+Require Import util SAst SInduction SLiftSubst SCommon Conversion.
 
 Open Scope s_scope.
 
@@ -26,8 +27,8 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 
 | type_Lambda Γ n n' t b s1 s2 bty :
     Σ ;;; Γ |-i t : sSort s1 ->
-    Σ ;;; Γ ,, svass n t |-i bty : sSort s2 ->
-    Σ ;;; Γ ,, svass n t |-i b : bty ->
+    Σ ;;; Γ ,, svass n' t |-i bty : sSort s2 ->
+    Σ ;;; Γ ,, svass n' t |-i b : bty ->
     Σ ;;; Γ |-i (sLambda n t bty b) : sProd n' t bty
 
 | type_App Γ n s1 s2 t A B u :
@@ -69,7 +70,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i a : A ->
     Σ ;;; Γ |-i b : B ->
-    Σ ;;; Γ |-i sHeq A a B b : sSort (succ_sort s)
+    Σ ;;; Γ |-i sHeq A a B b : sSort s
 
 | type_HeqToEq Γ A u v p s :
     Σ ;;; Γ |-i p : sHeq A u A v ->
@@ -118,7 +119,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
     Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
-    Σ ;;; Γ |-i sCongProd z B1 B2 pA pB :
+    Σ ;;; Γ |-i sCongProd B1 B2 pA pB :
     sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
          (sSort (max_sort s z)) (sProd ny A2 B2)
 
@@ -197,7 +198,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : B ->
-    Σ ;;; Γ |-i sHeqTypeEq s p : sEq (sSort s) A B
+    Σ ;;; Γ |-i sHeqTypeEq p : sEq (sSort s) A B
 
 | type_Pack Γ A1 A2 s :
     Σ ;;; Γ |-i A1 : sSort s ->
@@ -236,7 +237,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 | type_conv Γ t A B s :
     Σ ;;; Γ |-i t : A ->
     Σ ;;; Γ |-i B : sSort s ->
-    Σ ;;; Γ |-i A = B ->
+    Σ |-i A = B ->
     Σ ;;; Γ |-i t : B
 
 where " Σ ;;; Γ '|-i' t : T " := (@typing Σ Γ t T) : i_scope

@@ -91,3 +91,28 @@ Ltac propb :=
   | |- (_ =? _) = true => apply Nat.eqb_eq
   | |- (_ =? _) = false => apply beq_nat_false
   end.
+
+
+
+
+Ltac rewrite_assumption :=
+  match goal with
+  | H : _, e : _ = _ |- _ => rewrite H
+  | H : _ = _ |- _ => rewrite H
+  end.
+
+Ltac rewrite_assumptions :=
+  repeat rewrite_assumption.
+
+Ltac erewrite_assumption :=
+  match goal with
+  | H : _, e : _ = _ |- _ => erewrite H
+  end.
+
+Ltac erewrite_assumptions :=
+  erewrite_assumption ; [ try erewrite_assumptions | .. ].
+
+Tactic Notation "erewrite_assumption" "by" tactic(tac) :=
+  match goal with
+  | H : _, e : _ = _ |- _ => erewrite H by tac
+  end.

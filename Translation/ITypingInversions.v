@@ -10,7 +10,7 @@ Lemma inversionRel :
     Σ ;;; Γ |-i sRel n : T ->
     ∑ isdecl,
       let A := lift0 (S n) (safe_nth Γ (exist _ n isdecl)).(sdecl_type) in
-      Σ ;;; Γ |-i A = T.
+      Σ |-i A = T.
 Proof.
   intros Σ Γ n T h. dependent induction h.
   - exists isdecl. apply conv_refl.
@@ -21,7 +21,7 @@ Defined.
 Lemma inversionSort :
   forall {Σ Γ s T},
     Σ ;;; Γ |-i sSort s : T ->
-    Σ ;;; Γ |-i sSort (succ_sort s) = T.
+    Σ |-i sSort (succ_sort s) = T.
 Proof.
   intros Σ Γ s T h.
   dependent induction h.
@@ -33,7 +33,7 @@ Lemma inversionInd :
   forall {Σ Γ ind T},
     Σ ;;; Γ |-i sInd ind : T ->
     ∑ univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-      Σ ;;; Γ |-i decl.(sind_type) = T.
+      Σ |-i decl.(sind_type) = T.
 Proof.
   intros Σ Γ ind T h.
   dependent induction h.
@@ -46,7 +46,7 @@ Lemma inversionConstruct :
   forall {Σ Γ ind i T},
     Σ ;;; Γ |-i sConstruct ind i : T ->
     ∑ univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-      Σ ;;; Γ |-i stype_of_constructor (fst Σ) (ind, i) univs decl isdecl = T.
+      Σ |-i stype_of_constructor (fst Σ) (ind, i) univs decl isdecl = T.
 Proof.
   intros Σ Γ ind i T h.
   dependent induction h.
@@ -71,7 +71,7 @@ Lemma inversionProd :
     ∑ s1 s2,
       (Σ ;;; Γ |-i A : sSort s1) *
       (Σ ;;; Γ ,, svass n A |-i B : sSort s2) *
-      (Σ ;;; Γ |-i sSort (max_sort s1 s2) = T).
+      (Σ |-i sSort (max_sort s1 s2) = T).
 Proof.
   intros Σ Γ n A B T h.
   dependent induction h.
@@ -84,18 +84,18 @@ Defined.
 Lemma inversionLambda :
   forall {Σ Γ na A B t T},
     Σ ;;; Γ |-i sLambda na A B t : T ->
-      ∑ s1 s2,
+      ∑ s1 s2 na',
         (Σ ;;; Γ |-i A : sSort s1) *
-        (Σ ;;; Γ ,, svass na A |-i B : sSort s2) *
-        (Σ ;;; Γ ,, svass na A |-i t : B) *
-        (Σ ;;; Γ |-i sProd na A B = T).
+        (Σ ;;; Γ ,, svass na' A |-i B : sSort s2) *
+        (Σ ;;; Γ ,, svass na' A |-i t : B) *
+        (Σ |-i sProd na' A B = T).
 Proof.
   intros Σ Γ na A B t T h.
   dependent induction h.
-  - exists s1, s2. split ; [ split ; [ split | .. ] | ..] ; try assumption.
+  - exists s1, s2, n'. split ; [ split ; [ split | .. ] | ..] ; try assumption.
     apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
-  - destruct IHh1 as [s1 [s2 [[[? ?] ?] ?]]].
-    exists s1, s2. split ; [ split ; [ split | .. ] | ..] ; try assumption.
+  - destruct IHh1 as (s1 & s2 & na' & ?). split_hyps.
+    exists s1, s2, na'. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -107,7 +107,7 @@ Lemma inversionApp :
       (Σ ;;; Γ ,, svass n A |-i B : sSort s2) *
       (Σ ;;; Γ |-i t : sProd n A B) *
       (Σ ;;; Γ |-i u : A) *
-      (Σ ;;; Γ |-i B{ 0 := u } = T).
+      (Σ |-i B{ 0 := u } = T).
 Proof.
   intros Σ Γ t n A B u T h.
   dependent induction h.
@@ -125,7 +125,7 @@ Lemma inversionEq :
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i u : A) *
       (Σ ;;; Γ |-i v : A) *
-      (Σ ;;; Γ |-i sSort s = T).
+      (Σ |-i sSort s = T).
 Proof.
   intros Σ Γ A u v T h.
   dependent induction h.
@@ -142,7 +142,7 @@ Lemma inversionRefl :
     ∑ s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i u : A) *
-      (Σ ;;; Γ |-i sEq A u u = T).
+      (Σ |-i sEq A u u = T).
 Proof.
   intros Σ Γ A u T h.
   dependent induction h.
@@ -164,7 +164,7 @@ Lemma inversionJ :
          svass ne (sEq (lift0 1 A) (lift0 1 u) (sRel 0)) |-i P : sSort s2) *
       (Σ ;;; Γ |-i p : sEq A u v) *
       (Σ ;;; Γ |-i w : (P {1 := u}){0 := sRefl A u}) *
-      (Σ ;;; Γ |-i P{1 := v}{0 := p} = T).
+      (Σ |-i P{1 := v}{0 := p} = T).
 Proof.
   intros Σ Γ A u P w v p T h.
   dependent induction h.
@@ -184,7 +184,7 @@ Lemma inversionTransport :
       (Σ ;;; Γ |-i t : A) *
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
-      (Σ ;;; Γ |-i B = T).
+      (Σ |-i B = T).
 Proof.
   intros Σ Γ A B p t T h.
   dependent induction h.
@@ -202,7 +202,7 @@ Lemma inversionHeq :
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i a : A) *
       (Σ ;;; Γ |-i b : B) *
-      (Σ ;;; Γ |-i sSort (succ_sort s) = T).
+      (Σ |-i sSort s = T).
 Proof.
   intros Σ Γ A B a b T h.
   dependent induction h.
@@ -218,7 +218,7 @@ Lemma inversionPack :
     ∑ s,
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
-      (Σ ;;; Γ |-i sSort s = T).
+      (Σ |-i sSort s = T).
 Proof.
   intros Σ Γ A1 A2 T h.
   dependent induction h.
@@ -236,7 +236,7 @@ Lemma inversionHeqToEq :
      (Σ ;;; Γ |-i A : sSort s) *
      (Σ ;;; Γ |-i u : A) *
      (Σ ;;; Γ |-i v : A) *
-     (Σ ;;; Γ |-i sEq A u v = T).
+     (Σ |-i sEq A u v = T).
 Proof.
   intros Σ Γ p T h.
   dependent induction h.
@@ -253,7 +253,7 @@ Lemma inversionHeqRefl :
     ∑ s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i a : A) *
-      (Σ ;;; Γ |-i sHeq A a A a = T).
+      (Σ |-i sHeq A a A a = T).
 Proof.
   intros Σ Γ A a T h.
   dependent induction h.
@@ -272,7 +272,7 @@ Lemma inversionHeqSym :
       (Σ ;;; Γ |-i a : A) *
       (Σ ;;; Γ |-i b : B) *
       (Σ ;;; Γ |-i p : sHeq A a B b) *
-      (Σ ;;; Γ |-i sHeq B b A a = T).
+      (Σ |-i sHeq B b A a = T).
 Proof.
   intros Σ Γ p T h.
   dependent induction h.
@@ -294,7 +294,7 @@ Lemma inversionHeqTrans :
       (Σ ;;; Γ |-i c : C) *
       (Σ ;;; Γ |-i p : sHeq A a B b) *
       (Σ ;;; Γ |-i q : sHeq B b C c) *
-      (Σ ;;; Γ |-i sHeq A a C c = T).
+      (Σ |-i sHeq A a C c = T).
 Proof.
   intros Σ Γ p q T h.
   dependent induction h.
@@ -312,7 +312,7 @@ Lemma inversionHeqTransport :
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i t : A) *
       (Σ ;;; Γ |-i p : sEq (sSort s) A B) *
-      (Σ ;;; Γ |-i sHeq A t B (sTransport A B p t) = T).
+      (Σ |-i sHeq A t B (sTransport A B p t) = T).
 Proof.
   intros Σ Γ p t T h.
   dependent induction h.
@@ -323,9 +323,9 @@ Proof.
 Defined.
 
 Lemma inversionCongProd :
-  forall {Σ Γ z B1 B2 pA pB T},
-    Σ ;;; Γ |-i sCongProd z B1 B2 pA pB : T ->
-    ∑ s nx ny np A1 A2,
+  forall {Σ Γ B1 B2 pA pB T},
+    Σ ;;; Γ |-i sCongProd B1 B2 pA pB : T ->
+    ∑ s z nx ny np A1 A2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ ,, svass np (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
@@ -334,17 +334,17 @@ Lemma inversionCongProd :
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z) *
       (Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z) *
-      (Σ ;;; Γ |-i sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
-                       (sSort (max_sort s z)) (sProd ny A2 B2)
-                = T).
+      (Σ |-i sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
+                 (sSort (max_sort s z)) (sProd ny A2 B2)
+          = T).
 Proof.
-  intros Σ Γ z B1 B2 pA pB T h.
+  intros Σ Γ B1 B2 pA pB T h.
   dependent induction h.
-  - exists s, nx, ny, np, A1, A2. repeat split. all: try assumption.
+  - exists s, z, nx, ny, np, A1, A2. repeat split. all: try assumption.
     apply conv_refl.
-  - destruct IHh1 as (s' & nx & ny & np & A1 & A2 & ?).
+  - destruct IHh1 as (s' & z & nx & ny & np & A1 & A2 & ?).
     split_hyps.
-    exists s', nx, ny, np, A1, A2. repeat split. all: try assumption.
+    exists s', z, nx, ny, np, A1, A2. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -367,9 +367,9 @@ Lemma inversionCongLambda :
       (Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z) *
       (Σ ;;; Γ ,, svass nx A1 |-i t1 : B1) *
       (Σ ;;; Γ ,, svass ny A2 |-i t2 : B2) *
-      (Σ ;;; Γ |-i sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
-                       (sProd ny A2 B2) (sLambda ny A2 B2 t2)
-                = T).
+      (Σ |-i sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
+                 (sProd ny A2 B2) (sLambda ny A2 B2 t2)
+          = T).
 Proof.
   intros Σ Γ B1 B2 t1 t2 pA pB pt T h.
   dependent induction h.
@@ -398,9 +398,9 @@ Lemma inversionCongApp :
       (Σ ;;; Γ |-i u2 : sProd ny A2 B2) *
       (Σ ;;; Γ |-i v1 : A1) *
       (Σ ;;; Γ |-i v2 : A2) *
-      (Σ ;;; Γ |-i sHeq (B1{0 := v1}) (sApp u1 nx A1 B1 v1)
-                       (B2{0 := v2}) (sApp u2 ny A2 B2 v2)
-                = T).
+      (Σ |-i sHeq (B1{0 := v1}) (sApp u1 nx A1 B1 v1)
+                 (B2{0 := v2}) (sApp u2 ny A2 B2 v2)
+          = T).
 Proof.
   intros Σ Γ B1 B2 pu pA pB pv T h.
   dependent induction h.
@@ -425,8 +425,7 @@ Lemma inversionCongEq :
       (Σ ;;; Γ |-i u2 : A2) *
       (Σ ;;; Γ |-i v1 : A1) *
       (Σ ;;; Γ |-i v2 : A2) *
-      (Σ ;;; Γ |-i sHeq (sSort s) (sEq A1 u1 v1) (sSort s) (sEq A2 u2 v2)
-                = T).
+      (Σ |-i sHeq (sSort s) (sEq A1 u1 v1) (sSort s) (sEq A2 u2 v2) = T).
 Proof.
   intros Σ Γ pA pu pv T h.
   dependent induction h.
@@ -447,9 +446,9 @@ Lemma inversionCongRefl :
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i u1 : A1) *
       (Σ ;;; Γ |-i u2 : A2) *
-      (Σ ;;; Γ |-i sHeq (sEq A1 u1 u1) (sRefl A1 u1)
-                       (sEq A2 u2 u2) (sRefl A2 u2)
-                = T).
+      (Σ |-i sHeq (sEq A1 u1 u1) (sRefl A1 u1)
+                 (sEq A2 u2 u2) (sRefl A2 u2)
+          = T).
 Proof.
   intros Σ Γ pA pu T h.
   dependent induction h.
@@ -468,7 +467,7 @@ Lemma inversionEqToHeq :
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i u : A) *
       (Σ ;;; Γ |-i v : A) *
-      (Σ ;;; Γ |-i sHeq A u A v = T).
+      (Σ |-i sHeq A u A v = T).
 Proof.
   intros Σ Γ p T h. dependent induction h.
   - exists A, u, v, s. repeat split. all: try assumption. apply conv_refl.
@@ -478,21 +477,21 @@ Proof.
 Defined.
 
 Lemma inversionHeqTypeEq :
-  forall {Σ Γ s p T},
-    Σ ;;; Γ |-i sHeqTypeEq s p : T ->
-    ∑ A u B v,
+  forall {Σ Γ p T},
+    Σ ;;; Γ |-i sHeqTypeEq p : T ->
+    ∑ A u B v s,
       (Σ ;;; Γ |-i p : sHeq A u B v) *
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i u : A) *
       (Σ ;;; Γ |-i v : B) *
-      (Σ ;;; Γ |-i sEq (sSort s) A B = T).
+      (Σ |-i sEq (sSort s) A B = T).
 Proof.
-  intros Σ Γ s p T h.
+  intros Σ Γ p T h.
   dependent induction h.
-  - exists A, u, B, v. repeat split. all: try assumption. apply conv_refl.
-  - destruct IHh1 as (A' & u & B' & v & ?). split_hyps.
-    exists A', u, B', v. repeat split. all: try assumption.
+  - exists A, u, B, v, s. repeat split. all: try assumption. apply conv_refl.
+  - destruct IHh1 as (A' & u & B' & v & s' & ?). split_hyps.
+    exists A', u, B', v, s'. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -503,7 +502,7 @@ Lemma inversionProjT1 :
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i p : sPack A1 A2) *
-      (Σ ;;; Γ |-i A1 = T).
+      (Σ |-i A1 = T).
 Proof.
   intros Σ Γ p T h.
   dependent induction h.
@@ -520,7 +519,7 @@ Lemma inversionProjT2 :
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i p : sPack A1 A2) *
-      (Σ ;;; Γ |-i A2 = T).
+      (Σ |-i A2 = T).
 Proof.
   intros Σ Γ p T h.
   dependent induction h.
@@ -537,7 +536,7 @@ Lemma inversionProjTe :
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i p : sPack A1 A2) *
-      (Σ ;;; Γ |-i sHeq A1 (sProjT1 p) A2 (sProjT2 p) = T).
+      (Σ |-i sHeq A1 (sProjT1 p) A2 (sProjT2 p) = T).
 Proof.
   intros Σ Γ p T h.
   dependent induction h.
@@ -547,7 +546,7 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
-(*Corollary: Uniqueness of typing *)
+(* Tactic to apply inversion automatically *)
 
 Ltac ttinv h :=
   let s := fresh "s" in
@@ -584,7 +583,7 @@ Ltac ttinv h :=
     | sRel _ => destruct (inversionRel h) as [his hh]
     | sSort _ => pose proof (inversionSort h) as hh
     | sProd _ _ _ => destruct (inversionProd h) as (s1 & s2 & hh) ; splits_one hh
-    | sLambda _ _ _ _ => destruct (inversionLambda h) as (s1 & s2 & hh) ;
+    | sLambda _ _ _ _ => destruct (inversionLambda h) as (s1 & s2 & na & hh) ;
                         splits_one hh
     | sApp _ _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & hh) ;
                        splits_one hh
@@ -606,8 +605,8 @@ Ltac ttinv h :=
     | sHeqTransport _ _ =>
       destruct (inversionHeqTransport h) as (A & B & s & hh) ;
       splits_one hh
-    | sCongProd _ _ _ _ _ =>
-      destruct (inversionCongProd h) as (s & nx & ny & np & A1 & A2 & hh) ;
+    | sCongProd _ _ _ _ =>
+      destruct (inversionCongProd h) as (s & z & nx & ny & np & A1 & A2 & hh) ;
       splits_one hh
     | sCongLambda _ _ _ _ _ _ _ =>
       destruct (inversionCongLambda h)
@@ -626,8 +625,8 @@ Ltac ttinv h :=
     | sEqToHeq _ =>
       destruct (inversionEqToHeq h) as (A & u & v & s & hh) ;
       splits_one hh
-    | sHeqTypeEq _ _ =>
-      destruct (inversionHeqTypeEq h) as (A & u & B & v & hh) ;
+    | sHeqTypeEq _ =>
+      destruct (inversionHeqTypeEq h) as (A & u & B & v & s & hh) ;
       splits_one hh
     | sPack _ _ => destruct (inversionPack h) as (s & hh) ; splits_one hh
     | sProjT1 _ =>
@@ -643,147 +642,3 @@ Ltac ttinv h :=
       splits_one hh
     end
   end.
-
-Ltac unitac h1 h2 :=
-  ttinv h1 ; ttinv h2 ;
-  eapply conv_trans ; [
-    eapply conv_sym ; eassumption
-  | idtac
-  ].
-
-Lemma uniqueness :
-  forall {Σ Γ A B u},
-    Σ ;;; Γ |-i u : A ->
-    Σ ;;; Γ |-i u : B ->
-    Σ ;;; Γ |-i A = B.
-Proof.
-  intros Σ Γ A B u h1 h2.
-  revert Γ A B h1 h2.
-  induction u ; intros Γ A B h1 h2.
-  all: try unitac h1 h2. all: try assumption.
-  - cbn in *. erewrite @safe_nth_irr with (isdecl' := is) in h0. assumption.
-  - specialize (IHu1 _ _ _ h h0).
-    specialize (IHu2 _ _ _ h4 h7).
-    eapply conv_trans ; try eapply h6.
-    pose proof (sort_conv_inv IHu1) as e1.
-    pose proof (sort_conv_inv IHu2) as e2.
-    subst. apply conv_refl.
-  - specialize (IHu1 _ _ _ h0 h6).
-    pose proof (sort_conv_inv IHu1) as e. subst. assumption.
-  - specialize (IHu1 _ _ _ h h0).
-    pose proof (sort_conv_inv IHu1) as e. subst. assumption.
-  - specialize (IHu _ _ _ h h0).
-    pose proof (heq_conv_inv IHu) as e. split_hyps.
-    eapply conv_trans ; try exact h8.
-    apply cong_Eq ; assumption.
-  - specialize (IHu _ _ _ h4 h10).
-    pose proof (heq_conv_inv IHu) as e. split_hyps.
-    eapply conv_trans ; [ | exact h9 ].
-    apply cong_Heq ; assumption.
-  - specialize (IHu1 _ _ _ h5 h14).
-    specialize (IHu2 _ _ _ h4 h13).
-    pose proof (heq_conv_inv IHu1) as e1.
-    pose proof (heq_conv_inv IHu2) as e2. split_hyps.
-    eapply conv_trans ; [ | exact h12 ].
-    apply cong_Heq ; assumption.
-  - specialize (IHu1 _ _ _ h4 h9).
-    specialize (IHu2 _ _ _ h5 h10).
-    pose proof (eq_conv_inv IHu1) as e1. split_hyps.
-    eapply conv_trans ; [| exact h8 ].
-    apply cong_Heq ; try assumption.
-    + apply conv_refl.
-    + apply cong_Transport ; try assumption.
-      all: apply conv_refl.
-  - specialize (IHu3 _ _ _ h h0).
-    pose proof (heq_conv_inv IHu3) as e3. split_hyps.
-    pose proof (sort_conv_inv pi1_). subst.
-    eapply conv_trans ; [| exact h10 ].
-    apply cong_Heq ; try assumption.
-    + apply conv_refl.
-    + apply cong_Prod ; try assumption.
-      apply conv_refl.
-    + apply conv_refl.
-    + apply cong_Prod ; try assumption. apply conv_refl.
-  - specialize (IHu5 _ _ _ h0 h12).
-    pose proof (heq_conv_inv IHu5) as e5. split_hyps.
-    pose proof (sort_conv_inv pi1_). subst.
-    eapply conv_trans ; [| exact h13 ].
-    apply cong_Heq ; try assumption.
-    + apply cong_Prod ; try assumption. apply conv_refl.
-    + apply cong_Lambda ; try assumption. all: apply conv_refl.
-    + apply cong_Prod ; try assumption. apply conv_refl.
-    + apply cong_Lambda ; try assumption. all: apply conv_refl.
-  - specialize (IHu3 _ _ _ h13 h26).
-    specialize (IHu4 _ _ _ h h0).
-    specialize (IHu6 _ _ _ h12 h25).
-    pose proof (heq_conv_inv IHu3).
-    pose proof (heq_conv_inv IHu4).
-    pose proof (heq_conv_inv IHu6).
-    split_hyps.
-    eapply conv_trans ; [| exact h16 ].
-    apply cong_Heq ; try assumption.
-    + (* Need cong_subst *) admit.
-    + apply cong_App ; try assumption. apply conv_refl.
-    + (* Need cong_subst *) admit.
-    + apply cong_App ; try assumption. apply conv_refl.
-  - specialize (IHu1 _ _ _ h0 h12).
-    specialize (IHu2 _ _ _ h11 h21).
-    specialize (IHu3 _ _ _ h10 h20).
-    pose proof (heq_conv_inv IHu1).
-    pose proof (heq_conv_inv IHu2).
-    pose proof (heq_conv_inv IHu3).
-    split_hyps. subst.
-    eapply conv_trans ; [| exact h13 ].
-    apply cong_Heq ; try assumption.
-    + apply cong_Eq ; assumption.
-    + apply cong_Eq ; assumption.
-  - specialize (IHu1 _ _ _ h h0).
-    specialize (IHu2 _ _ _ h8 h15).
-    pose proof (heq_conv_inv IHu1).
-    pose proof (heq_conv_inv IHu2).
-    split_hyps.
-    pose proof (sort_conv_inv pi1_0). subst.
-    eapply conv_trans ; [| exact h10 ].
-    apply cong_Heq.
-    + apply cong_Eq ; assumption.
-    + apply cong_Refl ; assumption.
-    + apply cong_Eq ; assumption.
-    + apply cong_Refl ; assumption.
-  - specialize (IHu _ _ _ h h0).
-    pose proof (eq_conv_inv IHu). split_hyps.
-    eapply conv_trans ; [| exact h8 ].
-    apply cong_Heq ; assumption.
-  - specialize (IHu _ _ _ h0 h8).
-    pose proof (heq_conv_inv IHu). split_hyps.
-    eapply conv_trans ; [| exact h9 ].
-    apply cong_Eq ; try assumption.
-    apply conv_refl.
-  - specialize (IHu1 _ _ _ h h0).
-    eapply conv_trans ; [| exact h6 ].
-    assumption.
-  - specialize (IHu _ _ _ h4 h8).
-    pose proof (pack_conv_inv IHu).
-    split_hyps.
-    eapply conv_trans ; [| exact h7 ].
-    assumption.
-  - specialize (IHu _ _ _ h4 h8).
-    pose proof (pack_conv_inv IHu).
-    split_hyps.
-    eapply conv_trans ; [| exact h7 ].
-    assumption.
-  - specialize (IHu _ _ _ h4 h8).
-    pose proof (pack_conv_inv IHu).
-    split_hyps.
-    eapply conv_trans ; [| exact h7 ].
-    apply cong_Heq ; try assumption ; apply conv_refl.
-  - eapply conv_trans ; [| exact h0 ].
-    destruct isdecl as [d1 [[hd1 ?] hn1]].
-    destruct isdecl0 as [d2 [[hd2 ?] hn2]].
-    unfold sdeclared_minductive in *.
-    rewrite hd1 in hd2. inversion hd2. subst.
-    rewrite hn1 in hn2. inversion hn2. subst.
-    apply conv_refl.
-  - eapply conv_trans ; [| exact h0 ].
-    erewrite stype_of_constructor_eq. apply conv_refl.
-  - pose proof (inversionCase h1). easy.
-Admitted.

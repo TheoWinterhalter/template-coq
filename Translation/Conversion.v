@@ -13,12 +13,12 @@ Open Scope s_scope.
 (* Definition iota_red npar c args brs := *)
 (*   (mkApps (snd (List.nth c brs (0, tRel 0))) (List.skipn npar args)). *)
 
-Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> Prop :=
+Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
 (*! Computation *)
 
 (** β *)
 | red_beta n A B t u :
-    red1 Σ Γ (sApp (sLambda n A B t) n A B u) (t{ 0 := u })
+    red1 Σ (sApp (sLambda n A B t) n A B u) (t{ 0 := u })
 
 (** Case TODO *)
 (* | red_iota ind pars c args p brs : *)
@@ -27,480 +27,413 @@ Inductive red1 (Σ : sglobal_declarations) (Γ : scontext) : sterm -> sterm -> P
 
 (** J-Refl *)
 | red_JRefl A u P w v A' u' :
-    red1 Σ Γ (sJ A u P w v (sRefl A' u')) w
+    red1 Σ (sJ A u P w v (sRefl A' u')) w
 
 (** Transport of Refl *)
 | red_TransportRefl A A' A'' T t :
-    red1 Σ Γ (sTransport A A' (sRefl T A'') t) t
+    red1 Σ (sTransport A A' (sRefl T A'') t) t
 
 (*! Subterm reduction *)
 
 (** Lambda *)
 | abs_red_dom na A A' B t :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sLambda na A B t) (sLambda na A' B t)
+    red1 Σ A A' ->
+    red1 Σ (sLambda na A B t) (sLambda na A' B t)
 
 | abs_red_codom na A B B' t :
-    red1 Σ (Γ,, svass na A) B B' ->
-    red1 Σ Γ (sLambda na A B t) (sLambda na A B' t)
+    red1 Σ B B' ->
+    red1 Σ (sLambda na A B t) (sLambda na A B' t)
 
 | abs_red_body na A B t t' :
-    red1 Σ (Γ,, svass na A) t t' ->
-    red1 Σ Γ (sLambda na A B t) (sLambda na A B t')
+    red1 Σ t t' ->
+    red1 Σ (sLambda na A B t) (sLambda na A B t')
 
 (** Case *)
 | case_red_discr ind p c c' brs :
-    red1 Σ Γ c c' ->
-    red1 Σ Γ (sCase ind p c brs) (sCase ind p c' brs)
+    red1 Σ c c' ->
+    red1 Σ (sCase ind p c brs) (sCase ind p c' brs)
 
 | case_red_brs ind p c brs brs' :
-    redbrs1 Σ Γ brs brs' ->
-    red1 Σ Γ (sCase ind p c brs) (sCase ind p c brs')
+    redbrs1 Σ brs brs' ->
+    red1 Σ (sCase ind p c brs) (sCase ind p c brs')
 
 (** App *)
 | app_red_fun u u' na A B v :
-    red1 Σ Γ u u' ->
-    red1 Σ Γ (sApp u na A B v) (sApp u' na A B v)
+    red1 Σ u u' ->
+    red1 Σ (sApp u na A B v) (sApp u' na A B v)
 
 | app_red_dom u na A A' B v :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sApp u na A B v) (sApp u na A' B v)
+    red1 Σ A A' ->
+    red1 Σ (sApp u na A B v) (sApp u na A' B v)
 
 | app_red_codom u na A B B' v :
-    red1 Σ (Γ,, svass na A) B B' ->
-    red1 Σ Γ (sApp u na A B v) (sApp u na A B' v)
+    red1 Σ B B' ->
+    red1 Σ (sApp u na A B v) (sApp u na A B' v)
 
 | app_red_arg u na A B v v' :
-    red1 Σ Γ v v' ->
-    red1 Σ Γ (sApp u na A B v) (sApp u na A B v')
+    red1 Σ v v' ->
+    red1 Σ (sApp u na A B v) (sApp u na A B v')
 
 (** Prod *)
 | prod_red_l na na' A A' B :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sProd na A B) (sProd na' A' B)
+    red1 Σ A A' ->
+    red1 Σ (sProd na A B) (sProd na' A' B)
 
 | prod_red_r na na' A B B' :
-    red1 Σ (Γ,, svass na A) B B' ->
-    red1 Σ Γ (sProd na A B) (sProd na' A B')
+    red1 Σ B B' ->
+    red1 Σ (sProd na A B) (sProd na' A B')
 
 (** Eq *)
 | eq_red_ty A A' u v :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sEq A u v) (sEq A' u v)
+    red1 Σ A A' ->
+    red1 Σ (sEq A u v) (sEq A' u v)
 
 | eq_red_l A u u' v :
-    red1 Σ Γ u u' ->
-    red1 Σ Γ (sEq A u v) (sEq A u' v)
+    red1 Σ u u' ->
+    red1 Σ (sEq A u v) (sEq A u' v)
 
 | eq_red_r A u v v' :
-    red1 Σ Γ v v' ->
-    red1 Σ Γ (sEq A u v) (sEq A u v')
+    red1 Σ v v' ->
+    red1 Σ (sEq A u v) (sEq A u v')
 
 (** Refl *)
 | refl_red_ty A A' u :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sRefl A u) (sRefl A' u)
+    red1 Σ A A' ->
+    red1 Σ (sRefl A u) (sRefl A' u)
 
 | refl_red_tm A u u' :
-    red1 Σ Γ u u' ->
-    red1 Σ Γ (sRefl A u) (sRefl A u')
+    red1 Σ u u' ->
+    red1 Σ (sRefl A u) (sRefl A u')
 
 (** J *)
 | j_red_ty A A' u v P p w :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sJ A u P w v p) (sJ A' u P w v p)
+    red1 Σ A A' ->
+    red1 Σ (sJ A u P w v p) (sJ A' u P w v p)
 
 | j_red_l A u u' v P p w :
-    red1 Σ Γ u u' ->
-    red1 Σ Γ (sJ A u P w v p) (sJ A u' P w v p)
+    red1 Σ u u' ->
+    red1 Σ (sJ A u P w v p) (sJ A u' P w v p)
 
-| j_red_pred A u v P P' p w nx ne :
-    red1 Σ (Γ,, svass nx A ,, svass ne (sEq (lift0 1 A) (lift0 1 u) (sRel 0)))
-         P P' ->
-    red1 Σ Γ (sJ A u P w v p) (sJ A u P' w v p)
+| j_red_pred A u v P P' p w :
+    red1 Σ P P' ->
+    red1 Σ (sJ A u P w v p) (sJ A u P' w v p)
 
 | j_red_prf A u v P p w w' :
-    red1 Σ Γ w w' ->
-    red1 Σ Γ (sJ A u P w v p) (sJ A u P w' v p)
+    red1 Σ w w' ->
+    red1 Σ (sJ A u P w v p) (sJ A u P w' v p)
 
 | j_red_r A u v v' P p w :
-    red1 Σ Γ v v' ->
-    red1 Σ Γ (sJ A u P w v p) (sJ A u P w v' p)
+    red1 Σ v v' ->
+    red1 Σ (sJ A u P w v p) (sJ A u P w v' p)
 
 | j_red_eq A u v P p p' w :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sJ A u P w v p) (sJ A u P w v p')
+    red1 Σ p p' ->
+    red1 Σ (sJ A u P w v p) (sJ A u P w v p')
 
 (** Transport *)
 | transport_red_ty_l A A' B p t :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sTransport A B p t) (sTransport A' B p t)
+    red1 Σ A A' ->
+    red1 Σ (sTransport A B p t) (sTransport A' B p t)
 
 | transport_red_ty_r A B B' p t :
-    red1 Σ Γ B B' ->
-    red1 Σ Γ (sTransport A B p t) (sTransport A B' p t)
+    red1 Σ B B' ->
+    red1 Σ (sTransport A B p t) (sTransport A B' p t)
 
 | transport_red_eq A B p p' t :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sTransport A B p t) (sTransport A B p' t)
+    red1 Σ p p' ->
+    red1 Σ (sTransport A B p t) (sTransport A B p' t)
 
 | transport_red_tm A B p t t' :
-    red1 Σ Γ t t' ->
-    red1 Σ Γ (sTransport A B p t) (sTransport A B p t')
+    red1 Σ t t' ->
+    red1 Σ (sTransport A B p t) (sTransport A B p t')
 
 (** Heq *)
 | heq_red_ty_l A A' a B b :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sHeq A a B b) (sHeq A' a B b)
+    red1 Σ A A' ->
+    red1 Σ (sHeq A a B b) (sHeq A' a B b)
 
 | heq_red_tm_l A a a' B b :
-    red1 Σ Γ a a' ->
-    red1 Σ Γ (sHeq A a B b) (sHeq A a' B b)
+    red1 Σ a a' ->
+    red1 Σ (sHeq A a B b) (sHeq A a' B b)
 
 | heq_red_ty_r A a B B' b :
-    red1 Σ Γ B B' ->
-    red1 Σ Γ (sHeq A a B b) (sHeq A a B' b)
+    red1 Σ B B' ->
+    red1 Σ (sHeq A a B b) (sHeq A a B' b)
 
 | heq_red_tm_r A a B b b' :
-    red1 Σ Γ b b' ->
-    red1 Σ Γ (sHeq A a B b) (sHeq A a B b')
+    red1 Σ b b' ->
+    red1 Σ (sHeq A a B b) (sHeq A a B b')
 
 (** HeqToEq *)
 | heqtoeq_red p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sHeqToEq p) (sHeqToEq p')
+    red1 Σ p p' ->
+    red1 Σ (sHeqToEq p) (sHeqToEq p')
 
 (** HeqRefl *)
 | heqrefl_red_ty A A' a :
-    red1 Σ Γ A A' ->
-    red1 Σ Γ (sHeqRefl A a) (sHeqRefl A' a)
+    red1 Σ A A' ->
+    red1 Σ (sHeqRefl A a) (sHeqRefl A' a)
 
 | heqrefl_red_tm A a a' :
-    red1 Σ Γ a a' ->
-    red1 Σ Γ (sHeqRefl A a) (sHeqRefl A a')
+    red1 Σ a a' ->
+    red1 Σ (sHeqRefl A a) (sHeqRefl A a')
 
 (** HeqSym *)
 | heqsym_red p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sHeqSym p) (sHeqSym p')
+    red1 Σ p p' ->
+    red1 Σ (sHeqSym p) (sHeqSym p')
 
 (** HeqTrans *)
 | heqtrans_red_l p p' q :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sHeqTrans p q) (sHeqTrans p' q)
+    red1 Σ p p' ->
+    red1 Σ (sHeqTrans p q) (sHeqTrans p' q)
 
 | heqtrans_red_r p q q' :
-    red1 Σ Γ q q' ->
-    red1 Σ Γ (sHeqTrans p q) (sHeqTrans p q')
+    red1 Σ q q' ->
+    red1 Σ (sHeqTrans p q) (sHeqTrans p q')
 
 (** HeqTransport *)
 | heqtransport_red_eq p p' t :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sHeqTransport p t) (sHeqTransport p' t)
+    red1 Σ p p' ->
+    red1 Σ (sHeqTransport p t) (sHeqTransport p' t)
 
 | heqtransport_red_tm p t t' :
-    red1 Σ Γ t t' ->
-    red1 Σ Γ (sHeqTransport p t) (sHeqTransport p t')
+    red1 Σ t t' ->
+    red1 Σ (sHeqTransport p t) (sHeqTransport p t')
 
 (** CongProd *)
-| congprod_red_ty_l z B1 B1' B2 pA pB :
-    red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1' B2 pA pB)
+| congprod_red_ty_l B1 B1' B2 pA pB :
+    red1 Σ B1 B1' ->
+    red1 Σ (sCongProd B1 B2 pA pB) (sCongProd B1' B2 pA pB)
 
-| congprod_red_ty_r z B1 B2 B2' pA pB :
-    red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1 B2' pA pB)
+| congprod_red_ty_r B1 B2 B2' pA pB :
+    red1 Σ B2 B2' ->
+    red1 Σ (sCongProd B1 B2 pA pB) (sCongProd B1 B2' pA pB)
 
-| congprod_red_tm_l z B1 B2 pA pA' pB :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1 B2 pA' pB)
+| congprod_red_tm_l B1 B2 pA pA' pB :
+    red1 Σ pA pA' ->
+    red1 Σ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA' pB)
 
-| congprod_red_tm_r z B1 B2 pA pB pB' :
-    red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongProd z B1 B2 pA pB) (sCongProd z B1 B2 pA pB')
+| congprod_red_tm_r B1 B2 pA pB pB' :
+    red1 Σ pB pB' ->
+    red1 Σ (sCongProd B1 B2 pA pB) (sCongProd B1 B2 pA pB')
 
 (** CongLambda *)
 | conglambda_red_ty_l B1 B2 t1 t2 pA pB pt B1' :
-    red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ B1 B1' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1' B2 t1 t2 pA pB pt)
 
 | conglambda_red_ty_r B1 B2 t1 t2 pA pB pt B2' :
-    red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ B2 B2' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1 B2' t1 t2 pA pB pt)
 
 | conglambda_red_tm_l B1 B2 t1 t2 pA pB pt t1' :
-    red1 Σ Γ t1 t1' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ t1 t1' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1 B2 t1' t2 pA pB pt)
 
 | conglambda_red_tm_r B1 B2 t1 t2 pA pB pt t2' :
-    red1 Σ Γ t2 t2' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ t2 t2' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1 B2 t1 t2' pA pB pt)
 
 | conglambda_red_eq_dom B1 B2 t1 t2 pA pB pt pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ pA pA' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1 B2 t1 t2 pA' pB pt)
 
 | conglambda_red_eq_codom B1 B2 t1 t2 pA pB pt pB' :
-    red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ pB pB' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1 B2 t1 t2 pA pB' pt)
 
 | conglambda_red_eq_tm B1 B2 t1 t2 pA pB pt pt' :
-    red1 Σ Γ pt pt' ->
-    red1 Σ Γ (sCongLambda B1 B2 t1 t2 pA pB pt)
+    red1 Σ pt pt' ->
+    red1 Σ (sCongLambda B1 B2 t1 t2 pA pB pt)
              (sCongLambda B1 B2 t1 t2 pA pB pt')
 
 (** CongApp *)
 | congapp_red_ty_l B1 B2 pu pA pB pv B1' :
-    red1 Σ Γ B1 B1' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+    red1 Σ B1 B1' ->
+    red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1' B2 pu pA pB pv)
 
 | congapp_red_ty_r B1 B2 pu pA pB pv B2' :
-    red1 Σ Γ B2 B2' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+    red1 Σ B2 B2' ->
+    red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1 B2' pu pA pB pv)
 
 | congapp_red_eq_fun B1 B2 pu pA pB pv pu' :
-    red1 Σ Γ pu pu' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+    red1 Σ pu pu' ->
+    red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1 B2 pu' pA pB pv)
 
 | congapp_red_eq_dom B1 B2 pu pA pB pv pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+    red1 Σ pA pA' ->
+    red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1 B2 pu pA' pB pv)
 
 | congapp_red_eq_codom B1 B2 pu pA pB pv pB' :
-    red1 Σ Γ pB pB' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+    red1 Σ pB pB' ->
+    red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1 B2 pu pA pB' pv)
 
 | congapp_red_eq_arg B1 B2 pu pA pB pv pv' :
-    red1 Σ Γ pv pv' ->
-    red1 Σ Γ (sCongApp B1 B2 pu pA pB pv)
+    red1 Σ pv pv' ->
+    red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1 B2 pu pA pB pv')
 
 (** CongEq *)
 | congeq_red_eq_ty pA pu pv pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA' pu pv)
+    red1 Σ pA pA' ->
+    red1 Σ (sCongEq pA pu pv) (sCongEq pA' pu pv)
 
 | congeq_red_eq_tm_l pA pu pv pu' :
-    red1 Σ Γ pu pu' ->
-    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu' pv)
+    red1 Σ pu pu' ->
+    red1 Σ (sCongEq pA pu pv) (sCongEq pA pu' pv)
 
 | congeq_red_eq_tm_r pA pu pv pv' :
-    red1 Σ Γ pv pv' ->
-    red1 Σ Γ (sCongEq pA pu pv) (sCongEq pA pu pv')
+    red1 Σ pv pv' ->
+    red1 Σ (sCongEq pA pu pv) (sCongEq pA pu pv')
 
-(** CongRefl *)
+(* (** CongRefl *) *)
 | congrefl_red_ty pA pu pA' :
-    red1 Σ Γ pA pA' ->
-    red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA' pu)
+    red1 Σ pA pA' ->
+    red1 Σ (sCongRefl pA pu) (sCongRefl pA' pu)
 
 | congrefl_red_tm pA pu pu' :
-    red1 Σ Γ pu pu' ->
-    red1 Σ Γ (sCongRefl pA pu) (sCongRefl pA pu')
+    red1 Σ pu pu' ->
+    red1 Σ (sCongRefl pA pu) (sCongRefl pA pu')
 
 (** EqToHeq *)
 | eqtoheq_red p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sEqToHeq p) (sEqToHeq p')
+    red1 Σ p p' ->
+    red1 Σ (sEqToHeq p) (sEqToHeq p')
 
 (** HeqTypeEq *)
-| heqtypeeq_red z p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sHeqTypeEq z p) (sHeqTypeEq z p')
+| heqtypeeq_red p p' :
+    red1 Σ p p' ->
+    red1 Σ (sHeqTypeEq p) (sHeqTypeEq p')
 
 (** Pack *)
 | pack_red_l A1 A2 A1' :
-    red1 Σ Γ A1 A1' ->
-    red1 Σ Γ (sPack A1 A2) (sPack A1' A2)
+    red1 Σ A1 A1' ->
+    red1 Σ (sPack A1 A2) (sPack A1' A2)
 
 | pack_red_r A1 A2 A2' :
-    red1 Σ Γ A2 A2' ->
-    red1 Σ Γ (sPack A1 A2) (sPack A1 A2')
+    red1 Σ A2 A2' ->
+    red1 Σ (sPack A1 A2) (sPack A1 A2')
 
 (** ProjT1 *)
 | projt1_red p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sProjT1 p) (sProjT1 p')
+    red1 Σ p p' ->
+    red1 Σ (sProjT1 p) (sProjT1 p')
 
 (** ProjT2 *)
 | projt2_red p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sProjT2 p) (sProjT2 p')
+    red1 Σ p p' ->
+    red1 Σ (sProjT2 p) (sProjT2 p')
 
 (** ProjTe *)
 | projte_red p p' :
-    red1 Σ Γ p p' ->
-    red1 Σ Γ (sProjTe p) (sProjTe p')
+    red1 Σ p p' ->
+    red1 Σ (sProjTe p) (sProjTe p')
 
-with redbrs1 (Σ : sglobal_declarations) (Γ : scontext) :
+with redbrs1 (Σ : sglobal_declarations) :
        list (nat * sterm) -> list (nat * sterm) -> Prop :=
 | redbrs1_hd n hd hd' tl :
-    red1 Σ Γ hd hd' ->
-    redbrs1 Σ Γ ((n, hd) :: tl) ((n, hd') :: tl)
+    red1 Σ hd hd' ->
+    redbrs1 Σ ((n, hd) :: tl) ((n, hd') :: tl)
 | redbrs1_tl hd tl tl' :
-    redbrs1 Σ Γ tl tl' ->
-    redbrs1 Σ Γ (hd :: tl) (hd :: tl')
+    redbrs1 Σ tl tl' ->
+    redbrs1 Σ (hd :: tl) (hd :: tl')
 .
 
 Derive Signature for red1.
 
-Notation " Σ ;;; Γ '|-i' t ▷ u " :=
-  (red1 Σ Γ t u) (at level 50, Γ, t, u at next level).
+Notation " Σ '|-i' t ▷ u " :=
+  (red1 Σ t u) (at level 50, t, u at next level).
 
 (* Reflexive and transitive closure of 1-step reduction. *)
-Inductive red Σ Γ t : sterm -> Prop :=
-| refl_red : red Σ Γ t t
-| trans_red u v : red1 Σ Γ t u -> red Σ Γ u v -> red Σ Γ t v.
+Inductive red Σ t : sterm -> Prop :=
+| refl_red : red Σ t t
+| trans_red u v : red1 Σ t u -> red Σ u v -> red Σ t v.
 
-Notation " Σ ;;; Γ '|-i' t ▷⃰ u " :=
-  (red Σ Γ t u) (at level 50, Γ, t, u at next level).
+Notation " Σ '|-i' t ▷⃰ u " :=
+  (red Σ t u) (at level 50, t, u at next level).
 
 (*! Conversion *)
 
-Reserved Notation " Σ ;;; Γ '|-i' t = u " (at level 50, Γ, t, u at next level).
+Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
-Inductive conv (Σ : sglobal_context) (Γ : scontext) : sterm -> sterm -> Prop :=
-| conv_eq t u : eq_term t u = true -> Σ ;;; Γ |-i t = u
-| conv_red_l t u v : red1 (fst Σ) Γ t v -> Σ ;;; Γ |-i v = u -> Σ ;;; Γ |-i t = u
-| conv_red_r t u v : Σ ;;; Γ |-i t = v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |-i t = u
+(* TODO: Stop using eq_term but instead something that compares the nameless
+   terms. *)
 
-where " Σ ;;; Γ '|-i' t = u " := (@conv Σ Γ t u) : i_scope.
+Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
+| conv_eq t u : eq_term t u = true -> Σ |-i t = u
+| conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
+| conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
+| conv_trans t u v : Σ |-i t = u -> Σ |-i u = v -> Σ |-i t = v
+
+where " Σ '|-i' t = u " := (@conv Σ t u) : i_scope.
 
 Derive Signature for conv.
+
+Arguments conv_trans {_ _ _ _} _ _.
 
 Open Scope i_scope.
 
 Lemma conv_refl :
-  forall Σ Γ t, Σ ;;; Γ |-i t = t.
+  forall Σ t, Σ |-i t = t.
 Proof.
-  intros Σ Γ t.
+  intros Σ t.
   apply conv_eq. apply eq_term_refl.
 Defined.
 
 (* TODO Anonymise terms before comparing them so that eq_term reflects
    equality *)
 Lemma conv_sym :
-  forall {Σ Γ t u},
-    Σ ;;; Γ |-i t = u ->
-    Σ ;;; Γ |-i u = t.
+  forall {Σ t u},
+    Σ |-i t = u ->
+    Σ |-i u = t.
 Proof.
-  intros Σ Γ t u h.
+  intros Σ t u h.
   induction h.
   - admit.
   - eapply conv_red_r ; eassumption.
   - eapply conv_red_l ; eassumption.
+  - eapply conv_trans ; eassumption.
 Admitted.
 
-(* This result require confluence of CIC. *)
-Lemma conv_trans :
-  forall {Σ Γ t u v},
-    Σ ;;; Γ |-i t = u ->
-    Σ ;;; Γ |-i u = v ->
-    Σ ;;; Γ |-i t = v.
-(* Proof. *)
-(*   intros Σ Γ t u v h1 h2. *)
-(*   revert v h2. induction h1 ; intros w h2. *)
-(*   - admit. *)
-(*   - specialize (IHh1 _ h2). eapply conv_red_l ; eassumption. *)
-(*   - apply IHh1. clear IHh1 h1 t. induction h2. *)
-(*     + admit. *)
-(*     + clear IHh2. *)
-(*     + eapply conv_red_r ; [| exact H0 ]. apply IHh2. assumption. *)
-Admitted.
-
-
-(*! Inversion results about conversion *)
-
-Lemma sort_conv_inv :
-  forall {Σ Γ s1 s2},
-    Σ ;;; Γ |-i sSort s1 = sSort s2 ->
-    s1 = s2.
-Proof.
-  intros Σ Γ s1 s2 h. dependent induction h.
-  - cbn in H. unfold eq_nat in H. bprop H. assumption.
-  - inversion H.
-  - inversion H.
-Defined.
-
-Ltac invconv h :=
-  dependent induction h ; [
-    cbn in * ; repeat destruct_andb ;
-    repeat split ; apply conv_eq ; assumption
-  | dependent destruction H ;
-    split_hyps ; repeat split ; try assumption ;
-    eapply conv_red_l ; eassumption
-  | dependent destruction H ;
-    split_hyps ; repeat split ; try assumption ;
-    eapply conv_red_r ; eassumption
-  ].
-
-Lemma heq_conv_inv :
-  forall {Σ Γ A a B b A' a' B' b'},
-    Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b' ->
-    (Σ ;;; Γ |-i A = A') *
-    (Σ ;;; Γ |-i a = a') *
-    (Σ ;;; Γ |-i B = B') *
-    (Σ ;;; Γ |-i b = b').
-Proof.
-  intros Σ Γ A a B b A' a' B' b' h.
-  invconv h.
-Defined.
-
-Lemma eq_conv_inv :
-  forall {Σ Γ A u v A' u' v'},
-    Σ ;;; Γ |-i sEq A u v = sEq A' u' v' ->
-    (Σ ;;; Γ |-i A = A') *
-    (Σ ;;; Γ |-i u = u') *
-    (Σ ;;; Γ |-i v = v').
-Proof.
-  intros Σ Γ A u v A' u' v' h.
-  invconv h.
-Defined.
-
-Lemma pack_conv_inv :
-  forall {Σ Γ A1 A2 A1' A2'},
-    Σ ;;; Γ |-i sPack A1 A2 = sPack A1' A2' ->
-    (Σ ;;; Γ |-i A1 = A1') * (Σ ;;; Γ |-i A2 = A2').
-Proof.
-  intros Σ Γ A1 A2 A1' A2' h.
-  invconv h.
-Defined.
 
 (*! Congruences for conversion *)
 
 Ltac conv_rewrite h :=
   let h' := fresh "h" in
   match type of h with
-  | _ ;;; _ |-i ?A = ?B =>
+  | _ |-i ?A = ?B =>
     lazymatch goal with
-    | |- ?Σ ;;; ?Γ |-i ?ctx = _ =>
+    | |- ?Σ |-i ?ctx = _ =>
       lazymatch ctx with
       | context T [A] =>
         let T1 := context T[A] in
         let T2 := context T[B] in
-        assert (h' : Σ ;;; Γ |-i T1 = T2) ; [
+        assert (h' : Σ |-i T1 = T2) ; [
           clear - h ;
           induction h ; [
-            apply conv_eq ; cbn ; rewrite !eq_term_refl ;
+            apply conv_eq ; cbn ; rewrite ?eq_term_refl ;
             rewrite_assumption ; reflexivity
           | eapply conv_red_l ; [
-              constructor ; eassumption
+              econstructor ; eassumption
             | eassumption
             ]
           | eapply conv_red_r ; [
               eassumption
-            | constructor ; eassumption
+            | econstructor ; eassumption
             ]
+          | eapply conv_trans ; eassumption
           ]
         | apply (conv_trans h') ; clear h'
         ]
@@ -536,146 +469,268 @@ Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
   conv rewrite h1 ; conv rewrite h2, h3, h4, h5, h6, h7.
 
 Lemma cong_Heq :
-  forall {Σ Γ A a B b A' a' B' b'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ |-i a = a' ->
-    Σ ;;; Γ |-i B = B' ->
-    Σ ;;; Γ |-i b = b' ->
-    Σ ;;; Γ |-i sHeq A a B b = sHeq A' a' B' b'.
+  forall {Σ A a B b A' a' B' b'},
+    Σ |-i A = A' ->
+    Σ |-i a = a' ->
+    Σ |-i B = B' ->
+    Σ |-i b = b' ->
+    Σ |-i sHeq A a B b = sHeq A' a' B' b'.
 Proof.
-  intros Σ Γ A a B b A' a' B' b' hA ha hB hb.
+  intros Σ A a B b A' a' B' b' hA ha hB hb.
   conv rewrite hA, ha, hB, hb.
   apply conv_refl.
 Defined.
 
 Lemma cong_Eq :
-  forall {Σ Γ A u v A' u' v'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ |-i u = u' ->
-    Σ ;;; Γ |-i v = v' ->
-    Σ ;;; Γ |-i sEq A u v = sEq A' u' v'.
+  forall {Σ A u v A' u' v'},
+    Σ |-i A = A' ->
+    Σ |-i u = u' ->
+    Σ |-i v = v' ->
+    Σ |-i sEq A u v = sEq A' u' v'.
 Proof.
-  intros Σ Γ A u v A' u' v' hA hu hv.
+  intros Σ A u v A' u' v' hA hu hv.
   conv rewrite hA, hu, hv.
   apply conv_refl.
 Defined.
 
 Lemma cong_Transport :
-  forall {Σ Γ A B p t A' B' p' t'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ |-i B = B' ->
-    Σ ;;; Γ |-i p = p' ->
-    Σ ;;; Γ |-i t = t' ->
-    Σ ;;; Γ |-i sTransport A B p t = sTransport A' B' p' t'.
+  forall {Σ A B p t A' B' p' t'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i p = p' ->
+    Σ |-i t = t' ->
+    Σ |-i sTransport A B p t = sTransport A' B' p' t'.
 Proof.
-  intros Σ Γ A B p t A' B' p' t' hA hB hp ht.
+  intros Σ A B p t A' B' p' t' hA hB hp ht.
   conv rewrite hA, hB, hp, ht.
   apply conv_refl.
 Defined.
 
 Lemma cong_Prod :
-  forall {Σ Γ nx A B nx' A' B'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ,, svass nx A |-i B = B' ->
-    Σ ;;; Γ |-i sProd nx A B = sProd nx' A' B'.
+  forall {Σ nx A B nx' A' B'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i sProd nx A B = sProd nx' A' B'.
 Proof.
-  intros Σ Γ nx A B nx' A' B' hA hB.
+  intros Σ nx A B nx' A' B' hA hB.
   conv rewrite hB, hA.
   apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
 Defined.
 
 Lemma cong_Lambda :
-  forall {Σ Γ nx A B t nx' A' B' t'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ,, svass nx A |-i B = B' ->
-    Σ ;;; Γ,, svass nx A |-i t = t' ->
-    Σ ;;; Γ |-i sLambda nx A B t = sLambda nx' A' B' t'.
+  forall {Σ nx A B t nx' A' B' t'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i t = t' ->
+    Σ |-i sLambda nx A B t = sLambda nx' A' B' t'.
 Proof.
-  intros Σ Γ nx A B t nx' A' B' t' hA hB ht.
+  intros Σ nx A B t nx' A' B' t' hA hB ht.
   conv rewrite hB, ht, hA.
   apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
 Defined.
 
 Lemma cong_App :
-  forall {Σ Γ u nx A B v u' nx' A' B' v'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ,, svass nx A |-i B = B' ->
-    Σ ;;; Γ |-i u = u' ->
-    Σ ;;; Γ |-i v = v' ->
-    Σ ;;; Γ |-i sApp u nx A B v = sApp u' nx' A' B' v'.
+  forall {Σ u nx A B v u' nx' A' B' v'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i u = u' ->
+    Σ |-i v = v' ->
+    Σ |-i sApp u nx A B v = sApp u' nx' A' B' v'.
 Proof.
-  intros Σ Γ u nx A B v u' nx' A' B' v' hA hB hu hv.
+  intros Σ u nx A B v u' nx' A' B' v' hA hB hu hv.
   conv rewrite hB, hu, hv, hA.
   apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
 Defined.
 
 Lemma cong_Refl :
-  forall {Σ Γ A u A' u'},
-    Σ ;;; Γ |-i A = A' ->
-    Σ ;;; Γ |-i u = u' ->
-    Σ ;;; Γ |-i sRefl A u = sRefl A' u'.
+  forall {Σ A u A' u'},
+    Σ |-i A = A' ->
+    Σ |-i u = u' ->
+    Σ |-i sRefl A u = sRefl A' u'.
 Proof.
-  intros Σ Γ A u A' u' hA hu.
+  intros Σ A u A' u' hA hu.
   conv rewrite hA, hu. apply conv_refl.
 Defined.
 
-Lemma subst_red :
-  forall {Σ Γ t1 t2 u n},
-    Σ ;;; Γ |-i t1 ▷ t2 ->
-    Σ ;;; Γ |-i t1{ n := u } ▷⃰ t2{ n := u }.
-Proof.
-  intros Σ Γ t1 t2 u n h. revert u n.
-  induction h ; intros m uu.
-  - cbn. econstructor.
-    + eapply red_beta.
-    + rewrite <- substP4. cbn. constructor.
-  - cbn. econstructor.
-    + eapply red_JRefl.
-    + constructor.
-  - cbn. econstructor.
-    + eapply red_TransportRefl.
-    + constructor.
-  - cbn. econstructor ; [
-           econstructor
-         | constructor
-         ].
-Abort.
+(** Congruence with lift *)
 
 Lemma meta_red_eq :
-  forall {Σ Γ t u u'},
-    Σ ;;; Γ |-i t ▷ u ->
+  forall {Σ t u u'},
+    Σ |-i t ▷ u ->
     u = u' ->
-    Σ ;;; Γ |-i t ▷ u'.
+    Σ |-i t ▷ u'.
 Proof.
-  intros Σ Γ t u u' h e. destruct e. assumption.
+  intros Σ t u u' h e. destruct e. assumption.
 Defined.
 
-Lemma subst_red :
-  forall {Σ Γ t1 t2 u Δ},
-    Σ ;;; Γ |-i t1 ▷ t2 ->
-    Σ ;;; Γ ,,, subst_context u Δ |-i t1{ #|Δ| := u } ▷ t2{ #|Δ| := u }.
-Proof.
-  intros Σ Γ t1 t2 u Δ h. revert u Δ.
-  induction h ; intros uu Δ.
-  all: try (cbn ; constructor ; easy).
-  - cbn. eapply meta_red_eq.
-    + eapply red_beta.
-    + rewrite <- substP4. cbn. reflexivity.
-  - cbn. eapply meta_red_eq.
-    + eapply abs_red_codom.
-      specialize (IHh uu (Δ,, svass na A)).
-      cbn in IHh. rewrite subst_decl_svass in IHh.
-      (* apply IHh. *)
-      (* Problem with Γ on the induction hypothesis. *)
-Abort.
+Fixpoint lift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
+  Σ |-i lift n k t1 ▷ lift n k t2
 
-Lemma cong_subst_sb :
-  forall {Σ Γ t1 t2 u n},
-    Σ ;;; Γ |-i t1 = t2 ->
-    Σ ;;; Γ |-i t1{ n := u } = t2{ n := u }.
+with lift_redbrs1 {Σ n k b1 b2} (h : redbrs1 Σ b1 b2) :
+  redbrs1 Σ
+          (map (on_snd (lift n k)) b1) (map (on_snd (lift n k)) b2).
 Proof.
-  intros Σ Γ t1 t2 u n ht. revert u n.
-  induction ht.
-  - intros v n. apply conv_eq. admit.
-  - intros w n.
-Abort.
+  - { destruct h ; cbn ;
+      try match goal with
+          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
+            match tt with
+            | context [t] =>
+              econstructor ;
+              eapply lift_red1 ; [ exact h | .. ]
+            end
+          end.
+      - eapply meta_red_eq ; [ econstructor |].
+        rewrite <- substP1. cbn. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor | reflexivity ].
+        eapply lift_redbrs1. assumption.
+    }
+
+  - { destruct h.
+      - econstructor. eapply lift_red1. assumption.
+      - cbn. econstructor. eapply lift_redbrs1. assumption.
+    }
+Defined.
+
+Lemma lift_conv :
+  forall {Σ n k t1 t2},
+    Σ |-i t1 = t2 ->
+    Σ |-i lift n k t1 = lift n k t2.
+Proof.
+  intros Σ n k t1 t2 h.
+  induction h.
+  - apply conv_eq. admit.
+  - eapply conv_red_l.
+    + eapply lift_red1. eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + eapply lift_red1. eassumption.
+  - eapply conv_trans ; eassumption.
+Admitted.
+
+Corollary cong_lift01 :
+  forall {Σ t1 t2},
+    Σ |-i t1 = t2 ->
+    Σ |-i lift0 1 t1 = lift0 1 t2.
+Proof.
+  intros Σ t1 t2 h.
+  apply lift_conv. assumption.
+Defined.
+
+(** Congruence with substitution *)
+
+Fixpoint subst_red1 {Σ n t1 t2 u}
+  (h : Σ |-i t1 ▷ t2) :
+  Σ |-i t1{ n := u } ▷ t2{ n := u }
+
+with subst_redbrs1 {Σ n b1 b2 u}
+  (h : redbrs1 Σ b1 b2) :
+  redbrs1 Σ
+          (map (on_snd (subst u n)) b1) (map (on_snd (subst u n)) b2).
+Proof.
+  - { destruct h ; cbn ;
+      try match goal with
+          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
+            match tt with
+            | context [t] =>
+              econstructor ;
+              eapply subst_red1 ; [ exact h | .. ]
+            end
+          end.
+      - eapply meta_red_eq ; [ econstructor |].
+        rewrite <- substP4. cbn. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+      - eapply meta_red_eq ; [ econstructor | reflexivity ].
+        eapply subst_redbrs1. eassumption.
+    }
+
+  - { destruct h.
+      - econstructor. eapply subst_red1. eassumption.
+      - cbn. econstructor. eapply subst_redbrs1. eassumption.
+    }
+Defined.
+
+Lemma subst_conv :
+  forall {Σ n u t1 t2},
+    Σ |-i t1 = t2 ->
+    Σ |-i t1{ n := u } = t2{ n := u }.
+Proof.
+  intros Σ n u t1 t2 h.
+  induction h.
+  - apply conv_eq. admit.
+  - eapply conv_red_l.
+    + eapply subst_red1. eassumption.
+    + assumption.
+  - eapply conv_red_r.
+    + eassumption.
+    + eapply subst_red1. eassumption.
+  - eapply conv_trans ; eassumption.
+Admitted.
+
+
+(** Congruence of equal substitutions *)
+
+Section conv_substs.
+
+  Ltac sp h n :=
+    lazymatch goal with
+    | hu : _ |-i _ ▷ _ |- _ =>
+      specialize (h n _ _ hu) ;
+      cbn in h ;
+      try rewrite !subst_decl_svass in h
+    end.
+
+  Ltac spone :=
+    match goal with
+    | ih : forall n u1 u2, _ -> _ |-i ?t{n := u1} = _ |- context [ ?t{ ?m := _ } ] =>
+      sp ih m
+    end.
+
+  Ltac spall :=
+    repeat spone.
+
+  Ltac conv_rewrite_assumption :=
+    match goal with
+    | ih : _ |-i _ = _ |- _ => conv rewrite ih
+    end.
+
+  Ltac conv_rewrite_assumptions :=
+    repeat conv_rewrite_assumption.
+
+  Lemma substs_red1 {Σ} (t : sterm) :
+    forall n {u1 u2},
+      (fst Σ) |-i u1 ▷ u2 ->
+      Σ |-i t{ n := u1 } = t{ n := u2 }.
+  Proof.
+    induction t using sterm_rect_list ; intros m u1 u2 h.
+    all: cbn ; spall ; conv_rewrite_assumptions.
+    all: try (apply conv_refl).
+    - case_eq (m ?= n) ; intro e ; bprop e.
+      + eapply lift_conv.
+        eapply conv_red_l ; try eassumption. apply conv_refl.
+      + apply conv_refl.
+      + apply conv_refl.
+    - (* Tedious? *)
+      admit.
+  Admitted.
+
+End conv_substs.
+
+Lemma substs_conv :
+  forall {Σ n u1 u2 t},
+    Σ |-i u1 = u2 ->
+    Σ |-i t{ n := u1 } = t{ n := u2 }.
+Proof.
+  intros Σ n u1 u2 t h.
+  induction h.
+  - apply conv_eq. admit.
+  - eapply conv_trans ; try eassumption.
+    eapply substs_red1. assumption.
+  - eapply conv_trans ; try eassumption.
+    eapply conv_sym.
+    eapply substs_red1. assumption.
+  - eapply conv_trans ; eassumption.
+Admitted.

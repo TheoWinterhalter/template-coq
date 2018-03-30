@@ -47,9 +47,8 @@ Fixpoint eq_term (t u : sterm) {struct t} :=
   | sHeqSym p, sHeqSym p' => eq_term p p'
   | sHeqTrans p q, sHeqTrans p' q' => eq_term p p' && eq_term q q'
   | sHeqTransport p t, sHeqTransport p' t' => eq_term p p' && eq_term t t'
-  | sCongProd z B1 B2 pA pB, sCongProd z' B1' B2' pA' pB' =>
-    eq_nat z z' && eq_term B1 B1' && eq_term B2 B2' &&
-    eq_term pA pA' && eq_term pB pB'
+  | sCongProd B1 B2 pA pB, sCongProd B1' B2' pA' pB' =>
+    eq_term B1 B1' && eq_term B2 B2' && eq_term pA pA' && eq_term pB pB'
   | sCongLambda B1 B2 t1 t2 pA pB pt, sCongLambda B1' B2' t1' t2' pA' pB' pt' =>
     eq_term B1 B1' && eq_term B2 B2' && eq_term t1 t1' && eq_term t2 t2' &&
     eq_term pA pA' && eq_term pB pB' && eq_term pt pt'
@@ -61,7 +60,7 @@ Fixpoint eq_term (t u : sterm) {struct t} :=
   | sCongRefl pA pu, sCongRefl pA' pu' =>
     eq_term pA pA' && eq_term pu pu'
   | sEqToHeq p, sEqToHeq p' => eq_term p p'
-  | sHeqTypeEq z p, sHeqTypeEq z' p' => eq_nat z z' && eq_term p p'
+  | sHeqTypeEq p, sHeqTypeEq p' => eq_term p p'
   | sPack A1 A2, sPack A1' A2' => eq_term A1 A1' && eq_term A2 A2'
   | sProjT1 p, sProjT1 p' => eq_term p p'
   | sProjT2 p, sProjT2 p' => eq_term p p'
@@ -99,15 +98,6 @@ Proof.
   - apply eq_string_refl.
   - apply eq_nat_refl.
 Qed.
-
-Ltac rewrite_assumption :=
-  match goal with
-  | H : _, e : _ = _ |- _ => rewrite H
-  | H : _ = _ |- _ => rewrite H
-  end.
-
-Ltac rewrite_assumptions :=
-  repeat rewrite_assumption.
 
 Fact eq_term_refl :
   forall {t}, eq_term t t = true.
@@ -160,14 +150,6 @@ Proof.
   - eapply eq_string_trans ; eassumption.
   - eapply eq_nat_trans ; eassumption.
 Qed.
-
-Ltac erewrite_assumption :=
-  match goal with
-  | H : _, e : _ = _ |- _ => erewrite H
-  end.
-
-Ltac erewrite_assumptions :=
-  erewrite_assumption ; [ try erewrite_assumptions | .. ].
 
 (* Fact eq_term_trans : *)
 (*   forall {t u}, eq_term t u = true -> forall {v}, eq_term u v = true -> eq_term t v = true. *)

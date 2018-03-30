@@ -32,8 +32,8 @@ Fixpoint lift n k t : sterm :=
   | sHeqSym p => sHeqSym (lift n k p)
   | sHeqTrans p q => sHeqTrans (lift n k p) (lift n k q)
   | sHeqTransport p t => sHeqTransport (lift n k p) (lift n k t)
-  | sCongProd z B1 B2 pA pB =>
-    sCongProd z (lift n (S k) B1) (lift n (S k) B2)
+  | sCongProd B1 B2 pA pB =>
+    sCongProd (lift n (S k) B1) (lift n (S k) B2)
               (lift n k pA) (lift n (S k) pB)
   | sCongLambda B1 B2 t1 t2 pA pB pt =>
     sCongLambda (lift n (S k) B1) (lift n (S k) B2)
@@ -45,7 +45,7 @@ Fixpoint lift n k t : sterm :=
   | sCongEq pA pu pv => sCongEq (lift n k pA) (lift n k pu) (lift n k pv)
   | sCongRefl pA pu => sCongRefl (lift n k pA) (lift n k pu)
   | sEqToHeq p => sEqToHeq (lift n k p)
-  | sHeqTypeEq z p => sHeqTypeEq z (lift n k p)
+  | sHeqTypeEq p => sHeqTypeEq (lift n k p)
   | sPack A1 A2 => sPack (lift n k A1) (lift n k A2)
   | sProjT1 p => sProjT1 (lift n k p)
   | sProjT2 p => sProjT2 (lift n k p)
@@ -91,8 +91,8 @@ Fixpoint subst t k u :=
   | sHeqSym p => sHeqSym (subst t k p)
   | sHeqTrans p q => sHeqTrans (subst t k p) (subst t k q)
   | sHeqTransport p u => sHeqTransport (subst t k p) (subst t k u)
-  | sCongProd z B1 B2 pA pB =>
-    sCongProd z (subst t (S k) B1) (subst t (S k) B2)
+  | sCongProd B1 B2 pA pB =>
+    sCongProd (subst t (S k) B1) (subst t (S k) B2)
               (subst t k pA) (subst t (S k) pB)
   | sCongLambda B1 B2 t1 t2 pA pB pt =>
     sCongLambda (subst t (S k) B1) (subst t (S k) B2)
@@ -104,7 +104,7 @@ Fixpoint subst t k u :=
   | sCongEq pA pu pv => sCongEq (subst t k pA) (subst t k pu) (subst t k pv)
   | sCongRefl pA pu => sCongRefl (subst t k pA) (subst t k pu)
   | sEqToHeq p => sEqToHeq (subst t k p)
-  | sHeqTypeEq z p => sHeqTypeEq z (subst t k p)
+  | sHeqTypeEq p => sHeqTypeEq (subst t k p)
   | sPack A1 A2 => sPack (subst t k A1) (subst t k A2)
   | sProjT1 p => sProjT1 (subst t k p)
   | sProjT2 p => sProjT2 (subst t k p)
@@ -163,7 +163,7 @@ Fixpoint closed_above k t :=
   | sHeqSym p => closed_above k p
   | sHeqTrans p q => closed_above k p && closed_above k q
   | sHeqTransport p u => closed_above k p && closed_above k u
-  | sCongProd z B1 B2 pA pB =>
+  | sCongProd B1 B2 pA pB =>
     closed_above (S k) B1 && closed_above (S k) B2 &&
     closed_above k pA && closed_above (S k) pB
   | sCongLambda B1 B2 t1 t2 pA pB pt =>
@@ -178,7 +178,7 @@ Fixpoint closed_above k t :=
     closed_above k pA && closed_above k pu && closed_above k pv
   | sCongRefl pA pu => closed_above k pA && closed_above k pu
   | sEqToHeq p => closed_above k p
-  | sHeqTypeEq z p => closed_above k p
+  | sHeqTypeEq p => closed_above k p
   | sPack A1 A2 => closed_above k A1 && closed_above k A2
   | sProjT1 p => closed_above k p
   | sProjT2 p => closed_above k p
