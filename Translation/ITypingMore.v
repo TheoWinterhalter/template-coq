@@ -109,34 +109,56 @@ Proof.
   now eapply type_HeqSym.
 Defined.
 
+(* Lemma type_HeqTrans' : *)
+(*   forall {Σ Γ A a B b C c p q}, *)
+(*     type_glob Σ -> *)
+(*     Σ ;;; Γ |-i p : sHeq A a B b -> *)
+(*     Σ ;;; Γ |-i q : sHeq B b C c -> *)
+(*     Σ ;;; Γ |-i sHeqTrans p q : sHeq A a C c. *)
+(* Proof. *)
+(*   intros Σ Γ A a B b C c p q hg h1 h2. *)
+(*   destruct (istype_type hg h1) as [? i1]. *)
+(*   ttinv i1. *)
+(*   destruct (istype_type hg h2) as [? i2]. *)
+(*   ttinv i2. *)
+(*   eapply type_HeqTrans. all: try eassumption. *)
+(*   eapply type_conv. *)
+(*   - eassumption. *)
+(*   - eapply type_Sort. eapply typing_wf ; eassumption. *)
+(*   - eapply conv_trans ; try eassumption. *)
+(*     eapply conv_sym. *)
+(*     (* Unfortunately we didn't solve our problems by lowering *)
+(*        the universe of heq... *)
+(*        We can always prove a weaker HeqTrans' and then hope to only use it *)
+(*        in places where uniqueness is true (meaning on a specific piece of *)
+(*        syntax). *)
+(*      *) *)
+
+(*   destruct (uniqueness iB2 iB1) as [? eq]. *)
+(*   eapply type_conv ; [ eassumption | idtac | eassumption ]. *)
+(*   apply (eq_typing hg eq). *)
+(* Defined. *)
+
+(* Weaker version of type_HeqTrans' but at least it doesn't require uniqueness
+   of typing.
+ *)
 Lemma type_HeqTrans' :
-  forall {Σ Γ A a B b C c p q},
+  forall {Σ Γ A a B b C c p q s},
     type_glob Σ ->
     Σ ;;; Γ |-i p : sHeq A a B b ->
     Σ ;;; Γ |-i q : sHeq B b C c ->
+    Σ ;;; Γ |-i A : sSort s ->
+    Σ ;;; Γ |-i B : sSort s ->
+    Σ ;;; Γ |-i C : sSort s ->
     Σ ;;; Γ |-i sHeqTrans p q : sHeq A a C c.
 Proof.
-  intros Σ Γ A a B b C c p q hg h1 h2.
+  intros Σ Γ A a B b C c p q s hg h1 h2 hA hB hC.
   destruct (istype_type hg h1) as [? i1].
   ttinv i1.
   destruct (istype_type hg h2) as [? i2].
   ttinv i2.
-  eapply type_HeqTrans. all: try eassumption.
-  eapply type_conv.
-  - eassumption.
-  - eapply type_Sort. eapply typing_wf ; eassumption.
-  - eapply conv_trans ; try eassumption.
-    eapply conv_sym.
-    (* Unfortunately we didn't solve our problems by lowering
-       the universe of heq...
-       We can always prove a weaker HeqTrans' and then hope to only use it
-       in places where uniqueness is true (meaning on a specific piece of
-       syntax).
-     *)
-
-  destruct (uniqueness iB2 iB1) as [? eq].
-  eapply type_conv ; [ eassumption | idtac | eassumption ].
-  apply (eq_typing hg eq).
+  eapply type_HeqTrans with (s := s) (B := B) (b := b).
+  all: eassumption.
 Defined.
 
 Lemma type_HeqTransport' :
