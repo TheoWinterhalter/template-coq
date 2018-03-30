@@ -5,6 +5,33 @@ From Translation
 Require Import util SAst SLiftSubst SCommon Conversion ITyping ITypingInversions
                ITypingLemmata.
 
+(** WARNING AXIOM **)
+(**
+   We decide to use the following axiom in order for our proof to progress
+   without habing to completely formalise the fact that CIC is strongly
+   normalising.
+
+   We indeed state that whenever Type_i = Type_j (in the sense of conversion)
+   then i and j are actually the same. This would require at least confluence
+   of the reduction system.
+
+   We use a little trick for this relying on the fact that equality for nat is
+   decidable, this will help the axiom compute in relevant cases.
+   (Thanks Nicolas.)
+ *)
+Axiom sort_inj_axiom :
+  forall {Σ s1 s2}, Σ |-i sSort s1 = sSort s2 -> s1 = s2.
+
+Fact sort_inj :
+  forall {Σ s1 s2}, Σ |-i sSort s1 = sSort s2 -> s1 = s2.
+Proof.
+  intros Σ s1 s2 h.
+  case (Nat.eqb_spec s1 s2).
+  - intro e. exact e.
+  - intro neq. exfalso. apply neq. eapply sort_inj_axiom.
+    eassumption.
+Defined.
+
 (* We state some admissible typing rules *)
 
 Lemma heq_sort :
@@ -17,29 +44,12 @@ Proof.
   destruct (istype_type hg h) as [? i].
   ttinv i.
   ttinv h0. ttinv h5.
-  eapply type_conv.
-  - eassumption.
-  - apply type_Heq ; try eassumption.
-    admit.
-  - apply cong_Heq.
-    all: try (apply conv_refl).
-    (* Same thing here...
-       We need to say s1 = s2, knowing they live in the same sort.
-       But this doesn't seem to be true unless we are able to prove
-       confluence.
-     *)
-    admit.
-
-  (* destruct (inversionHeq hg i) as [? [[[[e1 e2] ?] ?] ?]]. *)
-  (* pose proof (sorts_in_sort e2 e1) as eq. *)
-  (* eapply type_conv'. *)
-  (* - assumption. *)
-  (* - eassumption. *)
-  (* - apply cong_Heq. *)
-  (*   all: try (apply eq_reflexivity ; eassumption). *)
-  (*   assumption. *)
-(* Defined. *)
-Admitted.
+  pose proof (conv_trans h1 (conv_sym h6)) as eq.
+  pose proof (sort_inj eq).
+  assert (s1 = s2) by (unfold succ_sort, sort in * ; omega).
+  subst. clear eq H h1 h6.
+  assumption.
+Defined.
 
 Lemma type_HeqToEq' :
   forall {Σ Γ A u v p},
