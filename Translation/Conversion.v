@@ -552,6 +552,18 @@ Proof.
   conv rewrite hA, hu. apply conv_refl.
 Defined.
 
+Lemma cong_Pack :
+  forall {Σ A1 A2 A1' A2'},
+    Σ |-i A1 = A1' ->
+    Σ |-i A2 = A2' ->
+    Σ |-i sPack A1 A2 = sPack A1' A2'.
+Proof.
+  intros Σ A1 A2 A1' A2' h1 h2.
+  conv rewrite h2, h1.
+  apply conv_refl.
+Defined.
+
+
 (** Congruence with lift *)
 
 Lemma meta_red_eq :
