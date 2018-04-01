@@ -132,6 +132,9 @@ Proof.
   induction h ; now constructor.
 Defined.
 
+Axiom cheating : forall {A}, A.
+Tactic Notation "cheat" := apply cheating.
+
 Lemma trel_to_heq' :
   forall {Σ t1 t2},
     type_glob Σ ->
@@ -185,45 +188,15 @@ Proof.
               unfortunately. This would be an instance of subject reduction.
               Would it be worth proving then?
             *)
-           fail.
-
-
-      eapply type_conv'.
-      * assumption.
-      * eapply type_Rel. eapply @wf_llift with (Δ := []) ; try eassumption.
-        eapply typing_wf ; eassumption.
+           cheat.
       * erewrite safe_nth_lt. erewrite safe_nth_mix by eassumption.
-        cbn. eapply cong_Pack.
+        cbn. apply cong_Pack.
         -- rewrite lift_llift.
            replace (S x + (#|Γm| - S x))%nat with #|Γm| by omega.
-           match goal with
-           | |- _ ;;; _ |-i _ = _ : ?S => change S with (llift0 #|Γm| S)
-           end.
-           eapply cong_llift0 ; eassumption.
+           eapply llift_conv. eassumption.
         -- rewrite lift_rlift.
            replace (S x + (#|Γm| - S x))%nat with #|Γm| by omega.
-           match goal with
-           | |- _ ;;; _ |-i _ = _ : ?S => change S with (rlift0 #|Γm| S)
-           end.
-           eapply cong_rlift0 ; try eassumption.
-           destruct (eq_typing hg hx1) as [ht1 _].
-           destruct (eq_typing hg hx2) as [ht2 _].
-           destruct (ismix_nth_sort hg hm x is1' is2') as [s [ht1' ht2']].
-           instantiate (1 := is2').
-           destruct (uniqueness ht1' ht1) as [? eq1].
-           destruct (uniqueness ht2 ht2') as [z eq2].
-           destruct (eq_typing hg eq1) as [hs1 _].
-           destruct (eq_typing hg eq2) as [_ hs2].
-           assert (hs2' : Σ;;; Γ ,,, Γ1 |-i sSort s : sSort z).
-           { eapply strengthen_sort ; [ eassumption |].
-             eapply typing_wf ; eassumption.
-           }
-           destruct (uniqueness hs1 hs2') as [? ?].
-           eapply eq_conv ; [ eassumption |].
-           eapply eq_transitivity ; [ eassumption |].
-           eapply strengthen_sort_eq.
-           ++ eapply eq_conv ; eassumption.
-           ++ eapply typing_wf ; eassumption.
+           eapply rlift_conv. eassumption.
     + assert (h1' : Σ ;;; Γ ,,, Γm |-i sRel x : llift0 #|Γm| U1).
       { replace (sRel x) with (llift0 #|Γm| (sRel x))
           by (unfold llift ; rewrite e ; rewrite e0 ; reflexivity).
