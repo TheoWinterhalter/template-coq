@@ -207,15 +207,23 @@ Proof.
           by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
         eapply type_rlift0 ; eassumption.
       }
-      destruct (uniqueness h1' h2') as [s ee].
-      destruct (eq_typing hg ee) as [hlU1 hrU2].
+      ttinv h1'. ttinv h2'.
+      erewrite @safe_nth_irr with (isdecl' := is) in h0.
+      match goal with
+      | h : let A := ?T in _ |- _ =>
+        set (A := T) in *
+      end.
+      cbn in h, h0.
       exists (sHeqRefl (llift0 #|Γm| U1) (sRel x)).
-      eapply type_conv'.
-      * assumption.
-      * eapply type_HeqRefl ; eassumption.
-      * apply cong_Heq.
-        all: try (apply eq_reflexivity).
-        all: easy.
+      eapply type_conv.
+      * eapply type_HeqRefl' ; eassumption.
+      * eapply type_Heq ; try assumption.
+        -- (* Problem again, how do we get matching sorts? *)
+           cheat.
+        -- cheat.
+      * apply cong_Heq. all: try (apply conv_refl).
+        eapply conv_trans ; try eassumption.
+        eapply conv_sym. assumption.
 
   (* Left transport *)
   - destruct (inversionTransport hg h1) as [s [[[[? ht1] hT1] ?] ?]].
