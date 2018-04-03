@@ -3,7 +3,8 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import util SAst SLiftSubst SCommon Conversion ITyping.
+From Translation
+Require Import util SAst SLiftSubst Equality SCommon Conversion ITyping.
 
 Lemma inversionRel :
   forall {Σ Γ n T},
@@ -93,7 +94,7 @@ Proof.
   intros Σ Γ na A B t T h.
   dependent induction h.
   - exists s1, s2, n'. split ; [ split ; [ split | .. ] | ..] ; try assumption.
-    apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+    apply conv_eq. apply eq_term_spec. cbn. reflexivity.
   - destruct IHh1 as (s1 & s2 & na' & ?). split_hyps.
     exists s1, s2, na'. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.

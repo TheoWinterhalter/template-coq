@@ -126,6 +126,19 @@ End nldec.
 Definition eq_term (t u : sterm) : bool :=
   if nl_dec (nl t) (nl u) then true else false.
 
+Lemma eq_term_spec :
+  forall {t u},
+    eq_term t u = true <-> nl t = nl u.
+Proof.
+  intros t u. split.
+  - unfold eq_term. case (nl_dec (nl t) (nl u)).
+    + intros. assumption.
+    + intros. discriminate.
+  - unfold eq_term. case (nl_dec (nl t) (nl u)).
+    + reflexivity.
+    + intros h e. exfalso. apply h. apply e.
+Defined.
+
 Fact eq_term_refl :
   forall {t}, eq_term t t = true.
 Proof.

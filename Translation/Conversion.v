@@ -1,7 +1,8 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import util SAst SInduction SLiftSubst SCommon.
+From Translation
+Require Import util SAst SInduction Equality SLiftSubst SCommon.
 
 Open Scope s_scope.
 
@@ -401,11 +402,11 @@ Lemma conv_sym :
 Proof.
   intros Σ t u h.
   induction h.
-  - admit.
+  - apply conv_eq. apply eq_term_sym. assumption.
   - eapply conv_red_r ; eassumption.
   - eapply conv_red_l ; eassumption.
   - eapply conv_trans ; eassumption.
-Admitted.
+Defined.
 
 
 (*! Congruences for conversion *)
@@ -423,8 +424,26 @@ Ltac conv_rewrite h :=
         assert (h' : Σ |-i T1 = T2) ; [
           clear - h ;
           induction h ; [
-            apply conv_eq ; cbn ; rewrite ?eq_term_refl ;
-            rewrite_assumption ; reflexivity
+            apply conv_eq ;
+            match goal with
+            | eq : eq_term _ _ = true |- _ =>
+              unfold eq_term in eq ; revert eq
+            end ;
+            match goal with
+            | |- context [nl_dec ?x ?y] =>
+              case (nl_dec x y)
+            end ; [
+              let e := fresh "e" in
+              intros e _ ; unfold eq_term ; simpl nl ; rewrite e ;
+              match goal with
+              | |- context [nl_dec ?x ?y] =>
+                case (nl_dec x y)
+              end ; [
+                reflexivity
+              | intro h' ; exfalso ; apply h' ; reflexivity
+              ]
+            | intros ; discriminate
+            ]
           | eapply conv_red_l ; [
               econstructor ; eassumption
             | eassumption
@@ -514,7 +533,7 @@ Lemma cong_Prod :
 Proof.
   intros Σ nx A B nx' A' B' hA hB.
   conv rewrite hB, hA.
-  apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+  apply conv_eq. apply eq_term_spec. cbn. reflexivity.
 Defined.
 
 Lemma cong_Lambda :
@@ -526,7 +545,7 @@ Lemma cong_Lambda :
 Proof.
   intros Σ nx A B t nx' A' B' t' hA hB ht.
   conv rewrite hB, ht, hA.
-  apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+  apply conv_eq. apply eq_term_spec. cbn. reflexivity.
 Defined.
 
 Lemma cong_App :
@@ -539,7 +558,7 @@ Lemma cong_App :
 Proof.
   intros Σ u nx A B v u' nx' A' B' v' hA hB hu hv.
   conv rewrite hB, hu, hv, hA.
-  apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+  apply conv_eq. apply eq_term_spec. cbn. reflexivity.
 Defined.
 
 Lemma cong_Refl :
@@ -612,7 +631,7 @@ Lemma lift_conv :
 Proof.
   intros Σ n k t1 t2 h.
   induction h.
-  - apply conv_eq. admit.
+  - apply conv_eq. apply eq_term_spec. admit.
   - eapply conv_red_l.
     + eapply lift_red1. eassumption.
     + assumption.
