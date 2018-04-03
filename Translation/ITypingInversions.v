@@ -558,6 +558,7 @@ Ltac ttinv h :=
   let ny := fresh "ny" in
   let np := fresh "np" in
   let ne := fresh "ne" in
+  let na := fresh "na" in
   let A := fresh "A" in
   let B := fresh "B" in
   let C := fresh "C" in
