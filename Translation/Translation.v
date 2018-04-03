@@ -2,7 +2,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
-Require Import util SAst SLiftSubst SCommon XTyping Conversion ITyping
+Require Import util SAst SLiftSubst Equality SCommon XTyping Conversion ITyping
                ITypingInversions ITypingLemmata ITypingMore PackLifts.
 
 Section Translation.
@@ -434,13 +434,13 @@ Proof.
           change T with (llift0 #|Γm| (sProd na A1 B1))
         end.
         apply llift_conv. assumption.
-      * apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+      * apply conv_eq. apply eq_term_spec. cbn. reflexivity.
       * match goal with
         | |- _ |-i ?T = _ =>
           change T with (rlift0 #|Γm| (sProd na0 A2 B2))
         end.
         apply rlift_conv. assumption.
-      * apply conv_eq. cbn. rewrite !eq_term_refl. reflexivity.
+      * apply conv_eq. apply eq_term_spec. cbn. reflexivity.
 
   (* App *)
   - ttinv h1. ttinv h2.
