@@ -19,8 +19,8 @@ Proof.
   destruct d; reflexivity.
 Qed.
 
-Lemma compose_on_snd {A B} (f g : B -> B) :
-  compose (A:=A * B) (on_snd f) (on_snd g) = on_snd (compose f g).
+Lemma compose_on_snd {A B C D} (f : C -> D) (g : B -> C) :
+  compose (A := A * B) (on_snd f) (on_snd g) = on_snd (compose f g).
 Proof.
   reflexivity.
 Defined.
@@ -176,7 +176,7 @@ Proof.
   apply auxt.
 Defined.
 
-Lemma forall_map_spec {A} {P : A -> Type} {l} {f g : A -> A} :
+Lemma forall_map_spec {A} {P : A -> Type} {l B} {f g : A -> B} :
   ForallT P l ->
   (forall x, P x -> f x = g x) ->
   map f l = map g l.
@@ -186,7 +186,7 @@ Proof.
   f_equal. apply IHX. apply Heq.
 Defined.
 
-Lemma on_snd_spec {A B} (P : B -> Type) (f g : B -> B) (x : A * B) :
+Lemma on_snd_spec {A B C} (P : B -> Type) (f g : B -> C) (x : A * B) :
   P (snd x) -> (forall x, P x -> f x = g x) ->
   on_snd f x = on_snd g x.
 Proof.
@@ -194,7 +194,7 @@ Proof.
   now rewrite H; auto.
 Defined.
 
-Lemma case_brs_map_spec {P : sterm -> Type} {l} {f g : sterm -> sterm} :
+Lemma case_brs_map_spec {P : sterm -> Type} {l A} {f g : sterm -> A} :
   sCaseBrsT P l ->
   (forall x, P x -> f x = g x) ->
   map (on_snd f) l = map (on_snd g) l.

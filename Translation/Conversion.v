@@ -631,7 +631,7 @@ Lemma lift_conv :
 Proof.
   intros Σ n k t1 t2 h.
   induction h.
-  - apply conv_eq. apply eq_term_spec. admit.
+  - apply conv_eq. apply eq_term_lift. assumption.
   - eapply conv_red_l.
     + eapply lift_red1. eassumption.
     + assumption.
@@ -639,7 +639,7 @@ Proof.
     + eassumption.
     + eapply lift_red1. eassumption.
   - eapply conv_trans ; eassumption.
-Admitted.
+Defined.
 
 Corollary cong_lift01 :
   forall {Σ t1 t2},

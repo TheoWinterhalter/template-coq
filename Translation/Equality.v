@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import util SAst SInduction.
+From Translation Require Import util SAst SInduction SLiftSubst.
 
 (*! Equality between terms *)
 (* This goes through the definition of a nameless syntax *)
@@ -168,4 +168,33 @@ Proof.
   case (nl_dec (nl t) (nl u)) ; intro e1.
   - intros _. rewrite e1. auto.
   - discriminate.
+Defined.
+
+Lemma eq_term_lift :
+  forall {t u n k},
+    eq_term t u = true ->
+    eq_term (lift n k t) (lift n k u) = true.
+Proof.
+  intros t u n k h.
+  unfold eq_term in h. revert h.
+  case (nl_dec (nl t) (nl u)).
+  - intros e _. apply eq_term_spec.
+    revert u e n k.
+    induction t using sterm_rect_list ;
+    intros u e m k ; destruct u ; cbn in e ; try discriminate e.
+    all:
+      try (cbn ; inversion e ;
+           repeat (erewrite_assumption by eassumption) ; reflexivity).
+    cbn. inversion e.
+    repeat erewrite_assumption by eassumption.
+    f_equal. rewrite !map_map_compose, !compose_on_snd.
+    clear - X H3. revert brs0 H3.
+    induction X.
+    + cbn. intros [|? ?] h ; cbn in h ; try discriminate h. reflexivity.
+    + cbn. intros [| [n b] brs'] h ; cbn in h ; try discriminate h.
+      cbn. f_equal.
+      * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
+        inversion h. subst. f_equal. unfold compose. apply p. cbn. assumption.
+      * apply IHX. now inversion h.
+  - intros. discriminate.
 Defined.
