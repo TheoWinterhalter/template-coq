@@ -1346,12 +1346,7 @@ Proof.
       * now destruct hΓ.
       * constructor ; eassumption.
       * constructor ; eassumption.
-      * eapply type_Lambda ; try eassumption.
-        (* Problem, it seems our change to lambda/Prod was wrong.
-           Those damn names.
-         *)
-        all: cheat.
-
+      * eapply type_Lambda ; eassumption.
 
     (* type_App *)
     + (* Translation of the domain *)
