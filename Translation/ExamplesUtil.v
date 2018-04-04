@@ -3,7 +3,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
-From Translation Require Import SAst SLiftSubst SCommon ITyping
+From Translation Require Import util SAst SLiftSubst SCommon ITyping
                                 ITypingLemmata ITypingMore XTyping
                                 Translation Reduction FinalTranslation.
 
@@ -221,7 +221,7 @@ Fact hΣi : type_glob Σi.
     + exists (max 0 0). magic.
   (* vec *)
   - tind.
-    + exists (max_sort 1 (max 0 1)). repeat econstr.
+    + exists (max_sort 1 (max 0 1)). magic.
     + exists (max_sort 1 0).
       econstr.
       * magic.
