@@ -189,19 +189,19 @@ Proof.
 Defined.
 
 Lemma type_CongProd'' :
-  forall {Σ Γ s z nx ny np A1 A2 B1 B2 pA pB},
+  forall {Σ Γ s z nx ny A1 A2 B1 B2 pA pB},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                 (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
     Σ ;;; Γ |-i sCongProd B1 B2 pA pB :
     sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
          (sSort (max_sort s z)) (sProd ny A2 B2).
 Proof.
-  intros Σ Γ s z nx ny np A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
+  intros Σ Γ s z nx ny A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
   destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
   destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
   eapply type_CongProd.
@@ -209,15 +209,15 @@ Proof.
 Defined.
 
 Lemma prod_sorts :
-  forall {Σ Γ s1 s2 z1 z2 np A1 A2 B1 B2 pA pB},
+  forall {Σ Γ s1 s2 z1 z2 A1 A2 B1 B2 pA pB},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z1) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                 (sSort z2) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     (s1 = s2) * (z1 = z2).
 Proof.
-  intros Σ Γ s1 s2 z1 z2 np A1 A2 B1 B2 pA pB hg hpA hpB.
+  intros Σ Γ s1 s2 z1 z2 A1 A2 B1 B2 pA pB hg hpA hpB.
   split.
   - destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
     eapply sorts_in_sort ; eassumption.
@@ -226,45 +226,45 @@ Proof.
 Defined.
 
 Lemma type_CongProd' :
-  forall {Σ Γ s1 s2 z1 z2 nx ny np A1 A2 B1 B2 pA pB},
+  forall {Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 pA pB},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z1) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                 (sSort z2) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z1 ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z1 ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z2 ->
     Σ ;;; Γ |-i sCongProd B1 B2 pA pB :
     sHeq (sSort (max_sort s1 z1)) (sProd nx A1 B1)
          (sSort (max_sort s2 z2)) (sProd ny A2 B2).
 Proof.
-  intros Σ Γ s1 s2 z1 z2 nx ny np A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
+  intros Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
   destruct (prod_sorts hg hpA hpB) as [e1 e2].
   subst. rename z2 into z, s2 into s.
   eapply type_CongProd'' ; eassumption.
 Defined.
 
 Lemma type_CongLambda'' :
-  forall {Σ Γ s z nx ny np A1 A2 B1 B2 t1 t2 pA pB pt},
+  forall {Σ Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pt : sHeq ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 t1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })
                  ((lift 1 1 t2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
-    Σ ;;; Γ ,, svass nx A1 |-i t1 : B1 ->
-    Σ ;;; Γ ,, svass ny A2 |-i t2 : B2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
+    Σ ;;; Γ ,, A1 |-i t1 : B1 ->
+    Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
                sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
                     (sProd ny A2 B2) (sLambda ny A2 B2 t2).
 Proof.
-  intros Σ Γ s z nx ny np A1 A2 B1 B2 t1 t2 pA pB pt
+  intros Σ Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt
          hg hpA hpB hpt hB1 hB2 ht1 ht2.
   destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
   destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
@@ -273,26 +273,26 @@ Proof.
 Defined.
 
 Lemma type_CongLambda' :
-  forall {Σ Γ s1 s2 z1 z2 nx ny np A1 A2 B1 B2 t1 t2 pA pB pt},
+  forall {Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 t1 t2 pA pB pt},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z1) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z2) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pt : sHeq ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 t1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })
                  ((lift 1 1 t2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z1 ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z2 ->
-    Σ ;;; Γ ,, svass nx A1 |-i t1 : B1 ->
-    Σ ;;; Γ ,, svass ny A2 |-i t2 : B2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z1 ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z2 ->
+    Σ ;;; Γ ,, A1 |-i t1 : B1 ->
+    Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
                sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
                     (sProd ny A2 B2) (sLambda ny A2 B2 t2).
 Proof.
-  intros Σ Γ s1 s2 z1 z2 nx ny np A1 A2 B1 B2 t1 t2 pA pB pt hg
+  intros Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 t1 t2 pA pB pt hg
          hpA hpB hpt hB1 hB2 ht1 ht2.
   destruct (prod_sorts hg hpA hpB) as [e1 e2].
   subst. rename s2 into s, z2 into z.
@@ -300,21 +300,21 @@ Proof.
 Defined.
 
 Lemma type_CongApp'' :
-  forall {Σ Γ s z nx ny np A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv},
+  forall {Σ Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ |-i pu : sHeq (sProd nx A1 B1) u1 (sProd ny A2 B2) u2 ->
     Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2 ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
     Σ ;;; Γ |-i sCongApp B1 B2 pu pA pB pv :
-               sHeq (B1{0 := v1}) (sApp u1 nx A1 B1 v1)
-                    (B2{0 := v2}) (sApp u2 ny A2 B2 v2).
+               sHeq (B1{0 := v1}) (sApp u1 A1 B1 v1)
+                    (B2{0 := v2}) (sApp u2 A2 B2 v2).
 Proof.
-  intros Σ Γ s z nx ny np A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
+  intros Σ Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
          hg hpA hpB hpu hpv hB1 hB2.
   destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
   destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
@@ -324,21 +324,21 @@ Proof.
 Defined.
 
 Lemma type_CongApp' :
-  forall {Σ Γ s1 s2 z1 z2 nx ny np A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv},
+  forall {Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z1) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z2) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ |-i pu : sHeq (sProd nx A1 B1) u1 (sProd ny A2 B2) u2 ->
     Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2 ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z1 ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z1 ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z2 ->
     Σ ;;; Γ |-i sCongApp B1 B2 pu pA pB pv :
-               sHeq (B1{0 := v1}) (sApp u1 nx A1 B1 v1)
-                    (B2{0 := v2}) (sApp u2 ny A2 B2 v2).
+               sHeq (B1{0 := v1}) (sApp u1 A1 B1 v1)
+                    (B2{0 := v2}) (sApp u2 A2 B2 v2).
 Proof.
-  intros Σ Γ s1 s2 z1 z2 nx ny np A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
+  intros Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
          hg hpA hpB hpu hpv hB1 hB2.
   destruct (prod_sorts hg hpA hpB).
   subst. rename s2 into s, z2 into z.

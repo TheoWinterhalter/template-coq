@@ -10,7 +10,7 @@ Lemma inversionRel :
   forall {Σ Γ n T},
     Σ ;;; Γ |-i sRel n : T ->
     ∑ isdecl,
-      let A := lift0 (S n) (safe_nth Γ (exist _ n isdecl)).(sdecl_type) in
+      let A := lift0 (S n) (safe_nth Γ (exist _ n isdecl)) in
       Σ |-i A = T.
 Proof.
   intros Σ Γ n T h. dependent induction h.
@@ -71,7 +71,7 @@ Lemma inversionProd :
     Σ ;;; Γ |-i sProd n A B : T ->
     ∑ s1 s2,
       (Σ ;;; Γ |-i A : sSort s1) *
-      (Σ ;;; Γ ,, svass n A |-i B : sSort s2) *
+      (Σ ;;; Γ ,, A |-i B : sSort s2) *
       (Σ |-i sSort (max_sort s1 s2) = T).
 Proof.
   intros Σ Γ n A B T h.
@@ -87,8 +87,8 @@ Lemma inversionLambda :
     Σ ;;; Γ |-i sLambda na A B t : T ->
       ∑ s1 s2 na',
         (Σ ;;; Γ |-i A : sSort s1) *
-        (Σ ;;; Γ ,, svass na' A |-i B : sSort s2) *
-        (Σ ;;; Γ ,, svass na' A |-i t : B) *
+        (Σ ;;; Γ ,, A |-i B : sSort s2) *
+        (Σ ;;; Γ ,, A |-i t : B) *
         (Σ |-i sProd na' A B = T).
 Proof.
   intros Σ Γ na A B t T h.
@@ -101,21 +101,21 @@ Proof.
 Defined.
 
 Lemma inversionApp :
-  forall {Σ Γ t n A B u T},
-    Σ ;;; Γ |-i sApp t n A B u : T ->
-    ∑ s1 s2,
+  forall {Σ Γ t A B u T},
+    Σ ;;; Γ |-i sApp t A B u : T ->
+    ∑ s1 s2 n,
       (Σ ;;; Γ |-i A : sSort s1) *
-      (Σ ;;; Γ ,, svass n A |-i B : sSort s2) *
+      (Σ ;;; Γ ,, A |-i B : sSort s2) *
       (Σ ;;; Γ |-i t : sProd n A B) *
       (Σ ;;; Γ |-i u : A) *
       (Σ |-i B{ 0 := u } = T).
 Proof.
-  intros Σ Γ t n A B u T h.
+  intros Σ Γ t A B u T h.
   dependent induction h.
-  - exists s1, s2. split ; [ split ; [ split ; [ split |] |] |] ; try assumption.
+  - exists s1, s2, n. split ; [ split ; [ split ; [ split |] |] |] ; try assumption.
     apply conv_refl.
-  - destruct IHh1 as [s1 [s2 [[[[? ?] ?] ?] ?]]].
-    exists s1, s2. split ; [ split ; [ split ; [ split |] |] |] ; try assumption.
+  - destruct IHh1 as (s1 & s2 & n & ?). split_hyps.
+    exists s1, s2, n. split ; [ split ; [ split ; [ split |] |] |] ; try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -157,23 +157,22 @@ Defined.
 Lemma inversionJ :
   forall {Σ Γ A u P w v p T},
     Σ ;;; Γ |-i sJ A u P w v p : T ->
-    ∑ s1 s2 nx ne,
+    ∑ s1 s2,
       (Σ ;;; Γ |-i A : sSort s1) *
       (Σ ;;; Γ |-i u : A) *
       (Σ ;;; Γ |-i v : A) *
-      (Σ ;;; Γ ,, svass nx A ,,
-         svass ne (sEq (lift0 1 A) (lift0 1 u) (sRel 0)) |-i P : sSort s2) *
+      (Σ ;;; Γ ,, A ,, (sEq (lift0 1 A) (lift0 1 u) (sRel 0)) |-i P : sSort s2) *
       (Σ ;;; Γ |-i p : sEq A u v) *
       (Σ ;;; Γ |-i w : (P {1 := u}){0 := sRefl A u}) *
       (Σ |-i P{1 := v}{0 := p} = T).
 Proof.
   intros Σ Γ A u P w v p T h.
   dependent induction h.
-  - exists s1, s2, nx, ne. splits 6 ; try assumption.
+  - exists s1, s2. splits 6 ; try assumption.
     apply conv_refl.
-  - destruct IHh1 as (s1 & s2 & nx & ne & ?).
+  - destruct IHh1 as (s1 & s2 & ?).
     split_hyps.
-    exists s1, s2, nx, ne. splits 6 ; try assumption.
+    exists s1, s2. splits 6 ; try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -326,90 +325,90 @@ Defined.
 Lemma inversionCongProd :
   forall {Σ Γ B1 B2 pA pB T},
     Σ ;;; Γ |-i sCongProd B1 B2 pA pB : T ->
-    ∑ s z nx ny np A1 A2,
+    ∑ s z nx ny A1 A2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
-      (Σ ;;; Γ ,, svass np (sPack A1 A2)
+      (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                     (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
-      (Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z) *
-      (Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ ,, A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, A2 |-i B2 : sSort z) *
       (Σ |-i sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
                  (sSort (max_sort s z)) (sProd ny A2 B2)
           = T).
 Proof.
   intros Σ Γ B1 B2 pA pB T h.
   dependent induction h.
-  - exists s, z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+  - exists s, z, nx, ny, A1, A2. repeat split. all: try assumption.
     apply conv_refl.
-  - destruct IHh1 as (s' & z & nx & ny & np & A1 & A2 & ?).
+  - destruct IHh1 as (s' & z & nx & ny & A1 & A2 & ?).
     split_hyps.
-    exists s', z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+    exists s', z, nx, ny, A1, A2. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
 Lemma inversionCongLambda :
   forall {Σ Γ B1 B2 t1 t2 pA pB pt T},
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt : T ->
-    ∑ s z nx ny np A1 A2,
+    ∑ s z nx ny A1 A2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
-      (Σ ;;; Γ ,, svass np (sPack A1 A2)
+      (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                     (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
-      (Σ ;;; Γ ,, svass np (sPack A1 A2)
+      (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pt : sHeq ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                     ((lift 1 1 t1){ 0 := sProjT1 (sRel 0) })
                     ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })
                     ((lift 1 1 t2){ 0 := sProjT2 (sRel 0) })) *
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
-      (Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z) *
-      (Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z) *
-      (Σ ;;; Γ ,, svass nx A1 |-i t1 : B1) *
-      (Σ ;;; Γ ,, svass ny A2 |-i t2 : B2) *
+      (Σ ;;; Γ ,, A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ ,, A1 |-i t1 : B1) *
+      (Σ ;;; Γ ,, A2 |-i t2 : B2) *
       (Σ |-i sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
                  (sProd ny A2 B2) (sLambda ny A2 B2 t2)
           = T).
 Proof.
   intros Σ Γ B1 B2 t1 t2 pA pB pt T h.
   dependent induction h.
-  - exists s, z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+  - exists s, z, nx, ny, A1, A2. repeat split. all: try assumption.
     apply conv_refl.
-  - destruct IHh1 as (s' & z & nx & ny & np & A1 & A2 & ?). split_hyps.
-    exists s', z, nx, ny, np, A1, A2. repeat split. all: try assumption.
+  - destruct IHh1 as (s' & z & nx & ny & A1 & A2 & ?). split_hyps.
+    exists s', z, nx, ny, A1, A2. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
 Lemma inversionCongApp :
   forall {Σ Γ B1 B2 pu pA pB pv T},
     Σ ;;; Γ |-i sCongApp B1 B2 pu pA pB pv : T ->
-    ∑ s z nx ny np A1 A2 u1 u2 v1 v2,
+    ∑ s z nx ny A1 A2 u1 u2 v1 v2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
-      (Σ ;;; Γ ,, svass np (sPack A1 A2)
+      (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                     (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
       (Σ ;;; Γ |-i pu : sHeq (sProd nx A1 B1) u1 (sProd ny A2 B2) u2) *
       (Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2) *
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
-      (Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z) *
-      (Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ ,, A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, A2 |-i B2 : sSort z) *
       (Σ ;;; Γ |-i u1 : sProd nx A1 B1) *
       (Σ ;;; Γ |-i u2 : sProd ny A2 B2) *
       (Σ ;;; Γ |-i v1 : A1) *
       (Σ ;;; Γ |-i v2 : A2) *
-      (Σ |-i sHeq (B1{0 := v1}) (sApp u1 nx A1 B1 v1)
-                 (B2{0 := v2}) (sApp u2 ny A2 B2 v2)
+      (Σ |-i sHeq (B1{0 := v1}) (sApp u1 A1 B1 v1)
+                 (B2{0 := v2}) (sApp u2 A2 B2 v2)
           = T).
 Proof.
   intros Σ Γ B1 B2 pu pA pB pv T h.
   dependent induction h.
-  - exists s, z, nx, ny, np, A1, A2, u1, u2, v1, v2. repeat split.
+  - exists s, z, nx, ny, A1, A2, u1, u2, v1, v2. repeat split.
     all: try assumption. apply conv_refl.
-  - destruct IHh1 as (s' & z & nx & ny & np & A1 & A2 & u1 & u2 & v1 & v2 & ?).
+  - destruct IHh1 as (s' & z & nx & ny & A1 & A2 & u1 & u2 & v1 & v2 & ?).
     split_hyps.
-    exists s', z, nx, ny, np, A1, A2, u1, u2, v1, v2. repeat split.
+    exists s', z, nx, ny, A1, A2, u1, u2, v1, v2. repeat split.
     all: try assumption. eapply conv_trans ; eassumption.
 Defined.
 
@@ -587,11 +586,11 @@ Ltac ttinv h :=
     | sProd _ _ _ => destruct (inversionProd h) as (s1 & s2 & hh) ; splits_one hh
     | sLambda _ _ _ _ => destruct (inversionLambda h) as (s1 & s2 & na & hh) ;
                         splits_one hh
-    | sApp _ _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & hh) ;
+    | sApp _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & na & hh) ;
                        splits_one hh
     | sEq _ _ _ => destruct (inversionEq h) as (s & hh) ; splits_one hh
     | sRefl _ _ => destruct (inversionRefl h) as (s & hh) ; splits_one hh
-    | sJ _ _ _ _ _ _ => destruct (inversionJ h) as (s1 & s2 & nx & ne & hh) ;
+    | sJ _ _ _ _ _ _ => destruct (inversionJ h) as (s1 & s2 & hh) ;
                        splits_one hh
     | sTransport _ _ _ _ => destruct (inversionTransport h) as (s & hh) ;
                            splits_one hh
@@ -608,15 +607,15 @@ Ltac ttinv h :=
       destruct (inversionHeqTransport h) as (A & B & s & hh) ;
       splits_one hh
     | sCongProd _ _ _ _ =>
-      destruct (inversionCongProd h) as (s & z & nx & ny & np & A1 & A2 & hh) ;
+      destruct (inversionCongProd h) as (s & z & nx & ny & A1 & A2 & hh) ;
       splits_one hh
     | sCongLambda _ _ _ _ _ _ _ =>
       destruct (inversionCongLambda h)
-        as (s & z & nx & ny & np & A1 & A2 & hh) ;
+        as (s & z & nx & ny & A1 & A2 & hh) ;
       splits_one hh
     | sCongApp _ _ _ _ _ _ =>
       destruct (inversionCongApp h)
-        as (s & z & nx & ny & np & A1 & A2 & u1 & u2 & v1 & v2 & hh) ;
+        as (s & z & nx & ny & A1 & A2 & u1 & u2 & v1 & v2 & hh) ;
       splits_one hh
     | sCongEq _ _ _ =>
       destruct (inversionCongEq h) as (s & A1 & A2 & u1 & u2 & v1 & v2 & hh) ;

@@ -11,8 +11,8 @@ Fixpoint lift n k t : sterm :=
   match t with
   | sRel i => if Nat.leb k i then sRel (n + i) else sRel i
   | sLambda na T V M => sLambda na (lift n k T) (lift n (S k) V) (lift n (S k) M)
-  | sApp u na A B v =>
-    sApp (lift n k u) na (lift n k A) (lift n (S k) B) (lift n k v)
+  | sApp u A B v =>
+    sApp (lift n k u) (lift n k A) (lift n (S k) B) (lift n k v)
   | sProd na A B => sProd na (lift n k A) (lift n (S k) B)
   | sEq A u v => sEq (lift n k A) (lift n k u) (lift n k v)
   | sRefl A u => sRefl (lift n k A) (lift n k u)
@@ -70,8 +70,8 @@ Fixpoint subst t k u :=
     end
   | sLambda na T V M =>
     sLambda na (subst t k T) (subst t (S k) V) (subst t (S k) M)
-  | sApp u na A B v =>
-    sApp (subst t k u) na (subst t k A) (subst t (S k) B) (subst t k v)
+  | sApp u A B v =>
+    sApp (subst t k u) (subst t k A) (subst t (S k) B) (subst t k v)
   | sProd na A B => sProd na (subst t k A) (subst t (S k) B)
   | sEq A u v => sEq (subst t k A) (subst t k u) (subst t k v)
   | sRefl A u => sRefl (subst t k A) (subst t k u)
@@ -132,7 +132,7 @@ Fixpoint closed_above k t :=
   | sProd _ A B => closed_above k A && closed_above (S k) B
   | sLambda _ A B t =>
     closed_above k A && closed_above (S k) B && closed_above (S k) t
-  | sApp u _ A B v =>
+  | sApp u A B v =>
     closed_above k u &&
     closed_above k A &&
     closed_above (S k) B &&

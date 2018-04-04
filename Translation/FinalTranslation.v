@@ -98,7 +98,7 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       A' <- tsl_rec fuel Σ Γ A ;;
       t' <- tsl_rec fuel Σ (Γ ,, vass n A') t ;;
       ret (tLambda n A' t')
-    | sApp u n A B v =>
+    | sApp u A B v =>
       u' <- tsl_rec fuel Σ Γ u ;;
       v' <- tsl_rec fuel Σ Γ v ;;
       myret Σ Γ (tApp u' [v'])
@@ -311,8 +311,8 @@ Fixpoint tsl_ctx (fuel : nat) (Σ : global_context) (Γ : scontext)
   | [] => ret []
   | a :: Γ =>
     Γ' <- tsl_ctx fuel Σ Γ ;;
-    A' <- tsl_rec fuel Σ Γ' (sdecl_type a) ;;
-    ret (Γ' ,, vass (sdecl_name a) A')
+    A' <- tsl_rec fuel Σ Γ' a ;;
+    ret (Γ' ,, vass nAnon A')
   end.
 
 (* We define a term that mentions everything that the global context should

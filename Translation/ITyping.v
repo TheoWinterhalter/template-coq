@@ -14,7 +14,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 | type_Rel Γ n :
     wf Σ Γ ->
     forall (isdecl : n < List.length Γ),
-      Σ ;;; Γ |-i (sRel n) : lift0 (S n) (safe_nth Γ (exist _ n isdecl)).(sdecl_type)
+      Σ ;;; Γ |-i (sRel n) : lift0 (S n) (safe_nth Γ (exist _ n isdecl))
 
 | type_Sort Γ s :
     wf Σ Γ ->
@@ -22,21 +22,21 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 
 | type_Prod Γ n t b s1 s2 :
     Σ ;;; Γ |-i t : sSort s1 ->
-    Σ ;;; Γ ,, svass n t |-i b : sSort s2 ->
+    Σ ;;; Γ ,, t |-i b : sSort s2 ->
     Σ ;;; Γ |-i (sProd n t b) : sSort (max_sort s1 s2)
 
 | type_Lambda Γ n n' t b s1 s2 bty :
     Σ ;;; Γ |-i t : sSort s1 ->
-    Σ ;;; Γ ,, svass n' t |-i bty : sSort s2 ->
-    Σ ;;; Γ ,, svass n' t |-i b : bty ->
+    Σ ;;; Γ ,, t |-i bty : sSort s2 ->
+    Σ ;;; Γ ,, t |-i b : bty ->
     Σ ;;; Γ |-i (sLambda n t bty b) : sProd n' t bty
 
 | type_App Γ n s1 s2 t A B u :
     Σ ;;; Γ |-i A : sSort s1 ->
-    Σ ;;; Γ ,, svass n A |-i B : sSort s2 ->
+    Σ ;;; Γ ,, A |-i B : sSort s2 ->
     Σ ;;; Γ |-i t : sProd n A B ->
     Σ ;;; Γ |-i u : A ->
-    Σ ;;; Γ |-i (sApp t n A B u) : B{ 0 := u }
+    Σ ;;; Γ |-i (sApp t A B u) : B{ 0 := u }
 
 | type_Eq Γ s A u v :
     Σ ;;; Γ |-i A : sSort s ->
@@ -49,11 +49,11 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i sRefl A u : sEq A u u
 
-| type_J Γ nx ne s1 s2 A u v P p w :
+| type_J Γ s1 s2 A u v P p w :
     Σ ;;; Γ |-i A : sSort s1 ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : A ->
-    Σ ;;; Γ ,, svass nx A ,, svass ne (sEq (lift0 1 A) (lift0 1 u) (sRel 0)) |-i P : sSort s2 ->
+    Σ ;;; Γ ,, A ,, (sEq (lift0 1 A) (lift0 1 u) (sRel 0)) |-i P : sSort s2 ->
     Σ ;;; Γ |-i p : sEq A u v ->
     Σ ;;; Γ |-i w : P{ 1 := u }{ 0 := sRefl A u } ->
     Σ ;;; Γ |-i sJ A u P w v p : P{ 1 := v }{ 0 := p }
@@ -110,57 +110,57 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-i p : sEq (sSort s) A B ->
     Σ ;;; Γ |-i sHeqTransport p t : sHeq A t B (sTransport A B p t)
 
-| type_CongProd Γ s z nx ny np A1 A2 B1 B2 pA pB :
+| type_CongProd Γ s z nx ny A1 A2 B1 B2 pA pB :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
     Σ ;;; Γ |-i sCongProd B1 B2 pA pB :
     sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
          (sSort (max_sort s z)) (sProd ny A2 B2)
 
-| type_CongLambda Γ s z nx ny np A1 A2 B1 B2 t1 t2 pA pB pt :
+| type_CongLambda Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pt : sHeq ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 t1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })
                  ((lift 1 1 t2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
-    Σ ;;; Γ ,, svass nx A1 |-i t1 : B1 ->
-    Σ ;;; Γ ,, svass ny A2 |-i t2 : B2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
+    Σ ;;; Γ ,, A1 |-i t1 : B1 ->
+    Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
                sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
                     (sProd ny A2 B2) (sLambda ny A2 B2 t2)
 
-| type_CongApp Γ s z nx ny np A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv :
+| type_CongApp Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ ,, svass np (sPack A1 A2)
+    Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ |-i pu : sHeq (sProd nx A1 B1) u1 (sProd ny A2 B2) u2 ->
     Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2 ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
-    Σ ;;; Γ ,, svass nx A1 |-i B1 : sSort z ->
-    Σ ;;; Γ ,, svass ny A2 |-i B2 : sSort z ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
     Σ ;;; Γ |-i u1 : sProd nx A1 B1 ->
     Σ ;;; Γ |-i u2 : sProd ny A2 B2 ->
     Σ ;;; Γ |-i v1 : A1 ->
     Σ ;;; Γ |-i v2 : A2 ->
     Σ ;;; Γ |-i sCongApp B1 B2 pu pA pB pv :
-               sHeq (B1{0 := v1}) (sApp u1 nx A1 B1 v1)
-                    (B2{0 := v2}) (sApp u2 ny A2 B2 v2)
+               sHeq (B1{0 := v1}) (sApp u1 A1 B1 v1)
+                    (B2{0 := v2}) (sApp u2 A2 B2 v2)
 
 | type_CongEq Γ s A1 A2 u1 u2 v1 v2 pA pu pv :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
@@ -246,10 +246,10 @@ with wf (Σ : sglobal_context) : scontext -> Type :=
 | wf_nil :
     wf Σ nil
 
-| wf_snoc s Γ x A :
+| wf_snoc s Γ A :
     wf Σ Γ ->
     Σ ;;; Γ |-i A : sSort s ->
-    wf Σ (Γ ,, svass x A)
+    wf Σ (Γ ,, A)
 .
 
 (* | eq_JRefl Γ nx ne s1 s2 A u P w : *)
@@ -290,12 +290,12 @@ Inductive Xcomp : sterm -> Type :=
     Xcomp B ->
     Xcomp t ->
     Xcomp (sLambda na A B t)
-| xcomp_App u na A B v :
+| xcomp_App u A B v :
     Xcomp u ->
     Xcomp A ->
     Xcomp B ->
     Xcomp v ->
-    Xcomp (sApp u na A B v)
+    Xcomp (sApp u A B v)
 | xcomp_Eq A u v :
     Xcomp A ->
     Xcomp u ->
@@ -333,24 +333,8 @@ Inductive type_projections (Σ : sglobal_context) (Γ : scontext) :
     type_projections Σ Γ l ->
     type_projections Σ Γ ((id, t) :: l).
 
-Definition rev {A} (l : list A) : list A :=
-  let fix aux (l : list A) (acc : list A) : list A :=
-    match l with
-    | [] => acc
-    | x :: l => aux l (x :: acc)
-    end
-  in aux l [].
-
-Definition rev_map {A B} (f : A -> B) (l : list A) : list B :=
-  let fix aux (l : list A) (acc : list B) : list B :=
-    match l with
-    | [] => acc
-    | x :: l => aux l (f x :: acc)
-    end
-  in aux l [].
-
-Definition arities_context (l : list sone_inductive_body) :=
-  rev_map (fun ind => svass (nNamed ind.(sind_name)) ind.(sind_type)) l.
+Definition arities_context (l : list sone_inductive_body) : scontext :=
+  rev_map (fun ind => ind.(sind_type)) l.
 
 Definition isArity Σ Γ T :=
   isType Σ Γ T (* FIXME  /\ decompose_prod_n *).
@@ -366,7 +350,7 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext)
     (** Constructors are well-typed *)
     type_constructors Σ Γ cstrs ->
     (** Projections are well-typed *)
-    type_projections Σ (Γ ,,, pars ,, svass nAnon ty) projs ->
+    type_projections Σ (Γ ,,, pars ,, ty) projs ->
     (** The other inductives in the block are well-typed *)
     type_inddecls Σ pars Γ l ->
     (** TODO: check kelim*)

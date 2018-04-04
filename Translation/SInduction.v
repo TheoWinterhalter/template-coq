@@ -98,10 +98,10 @@ Lemma sterm_rect_list :
     (forall (nx : name) (A : sterm), P A -> forall B : sterm, P B -> forall t : sterm, P t ->
        P (sLambda nx A B t)) ->
     (forall u : sterm, P u ->
-     forall (nx : name) (A : sterm), P A ->
+     forall (A : sterm), P A ->
      forall B : sterm, P B ->
      forall v : sterm, P v ->
-       P (sApp u nx A B v)) ->
+       P (sApp u A B v)) ->
     (forall A : sterm, P A -> forall u : sterm, P u -> forall v : sterm, P v -> P (sEq A u v)) ->
     (forall A : sterm, P A -> forall u : sterm, P u -> P (sRefl A u)) ->
     (forall A : sterm, P A ->

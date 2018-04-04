@@ -485,7 +485,7 @@ Defined.
 Fact arities_context_cons :
   forall {a l},
     arities_context (a :: l) =
-    [ svass (nNamed (sind_name a)) (sind_type a) ] ,,, arities_context l.
+    [ (sind_type a) ] ,,, arities_context l.
 Proof.
   intros a l.
   unfold arities_context.
@@ -778,9 +778,8 @@ Proof.
         replace (S (0 + #|Ξ|)) with (1 + #|Ξ|)%nat by omega.
         rewrite substP1.
         cbn. eapply type_J ; try eih.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !lift_decl_svass. cbn.
-          f_equal. f_equal. f_equal.
+        + cbn. unfold ssnoc. cbn.
+          f_equal. f_equal.
           * replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
             apply liftP2. omega.
           * replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
@@ -876,28 +875,28 @@ Proof.
 Defined.
 
 Corollary typing_lift01 :
-  forall {Σ Γ t A x B s},
+  forall {Σ Γ t A B s},
     type_glob Σ ->
     Σ ;;; Γ |-i t : A ->
     Σ ;;; Γ |-i B : sSort s ->
-    Σ ;;; Γ ,, svass x B |-i lift0 1 t : lift0 1 A.
+    Σ ;;; Γ ,, B |-i lift0 1 t : lift0 1 A.
 Proof.
-  intros Σ Γ t A x B s hg ht hB.
-  apply (@type_lift _ _ [ svass x B ] nil _ _ ht hg).
+  intros Σ Γ t A B s hg ht hB.
+  apply (@type_lift _ _ [ B ] nil _ _ ht hg).
   econstructor.
   - eapply typing_wf. eassumption.
   - eassumption.
 Defined.
 
 Corollary typing_lift02 :
-  forall {Σ Γ t A x B s y C s'},
+  forall {Σ Γ t A B s C s'},
     type_glob Σ ->
     Σ ;;; Γ |-i t : A ->
     Σ ;;; Γ |-i B : sSort s ->
-    Σ ;;; Γ ,, svass x B |-i C : sSort s' ->
-    Σ ;;; Γ ,, svass x B ,, svass y C |-i lift0 2 t : lift0 2 A.
+    Σ ;;; Γ ,, B |-i C : sSort s' ->
+    Σ ;;; Γ ,, B ,, C |-i lift0 2 t : lift0 2 A.
 Proof.
-  intros Σ Γ t A x B s y C s' hg ht hB hC.
+  intros Σ Γ t A B s C s' hg ht hB hC.
   assert (eq : forall t, lift0 2 t = lift0 1 (lift0 1 t)).
   { intro u. rewrite lift_lift. reflexivity. }
   rewrite !eq. eapply typing_lift01.
@@ -939,15 +938,15 @@ Defined.
 Ltac sh h :=
   lazymatch goal with
   | [ type_subst :
-        forall (Σ : sglobal_context) (Γ Δ : scontext) (t A : sterm) (nx : name)
+        forall (Σ : sglobal_context) (Γ Δ : scontext) (t A : sterm)
           (B u : sterm),
-          Σ;;; Γ,, svass nx B ,,, Δ |-i t : A ->
+          Σ;;; Γ,, B ,,, Δ |-i t : A ->
           type_glob Σ ->
           Σ;;; Γ |-i u : B -> Σ;;; Γ ,,, subst_context u Δ |-i
           t {#|Δ| := u} : A {#|Δ| := u}
     |- _ ] =>
     lazymatch type of h with
-    | _ ;;; ?Γ' ,, svass ?nx' ?B' ,,, ?Δ' |-i _ : ?T' =>
+    | _ ;;; ?Γ' ,, ?B' ,,, ?Δ' |-i _ : ?T' =>
       eapply meta_conv ; [
         eapply meta_ctx_conv ; [
           eapply type_subst with (Γ := Γ') (Δ := Δ') (A := T') ; [
@@ -957,7 +956,7 @@ Ltac sh h :=
           ]
         | .. ]
       | .. ]
-    | _ ;;; (?Γ' ,, svass ?nx' ?B' ,,, ?Δ') ,, ?d' |-i _ : ?T' =>
+    | _ ;;; (?Γ' ,, ?B' ,,, ?Δ') ,, ?d' |-i _ : ?T' =>
       eapply meta_conv ; [
         eapply meta_ctx_conv ; [
           eapply type_subst with (Γ := Γ') (Δ := Δ' ,, d') (A := T') ; [
@@ -967,7 +966,7 @@ Ltac sh h :=
           ]
         | .. ]
       | .. ]
-    | _ ;;; (?Γ' ,, svass ?nx' ?B' ,,, ?Δ') ,, ?d',, ?d'' |-i _ : ?T' =>
+    | _ ;;; (?Γ' ,, ?B' ,,, ?Δ') ,, ?d',, ?d'' |-i _ : ?T' =>
       eapply meta_conv ; [
         eapply meta_ctx_conv ; [
           eapply type_subst with (Γ := Γ') (Δ := (Δ' ,, d') ,, d'') (A := T') ; [
@@ -987,14 +986,14 @@ Ltac esh :=
   | _ => fail "not handled by esh"
   end.
 
-Fixpoint type_subst {Σ Γ Δ t A nx B u}
-  (h : Σ ;;; Γ ,, svass nx B ,,, Δ |-i t : A) {struct h} :
+Fixpoint type_subst {Σ Γ Δ t A B u}
+  (h : Σ ;;; Γ ,, B ,,, Δ |-i t : A) {struct h} :
   type_glob Σ ->
   Σ ;;; Γ |-i u : B ->
   Σ ;;; Γ ,,, subst_context u Δ |-i t{ #|Δ| := u } : A{ #|Δ| := u }
 
-with wf_subst {Σ Γ Δ nx B u}
-  (h : wf Σ (Γ ,, svass nx B ,,, Δ)) {struct h} :
+with wf_subst {Σ Γ Δ B u}
+  (h : wf Σ (Γ ,, B ,,, Δ)) {struct h} :
   type_glob Σ ->
   Σ ;;; Γ |-i u : B ->
   wf Σ (Γ ,,, subst_context u Δ)
@@ -1029,7 +1028,7 @@ Proof.
           eapply meta_conv.
           * eapply type_Rel. eapply wf_subst ; eassumption.
           * erewrite safe_nth_ge'.
-            f_equal. f_equal. eapply safe_nth_cong_irr.
+            f_equal. eapply safe_nth_cong_irr.
             rewrite subst_context_length. reflexivity.
         + assert (h : n < #|Δ|) by omega.
           rewrite @safe_nth_lt with (isdecl' := h).
@@ -1061,9 +1060,8 @@ Proof.
         replace (S (0 + #|Δ|)) with (1 + #|Δ|)%nat by omega.
         rewrite substP4.
         eapply type_J ; esh.
-        + instantiate (1 := ne). instantiate (1 := nx0). cbn. unfold ssnoc.
-          rewrite !subst_decl_svass. cbn.
-          f_equal. f_equal. f_equal.
+        + cbn. unfold ssnoc. cbn.
+          f_equal. f_equal.
           * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
             apply substP2. omega.
           * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
@@ -1143,7 +1141,7 @@ Proof.
   - { intros hg hu.
       destruct Δ.
       - cbn. dependent destruction h. assumption.
-      - dependent destruction h. cbn. rewrite subst_decl_svass. econstructor.
+      - dependent destruction h. cbn. econstructor.
         + eapply wf_subst ; eassumption.
         + esh.
     }
@@ -1153,27 +1151,27 @@ Proof.
 Defined.
 
 Corollary typing_subst :
-  forall {Σ Γ t A B u n},
+  forall {Σ Γ t A B u},
     type_glob Σ ->
-    Σ ;;; Γ ,, svass n A |-i t : B ->
+    Σ ;;; Γ ,, A |-i t : B ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i t{ 0 := u } : B{ 0 := u }.
 Proof.
-  intros Σ Γ t A B u n hg ht hu.
+  intros Σ Γ t A B u hg ht hu.
   eapply @type_subst with (Δ := []) ; eassumption.
 Defined.
 
 Corollary typing_subst2 :
-  forall {Σ Γ t A B C na nb u v},
+  forall {Σ Γ t A B C u v},
     type_glob Σ ->
-    Σ ;;; Γ ,, svass na A ,, svass nb B |-i t : C ->
+    Σ ;;; Γ ,, A ,, B |-i t : C ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : B{ 0 := u } ->
     Σ ;;; Γ |-i t{ 1 := u }{ 0 := v } : C{ 1 := u }{ 0 := v }.
 Proof.
-  intros Σ Γ t A B C na nb u v hg ht hu hv.
+  intros Σ Γ t A B C u v hg ht hu hv.
   eapply @type_subst with (Δ := []).
-  - eapply @type_subst with (Δ := [ svass nb B ]).
+  - eapply @type_subst with (Δ := [ B ]).
     + exact ht.
     + assumption.
     + assumption.
@@ -1183,10 +1181,10 @@ Defined.
 
 Inductive typed_list Σ Γ : list sterm -> scontext -> Type :=
 | typed_list_nil : typed_list Σ Γ [] []
-| typed_list_cons A l Δ nA T :
+| typed_list_cons A l Δ T :
     typed_list Σ Γ l Δ ->
     Σ ;;; Γ ,,, Δ |-i A : T ->
-    typed_list Σ Γ (A :: l) (Δ ,, svass nA T).
+    typed_list Σ Γ (A :: l) (Δ ,, T).
 
 Corollary type_substl :
   forall {Σ l Γ Δ},
@@ -1409,8 +1407,7 @@ Proof.
         change (lastn (S n) inds) with l1 in hl1.
         set (l1' := lastn n inds) in *.
         (* Same with l2 *)
-        assert (hn2 : nth_error ac (#|ac| - S n) =
-                      Some (svass (nNamed (sind_name a)) (sind_type a))).
+        assert (hn2 : nth_error ac (#|ac| - S n) = Some (sind_type a)).
         { rewrite H.
           unfold ac, arities_context.
           erewrite rev_map_nth_error.
@@ -1439,9 +1436,9 @@ Proof.
            econstructor.
            ++ assumption.
            ++ instantiate (1 := s).
-              change (sSort s) with (lift #|l2'| #|@nil scontext_decl| (sSort s)).
+              change (sSort s) with (lift #|l2'| #|@nil sterm| (sSort s)).
               replace (sind_type a)
-                with (lift #|l2'| #|@nil scontext_decl| (sind_type a))
+                with (lift #|l2'| #|@nil sterm| (sind_type a))
                 by (erewrite lift_ind_type by eassumption ; reflexivity).
               eapply meta_ctx_conv.
               ** eapply @type_lift with (Γ := []) (Ξ := []) (Δ := l2').
@@ -1605,9 +1602,9 @@ Proof.
     + eapply @type_ProjT2 with (A1 := A1) ; eassumption.
   - destruct (typed_ind_type hg isdecl) as [s h].
     exists s.
-    change (sSort s) with (lift #|Γ| #|@nil scontext_decl| (sSort s)).
+    change (sSort s) with (lift #|Γ| #|@nil sterm| (sSort s)).
     replace (sind_type decl)
-      with (lift #|Γ| #|@nil scontext_decl| (sind_type decl))
+      with (lift #|Γ| #|@nil sterm| (sind_type decl))
       by (erewrite lift_ind_type by eassumption ; reflexivity).
     eapply meta_ctx_conv.
     + eapply @type_lift with (Γ := []) (Ξ := []) (Δ := Γ).
@@ -1616,9 +1613,9 @@ Proof.
       * rewrite nil_cat. assumption.
     + cbn. apply nil_cat.
   - destruct (typed_type_of_constructor hg isdecl) as [s h].
-    exists s. change (sSort s) with (lift #|Γ| #|@nil scontext_decl| (sSort s)).
+    exists s. change (sSort s) with (lift #|Γ| #|@nil sterm| (sSort s)).
     set (ty := stype_of_constructor (fst Σ) (ind, i) univs decl isdecl) in *.
-    replace ty with (lift #|Γ| #|@nil scontext_decl| ty)
+    replace ty with (lift #|Γ| #|@nil sterm| ty)
       by (erewrite lift_type_of_constructor by eassumption ; reflexivity).
     eapply meta_ctx_conv.
     + eapply @type_lift with (Γ := []) (Ξ := []) (Δ := Γ).
@@ -1628,56 +1625,3 @@ Proof.
     + cbn. apply nil_cat.
   - exists s. assumption.
 Defined.
-
-(* Only implement if necessary.
-   In such a case, this has to be done in Conversion
- *)
-(* Lemma cong_subst1 : *)
-(*   forall {Σ Γ t1 t2 A B u1 u2 n}, *)
-(*     type_glob Σ -> *)
-(*     Σ ;;; Γ ,, svass n A |-i t1 = t2 : B -> *)
-(*     Σ ;;; Γ |-i u1 = u2 : A -> *)
-(*     Σ ;;; Γ |-i t1{ 0 := u1 } = t2{ 0 := u2 } : B{ 0 := u1 }. *)
-
-(* Lemma cong_subst2 : *)
-(*   forall {Σ Γ t1 t2 A B C na nb u1 u2 v1 v2}, *)
-(*     type_glob Σ -> *)
-(*     Σ ;;; Γ ,, svass na A ,, svass nb B |-i t1 = t2 : C -> *)
-(*     Σ ;;; Γ |-i u1 = u2 : A -> *)
-(*     Σ ;;; Γ |-i v1 = v2 : B{ 0 := u1 } -> *)
-(*     Σ ;;; Γ |-i t1{ 1 := u1 }{ 0 := v1 } *)
-(*              = t2{ 1 := u2 }{ 0 := v2 } : C{ 1 := u1 }{ 0 := v1 }. *)
-
-(* Hopefully, no longer necessary *)
-(* Lemma sorts_in_sort : *)
-(*   forall {Σ Γ s1 s2 s}, *)
-(*     Σ ;;; Γ |-i sSort s1 : sSort s -> *)
-(*     Σ ;;; Γ |-i sSort s2 : sSort s -> *)
-(*     Σ ;;; Γ |-i sSort s1 = sSort s2 : sSort s. *)
-(* Admitted. *)
-
-(* Same *)
-(* Lemma strengthen_sort : *)
-(*   forall {Σ Γ Δ s z}, *)
-(*     Σ ;;; Γ |-i sSort s : sSort z -> *)
-(*     wf Σ Δ -> *)
-(*     Σ ;;; Δ |-i sSort s : sSort z. *)
-(* Admitted. *)
-
-(* Lemma strengthen_sort_eq : *)
-(*   forall {Σ Γ Δ s1 s2 z}, *)
-(*     Σ ;;; Γ |-i sSort s1 = sSort s2 : sSort z -> *)
-(*     wf Σ Δ -> *)
-(*     Σ ;;; Δ |-i sSort s1 = sSort s2 : sSort z. *)
-(* Admitted. *)
-
-(* Lemma cong_succ_sort : *)
-(*   forall {Σ Γ s1 s2 s3}, *)
-(*     Σ ;;; Γ |-i sSort s1 = sSort s2 : sSort s3 -> *)
-(*     Σ ;;; Γ |-i sSort (succ_sort s1) = sSort (succ_sort s2) : sSort (succ_sort s3). *)
-(* Admitted. *)
-
-(* Lemma uniqueness_ctx : *)
-(*   forall {Σ Γ u A}, *)
-(*     Σ ;;; Γ |-i u : A -> *)
-(*     forall {Δ} *)

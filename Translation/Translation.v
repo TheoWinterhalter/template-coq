@@ -47,12 +47,12 @@ Inductive trel : sterm -> sterm -> Type :=
     u1 ∼ u2 ->
     sLambda n1 A1 B1 u1 ∼ sLambda n2 A2 B2 u2
 
-| trel_App u1 u2 n1 n2 A1 A2 B1 B2 v1 v2 :
+| trel_App u1 u2 A1 A2 B1 B2 v1 v2 :
     u1 ∼ u2 ->
     A1 ∼ A2 ->
     B1 ∼ B2 ->
     v1 ∼ v2 ->
-    sApp u1 n1 A1 B1 v1 ∼ sApp u2 n2 A2 B2 v2
+    sApp u1 A1 B1 v1 ∼ sApp u2 A2 B2 v2
 
 | trel_Refl A1 A2 u1 u2 :
     A1 ∼ A2 ->
@@ -105,12 +105,12 @@ Inductive inrel : sterm -> sterm -> Type :=
     u ⊏ u' ->
     sLambda n A B u ⊏ sLambda n' A' B' u'
 
-| inrel_App u u' n n' A A' B B' v v' :
+| inrel_App u u' A A' B B' v v' :
     u ⊏ u' ->
     A ⊏ A' ->
     B ⊏ B' ->
     v ⊏ v' ->
-    sApp u n A B v ⊏ sApp u' n' A' B' v'
+    sApp u A B v ⊏ sApp u' A' B' v'
 
 | inrel_Refl A A' u u' :
     A ⊏ A' ->
@@ -326,9 +326,9 @@ Proof.
     subst.
     assert (hm' :
               ismix Σ Γ
-                    (Γ1 ,, svass n1 A1)
-                    (Γ2 ,, svass n2 A2)
-                    (Γm ,, svass n1 (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
     destruct (IHsim2 _ _ _ _ _ _ hm' h4 h7) as [pB hpB].
@@ -403,9 +403,9 @@ Proof.
     subst.
     assert (hm' :
               ismix Σ Γ
-                    (Γ1 ,, svass na A1)
-                    (Γ2 ,, svass na0 A2)
-                    (Γm ,, svass n1 (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
     destruct (IHsim2 _ _ _ _ _ _ hm' h5 h9) as [pB hpB].
@@ -431,15 +431,21 @@ Proof.
     + cbn. apply cong_Heq.
       * match goal with
         | |- _ |-i ?T = _ =>
-          change T with (llift0 #|Γm| (sProd na A1 B1))
+          match T with
+          | sProd ?nx _ _ =>
+            change T with (llift0 #|Γm| (sProd nx A1 B1))
+          end
         end.
-        apply llift_conv. assumption.
+        apply llift_conv. eassumption.
       * apply conv_eq. apply eq_term_spec. cbn. reflexivity.
       * match goal with
         | |- _ |-i ?T = _ =>
-          change T with (rlift0 #|Γm| (sProd na0 A2 B2))
+          match T with
+          | sProd ?ny _ _ =>
+            change T with (rlift0 #|Γm| (sProd ny A2 B2))
+          end
         end.
-        apply rlift_conv. assumption.
+        apply rlift_conv. eassumption.
       * apply conv_eq. apply eq_term_spec. cbn. reflexivity.
 
   (* App *)
@@ -453,9 +459,9 @@ Proof.
     subst.
     assert (hm' :
               ismix Σ Γ
-                    (Γ1 ,, svass n1 A1)
-                    (Γ2 ,, svass n2 A2)
-                    (Γm ,, svass n1 (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
     destruct (IHsim3 _ _ _ _ _ _ hm' h6 h11) as [pB hpB].
@@ -690,7 +696,7 @@ Reserved Notation " Γ ≈ Δ " (at level 19).
 
 Inductive crel : scontext -> scontext -> Type :=
 | crel_empty : nil ≈ nil
-| crel_snoc Γ Δ n t m u : Γ ≈ Δ -> t ∼ u -> (Γ ,, svass n t) ≈ (Δ ,, svass m u)
+| crel_snoc Γ Δ t u : Γ ≈ Δ -> t ∼ u -> (Γ ,, t) ≈ (Δ ,, u)
 
 where " Γ ≈ Δ " := (crel Γ Δ).
 
@@ -698,8 +704,8 @@ Reserved Notation " Γ ⊂ Γ' " (at level 19).
 
 Inductive increl : scontext -> scontext -> Type :=
 | increl_empty : nil ⊂ nil
-| increl_snoc Γ Γ' n n' T T' :
-    Γ ⊂ Γ' -> T ⊏ T' -> (Γ ,, svass n T) ⊂ (Γ' ,, svass n' T')
+| increl_snoc Γ Γ' T T' :
+    Γ ⊂ Γ' -> T ⊏ T' -> (Γ ,, T) ⊂ (Γ' ,, T')
 
 where " Γ ⊂ Γ' " := (increl Γ Γ').
 
@@ -740,7 +746,7 @@ Definition head (t : sterm) : head_kind :=
   | sSort s => headSort s
   | sProd n A B => headProd
   | sLambda n A B t => headLambda
-  | sApp u n A B v => headApp
+  | sApp u A B v => headApp
   | sEq A u v => headEq
   | sRefl A u => headRefl
   | sJ A u P w v p => headJ
@@ -958,8 +964,8 @@ Fact nth_increl :
   forall {Γ Γ'},
     Γ ⊂ Γ' ->
     forall {n} { isdecl : n < #|Γ| } { isdecl' : n < #|Γ'| },
-      sdecl_type (safe_nth Γ (exist (fun n0 : nat => n0 < #|Γ|) n isdecl))
-    ⊏ sdecl_type (safe_nth Γ' (exist (fun n0 : nat => n0 < #|Γ'|) n isdecl')).
+      safe_nth Γ (exist (fun n0 : nat => n0 < #|Γ|) n isdecl)
+    ⊏ safe_nth Γ' (exist (fun n0 : nat => n0 < #|Γ'|) n isdecl').
 Proof.
   intros Γ Γ' e. induction e ; intros m isdecl isdecl'.
   - exfalso. easy.
@@ -968,10 +974,10 @@ Proof.
     + cbn. apply IHe.
 Defined.
 
-Definition trans_snoc {Σ Γ x A s Γ' A' s'} :
+Definition trans_snoc {Σ Γ A s Γ' A' s'} :
   Σ |--i Γ' # ⟦ Γ ⟧ ->
   Σ ;;;; Γ' |--- [A'] : sSort s' # ⟦ Γ |--- [A] : sSort s ⟧ ->
-  Σ |--i Γ' ,, svass x A' # ⟦ Γ ,, svass x A ⟧.
+  Σ |--i Γ' ,, A' # ⟦ Γ ,, A ⟧.
 Proof.
   intros hΓ hA.
   split.
@@ -984,8 +990,8 @@ Defined.
 Definition trans_Prod {Σ Γ n A B s1 s2 Γ' A' B'} :
   Σ |--i Γ' # ⟦ Γ ⟧ ->
   Σ ;;;; Γ' |--- [A'] : sSort s1 # ⟦ Γ |--- [A] : sSort s1 ⟧ ->
-  Σ ;;;; Γ' ,, svass n A' |--- [B'] : sSort s2
-  # ⟦ Γ ,, svass n A |--- [B]: sSort s2 ⟧ ->
+  Σ ;;;; Γ' ,, A' |--- [B'] : sSort s2
+  # ⟦ Γ ,, A |--- [B]: sSort s2 ⟧ ->
   Σ ;;;; Γ' |--- [sProd n A' B']: sSort (max_sort s1 s2)
   # ⟦ Γ |--- [ sProd n A B]: sSort (max_sort s1 s2) ⟧.
 Proof.
@@ -1052,19 +1058,18 @@ Definition typing_all : forall (Σ : sglobal_context)
          (P1 : forall (s : scontext) (s0 s1 s2 : sterm),
                Σ;;; s |-x s0 = s1 : s2 -> Type),
        P0 [] (XTyping.wf_nil Σ) ->
-       (forall (Γ : scontext) (x : name) (A : sterm)
+       (forall (Γ : scontext) (A : sterm)
           (s : sort) (w : XTyping.wf Σ Γ),
         P0 Γ w ->
         forall t : Σ;;; Γ |-x A : sSort s,
         P Γ A (sSort s) t ->
-        P0 (Γ,, svass x A) (XTyping.wf_snoc Σ Γ x A s w t))->
+        P0 (Γ,, A) (XTyping.wf_snoc Σ Γ A s w t))->
        (forall (Γ : scontext) (n : nat) (w : XTyping.wf Σ Γ),
         P0 Γ w ->
         forall isdecl : n < #|Γ|,
         P Γ (sRel n)
           (lift0 (S n)
-             (sdecl_type
-                (safe_nth Γ (exist (fun n0 : nat => n0 < #|Γ|) n isdecl))))
+             (safe_nth Γ (exist (fun n0 : nat => n0 < #|Γ|) n isdecl)))
           (XTyping.type_Rel Σ Γ n w isdecl)) ->
        (forall (Γ : scontext) (s : sort) (w : XTyping.wf Σ Γ),
         P0 Γ w ->
@@ -1072,29 +1077,29 @@ Definition typing_all : forall (Σ : sglobal_context)
        (forall (Γ : scontext) (n : name) (t b : sterm)
           (s1 s2 : sort) (t0 : Σ;;; Γ |-x t : sSort s1),
         P Γ t (sSort s1) t0 ->
-        forall t1 : Σ;;; Γ,, svass n t |-x b : sSort s2,
-        P (Γ,, svass n t) b (sSort s2) t1 ->
+        forall t1 : Σ;;; Γ,, t |-x b : sSort s2,
+        P (Γ,, t) b (sSort s2) t1 ->
         P Γ (sProd n t b) (sSort (max_sort s1 s2))
           (XTyping.type_Prod Σ Γ n t b s1 s2 t0 t1)) ->
        (forall (Γ : scontext) (n n' : name) (t b : sterm)
           (s1 s2 : sort) (bty : sterm) (t0 : Σ;;; Γ |-x t : sSort s1),
         P Γ t (sSort s1) t0 ->
-        forall t1 : Σ;;; Γ,, svass n t |-x bty : sSort s2,
-        P (Γ,, svass n t) bty (sSort s2) t1 ->
-        forall t2 : Σ;;; Γ,, svass n t |-x b : bty,
-        P (Γ,, svass n t) b bty t2 ->
+        forall t1 : Σ;;; Γ,, t |-x bty : sSort s2,
+        P (Γ,, t) bty (sSort s2) t1 ->
+        forall t2 : Σ;;; Γ,, t |-x b : bty,
+        P (Γ,, t) b bty t2 ->
         P Γ (sLambda n t bty b) (sProd n' t bty)
           (XTyping.type_Lambda Σ Γ n n' t b s1 s2 bty t0 t1 t2)) ->
        (forall (Γ : scontext) (n : name) (s1 s2 : sort)
           (t A B u : sterm) (t0 : Σ;;; Γ |-x A : sSort s1),
         P Γ A (sSort s1) t0 ->
-        forall t1 : Σ;;; Γ,, svass n A |-x B : sSort s2,
-        P (Γ,, svass n A) B (sSort s2) t1 ->
+        forall t1 : Σ;;; Γ,, A |-x B : sSort s2,
+        P (Γ,, A) B (sSort s2) t1 ->
         forall t2 : Σ;;; Γ |-x t : sProd n A B,
         P Γ t (sProd n A B) t2 ->
         forall t3 : Σ;;; Γ |-x u : A,
         P Γ u A t3 ->
-        P Γ (sApp t n A B u) (B {0 := u})
+        P Γ (sApp t A B u) (B {0 := u})
           (XTyping.type_App Σ Γ n s1 s2 t A B u t0 t1 t2 t3)) ->
        (forall (Γ : scontext) (s : sort) (A u v : sterm)
           (t : Σ;;; Γ |-x A : sSort s),
@@ -1139,13 +1144,13 @@ Definition typing_all : forall (Σ : sglobal_context)
        (forall (Γ : scontext) (s1 s2 : sort) (n : name)
           (A B t u : sterm) (t0 : Σ;;; Γ |-x A : sSort s1),
         P Γ A (sSort s1) t0 ->
-        forall t1 : Σ;;; Γ,, svass n A |-x B : sSort s2,
-        P (Γ,, svass n A) B (sSort s2) t1 ->
-        forall t2 : Σ;;; Γ,, svass n A |-x t : B,
-        P (Γ,, svass n A) t B t2 ->
+        forall t1 : Σ;;; Γ,, A |-x B : sSort s2,
+        P (Γ,, A) B (sSort s2) t1 ->
+        forall t2 : Σ;;; Γ,, A |-x t : B,
+        P (Γ,, A) t B t2 ->
         forall t3 : Σ;;; Γ |-x u : A,
         P Γ u A t3 ->
-        P1 Γ (sApp (sLambda n A B t) n A B u) (t {0 := u})
+        P1 Γ (sApp (sLambda n A B t) A B u) (t {0 := u})
           (B {0 := u}) (XTyping.eq_beta Σ Γ s1 s2 n A B t u t0 t1 t2 t3)) ->
        (forall (Γ : scontext) (s : sort) (T1 T2 t1 t2 : sterm)
           (e : Σ;;; Γ |-x t1 = t2 : T1),
@@ -1156,29 +1161,29 @@ Definition typing_all : forall (Σ : sglobal_context)
        (forall (Γ : scontext) (n1 n2 : name) (A1 A2 B1 B2 : sterm)
           (s1 s2 : sort) (e : Σ;;; Γ |-x A1 = A2 : sSort s1),
         P1 Γ A1 A2 (sSort s1) e ->
-        forall e0 : Σ;;; Γ,, svass n1 A1 |-x B1 = B2 : sSort s2,
-        P1 (Γ,, svass n1 A1) B1 B2 (sSort s2) e0 ->
-        forall t : Σ;;; Γ,, svass n1 A1 |-x B1 : sSort s2,
-        P (Γ,, svass n1 A1) B1 (sSort s2) t ->
-        forall t0 : Σ;;; Γ,, svass n2 A2 |-x B2 : sSort s2,
-        P (Γ,, svass n2 A2) B2 (sSort s2) t0 ->
+        forall e0 : Σ;;; Γ,, A1 |-x B1 = B2 : sSort s2,
+        P1 (Γ,, A1) B1 B2 (sSort s2) e0 ->
+        forall t : Σ;;; Γ,, A1 |-x B1 : sSort s2,
+        P (Γ,, A1) B1 (sSort s2) t ->
+        forall t0 : Σ;;; Γ,, A2 |-x B2 : sSort s2,
+        P (Γ,, A2) B2 (sSort s2) t0 ->
         P1 Γ (sProd n1 A1 B1) (sProd n2 A2 B2) (sSort (max_sort s1 s2))
           (XTyping.cong_Prod Σ Γ n1 n2 A1 A2 B1 B2 s1 s2 e e0 t t0)) ->
        (forall (Γ : scontext) (n1 n2 n' : name) (A1 A2 B1 B2 t1 t2 : sterm)
           (s1 s2 : sort) (e : Σ;;; Γ |-x A1 = A2 : sSort s1),
         P1 Γ A1 A2 (sSort s1) e ->
-        forall e0 : Σ;;; Γ,, svass n1 A1 |-x B1 = B2 : sSort s2,
-        P1 (Γ,, svass n1 A1) B1 B2 (sSort s2) e0 ->
-        forall e1 : Σ;;; Γ,, svass n1 A1 |-x t1 = t2 : B1,
-        P1 (Γ,, svass n1 A1) t1 t2 B1 e1 ->
-        forall t : Σ;;; Γ,, svass n1 A1 |-x B1 : sSort s2,
-        P (Γ,, svass n1 A1) B1 (sSort s2) t ->
-        forall t0 : Σ;;; Γ,, svass n2 A2 |-x B2 : sSort s2,
-        P (Γ,, svass n2 A2) B2 (sSort s2) t0 ->
-        forall t3 : Σ;;; Γ,, svass n1 A1 |-x t1 : B1,
-        P (Γ,, svass n1 A1) t1 B1 t3 ->
-        forall t4 : Σ;;; Γ,, svass n2 A2 |-x t2 : B2,
-        P (Γ,, svass n2 A2) t2 B2 t4 ->
+        forall e0 : Σ;;; Γ,, A1 |-x B1 = B2 : sSort s2,
+        P1 (Γ,, A1) B1 B2 (sSort s2) e0 ->
+        forall e1 : Σ;;; Γ,, A1 |-x t1 = t2 : B1,
+        P1 (Γ,, A1) t1 t2 B1 e1 ->
+        forall t : Σ;;; Γ,, A1 |-x B1 : sSort s2,
+        P (Γ,, A1) B1 (sSort s2) t ->
+        forall t0 : Σ;;; Γ,, A2 |-x B2 : sSort s2,
+        P (Γ,, A2) B2 (sSort s2) t0 ->
+        forall t3 : Σ;;; Γ,, A1 |-x t1 : B1,
+        P (Γ,, A1) t1 B1 t3 ->
+        forall t4 : Σ;;; Γ,, A2 |-x t2 : B2,
+        P (Γ,, A2) t2 B2 t4 ->
         P1 Γ (sLambda n1 A1 B1 t1) (sLambda n2 A2 B2 t2)
           (sProd n' A1 B1)
           (XTyping.cong_Lambda Σ Γ n1 n2 n' A1 A2 B1 B2 t1 t2 s1 s2 e e0 e1 t
@@ -1187,16 +1192,16 @@ Definition typing_all : forall (Σ : sglobal_context)
           (t1 t2 A1 A2 B1 B2 u1 u2 : sterm)
           (e : Σ;;; Γ |-x A1 = A2 : sSort s1),
         P1 Γ A1 A2 (sSort s1) e ->
-        forall e0 : Σ;;; Γ,, svass n1 A1 |-x B1 = B2 : sSort s2,
-        P1 (Γ,, svass n1 A1) B1 B2 (sSort s2) e0 ->
+        forall e0 : Σ;;; Γ,, A1 |-x B1 = B2 : sSort s2,
+        P1 (Γ,, A1) B1 B2 (sSort s2) e0 ->
         forall e1 : Σ;;; Γ |-x t1 = t2 : sProd n1 A1 B1,
         P1 Γ t1 t2 (sProd n1 A1 B1) e1 ->
         forall e2 : Σ;;; Γ |-x u1 = u2 : A1,
         P1 Γ u1 u2 A1 e2 ->
-        forall t : Σ;;; Γ,, svass n1 A1 |-x B1 : sSort s2,
-        P (Γ,, svass n1 A1) B1 (sSort s2) t ->
-        forall t0 : Σ;;; Γ,, svass n2 A2 |-x B2 : sSort s2,
-        P (Γ,, svass n2 A2) B2 (sSort s2) t0 ->
+        forall t : Σ;;; Γ,, A1 |-x B1 : sSort s2,
+        P (Γ,, A1) B1 (sSort s2) t ->
+        forall t0 : Σ;;; Γ,, A2 |-x B2 : sSort s2,
+        P (Γ,, A2) B2 (sSort s2) t0 ->
         forall t3 : Σ;;; Γ |-x t1 : sProd n1 A1 B1,
         P Γ t1 (sProd n1 A1 B1) t3 ->
         forall t4 : Σ;;; Γ |-x t2 : sProd n2 A2 B2,
@@ -1205,7 +1210,7 @@ Definition typing_all : forall (Σ : sglobal_context)
         P Γ u1 A1 t5 ->
         forall t6 : Σ;;; Γ |-x u2 : A2,
         P Γ u2 A2 t6 ->
-        P1 Γ (sApp t1 n1 A1 B1 u1) (sApp t2 n2 A2 B2 u2)
+        P1 Γ (sApp t1 A1 B1 u1) (sApp t2 A2 B2 u2)
           (B1 {0 := u1})
           (XTyping.cong_App Σ Γ n1 n2 s1 s2 t1 t2 A1 A2 B1 B2 u1 u2 e e0 e1 e2
              t t0 t3 t4 t5 t6)) ->
@@ -1272,14 +1277,14 @@ Proof.
       assert (th : type_head (head (sSort s))) by constructor.
       destruct (choose_type hg th hA') as [T' [[A'' hA''] hh]].
       destruct T' ; try (now inversion hh).
-      exists (Γ' ,, svass x A''). now eapply trans_snoc.
+      exists (Γ' ,, A''). now eapply trans_snoc.
 
   (** type_translation **)
 
     (* type_Rel *)
     + assert (isdecl' : n < #|Γ'|).
       { destruct hΓ as [iΓ _]. now rewrite <- (length_increl iΓ). }
-      exists (lift0 (S n) (sdecl_type (safe_nth Γ' (exist _ n isdecl')))), (sRel n).
+      exists (lift0 (S n) (safe_nth Γ' (exist _ n isdecl'))), (sRel n).
       repeat split.
       * now destruct hΓ.
       * apply inrel_lift. apply nth_increl. now destruct hΓ.
@@ -1377,7 +1382,7 @@ Proof.
       destruct (change_type hg hu'' hA') as [u' hu'].
       clear hu'' A'' u''.
       (* We now conclude *)
-      exists (B'{ 0 := u' }), (sApp t'' n A' B' u').
+      exists (B'{ 0 := u' }), (sApp t'' A' B' u').
       destruct hΓ.
       destruct hA' as [[[? ?] ?] ?].
       destruct hB' as [[[? ?] ?] ?].
@@ -1577,7 +1582,7 @@ Proof.
       clear hu'' A'' u''.
       (* Now we conclude using reflexivity *)
       exists (B'{0 := u'}), (B'{0 := u'}).
-      exists (sApp (sLambda n A' B' t') n A' B' u'), (t'{0 := u'}).
+      exists (sApp (sLambda n A' B' t') A' B' u'), (t'{0 := u'}).
       exists (sHeqRefl (B'{0 := u'}) (t'{0 := u'})).
       destruct hA' as [[[? ?] ?] ?].
       destruct hB' as [[[? ?] ?] ?].
@@ -1788,14 +1793,14 @@ Proof.
       }
       destruct hp1 as [p1 hp1].
       (* And then the paths for the codomains *)
-      pose (Γ1 := nil ,, svass n1 A1').
-      pose (Γ2 := nil ,, svass n2 A2').
-      pose (Γm := [ svass n1 (sPack A1' A2') ]).
+      pose (Γ1 := nil ,, A1').
+      pose (Γ2 := nil ,, A2').
+      pose (Γm := [ (sPack A1' A2') ]).
       assert (hm : ismix Σ Γ' Γ1 Γ2 Γm).
       { revert Γm.
-        replace A1' with (llift0 #|@nil scontext_decl| A1')
+        replace A1' with (llift0 #|@nil sterm| A1')
           by (cbn ; now rewrite llift00).
-        replace A2' with (rlift0 #|@nil scontext_decl| A2')
+        replace A2' with (rlift0 #|@nil sterm| A2')
           by (cbn ; now rewrite rlift00).
         intros.
         destruct hA1' as [[? ?] ?].
@@ -1891,8 +1896,8 @@ Proof.
       destruct hB1' as [[[? ?] ?] ?].
       destruct hA2' as [[[? ?] ?] ?].
       destruct htB2 as [[[? ?] ?] ?].
-      repeat split.
-      all: try constructor. all: try assumption.
+      repeat split ; [ try constructor .. |].
+      all: try assumption.
       eapply type_CongProd' ; try assumption.
       cbn in hp5. rewrite <- llift_substProj, <- rlift_substProj in hp5.
       rewrite !llift00, !rlift00 in hp5.
@@ -1953,14 +1958,14 @@ Proof.
       }
       destruct hp1 as [p1 hp1].
       (* And then the paths for the codomains *)
-      pose (Γ1 := nil ,, svass n1 A1').
-      pose (Γ2 := nil ,, svass n2 A2').
-      pose (Γm := [ svass n1 (sPack A1' A2') ]).
+      pose (Γ1 := nil ,, A1').
+      pose (Γ2 := nil ,, A2').
+      pose (Γm := [ sPack A1' A2' ]).
       assert (hm : ismix Σ Γ' Γ1 Γ2 Γm).
       { revert Γm.
-        replace A1' with (llift0 #|@nil scontext_decl| A1')
+        replace A1' with (llift0 #|@nil sterm| A1')
           by (cbn ; now rewrite llift00).
-        replace A2' with (rlift0 #|@nil scontext_decl| A2')
+        replace A2' with (rlift0 #|@nil sterm| A2')
           by (cbn ; now rewrite rlift00).
         intros.
         destruct hA1' as [[? ?] ?].
@@ -2064,7 +2069,7 @@ Proof.
       destruct (X5 _ (trans_snoc hΓ hA2'))
         as [B2'' [t2''' ht2''']].
       destruct (change_type hg ht2''' hB2') as [tt2 htt2].
-      assert (hq1 : ∑ q1, Σ ;;; Γ' ,, svass n1 A1' |-i q1 : sHeq B1' t1' B1' t2').
+      assert (hq1 : ∑ q1, Σ ;;; Γ' ,, A1' |-i q1 : sHeq B1' t1' B1' t2').
       { destruct h3' as [[[[[? ?] ?] ?] ?] hpt''].
         destruct ht1' as [[_ et1'] ht1'].
         destruct ht1'' as [_ ht1''].
@@ -2242,14 +2247,14 @@ Proof.
       }
       destruct hp1 as [p1 hp1].
       (* And then the paths for the codomains *)
-      pose (Γ1 := nil ,, svass n1 A1').
-      pose (Γ2 := nil ,, svass n2 A2').
-      pose (Γm := [ svass n1 (sPack A1' A2') ]).
+      pose (Γ1 := nil ,, A1').
+      pose (Γ2 := nil ,, A2').
+      pose (Γm := [ sPack A1' A2' ]).
       assert (hm : ismix Σ Γ' Γ1 Γ2 Γm).
       { revert Γm.
-        replace A1' with (llift0 #|@nil scontext_decl| A1')
+        replace A1' with (llift0 #|@nil sterm| A1')
           by (cbn ; now rewrite llift00).
-        replace A2' with (rlift0 #|@nil scontext_decl| A2')
+        replace A2' with (rlift0 #|@nil sterm| A2')
           by (cbn ; now rewrite rlift00).
         intros.
         destruct hA1' as [[? ?] ?].
@@ -2425,8 +2430,8 @@ Proof.
       destruct hqu as [qu hqu].
       (* We have an equality between Apps now *)
       assert (happ : ∑ qapp,
-        Σ ;;; Γ' |-i qapp : sHeq (B1'{0 := u1'}) (sApp t1' n1 A1' B1' u1')
-                                (B2'{0 := tu2}) (sApp tt2 n2 A2' B2' tu2)
+        Σ ;;; Γ' |-i qapp : sHeq (B1'{0 := u1'}) (sApp t1' A1' B1' u1')
+                                (B2'{0 := tu2}) (sApp tt2 A2' B2' tu2)
       ).
       { exists (sCongApp B1' B2' qt pA pB qu).
         destruct hB1' as [[[? ?] ?] ?].
@@ -2440,11 +2445,11 @@ Proof.
       (* Finally we translate the right App to put it in the left Prod *)
       rename e into eA.
       pose (e := sHeqTypeEq (sHeqSym qapp)).
-      pose (tapp := sTransport (B2' {0 := tu2}) (B1'{0 := u1'}) e (sApp tt2 n2 A2' B2' tu2)).
+      pose (tapp := sTransport (B2' {0 := tu2}) (B1'{0 := u1'}) e (sApp tt2 A2' B2' tu2)).
       (* We conclude *)
       exists (B1'{0 := u1'}), (B1'{0 := u1'}).
-      exists (sApp t1' n1 A1' B1' u1'), tapp.
-      exists (sHeqTrans qapp (sHeqTransport e (sApp tt2 n2 A2' B2' tu2))).
+      exists (sApp t1' A1' B1' u1'), tapp.
+      exists (sHeqTrans qapp (sHeqTransport e (sApp tt2 A2' B2' tu2))).
       destruct ht1' as [[[? ?] ?] ?].
       destruct htt2 as [[[? ?] ?] ?].
       destruct hu1' as [[[? ?] ?] ?].
@@ -2767,7 +2772,7 @@ Proof.
       repeat split ; try eassumption.
       eapply type_EqToHeq' ; assumption.
 
-  Unshelve. all: exact 0.
+  Unshelve. all: try exact 0. exact nAnon.
 
 Defined.
 

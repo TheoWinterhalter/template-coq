@@ -28,8 +28,8 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
          else sRel i
   | sLambda na A B b =>
     sLambda na (llift γ δ A) (llift γ (S δ) B) (llift γ (S δ) b)
-  | sApp u na A B v =>
-    sApp (llift γ δ u) na (llift γ δ A) (llift γ (S δ) B) (llift γ δ v)
+  | sApp u A B v =>
+    sApp (llift γ δ u) (llift γ δ A) (llift γ (S δ) B) (llift γ δ v)
   | sProd na A B => sProd na (llift γ δ A) (llift γ (S δ) B)
   | sEq A u v => sEq (llift γ δ A) (llift γ δ u) (llift γ δ v)
   | sRefl A u => sRefl (llift γ δ A) (llift γ δ u)
@@ -87,8 +87,8 @@ Fixpoint rlift γ δ t : sterm :=
          else sRel i
   | sLambda na A B b =>
     sLambda na (rlift γ δ A) (rlift γ (S δ) B) (rlift γ (S δ) b)
-  | sApp u na A B v =>
-    sApp (rlift γ δ u) na (rlift γ δ A) (rlift γ (S δ) B) (rlift γ δ v)
+  | sApp u A B v =>
+    sApp (rlift γ δ u) (rlift γ δ A) (rlift γ (S δ) B) (rlift γ δ v)
   | sProd na A B => sProd na (rlift γ δ A) (rlift γ (S δ) B)
   | sEq A u v => sEq (rlift γ δ A) (rlift γ δ u) (rlift γ δ v)
   | sRefl A u => sRefl (rlift γ δ A) (rlift γ δ u)
@@ -138,15 +138,14 @@ Notation rlift0 γ t := (rlift γ 0 t).
 
 Inductive ismix Σ Γ : forall (Γ1 Γ2 Γm : scontext), Type :=
 | mixnil : ismix Σ Γ [] [] []
-| mixsnoc Γ1 Γ2 Γm s A1 A2 n1 n2 nm :
+| mixsnoc Γ1 Γ2 Γm s A1 A2 :
     ismix Σ Γ Γ1 Γ2 Γm ->
     Σ ;;; Γ ,,, Γ1 |-i A1 : sSort s ->
     Σ ;;; Γ ,,, Γ2 |-i A2 : sSort s ->
     ismix Σ Γ
-          (Γ1 ,, svass n1 A1)
-          (Γ2 ,, svass n2 A2)
-          (Γm ,, svass nm (sPack (llift0 #|Γm| A1)
-                                 (rlift0 #|Γm| A2)))
+          (Γ1 ,, A1)
+          (Γ2 ,, A2)
+          (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
 .
 
 Fact mix_length1 :
@@ -175,11 +174,11 @@ Fact safe_nth_mix :
   forall {Σ} {Γ Γ1 Γ2 Γm : scontext},
     ismix Σ Γ Γ1 Γ2 Γm ->
     forall {n isdecl isdecl1 isdecl2},
-      sdecl_type (safe_nth Γm (exist _ n isdecl)) =
+      safe_nth Γm (exist _ n isdecl) =
       sPack (llift0 (#|Γm| - S n)
-                    (sdecl_type (safe_nth Γ1 (exist _ n isdecl1))))
+                    (safe_nth Γ1 (exist _ n isdecl1)))
             (rlift0 (#|Γm| - S n)
-                    (sdecl_type (safe_nth Γ2 (exist _ n isdecl2)))).
+                    (safe_nth Γ2 (exist _ n isdecl2))).
 Proof.
   intros Σ Γ Γ1 Γ2 Γm hm.
   dependent induction hm.
@@ -523,16 +522,10 @@ Proof.
   }
 Defined.
 
-Definition llift_decl n k d : scontext_decl :=
-  {| sdecl_name := sdecl_name d ;
-     sdecl_body := option_map (llift n k) (sdecl_body d) ;
-     sdecl_type := llift n k (sdecl_type d)
-  |}.
-
 Fixpoint llift_context n (Δ : scontext) : scontext :=
   match Δ with
   | nil => nil
-  | A :: Δ => (llift_decl n #|Δ| A) :: (llift_context n Δ)
+  | A :: Δ => (llift n #|Δ| A) :: (llift_context n Δ)
   end.
 
 Fact llift_context_length :
@@ -544,42 +537,18 @@ Proof.
   - cbn. f_equal. assumption.
 Defined.
 
-Fact llift_decl0 :
-  forall {d k}, llift_decl 0 k d = d.
-Proof.
-  intros d k.
-  destruct d as [x b A].
-  unfold llift_decl. cbn. rewrite llift00. f_equal.
-  destruct b.
-  - cbn. rewrite llift00. reflexivity.
-  - reflexivity.
-Defined.
-
 Fact llift_context0 :
   forall {Γ}, llift_context 0 Γ = Γ.
 Proof.
   intro Γ. induction Γ.
   - reflexivity.
-  - cbn. rewrite llift_decl0. rewrite IHΓ. reflexivity.
+  - cbn. rewrite llift00. rewrite IHΓ. reflexivity.
 Defined.
-
-Fact llift_decl_svass :
-  forall {na A n k}, llift_decl n k (svass na A) = svass na (llift n k A).
-Proof.
-  intros na A n k.
-  reflexivity.
-Defined.
-
-Definition rlift_decl n k d : scontext_decl :=
-  {| sdecl_name := sdecl_name d ;
-     sdecl_body := option_map (rlift n k) (sdecl_body d) ;
-     sdecl_type := rlift n k (sdecl_type d)
-  |}.
 
 Fixpoint rlift_context n (Δ : scontext) : scontext :=
   match Δ with
   | nil => nil
-  | A :: Δ => (rlift_decl n #|Δ| A) :: (rlift_context n Δ)
+  | A :: Δ => (rlift n #|Δ| A) :: (rlift_context n Δ)
   end.
 
 Fact rlift_context_length :
@@ -591,30 +560,12 @@ Proof.
   - cbn. f_equal. assumption.
 Defined.
 
-Fact rlift_decl0 :
-  forall {d k}, rlift_decl 0 k d = d.
-Proof.
-  intros d k.
-  destruct d as [x b A].
-  unfold rlift_decl. cbn. rewrite rlift00. f_equal.
-  destruct b.
-  - cbn. rewrite rlift00. reflexivity.
-  - reflexivity.
-Defined.
-
 Fact rlift_context0 :
   forall {Γ}, rlift_context 0 Γ = Γ.
 Proof.
   intro Γ. induction Γ.
   - reflexivity.
-  - cbn. rewrite rlift_decl0. rewrite IHΓ. reflexivity.
-Defined.
-
-Fact rlift_decl_svass :
-  forall {na A n k}, rlift_decl n k (svass na A) = svass na (rlift n k A).
-Proof.
-  intros na A n k.
-  reflexivity.
+  - cbn. rewrite rlift00. rewrite IHΓ. reflexivity.
 Defined.
 
 (* We introduce an alternate version of ismix that will be implied by ismix but
@@ -622,15 +573,14 @@ Defined.
  *)
 Inductive ismix' Σ Γ : forall (Γ1 Γ2 Γm : scontext), Type :=
 | mixnil' : ismix' Σ Γ [] [] []
-| mixsnoc' Γ1 Γ2 Γm s A1 A2 n1 n2 nm :
+| mixsnoc' Γ1 Γ2 Γm s A1 A2 :
     ismix' Σ Γ Γ1 Γ2 Γm ->
     Σ ;;; Γ ,,, Γm |-i llift0 #|Γm| A1 : sSort s ->
     Σ ;;; Γ ,,, Γm |-i rlift0 #|Γm|A2 : sSort s ->
     ismix' Σ Γ
-          (Γ1 ,, svass n1 A1)
-          (Γ2 ,, svass n2 A2)
-          (Γm ,, svass nm (sPack (llift0 #|Γm| A1)
-                                 (rlift0 #|Γm| A2)))
+          (Γ1 ,, A1)
+          (Γ2 ,, A2)
+          (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
 .
 
 Lemma wf_mix {Σ Γ Γ1 Γ2 Γm} (h : wf Σ Γ) :
@@ -670,11 +620,11 @@ Fact safe_nth_mix' :
   forall {Σ} {Γ Γ1 Γ2 Γm : scontext},
     ismix' Σ Γ Γ1 Γ2 Γm ->
     forall {n isdecl isdecl1 isdecl2},
-      sdecl_type (safe_nth Γm (exist _ n isdecl)) =
+      (safe_nth Γm (exist _ n isdecl)) =
       sPack (llift0 (#|Γm| - S n)
-                    (sdecl_type (safe_nth Γ1 (exist _ n isdecl1))))
+                    (safe_nth Γ1 (exist _ n isdecl1)))
             (rlift0 (#|Γm| - S n)
-                    (sdecl_type (safe_nth Γ2 (exist _ n isdecl2)))).
+                    (safe_nth Γ2 (exist _ n isdecl2))).
 Proof.
   intros Σ Γ Γ1 Γ2 Γm hm.
   dependent induction hm.
@@ -784,8 +734,8 @@ Defined.
 
 Fact safe_nth_llift :
   forall {Δ Γm : scontext} {n is1 is2},
-    sdecl_type (safe_nth (llift_context #|Γm| Δ) (exist _ n is1)) =
-    llift #|Γm| (#|Δ| - S n) (sdecl_type (safe_nth Δ (exist _ n is2))).
+    safe_nth (llift_context #|Γm| Δ) (exist _ n is1) =
+    llift #|Γm| (#|Δ| - S n) (safe_nth Δ (exist _ n is2)).
 Proof.
   intro Δ. induction Δ.
   - cbn. easy.
@@ -796,8 +746,8 @@ Defined.
 
 Fact safe_nth_rlift :
   forall {Δ Γm : scontext} {n is1 is2},
-    sdecl_type (safe_nth (rlift_context #|Γm| Δ) (exist _ n is1)) =
-    rlift #|Γm| (#|Δ| - S n) (sdecl_type (safe_nth Δ (exist _ n is2))).
+    safe_nth (rlift_context #|Γm| Δ) (exist _ n is1) =
+    rlift #|Γm| (#|Δ| - S n) (safe_nth Δ (exist _ n is2)).
 Proof.
   intro Δ. induction Δ.
   - cbn. easy.
@@ -1208,7 +1158,7 @@ Proof.
                  by (rewrite llift_context_length ; omega).
                rewrite lift_llift4 by omega. f_equal.
                ++ omega.
-               ++ f_equal. f_equal. eapply safe_nth_cong_irr.
+               ++ f_equal. eapply safe_nth_cong_irr.
                   rewrite llift_context_length. reflexivity.
           * erewrite safe_nth_ge'. erewrite safe_nth_ge'.
             eapply meta_conv.
@@ -1216,7 +1166,7 @@ Proof.
                eapply wf_llift' ; eassumption.
             -- erewrite safe_nth_ge'. erewrite safe_nth_ge'.
                rewrite lift_llift5 by omega.
-               f_equal. f_equal. eapply safe_nth_cong_irr.
+               f_equal. eapply safe_nth_cong_irr.
                rewrite llift_context_length. rewrite (mix'_length1 hm). omega.
       - cbn. eapply type_Sort. eapply wf_llift' ; eassumption.
       - cbn. eapply type_Prod ; emh.
@@ -1234,8 +1184,7 @@ Proof.
         cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
         replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
         eapply type_J ; emh.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !llift_decl_svass. cbn. f_equal. f_equal. f_equal.
+        + cbn. unfold ssnoc. cbn. f_equal. f_equal.
           * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
             rewrite lift_llift3 by omega. reflexivity.
           * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
@@ -1337,7 +1286,7 @@ Proof.
                  by (rewrite rlift_context_length ; omega).
                rewrite lift_rlift4 by omega. f_equal.
                ++ omega.
-               ++ f_equal. f_equal. eapply safe_nth_cong_irr.
+               ++ f_equal. eapply safe_nth_cong_irr.
                   rewrite rlift_context_length. reflexivity.
           * erewrite safe_nth_ge'. erewrite safe_nth_ge'.
             eapply meta_conv.
@@ -1345,7 +1294,7 @@ Proof.
                eapply wf_rlift' ; eassumption.
             -- erewrite safe_nth_ge'. erewrite safe_nth_ge'.
                rewrite lift_rlift5 by omega.
-               f_equal. f_equal. eapply safe_nth_cong_irr.
+               f_equal. eapply safe_nth_cong_irr.
                rewrite rlift_context_length. rewrite (mix'_length2 hm). omega.
       - cbn. eapply type_Sort. eapply wf_rlift' ; eassumption.
       - cbn. eapply type_Prod ; emh.
@@ -1363,8 +1312,7 @@ Proof.
         cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
         replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
         eapply type_J ; emh.
-        + instantiate (1 := ne). instantiate (1 := nx). cbn. unfold ssnoc.
-          rewrite !rlift_decl_svass. cbn. f_equal. f_equal. f_equal.
+        + cbn. unfold ssnoc. cbn. f_equal. f_equal.
           * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
             rewrite lift_rlift3 by omega. reflexivity.
           * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
@@ -1584,9 +1532,9 @@ Lemma ismix_nth_sort :
     forall x is1 is2,
       ∑ s,
         (Σ;;; Γ ,,, Γ1
-         |-i lift0 (S x) (sdecl_type (safe_nth Γ1 (exist _ x is1))) : sSort s) *
+         |-i lift0 (S x) (safe_nth Γ1 (exist _ x is1)) : sSort s) *
         (Σ;;; Γ ,,, Γ2
-         |-i lift0 (S x) (sdecl_type (safe_nth Γ2 (exist _ x is2))) : sSort s).
+         |-i lift0 (S x) (safe_nth Γ2 (exist _ x is2)) : sSort s).
 Proof.
   intros Σ Γ Γ1 Γ2 Γm hg hm.
   dependent induction hm.
@@ -1620,15 +1568,15 @@ Proof.
 Defined.
 
 Corollary type_llift1 :
-  forall {Σ Γ Γ1 Γ2 Γm t A nx B},
+  forall {Σ Γ Γ1 Γ2 Γm t A B},
     type_glob Σ ->
-    Σ ;;; (Γ ,,, Γ1) ,, svass nx B |-i t : A ->
+    Σ ;;; (Γ ,,, Γ1) ,, B |-i t : A ->
     ismix Σ Γ Γ1 Γ2 Γm ->
-    Σ ;;; Γ ,,, Γm ,, svass nx (llift0 #|Γm| B)
+    Σ ;;; Γ ,,, Γm ,, (llift0 #|Γm| B)
     |-i llift #|Γm| 1 t : llift #|Γm| 1 A.
 Proof.
-  intros Σ Γ Γ1 Γ2 Γm t A nx B hg ht hm.
-  eapply @type_llift with (Δ := [ svass nx B ]).
+  intros Σ Γ Γ1 Γ2 Γm t A B hg ht hm.
+  eapply @type_llift with (Δ := [ B ]).
   - assumption.
   - exact ht.
   - eassumption.
@@ -1646,15 +1594,15 @@ Proof.
 Defined.
 
 Corollary type_rlift1 :
-  forall {Σ Γ Γ1 Γ2 Γm t A nx B},
+  forall {Σ Γ Γ1 Γ2 Γm t A B},
     type_glob Σ ->
-    Σ ;;; (Γ ,,, Γ2) ,, svass nx B |-i t : A ->
+    Σ ;;; (Γ ,,, Γ2) ,, B |-i t : A ->
     ismix Σ Γ Γ1 Γ2 Γm ->
-    Σ ;;; Γ ,,, Γm ,, svass nx (rlift0 #|Γm| B)
+    Σ ;;; Γ ,,, Γm ,, (rlift0 #|Γm| B)
     |-i rlift #|Γm| 1 t : rlift #|Γm| 1 A.
 Proof.
-  intros Σ Γ Γ1 Γ2 Γm t A nx B hg ht hm.
-  eapply @type_rlift with (Δ := [ svass nx B ]).
+  intros Σ Γ Γ1 Γ2 Γm t A B hg ht hm.
+  eapply @type_rlift with (Δ := [ B ]).
   - assumption.
   - exact ht.
   - eassumption.

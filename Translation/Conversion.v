@@ -19,7 +19,7 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
 
 (** β *)
 | red_beta n A B t u :
-    red1 Σ (sApp (sLambda n A B t) n A B u) (t{ 0 := u })
+    red1 Σ (sApp (sLambda n A B t) A B u) (t{ 0 := u })
 
 (** Case TODO *)
 (* | red_iota ind pars c args p brs : *)
@@ -59,21 +59,21 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
     red1 Σ (sCase ind p c brs) (sCase ind p c brs')
 
 (** App *)
-| app_red_fun u u' na A B v :
+| app_red_fun u u' A B v :
     red1 Σ u u' ->
-    red1 Σ (sApp u na A B v) (sApp u' na A B v)
+    red1 Σ (sApp u A B v) (sApp u' A B v)
 
-| app_red_dom u na A A' B v :
+| app_red_dom u A A' B v :
     red1 Σ A A' ->
-    red1 Σ (sApp u na A B v) (sApp u na A' B v)
+    red1 Σ (sApp u A B v) (sApp u A' B v)
 
-| app_red_codom u na A B B' v :
+| app_red_codom u A B B' v :
     red1 Σ B B' ->
-    red1 Σ (sApp u na A B v) (sApp u na A B' v)
+    red1 Σ (sApp u A B v) (sApp u A B' v)
 
-| app_red_arg u na A B v v' :
+| app_red_arg u A B v v' :
     red1 Σ v v' ->
-    red1 Σ (sApp u na A B v) (sApp u na A B v')
+    red1 Σ (sApp u A B v) (sApp u A B v')
 
 (** Prod *)
 | prod_red_l na na' A A' B :
@@ -549,14 +549,14 @@ Proof.
 Defined.
 
 Lemma cong_App :
-  forall {Σ u nx A B v u' nx' A' B' v'},
+  forall {Σ u A B v u' A' B' v'},
     Σ |-i A = A' ->
     Σ |-i B = B' ->
     Σ |-i u = u' ->
     Σ |-i v = v' ->
-    Σ |-i sApp u nx A B v = sApp u' nx' A' B' v'.
+    Σ |-i sApp u A B v = sApp u' A' B' v'.
 Proof.
-  intros Σ u nx A B v u' nx' A' B' v' hA hB hu hv.
+  intros Σ u A B v u' A' B' v' hA hB hu hv.
   conv rewrite hB, hu, hv, hA.
   apply conv_eq. apply eq_term_spec. cbn. reflexivity.
 Defined.
@@ -710,8 +710,7 @@ Section conv_substs.
     lazymatch goal with
     | hu : _ |-i _ ▷ _ |- _ =>
       specialize (h n _ _ hu) ;
-      cbn in h ;
-      try rewrite !subst_decl_svass in h
+      cbn in h
     end.
 
   Ltac spone :=
