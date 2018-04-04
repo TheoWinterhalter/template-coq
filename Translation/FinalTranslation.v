@@ -2,8 +2,10 @@
 
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
-From Template Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
-From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping Quotes.
+From Template
+Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
+From Translation
+Require Import util SAst SInduction SLiftSubst SCommon ITyping Quotes.
 
 Import MonadNotation.
 
