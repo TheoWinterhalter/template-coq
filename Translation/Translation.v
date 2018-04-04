@@ -437,7 +437,7 @@ Proof.
           end
         end.
         apply llift_conv. eassumption.
-      * apply conv_eq. apply eq_term_spec. cbn. reflexivity.
+      * apply conv_eq. cbn. reflexivity.
       * match goal with
         | |- _ |-i ?T = _ =>
           match T with
@@ -446,7 +446,7 @@ Proof.
           end
         end.
         apply rlift_conv. eassumption.
-      * apply conv_eq. apply eq_term_spec. cbn. reflexivity.
+      * apply conv_eq. cbn. reflexivity.
 
   (* App *)
   - ttinv h1. ttinv h2.

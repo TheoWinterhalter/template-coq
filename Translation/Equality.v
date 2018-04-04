@@ -170,15 +170,14 @@ Proof.
   - discriminate.
 Defined.
 
-Lemma eq_term_lift :
+Lemma nl_lift :
   forall {t u n k},
-    eq_term t u = true ->
-    eq_term (lift n k t) (lift n k u) = true.
+    nl t = nl u ->
+    nl (lift n k t) = nl (lift n k u).
 Proof.
-  intros t u n k h.
-  unfold eq_term in h. revert h.
+  intros t u n k.
   case (nl_dec (nl t) (nl u)).
-  - intros e _. apply eq_term_spec.
+  - intros e _.
     revert u e n k.
     induction t using sterm_rect_list ;
     intros u e m k ; destruct u ; cbn in e ; try discriminate e.
@@ -196,5 +195,15 @@ Proof.
       * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
         inversion h. subst. f_equal. unfold compose. apply p. cbn. assumption.
       * apply IHX. now inversion h.
-  - intros. discriminate.
+  - intros h e. exfalso. apply h. apply e.
+Defined.
+
+Lemma eq_term_lift :
+  forall {t u n k},
+    eq_term t u = true ->
+    eq_term (lift n k t) (lift n k u) = true.
+Proof.
+  intros t u n k h. apply eq_term_spec in h.
+  apply eq_term_spec.
+  apply nl_lift. assumption.
 Defined.

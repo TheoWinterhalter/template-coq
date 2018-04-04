@@ -94,7 +94,7 @@ Proof.
   intros Σ Γ na A B t T h.
   dependent induction h.
   - exists s1, s2, n'. split ; [ split ; [ split | .. ] | ..] ; try assumption.
-    apply conv_eq. apply eq_term_spec. cbn. reflexivity.
+    apply conv_eq. cbn. reflexivity.
   - destruct IHh1 as (s1 & s2 & na' & ?). split_hyps.
     exists s1, s2, na'. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.

@@ -369,11 +369,8 @@ Notation " Σ '|-i' t ▷⃰ u " :=
 
 Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
-(* TODO: Stop using eq_term but instead something that compares the nameless
-   terms. *)
-
 Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
-| conv_eq t u : eq_term t u = true -> Σ |-i t = u
+| conv_eq t u : nl t = nl u -> Σ |-i t = u
 | conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
 | conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
 | conv_trans t u v : Σ |-i t = u -> Σ |-i u = v -> Σ |-i t = v
@@ -390,7 +387,7 @@ Lemma conv_refl :
   forall Σ t, Σ |-i t = t.
 Proof.
   intros Σ t.
-  apply conv_eq. apply eq_term_refl.
+  apply conv_eq. reflexivity.
 Defined.
 
 (* TODO Anonymise terms before comparing them so that eq_term reflects
@@ -402,7 +399,7 @@ Lemma conv_sym :
 Proof.
   intros Σ t u h.
   induction h.
-  - apply conv_eq. apply eq_term_sym. assumption.
+  - apply conv_eq. symmetry. assumption.
   - eapply conv_red_r ; eassumption.
   - eapply conv_red_l ; eassumption.
   - eapply conv_trans ; eassumption.
@@ -424,26 +421,7 @@ Ltac conv_rewrite h :=
         assert (h' : Σ |-i T1 = T2) ; [
           clear - h ;
           induction h ; [
-            apply conv_eq ;
-            match goal with
-            | eq : eq_term _ _ = true |- _ =>
-              unfold eq_term in eq ; revert eq
-            end ;
-            match goal with
-            | |- context [nl_dec ?x ?y] =>
-              case (nl_dec x y)
-            end ; [
-              let e := fresh "e" in
-              intros e _ ; unfold eq_term ; simpl nl ; rewrite e ;
-              match goal with
-              | |- context [nl_dec ?x ?y] =>
-                case (nl_dec x y)
-              end ; [
-                reflexivity
-              | intro h' ; exfalso ; apply h' ; reflexivity
-              ]
-            | intros ; discriminate
-            ]
+            apply conv_eq ; simpl nl ; f_equal ; assumption
           | eapply conv_red_l ; [
               econstructor ; eassumption
             | eassumption
@@ -533,7 +511,7 @@ Lemma cong_Prod :
 Proof.
   intros Σ nx A B nx' A' B' hA hB.
   conv rewrite hB, hA.
-  apply conv_eq. apply eq_term_spec. cbn. reflexivity.
+  apply conv_eq. cbn. reflexivity.
 Defined.
 
 Lemma cong_Lambda :
@@ -545,7 +523,7 @@ Lemma cong_Lambda :
 Proof.
   intros Σ nx A B t nx' A' B' t' hA hB ht.
   conv rewrite hB, ht, hA.
-  apply conv_eq. apply eq_term_spec. cbn. reflexivity.
+  apply conv_eq. cbn. reflexivity.
 Defined.
 
 Lemma cong_App :
@@ -558,7 +536,7 @@ Lemma cong_App :
 Proof.
   intros Σ u A B v u' A' B' v' hA hB hu hv.
   conv rewrite hB, hu, hv, hA.
-  apply conv_eq. apply eq_term_spec. cbn. reflexivity.
+  apply conv_eq. cbn. reflexivity.
 Defined.
 
 Lemma cong_Refl :
@@ -631,7 +609,7 @@ Lemma lift_conv :
 Proof.
   intros Σ n k t1 t2 h.
   induction h.
-  - apply conv_eq. apply eq_term_lift. assumption.
+  - apply conv_eq. apply nl_lift. assumption.
   - eapply conv_red_l.
     + eapply lift_red1. eassumption.
     + assumption.
