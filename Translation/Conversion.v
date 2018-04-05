@@ -373,10 +373,10 @@ Notation " Σ '|-i' t ▷⃰ u " :=
 
 Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
-Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
+Inductive conv (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
 | conv_eq t u : nl t = nl u -> Σ |-i t = u
-| conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
-| conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
+| conv_red_l t u v : red1 Σ t v -> Σ |-i v = u -> Σ |-i t = u
+| conv_red_r t u v : Σ |-i t = v -> red1 Σ u v -> Σ |-i t = u
 | conv_trans t u v : Σ |-i t = u -> Σ |-i u = v -> Σ |-i t = v
 
 where " Σ '|-i' t = u " := (@conv Σ t u) : i_scope.
@@ -686,6 +686,63 @@ Defined.
 
 (** Congruence of equal substitutions *)
 
+Lemma red_trans :
+  forall {Σ t u v},
+    Σ |-i t ▷⃰ u ->
+    Σ |-i u ▷⃰ v ->
+    Σ |-i t ▷⃰ v.
+Proof.
+  intros Σ t u v h1 h2. revert v h2.
+  induction h1.
+  - intros v h2. assumption.
+  - intros w h2. specialize (IHh1 w h2).
+    econstructor ; eassumption.
+Defined.
+
+Ltac red_rewrite h :=
+  let h' := fresh "h" in
+  match type of h with
+  | _ |-i ?A ▷⃰ ?B =>
+    lazymatch goal with
+    | |- ?Σ |-i ?ctx ▷⃰ _ =>
+      lazymatch ctx with
+      | context T [A] =>
+        let T1 := context T[A] in
+        let T2 := context T[B] in
+        assert (h' : Σ |-i T1 ▷⃰ T2) ; [
+          clear - h ;
+          induction h ; [
+            constructor
+          | econstructor ; [
+              econstructor ; eassumption
+            | eassumption
+            ]
+          ]
+        | eapply (red_trans h') ; clear h'
+        ]
+      | _ => fail "Lhs doesn't contain " A
+      end
+    | _ => fail "red rewrite cannot apply to this goal"
+    end
+  end.
+
+Tactic Notation "red" "rewrite" hyp(h) := red_rewrite h.
+Tactic Notation "red" "rewrite" hyp(h1) "," hyp(h2) :=
+  red rewrite h1 ; red rewrite h2.
+Tactic Notation "red" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) :=
+  red rewrite h1 ; red rewrite h2, h3.
+Tactic Notation "red" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4) :=
+  red rewrite h1 ; red rewrite h2, h3, h4.
+Tactic Notation "red" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) :=
+  red rewrite h1 ; red rewrite h2, h3, h4, h5.
+Tactic Notation "red" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) "," hyp(h6) :=
+  red rewrite h1 ; red rewrite h2, h3, h4, h5, h6.
+Tactic Notation "red" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) "," hyp(h6) "," hyp(h7) :=
+  red rewrite h1 ; red rewrite h2, h3, h4, h5, h6, h7.
+
 Section conv_substs.
 
   Ltac sp h n :=
@@ -697,49 +754,52 @@ Section conv_substs.
 
   Ltac spone :=
     match goal with
-    | ih : forall n u1 u2, _ -> _ |-i ?t{n := u1} = _ |- context [ ?t{ ?m := _ } ] =>
+    | ih : forall n u1 u2, _ -> _ |-i ?t{n := u1} ▷⃰ _ |- context [ ?t{ ?m := _ } ] =>
       sp ih m
     end.
 
   Ltac spall :=
     repeat spone.
 
-  Ltac conv_rewrite_assumption :=
+  Ltac red_rewrite_assumption :=
     match goal with
-    | ih : _ |-i _ = _ |- _ => conv rewrite ih
+    | ih : _ |-i _ ▷⃰ _ |- _ => red rewrite ih
     end.
 
-  Ltac conv_rewrite_assumptions :=
-    repeat conv_rewrite_assumption.
+  Ltac red_rewrite_assumptions :=
+    repeat red_rewrite_assumption.
 
   (* Reflexive and transitive closure of 1-step branch reduction. *)
-  Inductive redbrs Σ t : list (nat * sterm) -> Prop :=
-  | refl_redbrs : redbrs Σ t t
-  | trans_redbrs u v : redbrs1 Σ t u -> redbrs Σ u v -> redbrs Σ t v.
+  Inductive redbrs Σ : list (nat * sterm) -> list (nat * sterm) -> Prop :=
+  | redbrs_nil : redbrs Σ [] []
+  | redbrs_cons t u b1 b2 :
+      redbrs Σ b1 b2 -> red Σ (snd t) (snd u) -> redbrs Σ (t :: b1) (u :: b2).
 
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
-      (fst Σ) |-i u1 ▷ u2 ->
-      Σ |-i t{ n := u1 } = t{ n := u2 }.
+      Σ |-i u1 ▷ u2 ->
+      Σ |-i t{ n := u1 } ▷⃰ t{ n := u2 }.
   Proof.
     induction t using sterm_rect_list ; intros m u1 u2 h.
-    all: cbn ; spall ; conv_rewrite_assumptions.
-    all: try (apply conv_refl).
+    all: cbn ; spall ; red_rewrite_assumptions.
+    all: try (constructor 1).
     - case_eq (m ?= n) ; intro e ; bprop e.
-      + eapply lift_conv.
-        eapply conv_red_l ; try eassumption. apply conv_refl.
-      + apply conv_refl.
-      + apply conv_refl.
+      + (* eapply lift_conv. *)
+        (* eapply conv_red_l ; try eassumption. apply conv_refl. *)
+        admit.
+      + constructor.
+      + constructor.
     - assert (h' :
-                redbrs (fst Σ) (map (on_snd (subst u1 m)) brs)
+                redbrs Σ (map (on_snd (subst u1 m)) brs)
                        (map (on_snd (subst u2 m)) brs)).
       { clear - h X. revert u1 u2 h. induction X.
         - cbn. constructor.
         - intros u1 u2 h. cbn.
           econstructor.
-          + constructor. Fail eapply p. admit.
-          + Fail eapply IHX. admit.
+          + eapply IHX. assumption.
+          + eapply p. assumption.
       }
+      admit.
   Admitted.
 
 End conv_substs.
