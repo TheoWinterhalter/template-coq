@@ -50,6 +50,10 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
     red1 Σ (sLambda na A B t) (sLambda na A B t')
 
 (** Case *)
+| case_red_pred ind p p' c brs :
+    red1 Σ p p' ->
+    red1 Σ (sCase ind p c brs) (sCase ind p' c brs)
+
 | case_red_discr ind p c c' brs :
     red1 Σ c c' ->
     red1 Σ (sCase ind p c brs) (sCase ind p c' brs)
@@ -708,6 +712,11 @@ Section conv_substs.
   Ltac conv_rewrite_assumptions :=
     repeat conv_rewrite_assumption.
 
+  (* Reflexive and transitive closure of 1-step branch reduction. *)
+  Inductive redbrs Σ t : list (nat * sterm) -> Prop :=
+  | refl_redbrs : redbrs Σ t t
+  | trans_redbrs u v : redbrs1 Σ t u -> redbrs Σ u v -> redbrs Σ t v.
+
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
       (fst Σ) |-i u1 ▷ u2 ->
@@ -721,8 +730,16 @@ Section conv_substs.
         eapply conv_red_l ; try eassumption. apply conv_refl.
       + apply conv_refl.
       + apply conv_refl.
-    - (* Tedious? *)
-      admit.
+    - assert (h' :
+                redbrs (fst Σ) (map (on_snd (subst u1 m)) brs)
+                       (map (on_snd (subst u2 m)) brs)).
+      { clear - h X. revert u1 u2 h. induction X.
+        - cbn. constructor.
+        - intros u1 u2 h. cbn.
+          econstructor.
+          + constructor. Fail eapply p. admit.
+          + Fail eapply IHX. admit.
+      }
   Admitted.
 
 End conv_substs.
