@@ -1225,15 +1225,6 @@ Proof.
   - cbn. assumption.
 Defined.
 
-Fact skipn_all :
-  forall {A} {l : list A},
-    skipn #|l| l = [].
-Proof.
-  intros A l. induction l.
-  - cbn. reflexivity.
-  - cbn. assumption.
-Defined.
-
 Fact nth_error_error :
   forall {A} {l : list A} {n},
     nth_error l n = None ->
@@ -1247,44 +1238,6 @@ Proof.
     + inversion h as [e].
       specialize (IHl n e).
       omega.
-Defined.
-
-Fact skipn_length :
-  forall {A} {l : list A} {n},
-    #|skipn n l| = #|l| - n.
-Proof.
-  intros A. induction l ; intro n.
-  - cbn. destruct n ; reflexivity.
-  - destruct n.
-    + cbn. reflexivity.
-    + cbn. apply IHl.
-Defined.
-
-Fact skipn_reconstruct :
-  forall {A} {l : list A} {n a},
-    nth_error l n = Some a ->
-    skipn n l = a :: skipn (S n) l.
-Proof.
-  intros A l.
-  induction l ; intros n x hn.
-  - destruct n ; cbn in hn ; inversion hn.
-  - cbn. destruct n.
-    + cbn. cbn in hn. inversion hn. reflexivity.
-    + apply IHl. now inversion hn.
-Defined.
-
-Fact firstn_reconstruct :
-  forall {A} {l : list A} {n a},
-    nth_error l n = Some a ->
-    firstn (S n) l = (firstn n l ++ [a])%list.
-Proof.
-  intros A l.
-  induction l ; intros n x hn.
-  - destruct n ; cbn in hn ; inversion hn.
-  - cbn. destruct n.
-    + cbn. cbn in hn. inversion hn. reflexivity.
-    + inversion hn as [e].
-      erewrite IHl by exact e. cbn. reflexivity.
 Defined.
 
 Fact rev_map_nth_error :
@@ -1327,50 +1280,6 @@ Proof.
   - destruct n.
     + cbn. f_equal. f_equal. f_equal. omega.
     + cbn. apply IHl. cbn in h. omega.
-Defined.
-
-Definition lastn n {A} (l : list A) :=
-  skipn (#|l| - n) l.
-
-Fact lastn_O :
-  forall {A} {l : list A}, lastn 0 l = [].
-Proof.
-  intros A l. unfold lastn.
-  replace (#|l| - 0) with #|l| by omega.
-  apply skipn_all.
-Defined.
-
-Fact lastn_all :
-  forall {A} {l : list A},
-    lastn #|l| l = l.
-Proof.
-  intros A l. unfold lastn.
-  replace (#|l| - #|l|) with 0 by omega.
-  reflexivity.
-Defined.
-
-Fact lastn_all2 :
-  forall {A} {n} {l : list A},
-    #|l| <= n ->
-    lastn n l = l.
-Proof.
-  intros A n l h.
-  unfold lastn.
-  replace (#|l| - n) with 0 by omega.
-  reflexivity.
-Defined.
-
-Fact lastn_reconstruct :
-  forall {A} {l : list A} {n a},
-    nth_error l (#|l| - S n) = Some a ->
-    n < #|l| ->
-    lastn (S n) l = a :: lastn n l.
-Proof.
-  intros A l n a hn h.
-  unfold lastn.
-  erewrite skipn_reconstruct.
-  - f_equal. f_equal. omega.
-  - assumption.
 Defined.
 
 Fact type_arities' :
