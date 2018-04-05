@@ -774,10 +774,10 @@ Section conv_substs.
   Inductive convbrs (Σ : sglobal_declarations) :
     list (nat * sterm) -> list (nat * sterm) -> Prop :=
   | convbrs_nil : Σ |-i [] == []
-  | convbrs_cons u v b c :
-      Σ |-i snd u = snd v ->
+  | convbrs_cons n u v b c :
+      Σ |-i u = v ->
       Σ |-i b == c ->
-      Σ |-i (u :: b) == (v :: c)
+      Σ |-i ((n,u) :: b) == ((n,v) :: c)
 
   where " Σ '|-i' t == u " := (@convbrs Σ t u) : i_scope.
 
@@ -799,21 +799,30 @@ Section conv_substs.
       { clear - h X. revert u1 u2 h. induction X.
         - cbn. constructor.
         - intros u1 u2 h. cbn.
+          destruct x as [n x].
           econstructor.
           + eapply p. assumption.
           + eapply IHX. assumption.
       }
       clear - h'. induction h'.
       + apply conv_refl.
-      + assert (Σ |-i sCase indn (t1 {m := u2}) (t2 {m := u2}) (u :: b)
-                   = sCase indn (t1 {m := u2}) (t2 {m := u2}) (v :: b)).
+      + assert (hh :
+                  Σ |-i sCase indn (t1 {m := u2}) (t2 {m := u2}) ((n,u) :: b)
+                     = sCase indn (t1 {m := u2}) (t2 {m := u2}) ((n,v) :: b)).
         { clear - H. dependent induction H.
-          - apply conv_eq. simpl nl. f_equal. f_equal. unfold on_snd.
-            admit.
-          - admit.
-          - admit.
-          - admit.
+          - apply conv_eq ; simpl nl ; f_equal.
+            f_equal. unfold on_snd. f_equal. assumption.
+          - eapply conv_red_l.
+            + eapply case_red_brs. econstructor. eassumption.
+            + assumption.
+          - eapply conv_red_r.
+            + eassumption.
+            + eapply case_red_brs. econstructor. eassumption.
+          - eapply conv_trans ; eassumption.
         }
+        eapply (conv_trans hh). clear hh.
+        (* Problem: We have an induction hypothesis that didn't keep its
+           head. *)
         admit.
   Admitted.
 
