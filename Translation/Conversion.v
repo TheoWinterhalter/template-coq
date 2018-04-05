@@ -669,7 +669,7 @@ Lemma subst_conv :
 Proof.
   intros Σ n u t1 t2 h.
   induction h.
-  - apply conv_eq. admit.
+  - apply conv_eq. apply nl_subst ; [ assumption | reflexivity ].
   - eapply conv_red_l.
     + eapply subst_red1. eassumption.
     + assumption.
@@ -677,7 +677,7 @@ Proof.
     + eassumption.
     + eapply subst_red1. eassumption.
   - eapply conv_trans ; eassumption.
-Admitted.
+Defined.
 
 
 (** Congruence of equal substitutions *)
@@ -734,11 +734,11 @@ Lemma substs_conv :
 Proof.
   intros Σ n u1 u2 t h.
   induction h.
-  - apply conv_eq. admit.
+  - apply conv_eq. apply nl_subst ; [ reflexivity | assumption ].
   - eapply conv_trans ; try eassumption.
     eapply substs_red1. assumption.
   - eapply conv_trans ; try eassumption.
     eapply conv_sym.
     eapply substs_red1. assumption.
   - eapply conv_trans ; eassumption.
-Admitted.
+Defined.

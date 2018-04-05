@@ -207,3 +207,46 @@ Proof.
   apply eq_term_spec.
   apply nl_lift. assumption.
 Defined.
+
+Lemma nl_subst :
+  forall {t t' u u' n},
+    nl t = nl t' ->
+    nl u = nl u' ->
+    nl (t{n := u}) = nl (t'{n := u'}).
+Proof.
+  intros t t' u u' n ht hu. revert t' ht u u' hu n.
+  induction t using sterm_rect_list ;
+  intros t' ht.
+  all: destruct t' ; cbn in ht ; try discriminate ht.
+  all: intros u u' hu m.
+  all: try (cbn ; inversion ht ;
+            repeat (erewrite_assumption by eassumption) ; reflexivity).
+  - symmetry in ht. inversion ht. subst. clear ht. cbn.
+    case_eq (m ?= n) ; intro e ; bprop e.
+    + subst. eapply nl_lift. assumption.
+    + reflexivity.
+    + reflexivity.
+  - cbn. inversion ht.
+    repeat (erewrite_assumption by eassumption).
+    f_equal. rewrite !map_map_compose, !compose_on_snd.
+    clear - X H3 hu. revert brs0 H3. induction X.
+    + cbn. intros [| ? ?] h ; cbn in h ; try discriminate h. reflexivity.
+    + cbn. intros [| [n b] brs'] h ; cbn in h ; try discriminate h.
+      cbn. f_equal.
+      * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
+        inversion h. subst. f_equal. unfold compose. apply p ; assumption.
+      * apply IHX. now inversion h.
+Defined.
+
+Corollary eq_term_subst :
+  forall {t t' u u' n},
+    eq_term t t' = true ->
+    eq_term u u' = true ->
+    eq_term (t{n := u}) (t'{n := u'}) = true.
+Proof.
+  intros t t' u u' n ht hu.
+  apply eq_term_spec in ht.
+  apply eq_term_spec in hu.
+  apply eq_term_spec.
+  apply nl_subst ; assumption.
+Defined.
