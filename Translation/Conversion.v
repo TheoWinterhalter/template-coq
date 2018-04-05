@@ -754,52 +754,67 @@ Section conv_substs.
 
   Ltac spone :=
     match goal with
-    | ih : forall n u1 u2, _ -> _ |-i ?t{n := u1} ▷⃰ _ |- context [ ?t{ ?m := _ } ] =>
+    | ih : forall n u1 u2, _ -> _ |-i ?t{n := u1} = _ |- context [ ?t{ ?m := _ } ] =>
       sp ih m
     end.
 
   Ltac spall :=
     repeat spone.
 
-  Ltac red_rewrite_assumption :=
+  Ltac conv_rewrite_assumption :=
     match goal with
-    | ih : _ |-i _ ▷⃰ _ |- _ => red rewrite ih
+    | ih : _ |-i _ = _ |- _ => conv rewrite ih
     end.
 
-  Ltac red_rewrite_assumptions :=
-    repeat red_rewrite_assumption.
+  Ltac conv_rewrite_assumptions :=
+    repeat conv_rewrite_assumption.
 
-  (* Reflexive and transitive closure of 1-step branch reduction. *)
-  Inductive redbrs Σ : list (nat * sterm) -> list (nat * sterm) -> Prop :=
-  | redbrs_nil : redbrs Σ [] []
-  | redbrs_cons t u b1 b2 :
-      redbrs Σ b1 b2 -> red Σ (snd t) (snd u) -> redbrs Σ (t :: b1) (u :: b2).
+  Reserved Notation " Σ '|-i' t == u " (at level 50, t, u at next level).
+
+  Inductive convbrs (Σ : sglobal_declarations) :
+    list (nat * sterm) -> list (nat * sterm) -> Prop :=
+  | convbrs_nil : Σ |-i [] == []
+  | convbrs_cons u v b c :
+      Σ |-i snd u = snd v ->
+      Σ |-i b == c ->
+      Σ |-i (u :: b) == (v :: c)
+
+  where " Σ '|-i' t == u " := (@convbrs Σ t u) : i_scope.
 
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
       Σ |-i u1 ▷ u2 ->
-      Σ |-i t{ n := u1 } ▷⃰ t{ n := u2 }.
+      Σ |-i t{ n := u1 } = t{ n := u2 }.
   Proof.
     induction t using sterm_rect_list ; intros m u1 u2 h.
-    all: cbn ; spall ; red_rewrite_assumptions.
-    all: try (constructor 1).
+    all: cbn ; spall ; conv_rewrite_assumptions.
+    all: try (apply conv_refl).
     - case_eq (m ?= n) ; intro e ; bprop e.
-      + (* eapply lift_conv. *)
-        (* eapply conv_red_l ; try eassumption. apply conv_refl. *)
-        admit.
-      + constructor.
-      + constructor.
-    - assert (h' :
-                redbrs Σ (map (on_snd (subst u1 m)) brs)
-                       (map (on_snd (subst u2 m)) brs)).
+      + eapply lift_conv.
+        eapply conv_red_l ; try eassumption. apply conv_refl.
+      + apply conv_refl.
+      + apply conv_refl.
+    - assert (h' : Σ |-i map (on_snd (subst u1 m)) brs
+                     == map (on_snd (subst u2 m)) brs).
       { clear - h X. revert u1 u2 h. induction X.
         - cbn. constructor.
         - intros u1 u2 h. cbn.
           econstructor.
-          + eapply IHX. assumption.
           + eapply p. assumption.
+          + eapply IHX. assumption.
       }
-      admit.
+      clear - h'. induction h'.
+      + apply conv_refl.
+      + assert (Σ |-i sCase indn (t1 {m := u2}) (t2 {m := u2}) (u :: b)
+                   = sCase indn (t1 {m := u2}) (t2 {m := u2}) (v :: b)).
+        { clear - H. dependent induction H.
+          - apply conv_eq. simpl nl. f_equal. f_equal. unfold on_snd.
+            admit.
+          - admit.
+          - admit.
+          - admit.
+        }
+        admit.
   Admitted.
 
 End conv_substs.
