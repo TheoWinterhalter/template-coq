@@ -781,6 +781,45 @@ Section conv_substs.
 
   where " Σ '|-i' t == u " := (@convbrs Σ t u) : i_scope.
 
+  Lemma cong_Case_brs :
+    forall {Σ indn p c b1 b2},
+      Σ |-i b1 == b2 ->
+      Σ |-i sCase indn p c b1 = sCase indn p c b2.
+  Proof.
+    intros Σ indn p c b1 b2 hb.
+    assert (aux :
+      forall m,
+        let bb := (firstn m b1 ++ skipn m b2)%list in
+        Σ |-i sCase indn p c bb = sCase indn p c b2
+    ).
+    { induction m.
+      - rewrite firstn_O. cbn. apply conv_refl.
+      - destruct hb.
+        + cbn. apply conv_refl.
+        + cbn. rename c0 into d.
+          set (bb := (firstn m b ++ skipn m d)%list).
+          assert (hh : Σ |-i sCase indn p c ((n, u) :: bb)
+                          = sCase indn p c ((n, v) :: bb)).
+          { clear - H. dependent induction H.
+            - apply conv_eq ; simpl nl ; f_equal.
+              f_equal. unfold on_snd. f_equal. assumption.
+            - eapply conv_red_l.
+              + eapply case_red_brs. econstructor. eassumption.
+              + easy.
+            - eapply conv_red_r.
+              + easy.
+              + eapply case_red_brs. econstructor. eassumption.
+            - eapply conv_trans ; easy.
+          }
+          eapply (conv_trans hh). clear hh.
+          destruct m.
+          * cbn in IHm. subst bb. cbn. assumption.
+          * cbn in IHm. subst bb.
+            admit.
+    }
+    admit.
+  Admitted.
+
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
       Σ |-i u1 ▷ u2 ->
@@ -804,27 +843,8 @@ Section conv_substs.
           + eapply p. assumption.
           + eapply IHX. assumption.
       }
-      clear - h'. induction h'.
-      + apply conv_refl.
-      + assert (hh :
-                  Σ |-i sCase indn (t1 {m := u2}) (t2 {m := u2}) ((n,u) :: b)
-                     = sCase indn (t1 {m := u2}) (t2 {m := u2}) ((n,v) :: b)).
-        { clear - H. dependent induction H.
-          - apply conv_eq ; simpl nl ; f_equal.
-            f_equal. unfold on_snd. f_equal. assumption.
-          - eapply conv_red_l.
-            + eapply case_red_brs. econstructor. eassumption.
-            + assumption.
-          - eapply conv_red_r.
-            + eassumption.
-            + eapply case_red_brs. econstructor. eassumption.
-          - eapply conv_trans ; eassumption.
-        }
-        eapply (conv_trans hh). clear hh.
-        (* Problem: We have an induction hypothesis that didn't keep its
-           head. *)
-        admit.
-  Admitted.
+      apply cong_Case_brs. assumption.
+  Defined.
 
 End conv_substs.
 
