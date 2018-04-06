@@ -13,6 +13,9 @@ Record pp_sigT {A : Type} (P : A -> Type) : Type :=
     pi2 : P pi1
   }.
 
+Arguments pi1 {_ _} _.
+Arguments pi2 {_ _} _.
+
 (* Preamble *)
 Notation "'∑'  x .. y , P" := (pp_sigT (fun x => .. (pp_sigT (fun y => P)) ..))
   (at level 200, x binder, y binder, right associativity) : type_scope.
@@ -24,12 +27,14 @@ Record pp_prod (A B : Type) : Type := mk_pp_prod
   }.
 
 Arguments mk_pp_prod {_ _} _ _.
+Arguments pi1_ {_ _} _.
+Arguments pi2_ {_ _} _.
 
 
 Notation "x * y" := (pp_prod x y) : type_scope.
 
-Definition fst {A B} (p : A * B) := pi1_ A B p.
-Definition snd {A B} (p : A * B) := pi2_ A B p.
+Definition fst {A B} (p : A * B) := pi1_ p.
+Definition snd {A B} (p : A * B) := pi2_ p.
 
 Notation "( x , y , .. , z )" :=
   (mk_pp_prod .. (mk_pp_prod x y) .. z) : type_scope.

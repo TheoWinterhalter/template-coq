@@ -8,7 +8,8 @@ From Translation Require Import util SAst.
 Open Scope type_scope.
 
 Definition on_snd {A B B'} (f : B -> B') (x : A * B) : A * B' :=
-  let '(u,v) := x in (u, f v).
+  (* let '(u,v) := x in (u, f v). *)
+  (fst x, f (snd x)).
 
 Definition test_snd {A B} (f : B -> bool) (p : A * B) :=
   f (snd p).
