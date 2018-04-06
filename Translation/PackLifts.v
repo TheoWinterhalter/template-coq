@@ -986,7 +986,6 @@ Proof.
   - eapply conv_red_r.
     + eassumption.
     + eapply llift_red1. eassumption.
-  - eapply conv_trans ; eassumption.
 Defined.
 
 Fixpoint rlift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
@@ -1065,7 +1064,6 @@ Proof.
   - eapply conv_red_r.
     + eassumption.
     + eapply rlift_red1. eassumption.
-  - eapply conv_trans ; eassumption.
 Defined.
 
 Ltac lh h :=
