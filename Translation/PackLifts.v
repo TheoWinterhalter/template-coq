@@ -3,8 +3,8 @@
 From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
-Require Import util SAst SInduction SLiftSubst SCommon XTyping Conversion
-               ITyping ITypingLemmata ITypingMore.
+Require Import util SAst SInduction SLiftSubst Equality SCommon XTyping
+               Conversion ITyping ITypingLemmata ITypingMore.
 
 (* In order to do things properly we need to extend the context heterogenously,
    this is done by extending the context with packed triples
@@ -944,6 +944,34 @@ Proof.
     }
 Defined.
 
+Lemma nl_llift :
+  forall {t u n k},
+    nl t = nl u ->
+    nl (llift n k t) = nl (llift n k u).
+Proof.
+  intros t u n k.
+  case (nl_dec (nl t) (nl u)).
+  - intros e _.
+    revert u e n k.
+    induction t using sterm_rect_list ;
+    intros u e m k ; destruct u ; cbn in e ; try discriminate e.
+    all:
+      try (cbn ; inversion e ;
+           repeat (erewrite_assumption by eassumption) ; reflexivity).
+    cbn. inversion e.
+    repeat erewrite_assumption by eassumption.
+    f_equal. rewrite !map_map_compose, !compose_on_snd.
+    clear - X H3. revert brs0 H3.
+    induction X.
+    + cbn. intros [|? ?] h ; cbn in h ; try discriminate h. reflexivity.
+    + cbn. intros [| [n b] brs'] h ; cbn in h ; try discriminate h.
+      cbn. f_equal.
+      * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
+        inversion h. subst. f_equal. unfold compose. apply p. cbn. assumption.
+      * apply IHX. now inversion h.
+  - intros h e. exfalso. apply h. apply e.
+Defined.
+
 Lemma llift_conv :
   forall {Σ n k t1 t2},
     Σ |-i t1 = t2 ->
@@ -951,7 +979,7 @@ Lemma llift_conv :
 Proof.
   intros Σ n k t1 t2 h.
   induction h.
-  - apply conv_eq. admit.
+  - apply conv_eq. apply nl_llift. assumption.
   - eapply conv_red_l.
     + eapply llift_red1. eassumption.
     + assumption.
@@ -959,7 +987,7 @@ Proof.
     + eassumption.
     + eapply llift_red1. eassumption.
   - eapply conv_trans ; eassumption.
-Admitted.
+Defined.
 
 Fixpoint rlift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
   Σ |-i rlift n k t1 ▷ rlift n k t2
@@ -995,6 +1023,34 @@ Proof.
     }
 Defined.
 
+Lemma nl_rlift :
+  forall {t u n k},
+    nl t = nl u ->
+    nl (rlift n k t) = nl (rlift n k u).
+Proof.
+  intros t u n k.
+  case (nl_dec (nl t) (nl u)).
+  - intros e _.
+    revert u e n k.
+    induction t using sterm_rect_list ;
+    intros u e m k ; destruct u ; cbn in e ; try discriminate e.
+    all:
+      try (cbn ; inversion e ;
+           repeat (erewrite_assumption by eassumption) ; reflexivity).
+    cbn. inversion e.
+    repeat erewrite_assumption by eassumption.
+    f_equal. rewrite !map_map_compose, !compose_on_snd.
+    clear - X H3. revert brs0 H3.
+    induction X.
+    + cbn. intros [|? ?] h ; cbn in h ; try discriminate h. reflexivity.
+    + cbn. intros [| [n b] brs'] h ; cbn in h ; try discriminate h.
+      cbn. f_equal.
+      * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
+        inversion h. subst. f_equal. unfold compose. apply p. cbn. assumption.
+      * apply IHX. now inversion h.
+  - intros h e. exfalso. apply h. apply e.
+Defined.
+
 Lemma rlift_conv :
   forall {Σ n k t1 t2},
     Σ |-i t1 = t2 ->
@@ -1002,7 +1058,7 @@ Lemma rlift_conv :
 Proof.
   intros Σ n k t1 t2 h.
   induction h.
-  - apply conv_eq. admit.
+  - apply conv_eq. apply nl_rlift. assumption.
   - eapply conv_red_l.
     + eapply rlift_red1. eassumption.
     + assumption.
@@ -1010,7 +1066,7 @@ Proof.
     + eassumption.
     + eapply rlift_red1. eassumption.
   - eapply conv_trans ; eassumption.
-Admitted.
+Defined.
 
 Ltac lh h :=
   lazymatch goal with
