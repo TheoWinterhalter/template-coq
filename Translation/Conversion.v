@@ -8,8 +8,6 @@ Open Scope s_scope.
 
 (*! Reduction. *)
 
-(** NOTE: Do we need to switch to n-ary application? *)
-
 (* TODO in branch case with Apps *)
 (* Definition iota_red npar c args brs := *)
 (*   (mkApps (snd (List.nth c brs (0, tRel 0))) (List.skipn npar args)). *)
@@ -369,33 +367,41 @@ Inductive red Σ t : sterm -> Prop :=
 Notation " Σ '|-i' t ▷⃰ u " :=
   (red Σ t u) (at level 50, t, u at next level).
 
+
 (*! Conversion *)
 
 Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
 Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
-| conv_eq t u : nl t = nl u -> Σ |-i t = u
+| conv_refl t : Σ |-i t = t
 | conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
 | conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
-| conv_trans t u v : Σ |-i t = u -> Σ |-i u = v -> Σ |-i t = v
+| conv_nl t u t' u' : nl t = nl t' -> nl u = nl u' -> Σ |-i t' = u' -> Σ |-i t = u
 
 where " Σ '|-i' t = u " := (@conv Σ t u) : i_scope.
 
 Derive Signature for conv.
 
-Arguments conv_trans {_ _ _ _} _ _.
+(* WARNING AXIOM *)
+(* We dedice to have confluence of reduction as an axiom.
+   The idea is that it then allows to derive transitivity of conversion
+   without having to assume it, meaning we get a lot of properties
+   like injectivity of constructors.
+ *)
+
 
 Open Scope i_scope.
 
-Lemma conv_refl :
-  forall Σ t, Σ |-i t = t.
+Lemma conv_eq :
+  forall Σ t u, nl t = nl u -> Σ |-i t = u.
 Proof.
-  intros Σ t.
-  apply conv_eq. reflexivity.
+  intros Σ t u h.
+  eapply conv_nl.
+  - eassumption.
+  - reflexivity.
+  - apply conv_refl.
 Defined.
 
-(* TODO Anonymise terms before comparing them so that eq_term reflects
-   equality *)
 Lemma conv_sym :
   forall {Σ t u},
     Σ |-i t = u ->
@@ -403,11 +409,38 @@ Lemma conv_sym :
 Proof.
   intros Σ t u h.
   induction h.
-  - apply conv_eq. symmetry. assumption.
+  - apply conv_refl.
   - eapply conv_red_r ; eassumption.
   - eapply conv_red_l ; eassumption.
-  - eapply conv_trans ; eassumption.
+  - eapply conv_nl ; eassumption.
 Defined.
+
+Lemma conv_trans :
+  forall {Σ t u v},
+    Σ |-i t = u ->
+    Σ |-i u = v ->
+    Σ |-i t = v.
+Proof.
+  intros Σ t u v h. revert v.
+  induction h ; intros w h2.
+  - assumption.
+  - specialize (IHh _ h2). eapply conv_red_l ; eassumption.
+  - dependent induction h2.
+    + eapply conv_red_r ; try eassumption.
+    + admit.
+    + admit.
+    + eapply conv_nl.
+      * reflexivity.
+      * eassumption.
+      * admit.
+  - eapply conv_nl.
+    + eassumption.
+    + reflexivity.
+    + eapply IHh. eapply conv_nl.
+      * symmetry. eassumption.
+      * reflexivity.
+      * assumption.
+Admitted.
 
 
 (*! Congruences for conversion *)
