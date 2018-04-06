@@ -203,9 +203,6 @@ Ltac tind :=
 
 Definition Σi := (lΣi, init_graph).
 
-Axiom cheating : forall {A}, A.
-Tactic Notation "cheat" := apply cheating.
-
 Fact hΣi : type_glob Σi.
 (* Proof. *)
   tenv.
