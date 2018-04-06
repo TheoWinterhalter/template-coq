@@ -781,44 +781,94 @@ Section conv_substs.
 
   where " Σ '|-i' t == u " := (@convbrs Σ t u) : i_scope.
 
+  Fact convbrs_length :
+    forall {Σ b1 b2},
+      Σ |-i b1 == b2 ->
+      #|b1| = #|b2|.
+  Proof.
+    intros Σ b1 b2 h. induction h ; cbn ; easy.
+  Defined.
+
+  Lemma convbrs_nth :
+    forall {Σ b1 b2 n h1 h2},
+      Σ |-i b1 == b2 ->
+      let u := safe_nth b1 (exist _ n h1) in
+      let v := safe_nth b2 (exist _ n h2) in
+      (fst u = fst v) * (Σ |-i snd u = snd v).
+  Proof.
+    intros Σ b1 b2 n h1 h2 h. revert n h1 h2.
+    induction h.
+    - cbn. intros. bang.
+    - intros [| m] h1 h2 u' v'.
+      + cbn in *. split ; [ reflexivity | assumption ].
+      + cbn in u'. cbn in v'.
+        apply IHh.
+  Defined.
+
   Lemma cong_Case_brs :
     forall {Σ indn p c b1 b2},
       Σ |-i b1 == b2 ->
       Σ |-i sCase indn p c b1 = sCase indn p c b2.
   Proof.
     intros Σ indn p c b1 b2 hb.
-    assert (aux :
-      forall m,
-        let bb := (firstn m b1 ++ skipn m b2)%list in
-        Σ |-i sCase indn p c bb = sCase indn p c b2
-    ).
-    { induction m.
-      - rewrite firstn_O. cbn. apply conv_refl.
-      - destruct hb.
-        + cbn. apply conv_refl.
-        + cbn. rename c0 into d.
-          set (bb := (firstn m b ++ skipn m d)%list).
-          assert (hh : Σ |-i sCase indn p c ((n, u) :: bb)
-                          = sCase indn p c ((n, v) :: bb)).
-          { clear - H. dependent induction H.
-            - apply conv_eq ; simpl nl ; f_equal.
-              f_equal. unfold on_snd. f_equal. assumption.
-            - eapply conv_red_l.
-              + eapply case_red_brs. econstructor. eassumption.
-              + easy.
-            - eapply conv_red_r.
-              + easy.
-              + eapply case_red_brs. econstructor. eassumption.
-            - eapply conv_trans ; easy.
-          }
-          eapply (conv_trans hh). clear hh.
-          destruct m.
-          * cbn in IHm. subst bb. cbn. assumption.
-          * cbn in IHm. subst bb.
-            admit.
+    pose (P := fun m =>
+                 let bb := ((firstn m b1) ++ (skipn m b2))%list in
+                 Σ |-i sCase indn p c bb = sCase indn p c b2).
+    pose proof (convbrs_length hb) as eql.
+    assert (aux : P #|b1|).
+    { eapply fin_indT_last ; subst P ; cbn beta.
+      - cbn. apply conv_refl.
+      - intros n hn ih _. cbn in ih.
+        pose (u := safe_nth b1 (exist _ n hn)).
+        assert (hn' : n < #|b2|) by omega.
+        pose (v := safe_nth b2 (exist _ n hn')).
+        erewrite @firstn_reconstruct
+          with (a := u) by (eapply nth_error_safe_nth).
+        assert (eq : (fst u = fst v) * (Σ |-i snd u = snd v)).
+        { eapply convbrs_nth. assumption.
+        }
+        destruct eq as [eq h].
+        assert (hh :
+          Σ |-i sCase indn p c ((firstn n b1 ++ [u]) ++ skipn (S n) b2)
+             = sCase indn p c ((firstn n b1 ++ [v]) ++ skipn (S n) b2)).
+        { clearbody u. clearbody v.
+          destruct u as [m' u], v as [m v]. cbn in eq. subst. cbn in h.
+          clear - h. dependent induction h.
+          - apply conv_eq. simpl.
+            f_equal. rewrite !map_app. f_equal. f_equal.
+            cbn. f_equal. unfold on_snd. f_equal ; assumption.
+          - eapply conv_red_l ; [
+              eapply case_red_brs
+            | eassumption
+            ].
+            set (l1 := firstn n b1). clearbody l1.
+            set (l2 := skipn (S n) b2). clearbody l2.
+            clear - H. revert l2. induction l1.
+            + intro l2. cbn. econstructor. assumption.
+            + intro l2. cbn. econstructor. apply IHl1.
+          - eapply conv_red_r ; [
+              eassumption
+            | eapply case_red_brs
+            ].
+            set (l1 := firstn n b1). clearbody l1.
+            set (l2 := skipn (S n) b2). clearbody l2.
+            clear - H. revert l2. induction l1.
+            + intro l2. cbn. econstructor. assumption.
+            + intro l2. cbn. econstructor. apply IHl1.
+          - eapply conv_trans ; eassumption.
+        }
+        eapply conv_trans ; try eassumption.
+        erewrite @skipn_reconstruct
+          with (a := v) in ih by (eapply nth_error_safe_nth).
+        replace ((firstn n b1 ++ [v]) ++ skipn (S n) b2)%list
+          with (firstn n b1 ++ v :: skipn (S n) b2)%list
+          by (rewrite app_assoc_reverse ; reflexivity).
+        assumption.
     }
-    admit.
-  Admitted.
+    subst P. cbn in aux.
+    rewrite firstn_all, eql, skipn_all, app_nil_r in aux.
+    assumption.
+  Defined.
 
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
