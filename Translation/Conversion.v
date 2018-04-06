@@ -537,7 +537,7 @@ Ltac conv_rewrite h :=
           | eapply conv_red_r ; [
               eassumption
             | econstructor ; eassumption
-            ]n
+            ]
           ]
         | apply (conv_trans h') ; clear h'
         ]
@@ -723,7 +723,6 @@ Proof.
   - eapply conv_red_r.
     + eassumption.
     + eapply lift_red1. eassumption.
-  - eapply conv_trans ; eassumption.
 Defined.
 
 Corollary cong_lift01 :
@@ -783,7 +782,6 @@ Proof.
   - eapply conv_red_r.
     + eassumption.
     + eapply subst_red1. eassumption.
-  - eapply conv_trans ; eassumption.
 Defined.
 
 
@@ -958,7 +956,6 @@ Section conv_substs.
             clear - H. revert l2. induction l1.
             + intro l2. cbn. econstructor. assumption.
             + intro l2. cbn. econstructor. apply IHl1.
-          - eapply conv_trans ; eassumption.
         }
         eapply conv_trans ; try eassumption.
         erewrite @skipn_reconstruct
@@ -1014,5 +1011,4 @@ Proof.
   - eapply conv_trans ; try eassumption.
     eapply conv_sym.
     eapply substs_red1. assumption.
-  - eapply conv_trans ; eassumption.
 Defined.
