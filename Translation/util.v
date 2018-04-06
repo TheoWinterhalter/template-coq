@@ -227,3 +227,29 @@ Proof.
   - f_equal. f_equal. omega.
   - assumption.
 Defined.
+
+
+
+Lemma fin_indT :
+  forall {N} (P : nat -> Type),
+    P 0 ->
+    (forall n, n < N -> P n -> P (S n)) ->
+    forall n, n <= N -> P n.
+Proof.
+  intros N P Po Ps n.
+  induction n.
+  - intros _. assumption.
+  - intro h. apply Ps.
+    + omega.
+    + apply IHn. omega.
+Defined.
+
+Corollary fin_indT_last :
+  forall {N} (P : nat -> Type),
+    P 0 ->
+    (forall n, n < N -> P n -> P (S n)) ->
+    P N.
+Proof.
+  intros N P Po Ps.
+  eapply fin_indT ; eauto.
+Defined.
