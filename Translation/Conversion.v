@@ -1012,3 +1012,66 @@ Proof.
     eapply conv_sym.
     eapply substs_red1. assumption.
 Defined.
+
+
+(*! Inversion results about conversion *)
+
+Lemma sort_conv_inv :
+  forall {Σ s1 s2},
+    Σ |-i sSort s1 = sSort s2 ->
+    s1 = s2.
+Proof.
+  intros Σ s1 s2 h. dependent induction h.
+  - cbn in H. now inversion H.
+  - inversion H.
+  - inversion H.
+Defined.
+
+Ltac inversion_eq :=
+  match goal with
+  | H : _ = _ |- _ => inversion H
+  end.
+
+Ltac invconv h :=
+  dependent induction h ; [
+    cbn in * ; inversion_eq ;
+    repeat split ; apply conv_eq ; assumption
+  | dependent destruction H ;
+    split_hyps ; repeat split ; try assumption ;
+    eapply conv_red_l ; eassumption
+  | dependent destruction H ;
+    split_hyps ; repeat split ; try assumption ;
+    eapply conv_red_r ; eassumption
+  ].
+
+Lemma heq_conv_inv :
+  forall {Σ A a B b A' a' B' b'},
+    Σ |-i sHeq A a B b = sHeq A' a' B' b' ->
+    (Σ |-i A = A') *
+    (Σ |-i a = a') *
+    (Σ |-i B = B') *
+    (Σ |-i b = b').
+Proof.
+  intros Σ A a B b A' a' B' b' h.
+  invconv h.
+Defined.
+
+Lemma eq_conv_inv :
+  forall {Σ A u v A' u' v'},
+    Σ |-i sEq A u v = sEq A' u' v' ->
+    (Σ |-i A = A') *
+    (Σ |-i u = u') *
+    (Σ |-i v = v').
+Proof.
+  intros Σ A u v A' u' v' h.
+  invconv h.
+Defined.
+
+Lemma pack_conv_inv :
+  forall {Σ A1 A2 A1' A2'},
+    Σ |-i sPack A1 A2 = sPack A1' A2' ->
+    (Σ |-i A1 = A1') * (Σ |-i A2 = A2').
+Proof.
+  intros Σ A1 A2 A1' A2' h.
+  invconv h.
+Defined.
