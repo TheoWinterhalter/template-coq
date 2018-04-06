@@ -410,4 +410,4 @@ Proof.
 Defined.
 
 Definition type_translation {Γ t A} h {Γ'} hΓ :=
-  pi2_ _ _ (pi1_ _ _ (@complete_translation Σi hΣi)) Γ t A h Γ' hΓ.
+  pi2_ (pi1_ (@complete_translation Σi hΣi)) Γ t A h Γ' hΓ.

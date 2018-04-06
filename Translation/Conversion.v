@@ -373,10 +373,10 @@ Notation " Σ '|-i' t ▷⃰ u " :=
 
 Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
-Inductive conv (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
+Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
 | conv_eq t u : nl t = nl u -> Σ |-i t = u
-| conv_red_l t u v : red1 Σ t v -> Σ |-i v = u -> Σ |-i t = u
-| conv_red_r t u v : Σ |-i t = v -> red1 Σ u v -> Σ |-i t = u
+| conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
+| conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
 | conv_trans t u v : Σ |-i t = u -> Σ |-i u = v -> Σ |-i t = v
 
 where " Σ '|-i' t = u " := (@conv Σ t u) : i_scope.
@@ -771,7 +771,7 @@ Section conv_substs.
 
   Reserved Notation " Σ '|-i' t == u " (at level 50, t, u at next level).
 
-  Inductive convbrs (Σ : sglobal_declarations) :
+  Inductive convbrs (Σ : sglobal_context) :
     list (nat * sterm) -> list (nat * sterm) -> Prop :=
   | convbrs_nil : Σ |-i [] == []
   | convbrs_cons n u v b c :
@@ -872,7 +872,7 @@ Section conv_substs.
 
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
-      Σ |-i u1 ▷ u2 ->
+      fst Σ |-i u1 ▷ u2 ->
       Σ |-i t{ n := u1 } = t{ n := u2 }.
   Proof.
     induction t using sterm_rect_list ; intros m u1 u2 h.
