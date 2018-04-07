@@ -222,6 +222,7 @@ Proof.
           by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
         eapply type_rlift0 ; eassumption.
       }
+      exists (sHeqRefl (llift0 #|Γm| U1) (sRel x)).
       ttinv h1'. ttinv h2'.
       erewrite @safe_nth_irr with (isdecl' := is) in h0.
       match goal with
@@ -229,7 +230,6 @@ Proof.
         set (A := T) in *
       end.
       cbn in h, h0.
-      exists (sHeqRefl (llift0 #|Γm| U1) (sRel x)).
       eapply type_conv.
       * eapply type_HeqRefl' ; eassumption.
       * eapply type_Heq ; try assumption.
@@ -241,10 +241,11 @@ Proof.
         eapply conv_sym. assumption.
 
   (* Left transport *)
-  - ttinv h1.
-    destruct (IHsim _ _ _ _ _ _ hm h6 h2) as [q hq].
+  - destruct (IHsim _ _ _ _ _ _ hm ltac:(now ttinv h1) ltac:(now ttinv h1))
+      as [q hq].
     cbn.
     exists (sHeqTrans (sHeqSym (sHeqTransport (llift0 #|Γm| p) (llift0 #|Γm| t1))) q).
+    ttinv h1.
     destruct (istype_type hg hq) as [s' h'].
     ttinv h'. pose proof (sort_inj h8). subst. clear h8.
     eapply type_HeqTrans' ; try assumption.
@@ -285,12 +286,13 @@ Proof.
     + assumption.
 
   (* Right transport *)
-  - ttinv h2.
-    destruct (IHsim _ _ _ _ _ _ hm h1 h6) as [q hq].
+  - destruct (IHsim _ _ _ _ _ _ hm ltac:(now ttinv h2) ltac:(now ttinv h2))
+      as [q hq].
+    exists (sHeqTrans q (sHeqTransport (rlift0 #|Γm| p) (rlift0 #|Γm| t2))).
+    ttinv h2.
     destruct (istype_type hg hq) as [s' h'].
     ttinv h'. pose proof (sort_inj h8). subst. clear h8.
     cbn.
-    exists (sHeqTrans q (sHeqTransport (rlift0 #|Γm| p) (rlift0 #|Γm| t2))).
     eapply type_HeqTrans' ; try assumption.
     + eassumption.
     + eapply type_conv.
@@ -317,8 +319,7 @@ Proof.
     + cheat.
 
   (* Prod *)
-  - ttinv h1. ttinv h2.
-    destruct (IHsim1 _ _ _ _ _ _ hm h h0) as [pA hpA].
+  - destruct (IHsim1 _ _ _ _ _ _ hm h h0) as [pA hpA].
     destruct (istype_type hg hpA) as [s iA].
     ttinv iA. pose proof (sort_inj h9). subst. clear h9.
     assert (s1 = s0).
@@ -333,6 +334,8 @@ Proof.
     { econstructor ; eassumption. }
     destruct (IHsim2 _ _ _ _ _ _ hm' h4 h7) as [pB hpB].
     exists (sCongProd (llift #|Γm| 1 B1) (rlift #|Γm| 1 B2) pA pB).
+    ttinv h1. ttinv h2.
+
     destruct (istype_type hg hpB) as [? iB]. ttinv iB.
     pose proof (sort_inj h13) as hh. symmetry in hh. subst. clear h13.
     eapply type_conv.
