@@ -80,6 +80,7 @@ Defined.
 
 Definition itt_tm : sterm.
   destruct (type_translation tmty istrans_nil) as [A [t h]].
+  fail "This is just a security".
   exact t.
 Defined.
 
