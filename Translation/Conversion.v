@@ -1075,3 +1075,12 @@ Proof.
   intros Σ A1 A2 A1' A2' h.
   invconv h.
 Defined.
+
+Lemma prod_inv :
+  forall {Σ nx ny A B A' B'},
+    Σ |-i sProd nx A B = sProd ny A' B' ->
+    (Σ |-i A = A') * (Σ |-i B = B').
+Proof.
+  intros Σ nx ny A B A' B' h.
+  invconv h.
+Defined.
