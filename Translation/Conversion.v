@@ -12,7 +12,7 @@ Open Scope s_scope.
 (* Definition iota_red npar c args brs := *)
 (*   (mkApps (snd (List.nth c brs (0, tRel 0))) (List.skipn npar args)). *)
 
-Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
+Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Type :=
 (*! Computation *)
 
 (** β *)
@@ -345,7 +345,7 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
     red1 Σ (sProjTe p) (sProjTe p')
 
 with redbrs1 (Σ : sglobal_declarations) :
-       list (nat * sterm) -> list (nat * sterm) -> Prop :=
+       list (nat * sterm) -> list (nat * sterm) -> Type :=
 | redbrs1_hd n hd hd' tl :
     red1 Σ hd hd' ->
     redbrs1 Σ ((n, hd) :: tl) ((n, hd') :: tl)
@@ -360,7 +360,7 @@ Notation " Σ '|-i' t ▷ u " :=
   (red1 Σ t u) (at level 50, t, u at next level).
 
 (* Reflexive and transitive closure of 1-step reduction. *)
-Inductive red Σ t : sterm -> Prop :=
+Inductive red Σ t : sterm -> Type :=
 | refl_red : red Σ t t
 | trans_red u v : red1 Σ t u -> red Σ u v -> red Σ t v.
 
@@ -389,7 +389,7 @@ Section nlred.
     forall {Σ t t' u},
       Σ |-i t ▷ u ->
          nleq t t' ->
-         exists u', (Σ |-i t' ▷ u') /\ (nleq u u').
+         ∑ u', (Σ |-i t' ▷ u') * (nleq u u').
   Proof.
     intros Σ t t' u h. revert u h t'.
     induction t using sterm_rect_list.
@@ -422,7 +422,7 @@ End nlred.
 
 Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
-Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
+Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Type :=
 | conv_eq t u : nl t = nl u -> Σ |-i t = u
 | conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
 | conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
@@ -467,11 +467,11 @@ Proof.
     + symmetry. assumption.
     + transitivity (nl u) ; assumption.
   - intros t' u' ht hu.
-    destruct (nl_red1 H ht) as [t'' [? ?]].
+    destruct (nl_red1 r ht) as [t'' [? ?]].
     eapply conv_red_l ; try eassumption.
     eapply IHh ; assumption.
   - intros t' u' ht hu.
-    destruct (nl_red1 H hu) as [t'' [? ?]].
+    destruct (nl_red1 r hu) as [t'' [? ?]].
     eapply conv_red_r ; try eassumption.
     eapply IHh ; assumption.
 Defined.
@@ -498,7 +498,7 @@ Lemma conv_trans :
 Proof.
   intros Σ t u v h. revert v.
   induction h ; intros w h2.
-  - symmetry in H.
+  - symmetry in e.
     eapply nl_conv ; try eassumption.
     reflexivity.
   - specialize (IHh _ h2). eapply conv_red_l ; eassumption.
@@ -873,7 +873,7 @@ Section conv_substs.
   Reserved Notation " Σ '|-i' t == u " (at level 50, t, u at next level).
 
   Inductive convbrs (Σ : sglobal_context) :
-    list (nat * sterm) -> list (nat * sterm) -> Prop :=
+    list (nat * sterm) -> list (nat * sterm) -> Type :=
   | convbrs_nil : Σ |-i [] == []
   | convbrs_cons n u v b c :
       Σ |-i u = v ->
@@ -944,7 +944,7 @@ Section conv_substs.
             ].
             set (l1 := firstn n b1). clearbody l1.
             set (l2 := skipn (S n) b2). clearbody l2.
-            clear - H. revert l2. induction l1.
+            clear - r. revert l2. induction l1.
             + intro l2. cbn. econstructor. assumption.
             + intro l2. cbn. econstructor. apply IHl1.
           - eapply conv_red_r ; [
@@ -953,7 +953,7 @@ Section conv_substs.
             ].
             set (l1 := firstn n b1). clearbody l1.
             set (l2 := skipn (S n) b2). clearbody l2.
-            clear - H. revert l2. induction l1.
+            clear - r. revert l2. induction l1.
             + intro l2. cbn. econstructor. assumption.
             + intro l2. cbn. econstructor. apply IHl1.
         }
@@ -1022,9 +1022,9 @@ Lemma sort_conv_inv :
     s1 = s2.
 Proof.
   intros Σ s1 s2 h. dependent induction h.
-  - cbn in H. now inversion H.
-  - inversion H.
-  - inversion H.
+  - cbn in e. now inversion e.
+  - inversion r.
+  - inversion r.
 Defined.
 
 Ltac inversion_eq :=
@@ -1036,10 +1036,10 @@ Ltac invconv h :=
   dependent induction h ; [
     cbn in * ; inversion_eq ;
     repeat split ; apply conv_eq ; assumption
-  | dependent destruction H ;
+  | dependent destruction r ;
     split_hyps ; repeat split ; try assumption ;
     eapply conv_red_l ; eassumption
-  | dependent destruction H ;
+  | dependent destruction r ;
     split_hyps ; repeat split ; try assumption ;
     eapply conv_red_r ; eassumption
   ].
