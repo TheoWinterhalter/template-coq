@@ -72,3 +72,23 @@ Proof.
       apply ctxconv_refl.
     + ttinv ht1. ttinv h3. destruct (prod_inv h6).
 Admitted.
+
+Theorem subj_conv :
+  forall {Σ Γ t u T U},
+    type_glob Σ ->
+    Σ |-i t = u ->
+    Σ ;;; Γ |-i t : T ->
+    Σ ;;; Γ |-i u : U ->
+    Σ |-i T = U.
+Proof.
+  intros Σ Γ t u T U hg hr ht hu. revert Γ T U ht hu.
+  induction hr ; intros Γ T U ht hu.
+  - (* Need yet another result here about nl... *)
+    admit.
+  - eapply IHhr.
+    + eapply subj_red ; eassumption.
+    + assumption.
+  - eapply IHhr.
+    + eassumption.
+    + eapply subj_red ; eassumption.
+Admitted.
