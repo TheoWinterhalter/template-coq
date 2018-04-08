@@ -4,7 +4,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import util SAst SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingMore XTyping
+                                ITypingLemmata ITypingAdmissible XTyping
                                 Translation Reduction FinalTranslation.
 
 Open Scope string_scope.

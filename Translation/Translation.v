@@ -3,7 +3,7 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
 Require Import util SAst SLiftSubst Equality SCommon XTyping Conversion ITyping
-               ITypingInversions ITypingLemmata ITypingMore PackLifts.
+               ITypingInversions ITypingLemmata ITypingAdmissible PackLifts.
 
 Section Translation.
 
