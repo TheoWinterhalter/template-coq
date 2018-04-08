@@ -3,34 +3,7 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
 Require Import util SAst SLiftSubst SCommon Conversion ITyping ITypingInversions
-               ITypingLemmata.
-
-(** WARNING AXIOM **)
-(**
-   We decide to use the following axiom in order for our proof to progress
-   without habing to completely formalise the fact that CIC is strongly
-   normalising.
-
-   We indeed state that whenever Type_i = Type_j (in the sense of conversion)
-   then i and j are actually the same. This would require at least confluence
-   of the reduction system.
-
-   We use a little trick for this relying on the fact that equality for nat is
-   decidable, this will help the axiom compute in relevant cases.
-   (Thanks Nicolas.)
- *)
-Axiom sort_inj_AXIOM :
-  forall {Σ s1 s2}, Σ |-i sSort s1 = sSort s2 -> s1 = s2.
-
-Fact sort_inj :
-  forall {Σ s1 s2}, Σ |-i sSort s1 = sSort s2 -> s1 = s2.
-Proof.
-  intros Σ s1 s2 h.
-  case (Nat.eqb_spec s1 s2).
-  - intro e. exact e.
-  - intro neq. exfalso. apply neq. eapply sort_inj_AXIOM.
-    eassumption.
-Defined.
+               ITypingLemmata Uniqueness SubjectReduction.
 
 Corollary sorts_in_sort :
   forall {Σ Γ s1 s2 s3},
@@ -41,7 +14,7 @@ Proof.
   intros Σ Γ s1 s2 s3 h1 h2.
   ttinv h1. ttinv h2.
   pose proof (conv_trans h (conv_sym h0)) as eq.
-  pose proof (sort_inj eq).
+  pose proof (sort_conv_inv eq).
   unfold succ_sort, sort in *.
   omega.
 Defined.
@@ -59,7 +32,7 @@ Proof.
   ttinv i.
   ttinv h0. ttinv h5.
   pose proof (conv_trans h1 (conv_sym h6)) as eq.
-  pose proof (sort_inj eq).
+  pose proof (sort_conv_inv eq).
   assert (s1 = s2) by (unfold succ_sort, sort in * ; omega).
   subst. clear eq H h1 h6.
   assumption.
@@ -123,56 +96,23 @@ Proof.
   now eapply type_HeqSym.
 Defined.
 
-(* Lemma type_HeqTrans' : *)
-(*   forall {Σ Γ A a B b C c p q}, *)
-(*     type_glob Σ -> *)
-(*     Σ ;;; Γ |-i p : sHeq A a B b -> *)
-(*     Σ ;;; Γ |-i q : sHeq B b C c -> *)
-(*     Σ ;;; Γ |-i sHeqTrans p q : sHeq A a C c. *)
-(* Proof. *)
-(*   intros Σ Γ A a B b C c p q hg h1 h2. *)
-(*   destruct (istype_type hg h1) as [? i1]. *)
-(*   ttinv i1. *)
-(*   destruct (istype_type hg h2) as [? i2]. *)
-(*   ttinv i2. *)
-(*   eapply type_HeqTrans. all: try eassumption. *)
-(*   eapply type_conv. *)
-(*   - eassumption. *)
-(*   - eapply type_Sort. eapply typing_wf ; eassumption. *)
-(*   - eapply conv_trans ; try eassumption. *)
-(*     eapply conv_sym. *)
-(*     (* Unfortunately we didn't solve our problems by lowering *)
-(*        the universe of heq... *)
-(*        We can always prove a weaker HeqTrans' and then hope to only use it *)
-(*        in places where uniqueness is true (meaning on a specific piece of *)
-(*        syntax). *)
-(*      *) *)
-
-(*   destruct (uniqueness iB2 iB1) as [? eq]. *)
-(*   eapply type_conv ; [ eassumption | idtac | eassumption ]. *)
-(*   apply (eq_typing hg eq). *)
-(* Defined. *)
-
-(* Weaker version of type_HeqTrans' but at least it doesn't require uniqueness
-   of typing.
- *)
 Lemma type_HeqTrans' :
-  forall {Σ Γ A a B b C c p q s},
+  forall {Σ Γ A a B b C c p q},
     type_glob Σ ->
     Σ ;;; Γ |-i p : sHeq A a B b ->
     Σ ;;; Γ |-i q : sHeq B b C c ->
-    Σ ;;; Γ |-i A : sSort s ->
-    Σ ;;; Γ |-i B : sSort s ->
-    Σ ;;; Γ |-i C : sSort s ->
     Σ ;;; Γ |-i sHeqTrans p q : sHeq A a C c.
 Proof.
-  intros Σ Γ A a B b C c p q s hg h1 h2 hA hB hC.
+  intros Σ Γ A a B b C c p q hg h1 h2.
   destruct (istype_type hg h1) as [? i1].
   ttinv i1.
   destruct (istype_type hg h2) as [? i2].
   ttinv i2.
-  eapply type_HeqTrans with (s := s) (B := B) (b := b).
-  all: eassumption.
+  eapply type_HeqTrans. all: try eassumption.
+  eapply type_conv.
+  - eassumption.
+  - eapply type_Sort. eapply typing_wf ; eassumption.
+  - apply (uniqueness h0 h6).
 Defined.
 
 Lemma type_HeqTransport' :
@@ -478,30 +418,17 @@ Proof.
   eapply type_Transport ; eassumption.
 Defined.
 
-(* Lemma type_HeqTypeEq' : *)
-(*   forall {Σ Γ A u B v p s}, *)
-(*     type_glob Σ -> *)
-(*     Σ ;;; Γ |-i p : sHeq A u B v -> *)
-(*     Σ ;;; Γ |-i A : sSort s -> *)
-(*     Σ ;;; Γ |-i sHeqTypeEq p : sEq (sSort s) A B. *)
-(* Proof. *)
-(*   intros Σ Γ A u B v p s hg hp hA. *)
-(*   destruct (istype_type hg hp) as [? i]. ttinv i. *)
-(*   eapply type_HeqTypeEq ; try eassumption. *)
-(*   destruct (uniqueness pi1_ hA). *)
-(*   eapply type_conv' ; eassumption. *)
-(* Defined. *)
-
-(* Weaker version here too. *)
 Lemma type_HeqTypeEq' :
   forall {Σ Γ A u B v p s},
     type_glob Σ ->
     Σ ;;; Γ |-i p : sHeq A u B v ->
     Σ ;;; Γ |-i A : sSort s ->
-    Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i sHeqTypeEq p : sEq (sSort s) A B.
 Proof.
-  intros Σ Γ A u B v p s hg hp hA Hb.
+  intros Σ Γ A u B v p s hg hp hA.
   destruct (istype_type hg hp) as [? i]. ttinv i.
-  eapply type_HeqTypeEq ; eassumption.
+  eapply type_HeqTypeEq ; try eassumption.
+  pose proof (uniqueness h hA).
+  eapply type_conv ; try eassumption.
+  eapply type_Sort. eapply typing_wf. eassumption.
 Defined.
