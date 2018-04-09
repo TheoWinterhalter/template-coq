@@ -412,7 +412,28 @@ Section nlred.
       eexists. split.
       + eapply red_TransportRefl.
       + assumption.
-    - admit.
+    - clear eq H0 ind IHt1 IHt2. revert brs H3.
+      induction r.
+      + intros brs h. dependent destruction X.
+        destruct brs ; cbn in h ; try discriminate h.
+        inversion h.
+        destruct (p0 _ r _ H3) as [hd'' [? ?]].
+        eexists. split.
+        * eapply case_red_brs. econstructor. eassumption.
+        * unfold nleq. cbn. unfold on_snd. cbn. destruct p1. cbn.
+          f_equal ; try eassumption.
+          f_equal.
+          -- f_equal. assumption.
+          -- assumption.
+      + intros brs h. dependent destruction X.
+        destruct brs ; cbn in h ; try discriminate h.
+        inversion h.
+        destruct IHr as [u' [? ?]] ; try assumption.
+        (* We again have this problem where a subcase of a match is no longer a
+           match... *)
+        admit.
+        (* eexists. split. *)
+        (* * eassumption. *)
     Unshelve. all: exact nAnon.
   Admitted.
 

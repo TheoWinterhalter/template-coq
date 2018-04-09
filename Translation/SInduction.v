@@ -88,6 +88,8 @@ Inductive ForallT {A : Type} (P : A -> Type) : list A -> Type :=
 | ForallT_nil : ForallT P []
 | ForallT_cons x l : P x -> ForallT P l -> ForallT P (x :: l).
 
+Derive Signature for ForallT.
+
 Definition sCaseBrsT (P : sterm -> Type) (brs : list (nat * sterm)) :=
   ForallT (fun x => P (snd x)) brs.
 
