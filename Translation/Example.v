@@ -322,8 +322,8 @@ Defined.
 *)
 
 Lemma vecbzty :
-  Σi ;;; [] |-x sApp (sApp sVec (nNamed "A") (sSort 0) vec_cod sBool)
-               nAnon sNat (sSort 0)
+  Σi ;;; [] |-x sApp (sApp sVec (sSort 0) vec_cod sBool)
+               sNat (sSort 0)
                sZero
              : sSort 0.
 Proof.
