@@ -90,8 +90,33 @@ Inductive ForallT {A : Type} (P : A -> Type) : list A -> Type :=
 
 Derive Signature for ForallT.
 
+Lemma ForallT_nth :
+  forall {A} {P : A -> Type} {l n t},
+    ForallT P l ->
+    nth_error l n = Some t ->
+    P t.
+Proof.
+  intros A P l n t h hn. revert n t hn.
+  induction h ; intros n t hn.
+  - destruct n ; cbn in hn ; discriminate hn.
+  - destruct n.
+    + cbn in hn. inversion hn. subst. assumption.
+    + cbn in hn. eapply IHh. eassumption.
+Defined.
+
 Definition sCaseBrsT (P : sterm -> Type) (brs : list (nat * sterm)) :=
   ForallT (fun x => P (snd x)) brs.
+
+Fact sCaseBrsT_nth :
+  forall {P brs n p},
+    sCaseBrsT P brs ->
+    nth_error brs n = Some p ->
+    P (snd p).
+Proof.
+  intros P brs n p h hn.
+  unfold sCaseBrsT in h.
+  eapply @ForallT_nth with (P := fun p => P (snd p)) ; eassumption.
+Defined.
 
 Lemma sterm_rect_list :
   forall P : sterm -> Type,

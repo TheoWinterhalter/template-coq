@@ -385,6 +385,40 @@ Section nlred.
       ]
     end.
 
+  Fact redbrs1_one :
+    forall {Σ b1 b2},
+      redbrs1 Σ b1 b2 ->
+      ∑ n m t1 t2,
+        (Σ |-i t1 ▷ t2) *
+        (nth_error b1 n = Some (m, t1)) *
+        (b2 = firstn n b1 ++ ((m, t2) :: skipn (S n) b1))%list.
+  Proof.
+    intros Σ b1 b2 h.
+    induction h.
+    - exists 0, n, hd, hd'. repeat split. assumption.
+    - destruct IHh as (n & m & t1 & t2 & hh). destruct hh as [[? ?] ?].
+      exists (S n), m, t1, t2. repeat split ; try assumption.
+      rewrite pi2_0. reflexivity.
+  Defined.
+
+  Fact one_redbrs1 :
+    forall {Σ b n m t1 t2},
+      Σ |-i t1 ▷ t2 ->
+      nth_error b n = Some (m, t1) ->
+      redbrs1 Σ b (firstn n b ++ ((m, t2) :: skipn (S n) b))%list.
+  Proof.
+    intros Σ b.
+    induction b ; intros n m t1 t2 hr hn.
+    - destruct n ; cbn in hn ; discriminate hn.
+    - destruct n.
+      + cbn in hn. inversion hn. subst. clear hn.
+        econstructor. assumption.
+      + cbn in hn.
+        change (firstn (S n) (a :: b)) with (a :: firstn n b).
+        rewrite <- app_comm_cons.
+        econstructor 2. eapply IHb ; eassumption.
+  Defined.
+
   Lemma nl_red1 :
     forall {Σ t t' u},
       Σ |-i t ▷ u ->
@@ -412,30 +446,45 @@ Section nlred.
       eexists. split.
       + eapply red_TransportRefl.
       + assumption.
-    - clear eq H0 ind IHt1 IHt2. revert brs H3.
-      induction r.
-      + intros brs h. dependent destruction X.
-        destruct brs ; cbn in h ; try discriminate h.
-        inversion h.
-        destruct (p0 _ r _ H3) as [hd'' [? ?]].
-        eexists. split.
-        * eapply case_red_brs. econstructor. eassumption.
-        * unfold nleq. cbn. unfold on_snd. cbn. destruct p1. cbn.
-          f_equal ; try eassumption.
-          f_equal.
-          -- f_equal. assumption.
-          -- assumption.
-      + intros brs h. dependent destruction X.
-        destruct brs ; cbn in h ; try discriminate h.
-        inversion h.
-        destruct IHr as [u' [? ?]] ; try assumption.
-        (* We again have this problem where a subcase of a match is no longer a
-           match... *)
-        admit.
-        (* eexists. split. *)
-        (* * eassumption. *)
+    - clear eq H0 ind IHt1 IHt2.
+      destruct (redbrs1_one r) as [n [m [t1 [t2 [[rt hn] ?]]]]].
+      subst. clear r.
+      assert (hn' : ∑ t1', (nth_error brs n = Some (m, t1')) * (nl t1 = nl t1')).
+      { clear - H3 hn. revert n brs0 H3 hn.
+        induction brs ; intros n brs0 h hn.
+        - destruct brs0 ; cbn in h ; try discriminate h.
+          destruct n ; cbn in hn ; inversion hn.
+        - destruct brs0 ; cbn in h ; try discriminate h.
+          destruct n.
+          + cbn in hn. inversion hn. subst. clear hn.
+            destruct a as [m' t1'].
+            inversion h. subst.
+            exists t1'. split.
+            * cbn. reflexivity.
+            * assumption.
+          + cbn in hn. inversion h.
+            destruct (IHbrs _ _ H2 hn) as [t1' [? ?]].
+            exists t1'. split.
+            * cbn. assumption.
+            * assumption.
+      }
+      destruct hn' as [t1' [hn' hnl]].
+      destruct (sCaseBrsT_nth X hn _ rt _ hnl) as [t2' [hr2 hnl2]].
+      eexists. split.
+      + eapply case_red_brs. eapply one_redbrs1 ; eassumption.
+      + unfold nleq. cbn. f_equal ; try assumption.
+        rewrite !map_app. cbn. f_equal.
+        * eapply map_firstn. assumption.
+        * f_equal.
+          -- unfold on_snd. cbn. f_equal. assumption.
+          -- match goal with
+             | |- map ?f ?l1 = map ?f ?l2 =>
+               change (map f l1 = map f l2)
+                 with (map f (skipn (S n) brs0) = map f (skipn (S n) brs))
+             end.
+             apply map_skipn. assumption.
     Unshelve. all: exact nAnon.
-  Admitted.
+  Defined.
 
 End nlred.
 
