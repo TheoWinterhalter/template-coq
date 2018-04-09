@@ -14,6 +14,8 @@ Inductive ctxconv Σ : scontext -> scontext -> Type :=
     Σ |-i A = B ->
     ctxconv Σ (Γ,, A) (Δ,, B).
 
+Derive Signature for ctxconv.
+
 Fact ctxconv_refl :
   forall {Σ Γ}, ctxconv Σ Γ Γ.
 Proof.
@@ -24,35 +26,114 @@ Proof.
     + apply conv_refl.
 Defined.
 
-Lemma type_ctxconv :
-  forall {Σ Γ Δ t A},
-    Σ ;;; Γ |-i t : A ->
-    ctxconv Σ Γ Δ ->
-    Σ ;;; Δ |-i t : A.
+Axiom cheating : forall {A}, A.
+Tactic Notation "cheat" := apply cheating.
+
+(* ALTERNATIVE *)
+(* Section ctxconv. *)
+
+(*   Ltac tih type_ctxconv := *)
+(*     match goal with *)
+(*     | |- _ ;;; _ |-i _ : _ => *)
+(*       eapply type_ctxconv ; eassumption *)
+(*     | |- _ ;;; ?Δ,, ?A |-i _ : _ => *)
+(*       eapply type_ctxconv ; [ *)
+(*         eassumption *)
+(*       | econstructor ; [ assumption | tih type_ctxconv ] *)
+(*       | econstructor ; [ assumption | apply conv_refl ] *)
+(*       ] *)
+(*     | |- _ ;;; (?Δ,, ?A),, ?B |-i _ : _ => *)
+(*       eapply type_ctxconv ; [ *)
+(*         eassumption *)
+(*       | econstructor ; [ *)
+(*           econstructor ; [ assumption | apply conv_refl ] *)
+(*         | apply conv_refl *)
+(*         ] *)
+(*       ] *)
+(*     end. *)
+
+(*   Ltac ih := *)
+(*     match goal with *)
+(*     | type_ctxconv : *)
+(*         forall (Σ : sglobal_context) (Γ Δ : scontext) (t A : sterm), *)
+(*           Σ;;; Γ |-i t : A -> wf Σ Δ -> ctxconv Σ Γ Δ -> Σ;;; Δ |-i t : A *)
+(*       |- _ => tih type_ctxconv *)
+(*     end. *)
+
+(* Fixpoint type_ctxconv {Σ Γ Δ t A} (ht : Σ ;;; Γ |-i t : A) {struct ht} : *)
+(*   wf Σ Δ -> *)
+(*   ctxconv Σ Γ Δ -> *)
+(*   Σ ;;; Δ |-i t : A. *)
+(* Proof. *)
+(*   intros hw hc. destruct ht. *)
+(*   all: try (econstructor ; ih). *)
+(*   - cheat. *)
+(*   - econstructor. assumption. *)
+
+Section ctxconv.
+
+  Ltac tih type_ctxconv :=
+    match goal with
+    | |- _ ;;; _ |-i _ : _ =>
+      eapply type_ctxconv ; eassumption
+    | |- _ ;;; ?Δ,, ?A |-i _ : _ =>
+      eapply type_ctxconv ; [
+        eassumption
+      | econstructor ; [ assumption | apply conv_refl ]
+      ]
+    | |- _ ;;; (?Δ,, ?A),, ?B |-i _ : _ =>
+      eapply type_ctxconv ; [
+        eassumption
+      | econstructor ; [
+          econstructor ; [ assumption | apply conv_refl ]
+        | apply conv_refl
+        ]
+      ]
+    end.
+
+  Ltac ih :=
+    match goal with
+    | type_ctxconv :
+        forall (Σ : sglobal_context) (Γ Δ : scontext) (t A : sterm),
+          Σ;;; Γ |-i t : A -> ctxconv Σ Γ Δ -> Σ;;; Δ |-i t : A
+      |- _ => tih type_ctxconv
+    end.
+
+Fixpoint type_ctxconv {Σ Γ Δ t A} (ht : Σ ;;; Γ |-i t : A) {struct ht} :
+  ctxconv Σ Γ Δ ->
+  Σ ;;; Δ |-i t : A
+
+with wf_ctxconv {Σ Γ Δ} (ht : wf Σ Γ) {struct ht} :
+  ctxconv Σ Γ Δ ->
+  wf Σ Δ
+.
 Proof.
-  intros Σ Γ Δ t A ht hc. revert Δ hc.
-  induction ht ; intros Δ hc.
-  - admit.
-  - admit.
-  - eapply type_Prod.
-    + eapply IHht1. assumption.
-    + eapply IHht2. econstructor.
-      * assumption.
-      * apply conv_refl.
-  - eapply type_Lambda.
-    + eapply IHht1. assumption.
-    + eapply IHht2. econstructor ; try assumption.
-      apply conv_refl.
-    + eapply IHht3. econstructor ; try assumption.
-      apply conv_refl.
-  - eapply type_App.
-    + eapply IHht1. assumption.
-    + eapply IHht2. econstructor ; try assumption.
-      apply conv_refl.
-    + eapply IHht3. assumption.
-    + eapply IHht4. assumption.
-  - (* Seems we can automate it. *)
+  - { intro hc. destruct ht.
+      all: try (econstructor ; ih).
+      - cheat.
+      - econstructor. eapply wf_ctxconv ; eassumption.
+      - eapply type_HeqTrans with (B := B) ; ih.
+      - eapply type_ProjT2 with (A1 := A1) ; ih.
+      - econstructor.
+        + eapply wf_ctxconv ; eassumption.
+        + eassumption.
+      - econstructor. eapply wf_ctxconv ; eassumption.
+      - econstructor.
+        + ih.
+        + ih.
+        + assumption.
+    }
+
+  - { intro hc. destruct ht.
+      - dependent destruction hc. constructor.
+      - dependent destruction hc. econstructor.
+        + eapply wf_ctxconv ; eassumption.
+        + eapply type_ctxconv ; try eassumption.
+          admit.
+    }
 Admitted.
+
+End ctxconv.
 
 Theorem subj_red :
   forall {Σ Γ t u T},
