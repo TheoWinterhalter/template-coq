@@ -286,3 +286,6 @@ Proof.
   intros N P Po Ps.
   eapply fin_indT ; eauto.
 Defined.
+
+
+Definition dec (A : Type) := A + { A -> False }.

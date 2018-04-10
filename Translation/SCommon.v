@@ -267,6 +267,67 @@ Proof.
   rewrite j1 in j2. now inversion j2.
 Defined.
 
+Fact declared_inductive_dec Σ ind :
+  dec (∑ univs decl, sdeclared_inductive Σ ind univs decl).
+Proof.
+  case_eq (slookup_env Σ (inductive_mind ind)).
+  - intros d mdecl.
+    destruct d as [? ? | mind d].
+    + right. intros [_ [decl [decl' [[bot _] _]]]].
+      unfold sdeclared_minductive in bot.
+      rewrite bot in mdecl. inversion mdecl.
+    + case_eq (nth_error (sind_bodies d) (inductive_ind ind)).
+      * intros decl h. left.
+        exists (sind_universes d), decl, d.
+        unfold sdeclared_minductive.
+        repeat split ; try assumption.
+        clear - mdecl.
+        induction Σ.
+        -- cbn in mdecl. discriminate.
+        -- cbn.
+           case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident a)).
+           ++ intros e. cbn in mdecl. rewrite e in mdecl.
+              destruct a.
+              ** cbn in *. inversion mdecl.
+              ** cbn in *.
+                 case_eq (string_dec (inductive_mind ind) k).
+                 --- intros. subst. inversion mdecl. subst. reflexivity.
+                 --- intros neq eq. unfold ident_eq in e. rewrite eq in e.
+                     discriminate.
+           ++ intros e. cbn in mdecl. rewrite e in mdecl.
+              apply IHΣ. assumption.
+      * intros h. right.
+        intros [univs [decl [decl' [[mdecl' _] hnth]]]].
+        unfold sdeclared_minductive in mdecl'.
+        rewrite mdecl' in mdecl. inversion mdecl. subst.
+        rewrite hnth in h. discriminate.
+  - intro h.
+    right. intros [univs [decl [decl' [[mdecl' _] hnth]]]].
+    unfold sdeclared_minductive in mdecl'. rewrite mdecl' in h.
+    discriminate.
+Defined.
+
+Fact declared_constructor_dec Σ ind i :
+  dec (∑ univs decl, sdeclared_constructor Σ (ind, i) univs decl).
+Proof.
+  case (declared_inductive_dec Σ ind).
+  - intros [univs [decl isdecl]].
+    case_eq (nth_error (sind_ctors decl) i).
+    + intros d hi.
+      left. exists univs, d, decl. split ; assumption.
+    + intros h. right.
+      intros [u [d [dd [[d' [[md' _] hd']] bot]]]].
+      destruct isdecl as [d'' [[md'' _] hd'']].
+      unfold sdeclared_minductive in md', md''.
+      rewrite md'' in md'. clear md''. inversion md'. subst.
+      rewrite hd'' in hd'. clear hd''. inversion hd'. subst.
+      rewrite h in bot. discriminate.
+  - intros ndecl. right.
+    intros [u [d [dd [[d' [[md' ?] hd']] bot]]]].
+    apply ndecl.
+    exists u, dd, d'. repeat split ; assumption.
+Defined.
+
 Fact stype_of_constructor_irr :
   forall {Σ ind n univs decl}
     {is1 is2 : sdeclared_constructor Σ (ind, n) univs decl},
