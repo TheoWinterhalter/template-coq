@@ -388,7 +388,7 @@ Section nlred.
   Fact redbrs1_one :
     forall {Σ b1 b2},
       redbrs1 Σ b1 b2 ->
-      ∑ n m t1 t2,
+      exists n m t1 t2,
         (Σ |-i t1 ▷ t2) *
         (nth_error b1 n = Some (m, t1)) *
         (b2 = firstn n b1 ++ ((m, t2) :: skipn (S n) b1))%list.
@@ -446,11 +446,11 @@ Section nlred.
       eexists. split.
       + eapply red_TransportRefl.
       + assumption.
-    - clear eq H0 ind IHt1 IHt2.
-      destruct (redbrs1_one r) as [n [m [t1 [t2 [[rt hn] ?]]]]].
-      subst. clear r.
-      assert (hn' : ∑ t1', (nth_error brs n = Some (m, t1')) * (nl t1 = nl t1')).
-      { clear - H3 hn. revert n brs0 H3 hn.
+    - clear eq H1 ind IHt1 IHt2.
+      destruct (redbrs1_one H) as [n [m [t1 [t2 [[rt hn] ?]]]]].
+      subst. clear H.
+      assert (hn' : exists t1', (nth_error brs n = Some (m, t1')) /\ (nl t1 = nl t1')).
+      { clear - H4 hn. revert n brs0 H4 hn.
         induction brs ; intros n brs0 h hn.
         - destruct brs0 ; cbn in h ; try discriminate h.
           destruct n ; cbn in hn ; inversion hn.
