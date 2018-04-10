@@ -295,22 +295,42 @@ Defined.
 
 (* For some reason we have efficiency issues again. *)
 
-(* Definition itt_vecb' := ltac:(let t := eval lazy in itt_vecb in exact t). *)
+Definition itt_vecb' := ltac:(let t := eval lazy in itt_vecb in exact t).
 
-(* Definition tc_vecb : tsl_result term := *)
-(*   tsl_rec (2 ^ 18) Σ [] itt_vecb'. *)
+Definition tc_vecb : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] itt_vecb'.
 
-(* Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t). *)
+Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t).
 
-(* Make Definition coq_vecb := *)
-(*   ltac:( *)
-(*     let t := eval lazy in *)
-(*              (match tc_vecb' with *)
-(*               | Success t => t *)
-(*               | _ => tSort Universe.type0 *)
-(*               end) *)
-(*       in exact t *)
-(*   ). *)
+Make Definition coq_vecb :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_vecb' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
+
+(* Once simplified it is more interesting I believe *)
+Definition red_itt_vecb := reduce itt_vecb'.
+
+Definition red_itt_vecb' := ltac:(let t := eval lazy in red_itt_vecb in exact t).
+
+Definition tc_red_vecb : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] red_itt_vecb'.
+
+Definition tc_red_vecb' := ltac:(let t := eval lazy in tc_red_vecb in exact t).
+
+Make Definition coq_red_vecb :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_red_vecb' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
 
 (*! EXAMPLE 4'':
     vec bool zero
