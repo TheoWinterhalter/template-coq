@@ -985,19 +985,19 @@ Proof.
 Defined.
 
 Lemma choose_type' :
-  forall {Σ A A' Γ Γ' t t'},
+  forall {Σ A A' t t'} Γ',
     type_glob Σ ->
     type_head (head A) ->
     A ⊏ A' ->
-    Γ ⊂ Γ' ->
     t ⊏ t' ->
     ∑ A'',
       (∑ t'',
-         Σ ;;; Γ' |-i t' : A' ->
-         Σ ;;;; Γ' |--- [ t'' ] : A'' # ⟦ Γ |--- [t] : A ⟧) *
+         (t ⊏ t'') *
+         (A ⊏ A'') *
+         (Σ ;;; Γ' |-i t' : A' -> Σ;;; Γ' |-i t'' : A'')) *
       (head A'' = head A).
 Proof.
-  intros Σ A A' Γ Γ' t t' hg hth hA hΓ ht.
+  intros Σ A A' t t' Γ' hg hth hA ht.
   destruct (trel_transport_seq hA) as [A'' [tseq [[hh heq] hrel]]].
   exists A''. split.
   - assert (simA : A' ∼ A'').
@@ -1008,64 +1008,31 @@ Proof.
     }
     destruct (trel_to_heq Γ' hg simA) as [p hp].
     exists (sTransport A' A'' (sHeqToEq p) t').
-    intro h.
-    rewrite heq in h.
-    (* New problem: Being a translation now must be a Prop as well. *)
-    destruct (istype_type hg h) as [s hs].
-    assert (hth' : type_head (head A'')) by (now rewrite hh).
-    destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
-
-
-Lemma choose_type' :
-  forall {Σ A A'},
-    type_glob Σ ->
-    type_head (head A) ->
-    A ⊏ A' ->
-    forall {Γ Γ' t t'},
-      Γ ⊂ Γ' ->
-      t ⊏ t' ->
-      (Σ ;;; Γ' |-i t' : A') ->
-      ∑ A'',
-        (∑ t'', Σ ;;;; Γ' |--- [ t'' ] : A'' # ⟦ Γ |--- [t] : A ⟧) *
-        (head A'' = head A).
-Proof.
-  intros Σ A A' hg hth hA Γ Γ' t t' hΓ ht h.
-  destruct (trel_transport_seq hA) as [A'' [tseq [[hh heq] hrel]]].
-  rewrite heq in h.
-  destruct (istype_type hg h) as [s hs].
-  assert (hth' : type_head (head A'')) by (now rewrite hh).
-  destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
-  exists A''. split.
-  - assert (simA : A' ∼ A'').
-    { apply trel_sym.
-      eapply trel_trans.
-      - apply trel_sym. apply inrel_trel. eassumption.
-      - apply inrel_trel. assumption.
-    }
-    pose (thm := @trel_to_heq Σ Γ' (sSort s) (sSort s) A' A'' hg simA).
-    rewrite <- heq in hs.
-    destruct thm as [p hp].
+    repeat split.
+    + constructor. assumption.
     + assumption.
-    + eapply type_conv.
-      * eassumption.
-      * eapply type_Sort. eapply typing_wf. eassumption.
-      * cut (s' = s).
-        -- intro. subst. apply conv_refl.
-        -- eapply sorts_in_sort ; try eassumption.
-           apply type_Sort. apply (typing_wf h').
-    + destruct (sort_heq_ex hg hp) as [q hq].
-      exists (sTransport A' A'' q t').
-      repeat split.
-      * assumption.
-      * assumption.
-      * constructor. assumption.
-      * destruct (istype_type hg hq) as [? hEq].
-        ttinv hEq.
-        eapply type_Transport.
-        -- eassumption.
-        -- eassumption.
-        -- assumption.
-        -- subst. assumption.
+    + intro h.
+      rewrite heq in h.
+      destruct (istype_type hg h) as [s hs].
+      assert (hth' : type_head (head A'')) by (now rewrite hh).
+      destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
+      specialize (hp (sSort s) (sSort s)).
+      rewrite <- heq in hs.
+      assert (hAs : Σ ;;; Γ' |-i A'' : sSort s).
+      { eapply type_conv.
+        - eassumption.
+        - eapply type_Sort. eapply typing_wf. eassumption.
+        - cut (s' = s).
+          + intro. subst. apply conv_refl.
+          + eapply sorts_in_sort ; try eassumption.
+            apply type_Sort. apply (typing_wf h').
+      }
+      specialize (hp hs hAs).
+      pose proof (sort_heq hg hp) as hq.
+      destruct (istype_type hg hp) as [? hEq].
+      ttinv hEq.
+      eapply type_Transport' ; try eassumption.
+      subst. assumption.
   - assumption.
 Defined.
 
@@ -1079,7 +1046,11 @@ Lemma choose_type :
       (head A'' = head A).
 Proof.
   intros Σ Γ A t Γ' A' t' hg htt [[[hΓ hA] ht] h].
-  now eapply choose_type'.
+  destruct (choose_type' Γ' hg htt hA ht) as [A'' [[t'' [[? ?] hh]] ?]].
+  exists A''. split.
+  - exists t''. repeat split ; try assumption.
+    apply hh. assumption.
+  - assumption.
 Defined.
 
 Lemma change_type :
