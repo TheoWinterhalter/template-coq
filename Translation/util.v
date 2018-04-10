@@ -233,6 +233,34 @@ Proof.
   - assumption.
 Defined.
 
+Fact map_firstn :
+  forall {A} {l1 l2 : list A} {B} {f : A -> B} {n},
+    map f l1 = map f l2 ->
+    map f (firstn n l1) = map f (firstn n l2).
+Proof.
+  intros A l1 l2 B f n h. revert l2 n h.
+  induction l1 ; intros l2 n h ; destruct l2 ; cbn in h ; try discriminate h.
+  - reflexivity.
+  - destruct n.
+    + cbn. reflexivity.
+    + inversion h.
+      cbn. f_equal ; try assumption.
+      apply IHl1. assumption.
+Defined.
+
+Fact map_skipn :
+  forall {A} {l1 l2 : list A} {B} {f : A -> B} {n},
+    map f l1 = map f l2 ->
+    map f (skipn n l1) = map f (skipn n l2).
+Proof.
+  intros A l1 l2 B f n h. revert l2 n h.
+  induction l1 ; intros l2 n h ; destruct l2 ; cbn in h ; try discriminate h.
+  - reflexivity.
+  - inversion h.
+    destruct n.
+    + cbn. f_equal ; assumption.
+    + cbn. eapply IHl1. assumption.
+Defined.
 
 
 Lemma fin_indT :

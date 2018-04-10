@@ -4,7 +4,7 @@ From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
 Require Import util SAst SInduction SLiftSubst Equality SCommon XTyping
-               Conversion ITyping ITypingLemmata ITypingMore.
+               Conversion ITyping ITypingLemmata ITypingAdmissible.
 
 (* In order to do things properly we need to extend the context heterogenously,
    this is done by extending the context with packed triples

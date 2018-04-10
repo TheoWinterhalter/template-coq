@@ -6,7 +6,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import SAst SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingMore XTyping
+                                ITypingLemmata ITypingAdmissible XTyping
                                 Translation Reduction FinalTranslation
                                 ExamplesUtil.
 
@@ -80,10 +80,10 @@ Defined.
 
 Definition itt_tm : sterm.
   destruct (type_translation tmty istrans_nil) as [A [t h]].
-  fail "This is just a security".
   exact t.
 Defined.
 
+(* )
 Definition itt_tm' := ltac:(let t := eval lazy in itt_tm in exact t).
 
 (* We simplify the produced term *)
@@ -106,6 +106,7 @@ Make Definition coq_red_tm :=
               end)
       in exact t
   ).
+( *)
 
 (*! EXAMPLE 2:
     λ A x ⇒ x : ∀ (A : Type), A → A
@@ -147,6 +148,7 @@ Definition itt_tm0 : sterm.
   exact t.
 Defined.
 
+(* )
 Definition itt_tm0' := ltac:(let t := eval lazy in itt_tm0 in exact t).
 
 Definition red_itt_tm0 := reduce itt_tm0.
@@ -167,6 +169,7 @@ Make Definition coq_red_tm0 :=
               end)
       in exact t
   ).
+( *)
 
 (*! EXAMPLE 3: (trivial for now)
     nat
@@ -254,7 +257,7 @@ Make Definition coq_vec :=
 *)
 
 Lemma vecbty :
-  Σi ;;; [] |-x sApp sVec (nNamed "A") (sSort 0) vec_cod sBool : vec_cod.
+  Σi ;;; [] |-x sApp sVec (sSort 0) vec_cod sBool : vec_cod.
 Proof.
   eapply type_App with (s1 := 1) (s2 := max 0 1).
   - repeat constructor.
@@ -268,6 +271,7 @@ Proof.
            repeat econstructor;
            try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
            clear H; apply H'; try trivial.
+           shelve.
       * cbn. reflexivity.
     + repeat econstructor.
   - eapply xmeta_conv.
@@ -276,7 +280,7 @@ Proof.
       * Unshelve.
         repeat econstructor;
         try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
-        clear H; apply H'; try trivial.
+        clear H; apply H'; try trivial. shelve.
     + cbn. reflexivity.
   - eapply xmeta_conv.
     + eapply type_Ind.
@@ -318,8 +322,8 @@ Defined.
 *)
 
 Lemma vecbzty :
-  Σi ;;; [] |-x sApp (sApp sVec (nNamed "A") (sSort 0) vec_cod sBool)
-               nAnon sNat (sSort 0)
+  Σi ;;; [] |-x sApp (sApp sVec (sSort 0) vec_cod sBool)
+               sNat (sSort 0)
                sZero
              : sSort 0.
 Proof.

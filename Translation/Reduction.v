@@ -7,7 +7,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega Bool_nat.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingMore.
+                                ITypingLemmata ITypingAdmissible.
 
 Definition proj_1 {A} {P : A -> Prop} : {a:A | P a} -> A :=
   fun X => match X with exist _ a _ => a end.

@@ -14,9 +14,9 @@ XTyping.v
 ITyping.v
 ITypingInversions.v
 Uniqueness.v
-SubjectReduction.v
 ITypingLemmata.v
-ITypingMore.v
+SubjectReduction.v
+ITypingAdmissible.v
 PackLifts.v
 Translation.v
 Reduction.v
