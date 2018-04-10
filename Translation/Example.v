@@ -83,7 +83,6 @@ Definition itt_tm : sterm.
   exact t.
 Defined.
 
-(* )
 Definition itt_tm' := ltac:(let t := eval lazy in itt_tm in exact t).
 
 (* We simplify the produced term *)
@@ -106,7 +105,6 @@ Make Definition coq_red_tm :=
               end)
       in exact t
   ).
-( *)
 
 (*! EXAMPLE 2:
     λ A x ⇒ x : ∀ (A : Type), A → A
@@ -148,7 +146,6 @@ Definition itt_tm0 : sterm.
   exact t.
 Defined.
 
-(* )
 Definition itt_tm0' := ltac:(let t := eval lazy in itt_tm0 in exact t).
 
 Definition red_itt_tm0 := reduce itt_tm0.
@@ -169,7 +166,6 @@ Make Definition coq_red_tm0 :=
               end)
       in exact t
   ).
-( *)
 
 (*! EXAMPLE 3: (trivial for now)
     nat
