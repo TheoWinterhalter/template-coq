@@ -1066,39 +1066,22 @@ Proof.
     - eapply trel_sym. eapply inrel_trel. eassumption.
     - eapply inrel_trel. eassumption.
   }
-  destruct (istype_type hg ht') as [s2 hA'].
-  destruct (@trel_to_heq Σ Γ' (sSort s2) (sSort s) A' A'' hg simA) as [p hp].
+  destruct (trel_to_heq Γ' hg simA) as [p hp].
+  exists (sTransport A' A'' (sHeqToEq p) t').
+  repeat split.
   - assumption.
   - assumption.
-  - destruct (istype_type hg hp) as [s1 hheq].
+  - constructor. assumption.
+  - destruct (istype_type hg ht') as [s2 hA'].
+    specialize (hp (sSort s2) (sSort s) hA' hA'').
+    destruct (istype_type hg hp) as [s1 hheq].
     assert (Σ ;;; Γ' |-i sSort s : sSort (succ_sort s)).
     { apply type_Sort. apply (typing_wf hp). }
     ttinv hheq.
-    assert (hp' : Σ ;;; Γ' |-i p : sHeq (sSort s) A' (sSort s) A'').
-    { eapply type_conv.
-      - eassumption.
-      - apply type_Heq ; try eassumption.
-        eapply type_conv.
-        + eassumption.
-        + eapply type_Sort. eapply typing_wf. eassumption.
-        + cut (s2 = s) ; [ intro ; subst ; apply conv_refl |].
-          eapply sorts_in_sort ; eassumption.
-      - apply cong_Heq ; try (apply conv_refl).
-        cut (s2 = s) ; [ intro ; subst ; apply conv_refl |].
-        eapply sorts_in_sort ; eassumption.
-    }
-    destruct (sort_heq_ex hg hp') as [q hq].
-    exists (sTransport A' A'' q t').
-    repeat split.
-    + assumption.
-    + assumption.
-    + constructor. assumption.
-    + apply type_Transport with (s := s) ; try assumption.
-      eapply type_conv.
-      * eassumption.
-      * eapply type_Sort. eapply typing_wf. eassumption.
-      * cut (s2 = s) ; [ intro ; subst ; apply conv_refl |].
-        eapply sorts_in_sort ; eassumption.
+    assert (s2 = s).
+    { eapply sorts_in_sort ; eassumption. } subst.
+    apply type_Transport with (s := s) ; try assumption.
+    eapply sort_heq ; eassumption.
 Defined.
 
 
