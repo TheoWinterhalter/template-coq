@@ -161,6 +161,161 @@ Lemma trel_to_heq' :
   forall {Σ t1 t2},
     type_glob Σ ->
     t1 ∼ t2 ->
+    forall {Γ Γ1 Γ2},
+      ∑ p,
+        forall {Γm T1 T2},
+          ismix Σ Γ Γ1 Γ2 Γm ->
+          Σ ;;; Γ ,,, Γ1 |-i t1 : T1 ->
+          Σ ;;; Γ ,,, Γ2 |-i  t2 : T2 ->
+          Σ ;;; Γ ,,, Γm |-i p : sHeq (llift0 #|Γm| T1)
+                                     (llift0 #|Γm| t1)
+                                     (rlift0 #|Γm| T2)
+                                     (rlift0 #|Γm| t2).
+Proof.
+  intros Σ t1 t2 hg sim.
+  induction sim ; intros Γ Γ1 Γ2.
+
+  (* Variable *)
+  - case_eq (x <? #|Γ1|) ; intro e0 ; bprop e0.
+    + (* The variable is located in the mixed part.
+         We use the available equality.
+       *)
+      exists (sProjTe (sRel x)).
+      intros Γm U1 U2 hm h1 h2.
+      unfold llift at 2. unfold rlift at 2.
+      case_eq (x <? 0) ; intro e ; bprop e ; try omega. clear e2.
+      pose proof (mix_length1 hm) as ml. rewrite <- ml in e0, e1.
+      change (0 + #|Γm|)%nat with #|Γm|.
+      rewrite e0.
+      (* Now for the specifics *)
+      apply type_ProjTe' ; try assumption.
+      ttinv h1. ttinv h2.
+      rename is into is1, is0 into is2, h into hx1, h0 into hx2.
+      assert (is1' : x < #|Γ1|) by (erewrite mix_length1 in e1 ; eassumption).
+      assert (is2' : x < #|Γ2|) by (erewrite mix_length2 in e1 ; eassumption).
+      cbn in hx1. erewrite @safe_nth_lt with (isdecl' := is1') in hx1.
+      cbn in hx2. erewrite @safe_nth_lt with (isdecl' := is2') in hx2.
+      destruct (istype_type hg h1) as [s1 ?].
+      destruct (istype_type hg h2) as [s2 ?].
+      destruct (ismix_nth_sort hg hm x is1' is2') as [ss [? ?]].
+      eapply type_conv.
+      * eapply type_Rel. eapply @wf_llift with (Δ := []) ; try eassumption.
+        eapply typing_wf ; eassumption.
+      * instantiate (1 := ss).
+        eapply type_Pack.
+        -- lift_sort.
+           eapply type_llift0 ; try eassumption.
+           eapply type_conv ; try eassumption.
+           ++ econstructor. eapply typing_wf. eassumption.
+           ++ eapply subj_conv.
+              ** assumption.
+              ** apply conv_sym. exact hx1.
+              ** eassumption.
+              ** assumption.
+        -- lift_sort.
+           eapply type_rlift0 ; try eassumption.
+           eapply type_conv ; try eassumption.
+           ++ econstructor. eapply typing_wf. eassumption.
+           ++ eapply subj_conv.
+              ** assumption.
+              ** apply conv_sym. exact hx2.
+              ** eassumption.
+              ** assumption.
+      * erewrite safe_nth_lt. erewrite safe_nth_mix by eassumption.
+        cbn. apply cong_Pack.
+        -- rewrite lift_llift.
+           replace (S x + (#|Γm| - S x))%nat with #|Γm| by omega.
+           eapply llift_conv. eassumption.
+        -- rewrite lift_rlift.
+           replace (S x + (#|Γm| - S x))%nat with #|Γm| by omega.
+           eapply rlift_conv. eassumption.
+    + (* Unless it is ill-typed, the variable is in Γ, reflexivity will do.
+         To type reflexivity properly we still need a proof that
+         x - #|Γ1| < #|Γ|. We have to consider both cases.
+       *)
+      case_eq ((x - #|Γ1|) <? #|Γ|) ; intro isdecl ; bprop isdecl.
+      * (* The variable is indeed in the context. *)
+        set (y := x - #|Γ1|) in *.
+        set (A := lift0 (S x) (safe_nth Γ (exist _ y isdecl0))).
+        exists (sHeqRefl A (sRel x)).
+        intros Γm U1 U2 hm h1 h2.
+        unfold llift at 2. unfold rlift at 2.
+        case_eq (x <? 0) ; intro e ; bprop e ; try omega. clear e2.
+        pose proof (mix_length1 hm) as ml. rewrite <- ml in e0, e1.
+        change (0 + #|Γm|)%nat with #|Γm|.
+        rewrite e0.
+        (* Now for the specifics *)
+        assert (h1' : Σ ;;; Γ ,,, Γm |-i sRel x : llift0 #|Γm| U1).
+        { replace (sRel x) with (llift0 #|Γm| (sRel x))
+            by (unfold llift ; rewrite e ; rewrite e0 ; reflexivity).
+          eapply type_llift0 ; eassumption.
+        }
+        assert (h2' : Σ ;;; Γ ,,, Γm |-i sRel x : rlift0 #|Γm| U2).
+        { replace (sRel x) with (rlift0 #|Γm| (sRel x))
+            by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
+          eapply type_rlift0 ; eassumption.
+        }
+        pose proof (uniqueness h1' h2').
+        destruct (istype_type hg h1').
+        destruct (istype_type hg h2').
+        eapply type_conv.
+        -- eapply type_HeqRefl' ; try eassumption.
+           subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
+           eapply meta_conv.
+           ++ eapply type_Rel. eapply typing_wf. eassumption.
+           ++ erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+              reflexivity.
+        -- eapply type_Heq ; try eassumption.
+           eapply type_conv ; try eassumption.
+           ++ econstructor. eapply typing_wf. eassumption.
+           ++ apply conv_sym. eapply subj_conv ; eassumption.
+        -- ttinv h1'. ttinv h2'.
+           apply cong_Heq. all: try (apply conv_refl).
+           ++ eapply conv_trans ; try eassumption.
+              subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
+              apply conv_eq. f_equal. f_equal.
+              erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+              reflexivity.
+           ++ eapply conv_trans ; try eassumption.
+              subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
+              apply conv_eq. f_equal. f_equal.
+              erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+              reflexivity.
+      * (* In case the variable isn't in the context at all,
+           it is bound to be ill-typed and we can return garbage.
+         *)
+        exists (sRel 0).
+        intros Γm U1 U2 hm h1 h2.
+        exfalso. ttinv h1. clear h. rewrite length_cat in is. omega.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  - admit.
+
+  Unshelve.
+  all: cbn ; try rewrite !length_cat ; omega.
+Admitted.
+
+Lemma trel_to_heq' :
+  forall {Σ t1 t2},
+    type_glob Σ ->
+    t1 ∼ t2 ->
     forall {Γ Γ1 Γ2 Γm T1 T2},
       ismix Σ Γ Γ1 Γ2 Γm ->
       Σ ;;; Γ ,,, Γ1 |-i t1 : T1 ->
