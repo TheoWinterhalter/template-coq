@@ -1007,14 +1007,10 @@ Proof.
       - apply inrel_trel. assumption.
     }
     destruct (trel_to_heq Γ' hg simA) as [p hp].
-    (* We need to fix sort_heq_ex so that it returns a term regardless of
-       typing. *)
-    destruct (sort_heq_ex hg hp) as [q hq].
-    exists (sTransport A' A'' q t').
-
-
+    exists (sTransport A' A'' (sHeqToEq p) t').
     intro h.
     rewrite heq in h.
+    (* New problem: Being a translation now must be a Prop as well. *)
     destruct (istype_type hg h) as [s hs].
     assert (hth' : type_head (head A'')) by (now rewrite hh).
     destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
