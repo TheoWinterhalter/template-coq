@@ -157,30 +157,41 @@ Ltac lift_sort :=
     change (sSort s) with ((sSort s){ n := u })
   end.
 
+Axiom cheating : forall {A}, A.
+Tactic Notation "cheat" := apply cheating.
+
 Lemma trel_to_heq' :
   forall {Σ t1 t2},
     type_glob Σ ->
     t1 ∼ t2 ->
-    forall {Γ Γ1 Γ2 Γm T1 T2},
-      ismix Σ Γ Γ1 Γ2 Γm ->
-      Σ ;;; Γ ,,, Γ1 |-i t1 : T1 ->
-      Σ ;;; Γ ,,, Γ2 |-i  t2 : T2 ->
+    forall Γ Γ1 Γ2,
       ∑ p,
-        Σ ;;; Γ ,,, Γm |-i p : sHeq (llift0 #|Γm| T1)
-                                   (llift0 #|Γm| t1)
-                                   (rlift0 #|Γm| T2)
-                                   (rlift0 #|Γm| t2).
+        forall {Γm T1 T2},
+          ismix Σ Γ Γ1 Γ2 Γm ->
+          Σ ;;; Γ ,,, Γ1 |-i t1 : T1 ->
+          Σ ;;; Γ ,,, Γ2 |-i  t2 : T2 ->
+          Σ ;;; Γ ,,, Γm |-i p : sHeq (llift0 #|Γm| T1)
+                                     (llift0 #|Γm| t1)
+                                     (rlift0 #|Γm| T2)
+                                     (rlift0 #|Γm| t2).
 Proof.
   intros Σ t1 t2 hg sim.
-  induction sim ; intros Γ Γ1 Γ2 Γm U1 U2 hm h1 h2.
+  induction sim ; intros Γ Γ1 Γ2.
 
-  (* Variable case *)
-  - unfold llift at 2. unfold rlift at 2.
-    case_eq (x <? 0) ; intro e ; bprop e ; try omega.
-    clear e0.
-    change (0 + #|Γm|)%nat with #|Γm|.
-    case_eq (x <? #|Γm|) ; intro e0 ; bprop e0.
-    + exists (sProjTe (sRel x)). apply type_ProjTe' ; try assumption.
+  (* Variable *)
+  - case_eq (x <? #|Γ1|) ; intro e0 ; bprop e0.
+    + (* The variable is located in the mixed part.
+         We use the available equality.
+       *)
+      exists (sProjTe (sRel x)).
+      intros Γm U1 U2 hm h1 h2.
+      unfold llift at 2. unfold rlift at 2.
+      case_eq (x <? 0) ; intro e ; bprop e ; try omega. clear e2.
+      pose proof (mix_length1 hm) as ml. rewrite <- ml in e0, e1.
+      change (0 + #|Γm|)%nat with #|Γm|.
+      rewrite e0.
+      (* Now for the specifics *)
+      apply type_ProjTe' ; try assumption.
       ttinv h1. ttinv h2.
       rename is into is1, is0 into is2, h into hx1, h0 into hx2.
       assert (is1' : x < #|Γ1|) by (erewrite mix_length1 in e1 ; eassumption).
@@ -221,40 +232,72 @@ Proof.
         -- rewrite lift_rlift.
            replace (S x + (#|Γm| - S x))%nat with #|Γm| by omega.
            eapply rlift_conv. eassumption.
-    + exists (sHeqRefl (llift0 #|Γm| U1) (sRel x)).
-      assert (h1' : Σ ;;; Γ ,,, Γm |-i sRel x : llift0 #|Γm| U1).
-      { replace (sRel x) with (llift0 #|Γm| (sRel x))
-          by (unfold llift ; rewrite e ; rewrite e0 ; reflexivity).
-        eapply type_llift0 ; eassumption.
-      }
-      assert (h2' : Σ ;;; Γ ,,, Γm |-i sRel x : rlift0 #|Γm| U2).
-      { replace (sRel x) with (rlift0 #|Γm| (sRel x))
-          by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
-        eapply type_rlift0 ; eassumption.
-      }
-      (* ttinv h1'. ttinv h2'. *)
-      (* erewrite @safe_nth_irr with (isdecl' := is) in h0. *)
-      (* match goal with *)
-      (* | h : let A := ?T in _ |- _ => *)
-      (*   set (A := T) in * *)
-      (* end. *)
-      (* cbn in h, h0. *)
-      pose proof (uniqueness h1' h2').
-      destruct (istype_type hg h1').
-      destruct (istype_type hg h2').
-      eapply type_conv.
-      * eapply type_HeqRefl' ; eassumption.
-      * eapply type_Heq ; try eassumption.
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; eassumption.
-      * apply cong_Heq. all: try (apply conv_refl). assumption.
+    + (* Unless it is ill-typed, the variable is in Γ, reflexivity will do.
+         To type reflexivity properly we still need a proof that
+         x - #|Γ1| < #|Γ|. We have to consider both cases.
+       *)
+      case_eq ((x - #|Γ1|) <? #|Γ|) ; intro isdecl ; bprop isdecl.
+      * (* The variable is indeed in the context. *)
+        set (y := x - #|Γ1|) in *.
+        set (A := lift0 (S x) (safe_nth Γ (exist _ y isdecl0))).
+        exists (sHeqRefl A (sRel x)).
+        intros Γm U1 U2 hm h1 h2.
+        unfold llift at 2. unfold rlift at 2.
+        case_eq (x <? 0) ; intro e ; bprop e ; try omega. clear e2.
+        pose proof (mix_length1 hm) as ml. rewrite <- ml in e0, e1.
+        change (0 + #|Γm|)%nat with #|Γm|.
+        rewrite e0.
+        (* Now for the specifics *)
+        assert (h1' : Σ ;;; Γ ,,, Γm |-i sRel x : llift0 #|Γm| U1).
+        { replace (sRel x) with (llift0 #|Γm| (sRel x))
+            by (unfold llift ; rewrite e ; rewrite e0 ; reflexivity).
+          eapply type_llift0 ; eassumption.
+        }
+        assert (h2' : Σ ;;; Γ ,,, Γm |-i sRel x : rlift0 #|Γm| U2).
+        { replace (sRel x) with (rlift0 #|Γm| (sRel x))
+            by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
+          eapply type_rlift0 ; eassumption.
+        }
+        pose proof (uniqueness h1' h2').
+        destruct (istype_type hg h1').
+        destruct (istype_type hg h2').
+        eapply type_conv.
+        -- eapply type_HeqRefl' ; try eassumption.
+           subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
+           eapply meta_conv.
+           ++ eapply type_Rel. eapply typing_wf. eassumption.
+           ++ erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+              reflexivity.
+        -- eapply type_Heq ; try eassumption.
+           eapply type_conv ; try eassumption.
+           ++ econstructor. eapply typing_wf. eassumption.
+           ++ apply conv_sym. eapply subj_conv ; eassumption.
+        -- ttinv h1'. ttinv h2'.
+           apply cong_Heq. all: try (apply conv_refl).
+           ++ eapply conv_trans ; try eassumption.
+              subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
+              apply conv_eq. f_equal. f_equal.
+              erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+              reflexivity.
+           ++ eapply conv_trans ; try eassumption.
+              subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
+              apply conv_eq. f_equal. f_equal.
+              erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+              reflexivity.
+      * (* In case the variable isn't in the context at all,
+           it is bound to be ill-typed and we can return garbage.
+         *)
+        exists (sRel 0).
+        intros Γm U1 U2 hm h1 h2.
+        exfalso. ttinv h1. clear h. rewrite length_cat in is. omega.
 
   (* Left transport *)
-  - ttinv h1.
-    destruct (IHsim _ _ _ _ _ _ hm h6 h2) as [q hq].
-    cbn.
-    exists (sHeqTrans (sHeqSym (sHeqTransport (llift0 #|Γm| p) (llift0 #|Γm| t1))) q).
+  - destruct (IHsim Γ Γ1 Γ2) as [q hq].
+    exists (sHeqTrans (sHeqSym (sHeqTransport (llift0 #|Γ1| p) (llift0 #|Γ1| t1))) q).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1.
+    specialize (hq _ _ _ hm h6 h2).
     destruct (istype_type hg hq) as [s' h'].
     ttinv h'. pose proof (sort_conv_inv h8). subst. clear h8.
     eapply type_HeqTrans' ; try assumption.
@@ -286,12 +329,15 @@ Proof.
     + assumption.
 
   (* Right transport *)
-  - ttinv h2.
-    destruct (IHsim _ _ _ _ _ _ hm h1 h6) as [q hq].
+  - destruct (IHsim Γ Γ1 Γ2) as [q hq].
+    exists (sHeqTrans q (sHeqTransport (rlift0 #|Γ1| p) (rlift0 #|Γ1| t2))).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h2.
+    specialize (hq _ _ _ hm h1 h6).
     destruct (istype_type hg hq) as [s' h'].
     ttinv h'. pose proof (sort_conv_inv h8). subst. clear h8.
     cbn.
-    exists (sHeqTrans q (sHeqTransport (rlift0 #|Γm| p) (rlift0 #|Γm| t2))).
     eapply type_HeqTrans' ; try assumption.
     + eassumption.
     + eapply type_conv.
@@ -318,8 +364,13 @@ Proof.
         eapply rlift_conv. assumption.
 
   (* Prod *)
-  - ttinv h1. ttinv h2.
-    destruct (IHsim1 _ _ _ _ _ _ hm h h0) as [pA hpA].
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    exists (sCongProd (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pA pB).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h h0).
     destruct (istype_type hg hpA) as [s iA].
     ttinv iA. pose proof (sort_conv_inv h9). subst. clear h9.
     assert (s1 = s0).
@@ -332,8 +383,7 @@ Proof.
                     (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
-    destruct (IHsim2 _ _ _ _ _ _ hm' h4 h7) as [pB hpB].
-    exists (sCongProd (llift #|Γm| 1 B1) (rlift #|Γm| 1 B2) pA pB).
+    specialize (hpB _ _ _ hm' h4 h7).
     destruct (istype_type hg hpB) as [? iB]. ttinv iB.
     pose proof (sort_conv_inv h13) as hh. symmetry in hh. subst. clear h13.
     assert (s3 = s2).
@@ -374,11 +424,15 @@ Proof.
       * lift_sort. apply rlift_conv. assumption.
 
   (* Eq *)
-  - ttinv h1. ttinv h2.
-    destruct (IHsim1 _ _ _ _ _ _ hm h0 h6) as [pA hpA].
-    destruct (IHsim2 _ _ _ _ _ _ hm h5 h9) as [pu hpu].
-    destruct (IHsim3 _ _ _ _ _ _ hm h4 h8) as [pv hpv].
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ Γ1 Γ2) as [pu hpu].
+    destruct (IHsim3 Γ Γ1 Γ2) as [pv hpv].
     exists (sCongEq pA pu pv).
+    intros Γm U1 U2 hm h1 h2.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h0 h6).
+    specialize (hpu _ _ _ hm h5 h9).
+    specialize (hpv _ _ _ hm h4 h8).
     destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
     apply conv_sym in h11. pose proof (sort_conv_inv h11). subst. clear h11.
     assert (s0 = s).
@@ -412,8 +466,9 @@ Proof.
       * lift_sort. apply rlift_conv. assumption.
 
   (* Sort *)
-  - ttinv h1. ttinv h2.
-    exists (sHeqRefl (sSort (succ_sort s)) (sSort s)).
+  - exists (sHeqRefl (sSort (succ_sort s)) (sSort s)).
+    intros Γm U1 U2 hm h1 h2.
+    ttinv h1. ttinv h2.
     assert (hwf : wf Σ (Γ ,,, Γm)).
     { eapply @wf_llift with (Δ := []) ; try eassumption.
       eapply typing_wf ; eassumption.
@@ -446,8 +501,15 @@ Proof.
       * lift_sort. apply rlift_conv. assumption.
 
   (* Lambda *)
-  - ttinv h1. ttinv h2.
-    destruct (IHsim1 _ _ _ _ _ _ hm h0 h6) as [pA hpA].
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    destruct (IHsim3 Γ (Γ1,, A1) (Γ2,, A2)) as [pu hpu].
+    exists (sCongLambda (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2)
+                   (llift #|Γ1| 1 u1) (rlift #|Γ1| 1 u2) pA pB pu).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h0 h6).
     destruct (istype_type hg hpA) as [? iA]. ttinv iA.
     pose proof (sort_conv_inv h11). subst. clear h11.
     assert (s1 = s0).
@@ -460,10 +522,8 @@ Proof.
                     (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
-    destruct (IHsim2 _ _ _ _ _ _ hm' h5 h9) as [pB hpB].
-    destruct (IHsim3 _ _ _ _ _ _ hm' h4 h8) as [pu hpu].
-    exists (sCongLambda (llift #|Γm| 1 B1) (rlift #|Γm| 1 B2)
-                   (llift #|Γm| 1 u1) (rlift #|Γm| 1 u2) pA pB pu).
+    specialize (hpB _ _ _ hm' h5 h9).
+    specialize (hpu _ _ _ hm' h4 h8).
     assert (s3 = s2).
     { destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
       apply conv_sym in h15. pose proof (sort_conv_inv h15). subst. clear h15.
@@ -521,9 +581,16 @@ Proof.
       * apply conv_eq. cbn. reflexivity.
 
   (* App *)
-  - ttinv h1. ttinv h2.
-    destruct (IHsim1 _ _ _ _ _ _ hm h5 h10) as [pu hpu].
-    destruct (IHsim2 _ _ _ _ _ _ hm h h0) as [pA hpA].
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pu hpu].
+    destruct (IHsim2 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim3 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    destruct (IHsim4 Γ Γ1 Γ2) as [pv hpv].
+    exists (sCongApp (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pu pA pB pv).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpu _ _ _ hm h5 h10).
+    specialize (hpA _ _ _ hm h h0).
     destruct (istype_type hg hpA) as [? iA].
     ttinv iA. pose proof (sort_conv_inv h13) as hh. symmetry in hh. subst. clear h13.
     assert (s1 = s0).
@@ -536,9 +603,8 @@ Proof.
                     (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
-    destruct (IHsim3 _ _ _ _ _ _ hm' h6 h11) as [pB hpB].
-    destruct (IHsim4 _ _ _ _ _ _ hm h4 h9) as [pv hpv].
-    exists (sCongApp (llift #|Γm| 1 B1) (rlift #|Γm| 1 B2) pu pA pB pv).
+    specialize (hpB _ _ _ hm' h6 h11).
+    specialize (hpv _ _ _ hm h4 h9).
     assert (s3 = s2).
     { destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
       apply conv_sym in h17. pose proof (sort_conv_inv h17). subst. clear h17.
@@ -583,10 +649,13 @@ Proof.
         apply rlift_conv. assumption.
 
   (* Refl *)
-  - ttinv h1. ttinv h2.
-    destruct (IHsim1 _ _ _ _ _ _ hm h h0) as [pA hpA].
-    destruct (IHsim2 _ _ _ _ _ _ hm h4 h7) as [pu hpu].
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ Γ1 Γ2) as [pu hpu].
     exists (sCongRefl pA pu).
+    intros Γm U1 U2 hm h1 h2.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h h0).
+    specialize (hpu _ _ _ hm h4 h7).
     assert (s0 = s).
     { destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
       cbn in h5, h12. eapply sorts_in_sort ; eassumption.
@@ -627,82 +696,35 @@ Proof.
         apply rlift_conv. assumption.
 
   (* Ind *)
-  - exists (sHeqRefl (llift0 #|Γm| U1) (sInd ind)).
-    assert (h1' : Σ ;;; Γ ,,, Γm |-i sInd ind : llift0 #|Γm| U1).
-    { change (sInd ind) with (llift0 #|Γm| (sInd ind)).
-      eapply type_llift0 ; eassumption.
-    }
-    assert (h2' : Σ ;;; Γ ,,, Γm |-i sInd ind : rlift0 #|Γm| U2).
-    { change (sInd ind) with (rlift0 #|Γm| (sInd ind)).
-      eapply type_rlift0 ; eassumption.
-    }
-    pose proof (uniqueness h1' h2').
-    destruct (istype_type hg h1).
-    destruct (istype_type hg h2).
-    eapply type_conv.
-    + eapply type_HeqRefl ; try eassumption.
-      lift_sort. eapply type_llift0 ; eassumption.
-    + eapply type_Heq.
-      * lift_sort. eapply type_llift0 ; eassumption.
-      * lift_sort. eapply type_conv.
-        -- eapply type_rlift0 ; eassumption.
-        -- cbn. econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; try eassumption.
-           ++ cbn. lift_sort.
-              eapply type_llift0 ; eassumption.
-           ++ eapply type_rlift0 ; eassumption.
-      * eapply type_llift0 ; eassumption.
-      * eapply type_rlift0 ; eassumption.
-    + eapply cong_Heq.
-      all: try (apply conv_refl). assumption.
+  - (* Problem: We need to have a declaration of the inductive to know its type.
+       We could do as we did for the variables if we managed to prove that
+       having a declaration is decidable.
+     *)
+    cheat.
 
   (* Construct *)
-  - exists (sHeqRefl (llift0 #|Γm| U1) (sConstruct ind i)).
-    assert (h1' : Σ ;;; Γ ,,, Γm |-i sConstruct ind i : llift0 #|Γm| U1).
-    { change (sConstruct ind i) with (llift0 #|Γm| (sConstruct ind i)).
-      eapply type_llift0 ; eassumption.
-    }
-    assert (h2' : Σ ;;; Γ ,,, Γm |-i sConstruct ind i : rlift0 #|Γm| U2).
-    { change (sConstruct ind i) with (rlift0 #|Γm| (sConstruct ind i)).
-      eapply type_rlift0 ; eassumption.
-    }
-    pose proof (uniqueness h1' h2').
-    destruct (istype_type hg h1).
-    destruct (istype_type hg h2).
-    eapply type_conv.
-    + eapply type_HeqRefl ; try eassumption.
-      lift_sort. eapply type_llift0 ; eassumption.
-    + eapply type_Heq.
-      * lift_sort. eapply type_llift0 ; eassumption.
-      * lift_sort. eapply type_conv.
-        -- eapply type_rlift0 ; eassumption.
-        -- cbn. econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; try eassumption.
-           ++ cbn. lift_sort.
-              eapply type_llift0 ; eassumption.
-           ++ eapply type_rlift0 ; eassumption.
-      * eapply type_llift0 ; eassumption.
-      * eapply type_rlift0 ; eassumption.
-    + eapply cong_Heq.
-      all: try (apply conv_refl). assumption.
+  - (* Similar problem. *)
+    cheat.
 
   Unshelve.
   all: cbn ; try rewrite !length_cat ; omega.
 Defined.
 
 Corollary trel_to_heq :
-  forall {Σ Γ T1 T2} {t1 t2 : sterm},
+  forall {Σ} Γ {t1 t2 : sterm},
     type_glob Σ ->
     t1 ∼ t2 ->
-    Σ ;;; Γ |-i t1 : T1 ->
-    Σ ;;; Γ |-i t2 : T2 ->
-    ∑ p, Σ ;;; Γ |-i p : sHeq T1 t1 T2 t2.
+    ∑ p,
+      forall {T1 T2},
+        Σ ;;; Γ |-i t1 : T1 ->
+        Σ ;;; Γ |-i t2 : T2 ->
+        Σ ;;; Γ |-i p : sHeq T1 t1 T2 t2.
 Proof.
-  intros Σ Γ T1 T2 t1 t2 hg h h1 h2.
-  destruct (@trel_to_heq' _ _ _ hg h _ nil nil _ _ _ (mixnil _ _) h1 h2)
-    as [p hp].
+  intros Σ Γ t1 t2 hg h.
+  destruct (trel_to_heq' hg h Γ [] []) as [p hp].
+  exists p. intros T1 T2 h1 h2. specialize (hp _ _ _ (mixnil _ _) h1 h2).
   cbn in hp. rewrite !llift00, !rlift00 in hp.
-  exists p. apply hp.
+  apply hp.
 Defined.
 
 Lemma inrel_lift :
@@ -916,8 +938,8 @@ Lemma inversion_transportType :
     type_glob Σ ->
     type_head (head A') ->
     Σ ;;; Γ' |-i transport_seq_app tseq A' : T ->
-    ∑ s,
-      (Σ ;;; Γ' |-i A' : sSort s) *
+    exists s,
+      (Σ ;;; Γ' |-i A' : sSort s) /\
       (Σ ;;; Γ' |-i T : sSort (succ_sort s)).
 Proof.
   intros Σ tseq. induction tseq ; intros Γ' A' T hg hh ht.
@@ -963,24 +985,20 @@ Proof.
 Defined.
 
 Lemma choose_type' :
-  forall {Σ A A'},
+  forall {Σ A A' t t'} Γ',
     type_glob Σ ->
     type_head (head A) ->
     A ⊏ A' ->
-    forall {Γ Γ' t t'},
-      Γ ⊂ Γ' ->
-      t ⊏ t' ->
-      (Σ ;;; Γ' |-i t' : A') ->
-      ∑ A'',
-        (∑ t'', Σ ;;;; Γ' |--- [ t'' ] : A'' # ⟦ Γ |--- [t] : A ⟧) *
-        (head A'' = head A).
+    t ⊏ t' ->
+    ∑ A'',
+      (∑ t'',
+         (t ⊏ t'') *
+         (A ⊏ A'') *
+         (Σ ;;; Γ' |-i t' : A' -> Σ;;; Γ' |-i t'' : A'')) *
+      (head A'' = head A).
 Proof.
-  intros Σ A A' hg hth hA Γ Γ' t t' hΓ ht h.
+  intros Σ A A' t t' Γ' hg hth hA ht.
   destruct (trel_transport_seq hA) as [A'' [tseq [[hh heq] hrel]]].
-  rewrite heq in h.
-  destruct (istype_type hg h) as [s hs].
-  assert (hth' : type_head (head A'')) by (now rewrite hh).
-  destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
   exists A''. split.
   - assert (simA : A' ∼ A'').
     { apply trel_sym.
@@ -988,30 +1006,33 @@ Proof.
       - apply trel_sym. apply inrel_trel. eassumption.
       - apply inrel_trel. assumption.
     }
-    pose (thm := @trel_to_heq Σ Γ' (sSort s) (sSort s) A' A'' hg simA).
-    rewrite <- heq in hs.
-    destruct thm as [p hp].
+    destruct (trel_to_heq Γ' hg simA) as [p hp].
+    exists (sTransport A' A'' (sHeqToEq p) t').
+    repeat split.
+    + constructor. assumption.
     + assumption.
-    + eapply type_conv.
-      * eassumption.
-      * eapply type_Sort. eapply typing_wf. eassumption.
-      * cut (s' = s).
-        -- intro. subst. apply conv_refl.
-        -- eapply sorts_in_sort ; try eassumption.
-           apply type_Sort. apply (typing_wf h').
-    + destruct (sort_heq_ex hg hp) as [q hq].
-      exists (sTransport A' A'' q t').
-      repeat split.
-      * assumption.
-      * assumption.
-      * constructor. assumption.
-      * destruct (istype_type hg hq) as [? hEq].
-        ttinv hEq.
-        eapply type_Transport.
-        -- eassumption.
-        -- eassumption.
-        -- assumption.
-        -- subst. assumption.
+    + intro h.
+      rewrite heq in h.
+      destruct (istype_type hg h) as [s hs].
+      assert (hth' : type_head (head A'')) by (now rewrite hh).
+      destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
+      specialize (hp (sSort s) (sSort s)).
+      rewrite <- heq in hs.
+      assert (hAs : Σ ;;; Γ' |-i A'' : sSort s).
+      { eapply type_conv.
+        - eassumption.
+        - eapply type_Sort. eapply typing_wf. eassumption.
+        - cut (s' = s).
+          + intro. subst. apply conv_refl.
+          + eapply sorts_in_sort ; try eassumption.
+            apply type_Sort. apply (typing_wf h').
+      }
+      specialize (hp hs hAs).
+      pose proof (sort_heq hg hp) as hq.
+      destruct (istype_type hg hp) as [? hEq].
+      ttinv hEq.
+      eapply type_Transport' ; try eassumption.
+      subst. assumption.
   - assumption.
 Defined.
 
@@ -1025,7 +1046,11 @@ Lemma choose_type :
       (head A'' = head A).
 Proof.
   intros Σ Γ A t Γ' A' t' hg htt [[[hΓ hA] ht] h].
-  now eapply choose_type'.
+  destruct (choose_type' Γ' hg htt hA ht) as [A'' [[t'' [[? ?] hh]] ?]].
+  exists A''. split.
+  - exists t''. repeat split ; try assumption.
+    apply hh. assumption.
+  - assumption.
 Defined.
 
 Lemma change_type :
@@ -1041,39 +1066,22 @@ Proof.
     - eapply trel_sym. eapply inrel_trel. eassumption.
     - eapply inrel_trel. eassumption.
   }
-  destruct (istype_type hg ht') as [s2 hA'].
-  destruct (@trel_to_heq Σ Γ' (sSort s2) (sSort s) A' A'' hg simA) as [p hp].
+  destruct (trel_to_heq Γ' hg simA) as [p hp].
+  exists (sTransport A' A'' (sHeqToEq p) t').
+  repeat split.
   - assumption.
   - assumption.
-  - destruct (istype_type hg hp) as [s1 hheq].
+  - constructor. assumption.
+  - destruct (istype_type hg ht') as [s2 hA'].
+    specialize (hp (sSort s2) (sSort s) hA' hA'').
+    destruct (istype_type hg hp) as [s1 hheq].
     assert (Σ ;;; Γ' |-i sSort s : sSort (succ_sort s)).
     { apply type_Sort. apply (typing_wf hp). }
     ttinv hheq.
-    assert (hp' : Σ ;;; Γ' |-i p : sHeq (sSort s) A' (sSort s) A'').
-    { eapply type_conv.
-      - eassumption.
-      - apply type_Heq ; try eassumption.
-        eapply type_conv.
-        + eassumption.
-        + eapply type_Sort. eapply typing_wf. eassumption.
-        + cut (s2 = s) ; [ intro ; subst ; apply conv_refl |].
-          eapply sorts_in_sort ; eassumption.
-      - apply cong_Heq ; try (apply conv_refl).
-        cut (s2 = s) ; [ intro ; subst ; apply conv_refl |].
-        eapply sorts_in_sort ; eassumption.
-    }
-    destruct (sort_heq_ex hg hp') as [q hq].
-    exists (sTransport A' A'' q t').
-    repeat split.
-    + assumption.
-    + assumption.
-    + constructor. assumption.
-    + apply type_Transport with (s := s) ; try assumption.
-      eapply type_conv.
-      * eassumption.
-      * eapply type_Sort. eapply typing_wf. eassumption.
-      * cut (s2 = s) ; [ intro ; subst ; apply conv_refl |].
-        eapply sorts_in_sort ; eassumption.
+    assert (s2 = s).
+    { eapply sorts_in_sort ; eassumption. } subst.
+    apply type_Transport with (s := s) ; try assumption.
+    eapply sort_heq ; eassumption.
 Defined.
 
 
@@ -1167,9 +1175,10 @@ Lemma eqtrans_trans :
 Proof.
   intros Σ Γ A u v Γ' A' A'' u' v' p' hg h.
   destruct h as [[[[[eΓ eS'] eS''] eA] eB] hp'].
-  destruct (istype_type hg hp') as [? hheq].
-  ttinv hheq.
-  repeat split ; assumption.
+  repeat split ; try assumption.
+  all: destruct (istype_type hg hp') as [? hheq].
+  all: ttinv hheq.
+  all: assumption.
 Defined.
 
 Scheme typing_ind := Induction for XTyping.typing Sort Type
@@ -1398,9 +1407,9 @@ Proof.
     + exists nil. split ; constructor.
 
     (* wf_snoc *)
-    + destruct X as [Γ' hΓ'].
+    + destruct H as [Γ' hΓ'].
       rename t into hA.
-      destruct (X0 _ hΓ') as [T [A' hA']].
+      destruct (H0 _ hΓ') as [T [A' hA']].
       assert (th : type_head (head (sSort s))) by constructor.
       destruct (choose_type hg th hA') as [T' [[A'' hA''] hh]].
       destruct T' ; try (now inversion hh).
@@ -1428,14 +1437,14 @@ Proof.
 
     (* type_Prod *)
     + (* Translation of the domain *)
-      destruct (X _ hΓ) as [S' [t' ht']].
+      destruct (H _ hΓ) as [S' [t' ht']].
       assert (th : type_head (head (sSort s1))) by constructor.
       destruct (choose_type hg th ht') as [T' [[t'' ht''] hh]].
       clear ht' t' S'.
       destruct T' ; inversion hh.
       subst. clear hh th.
       (* Translation of the codomain *)
-      destruct (X0 _ (trans_snoc hΓ ht''))
+      destruct (H0 _ (trans_snoc hΓ ht''))
         as [S' [b' hb']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hb') as [T' [[b'' hb''] hh]].
@@ -1447,21 +1456,21 @@ Proof.
 
     (* type_Lambda *)
     + (* Translation of the domain *)
-      destruct (X _ hΓ) as [S' [t' ht']].
+      destruct (H _ hΓ) as [S' [t' ht']].
       assert (th : type_head (head (sSort s1))) by constructor.
       destruct (choose_type hg th ht') as [T' [[t'' ht''] hh]].
       clear ht' t' S'.
       destruct T' ; inversion hh.
       subst. clear hh th.
       (* Translation of the codomain *)
-      destruct (X0 _ (trans_snoc hΓ ht''))
+      destruct (H0 _ (trans_snoc hΓ ht''))
         as [S' [bty' hbty']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hbty') as [T' [[bty'' hbty''] hh]].
       clear hbty' bty' S'.
       destruct T' ; inversion hh. subst. clear hh th.
       (* Translation of the term *)
-      destruct (X1 _ (trans_snoc hΓ ht''))
+      destruct (H1 _ (trans_snoc hΓ ht''))
         as [S' [b' hb']].
       destruct (change_type hg hb' hbty'') as [b'' hb''].
       clear hb' S' b'.
@@ -1477,21 +1486,21 @@ Proof.
 
     (* type_App *)
     + (* Translation of the domain *)
-      destruct (X _ hΓ) as [S' [A'' hA'']].
+      destruct (H _ hΓ) as [S' [A'' hA'']].
       assert (th : type_head (head (sSort s1))) by constructor.
       destruct (choose_type hg th hA'') as [T' [[A' hA'] hh]].
       clear hA'' A'' S'.
       destruct T' ; inversion hh.
       subst. clear hh th.
       (* Translation of the codomain *)
-      destruct (X0 _ (trans_snoc hΓ hA'))
+      destruct (H0 _ (trans_snoc hΓ hA'))
         as [S' [B'' hB'']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hB'') as [T' [[B' hB'] hh]].
       clear hB'' B'' S'.
       destruct T' ; inversion hh. subst. clear hh th.
       (* Translation of the function *)
-      destruct (X1 _ hΓ) as [T'' [t'' ht'']].
+      destruct (H1 _ hΓ) as [T'' [t'' ht'']].
       assert (th : type_head (head (sProd n A B))) by constructor.
       destruct (choose_type hg th ht'') as [T' [[t' ht'] hh]].
       clear ht'' t'' T''.
@@ -1500,7 +1509,7 @@ Proof.
       destruct (change_type hg ht' (trans_Prod hΓ hA' hB')) as [t'' ht''].
       clear ht' A'' B'' t'.
       (* Translation of the argument *)
-      destruct (X2 _ hΓ) as [A'' [u'' hu'']].
+      destruct (H2 _ hΓ) as [A'' [u'' hu'']].
       destruct (change_type hg hu'' hA') as [u' hu'].
       clear hu'' A'' u''.
       (* We now conclude *)
@@ -1518,33 +1527,33 @@ Proof.
 
     (* type_Eq *)
     + (* The type *)
-      destruct (X _ hΓ) as [S [A'' hA'']].
+      destruct (H _ hΓ) as [S [A'' hA'']].
       assert (th : type_head (head (sSort s))) by constructor.
       destruct (choose_type hg th hA'') as [T [[A' hA'] hh]].
       clear hA'' A'' S.
       destruct T ; inversion hh. subst. clear hh th.
       (* The first term *)
-      destruct (X0 _ hΓ) as [A'' [u'' hu'']].
+      destruct (H0 _ hΓ) as [A'' [u'' hu'']].
       destruct (change_type hg hu'' hA') as [u' hu'].
       clear hu'' u'' A''.
       (* The other term *)
-      destruct (X1 _ hΓ) as [A'' [v'' hv'']].
+      destruct (H1 _ hΓ) as [A'' [v'' hv'']].
       destruct (change_type hg hv'' hA') as [v' hv'].
       (* Now we conclude *)
       exists (sSort s), (sEq A' u' v').
       apply trans_Eq ; assumption.
 
     (* type_Refl *)
-    + destruct (X0 _ hΓ) as [A' [u' hu']].
+    + destruct (H0 _ hΓ) as [A' [u' hu']].
       exists (sEq A' u' u'), (sRefl A' u').
       destruct hu' as [[[? ?] ?] hu'].
       destruct hΓ.
-      destruct (istype_type hg hu').
       repeat split.
       * assumption.
       * constructor ; assumption.
       * constructor ; assumption.
-      * eapply type_Refl ; eassumption.
+      * destruct (istype_type hg hu').
+        eapply type_Refl ; eassumption.
 
     (* type_Ind *)
     + exists (sind_type decl), (sInd ind).
@@ -1569,7 +1578,7 @@ Proof.
 
     (* type_conv *)
     + (* Translating the conversion *)
-      destruct (X1 _ hΓ)
+      destruct (H1 _ hΓ)
         as [S' [S'' [A'' [B'' [p' h']]]]].
       destruct (eqtrans_trans hg h') as [hA'' hB''].
       destruct h' as [[[[[eΓ eS'] eS''] eA] eB] hp'].
@@ -1581,7 +1590,7 @@ Proof.
       (* clear hB'' eS'' eB B'' S''. *)
       destruct T ; inversion hh. subst. clear hh th.
       (* Translating the term *)
-      destruct (X _ hΓ) as [A''' [t'' ht'']].
+      destruct (H _ hΓ) as [A''' [t'' ht'']].
       destruct (change_type hg ht'' hA') as [t' ht'].
       assert (hpA : ∑ pA, Σ ;;; Γ' |-i pA : sHeq (sSort s) A' S' A'').
       { destruct hA' as [[_ eA'] hA'].
@@ -1591,7 +1600,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        apply (trel_to_heq hg hr) ; assumption.
+        destruct (trel_to_heq Γ' hg hr) as [pA hpA].
+        exists pA. apply hpA ; assumption.
       }
       destruct hpA as [pA hpA].
       assert (hpB : ∑ pB, Σ ;;; Γ' |-i pB : sHeq S'' B'' (sSort s) B').
@@ -1602,7 +1612,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        apply (trel_to_heq hg hr) ; assumption.
+        destruct (trel_to_heq Γ' hg hr) as [pB hpB].
+        exists pB. apply hpB ; assumption.
       }
       destruct hpB as [pB hpB].
       assert (hq : ∑ q, Σ ;;; Γ' |-i q : sHeq (sSort s) A' (sSort s) B').
@@ -1625,15 +1636,15 @@ Proof.
   (** eq_translation **)
 
     (* eq_reflexivity *)
-    + destruct (X _ hΓ) as [A' [u' hu']].
+    + destruct (H _ hΓ) as [A' [u' hu']].
       destruct hu' as [[[? ?] ?] hu'].
-      destruct (istype_type hg hu') as [s' hA'].
       exists A', A', u', u', (sHeqRefl A' u').
       repeat split ; try assumption.
+      destruct (istype_type hg hu') as [s' hA'].
       eapply type_HeqRefl ; eassumption.
 
     (* eq_symmetry *)
-    + destruct (X _ hΓ)
+    + destruct (H _ hΓ)
         as [A' [A'' [u' [v' [p' h']]]]].
       destruct h' as [[[[[? ?] ?] ?] ?] hp'].
       exists A'', A', v', u', (sHeqSym p').
@@ -1641,9 +1652,9 @@ Proof.
       eapply type_HeqSym' ; eassumption.
 
     (* eq_transitivity *)
-    + destruct (X _ hΓ)
+    + destruct (H _ hΓ)
         as [A1 [A2 [u1 [v1 [p1 h1']]]]].
-      destruct (X0 _ hΓ)
+      destruct (H0 _ hΓ)
         as [A3 [A4 [v2 [w1 [p2 h2']]]]].
       destruct (eqtrans_trans hg h1') as [hu1 hv1].
       destruct (eqtrans_trans hg h2') as [hv2 hw1].
@@ -1657,36 +1668,37 @@ Proof.
       }
       destruct hv1 as [_ hv1].
       destruct hv2 as [_ hv2].
-      destruct (trel_to_heq hg sim hv1 hv2) as [p3 hp3].
+      destruct (trel_to_heq Γ' hg sim) as [p3 hp3].
       (* We can conclude *)
       exists A1, A4, u1, w1.
       exists (sHeqTrans p1 (sHeqTrans p3 p2)).
       repeat split ; try assumption.
+      specialize (hp3 _ _ hv1 hv2).
       eapply type_HeqTrans' ; try assumption.
       * eassumption.
-      * eapply type_HeqTrans' ; try eassumption.
+      * eapply type_HeqTrans' ; eassumption.
 
     (* eq_beta *)
     + (* Translation of the domain *)
-      destruct (X _ hΓ) as [S [A'' hA'']].
+      destruct (H _ hΓ) as [S [A'' hA'']].
       assert (th : type_head (head (sSort s1))) by constructor.
       destruct (choose_type hg th hA'') as [T' [[A' hA'] hh]].
       clear hA'' A'' S.
       destruct T' ; inversion hh. subst. clear hh th.
       (* Translation of the codomain *)
-      destruct (X0 _ (trans_snoc hΓ hA'))
+      destruct (H0 _ (trans_snoc hΓ hA'))
         as [S' [B'' hB'']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hB'') as [T' [[B' hB'] hh]].
       clear hB'' B'' S'.
       destruct T' ; inversion hh. subst. clear hh th.
       (* Translation of the in-term *)
-      destruct (X1 _ (trans_snoc hΓ hA'))
+      destruct (H1 _ (trans_snoc hΓ hA'))
         as [T' [t'' ht'']].
       destruct (change_type hg ht'' hB') as [t' ht'].
       clear ht'' T' t''.
       (* Translation of the argument *)
-      destruct (X2 _ hΓ) as [A'' [u'' hu'']].
+      destruct (H2 _ hΓ) as [A'' [u'' hu'']].
       destruct (change_type hg hu'' hA') as [u' hu'].
       clear hu'' A'' u''.
       (* Now we conclude using reflexivity *)
@@ -1724,7 +1736,7 @@ Proof.
 
     (* eq_conv *)
     + (* Translating the conversion *)
-      destruct (X0 _ hΓ)
+      destruct (H0 _ hΓ)
         as [S' [S'' [T1'' [T2'' [p' h']]]]].
       destruct (eqtrans_trans hg h') as [hT1'' hT2''].
       destruct h' as [[[[[eΓ eS'] eS''] eT1] eT2] hp'].
@@ -1734,7 +1746,7 @@ Proof.
       destruct (choose_type hg th hT2'') as [T [[T2' hT2'] hh]].
       destruct T ; inversion hh. subst. clear hh th.
       (* Translation the term conversion *)
-      destruct (X _ hΓ)
+      destruct (H _ hΓ)
         as [T1''' [T2''' [t1'' [t2'' [q' hq']]]]].
       destruct (eqtrans_trans hg hq') as [ht1'' ht2''].
       destruct (change_type hg ht1'' hT1') as [t1' ht1'].
@@ -1750,7 +1762,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        apply (trel_to_heq hg hr) ; assumption.
+        destruct (trel_to_heq Γ' hg hr) as [p1 hp1].
+        exists p1. apply hp1 ; assumption.
       }
       destruct hpT1 as [p1 hp1].
       assert (hp2 : ∑ p2, Σ ;;; Γ' |-i p2 : sHeq S'' T2'' (sSort s) T2').
@@ -1761,7 +1774,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        apply (trel_to_heq hg hr) ; assumption.
+        destruct (trel_to_heq Γ' hg hr) as [p2 hp2].
+        exists p2. apply hp2 ; assumption.
       }
       destruct hp2 as [p2 hp2].
       assert (he : ∑ e, Σ ;;; Γ' |-i e : sHeq (sSort s) T1' (sSort s) T2').
@@ -1782,7 +1796,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        apply (trel_to_heq hg hr) ; assumption.
+        destruct (trel_to_heq Γ' hg hr) as [q1 hq1].
+        exists q1. apply hq1 ; assumption.
       }
       destruct hq1 as [q1 hq1].
       assert (hq2 : ∑ q2, Σ ;;; Γ' |-i q2 : sHeq T2''' t2'' T1' t2').
@@ -1793,7 +1808,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        apply (trel_to_heq hg hr) ; assumption.
+        destruct (trel_to_heq Γ' hg hr) as [q2 hq2].
+        exists q2. apply hq2 ; assumption.
       }
       destruct hq2 as [q2 hq2].
       assert (hqq : ∑ qq, Σ ;;; Γ' |-i qq : sHeq T1' t1' T1' t2').
@@ -1838,7 +1854,7 @@ Proof.
 
     (* cong_Prod *)
     + (* The domains *)
-      destruct (X _ hΓ)
+      destruct (H _ hΓ)
         as [T1 [T2 [A1'' [A2'' [pA h1']]]]].
       destruct (eqtrans_trans hg h1') as [hA1'' hA2''].
       destruct h1' as [[[[[? ?] ?] ?] ?] hpA''].
@@ -1850,7 +1866,7 @@ Proof.
       destruct T' ; inversion hh. subst.
       clear hh th.
       (* Now the codomains *)
-      destruct (X0 _ (trans_snoc hΓ hA1'))
+      destruct (H0 _ (trans_snoc hΓ hA1'))
         as [S1 [S2 [B1'' [B2'' [pB h2']]]]].
       destruct (eqtrans_trans hg h2') as [hB1'' hB2''].
       assert (th : type_head (head (sSort s2))) by constructor.
@@ -1872,16 +1888,16 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq Γ' hg hr) as [pl hpl].
         assert (hr' : A2'' ∼ A2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq Γ' hg hr') as [pr hpr].
         exists (sHeqTrans (sHeqTrans pl pA) pr).
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
         - eassumption.
@@ -1917,15 +1933,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq (Γ',, A1') hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (hr' : B2'' ∼ B2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq (Γ',, A1') hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans (sHeqTrans pl pB) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -1946,7 +1962,7 @@ Proof.
       }
       destruct hp3 as [p3 hp3].
       (* Also translating the typing hypothesis for B2 *)
-      destruct (X2 _ (trans_snoc hΓ hA2'))
+      destruct (H2 _ (trans_snoc hΓ hA2'))
         as [S' [B2''' hB2''']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hB2''') as [T' [[tB2 htB2] hh]].
@@ -1960,12 +1976,15 @@ Proof.
              ).
       { change (sSort s2) with (llift0 #|Γm| (sSort s2)) at 1.
         change (sSort s2) with (rlift0 #|Γm| (sSort s2)) at 2.
-        eapply (trel_to_heq' hg).
-        - destruct htB2 as [[? ?] ?].
+        assert (hr : B2' ∼ tB2).
+        { destruct htB2 as [[? ?] ?].
           destruct hB2' as [[? ?] ?].
           eapply trel_trans.
-          + eapply trel_sym. eapply inrel_trel. eassumption.
-          + apply inrel_trel. assumption.
+          - eapply trel_sym. eapply inrel_trel. eassumption.
+          - apply inrel_trel. assumption.
+        }
+        edestruct (trel_to_heq' hg hr) as [p4 hp4].
+        exists p4. apply hp4.
         - eassumption.
         - destruct hB2' as [[? ?] ?]. assumption.
         - destruct htB2 as [[? ?] ?]. assumption.
@@ -1996,7 +2015,7 @@ Proof.
 
     (* cong_Lambda *)
     + (* The domains *)
-      destruct (X _ hΓ)
+      destruct (H _ hΓ)
         as [T1 [T2 [A1'' [A2'' [pA h1']]]]].
       destruct (eqtrans_trans hg h1') as [hA1'' hA2''].
       destruct h1' as [[[[[? ?] ?] ?] ?] hpA''].
@@ -2008,7 +2027,7 @@ Proof.
       destruct T' ; inversion hh. subst.
       clear hh th.
       (* Now the codomains *)
-      destruct (X0 _ (trans_snoc hΓ hA1'))
+      destruct (H0 _ (trans_snoc hΓ hA1'))
         as [S1 [S2 [B1'' [B2'' [pB h2']]]]].
       destruct (eqtrans_trans hg h2') as [hB1'' hB2''].
       assert (th : type_head (head (sSort s2))) by constructor.
@@ -2030,15 +2049,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq Γ' hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (hr' : A2'' ∼ A2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq Γ' hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans (sHeqTrans pl pA) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2075,15 +2094,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq (Γ',, A1') hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (hr' : B2'' ∼ B2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq (Γ',, A1') hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans (sHeqTrans pl pB) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2104,7 +2123,7 @@ Proof.
       }
       destruct hp3 as [p3 hp3].
       (* Also translating the typing hypothesis for B2 *)
-      destruct (X3 _ (trans_snoc hΓ hA2'))
+      destruct (H3 _ (trans_snoc hΓ hA2'))
         as [S' [B2''' hB2''']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hB2''') as [T' [[tB2 htB2] hh]].
@@ -2118,12 +2137,15 @@ Proof.
              ).
       { change (sSort s2) with (llift0 #|Γm| (sSort s2)) at 1.
         change (sSort s2) with (rlift0 #|Γm| (sSort s2)) at 2.
-        eapply (trel_to_heq' hg).
-        - destruct htB2 as [[? ?] ?].
+        assert (hr : B2' ∼ tB2).
+        { destruct htB2 as [[? ?] ?].
           destruct hB2' as [[? ?] ?].
           eapply trel_trans.
           + eapply trel_sym. eapply inrel_trel. eassumption.
           + apply inrel_trel. assumption.
+        }
+        edestruct (trel_to_heq' hg hr) as [p4 hp4].
+        exists p4. apply hp4.
         - eassumption.
         - destruct hB2' as [[? ?] ?]. assumption.
         - destruct htB2 as [[? ?] ?]. assumption.
@@ -2146,12 +2168,12 @@ Proof.
       rename p1 into pA, p5 into pB, hp1 into hpA, hp5 into hpB.
       rename tB2 into B2', htB2 into hB2'.
       (* We can now focus on the function terms *)
-      destruct (X1 _ (trans_snoc hΓ hA1'))
+      destruct (H1 _ (trans_snoc hΓ hA1'))
         as [B1'' [B1''' [t1'' [t2'' [pt h3']]]]].
       destruct (eqtrans_trans hg h3') as [ht1'' ht2''].
       destruct (change_type hg ht1'' hB1') as [t1' ht1'].
       destruct (change_type hg ht2'' hB1') as [t2' ht2'].
-      destruct (X5 _ (trans_snoc hΓ hA2'))
+      destruct (H5 _ (trans_snoc hΓ hA2'))
         as [B2'' [t2''' ht2''']].
       destruct (change_type hg ht2''' hB2') as [tt2 htt2].
       assert (hq1 : ∑ q1, Σ ;;; Γ' ,, A1' |-i q1 : sHeq B1' t1' B1' t2').
@@ -2165,15 +2187,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - apply inrel_trel. assumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq (Γ',, A1') hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (hr' : t2'' ∼ t2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq (Γ',, A1') hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans (sHeqTrans pl pt) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2197,12 +2219,15 @@ Proof.
         Σ ;;; Δ |-i q3 : sHeq (llift0 #|Γm| B1') (llift0 #|Γm| t2')
                              (rlift0 #|Γm| B2') (rlift0 #|Γm| tt2)
       ).
-      { eapply (trel_to_heq' hg).
-        - destruct htt2 as [[? ?] ?].
+      { assert (hr : t2' ∼ tt2).
+        { destruct htt2 as [[? ?] ?].
           destruct ht2' as [[? ?] ?].
           eapply trel_trans.
           + eapply trel_sym. eapply inrel_trel. eassumption.
           + apply inrel_trel. assumption.
+        }
+        edestruct (trel_to_heq' hg hr) as [p3 hp3].
+        exists p3. apply hp3.
         - eassumption.
         - destruct ht2' as [[? ?] ?]. assumption.
         - destruct htt2 as [[? ?] ?]. assumption.
@@ -2273,7 +2298,7 @@ Proof.
 
     (* cong_App *)
     + (* The domains *)
-      destruct (X _ hΓ)
+      destruct (H _ hΓ)
         as [T1 [T2 [A1'' [A2'' [pA h1']]]]].
       destruct (eqtrans_trans hg h1') as [hA1'' hA2''].
       destruct h1' as [[[[[? ?] ?] ?] ?] hpA''].
@@ -2285,7 +2310,7 @@ Proof.
       destruct T' ; inversion hh. subst.
       clear hh th.
       (* Now the codomains *)
-      destruct (X0 _ (trans_snoc hΓ hA1'))
+      destruct (H0 _ (trans_snoc hΓ hA1'))
         as [S1 [S2 [B1'' [B2'' [pB h2']]]]].
       destruct (eqtrans_trans hg h2') as [hB1'' hB2''].
       assert (th : type_head (head (sSort s2))) by constructor.
@@ -2307,15 +2332,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq Γ' hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (hr' : A2'' ∼ A2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq Γ' hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans (sHeqTrans pl pA) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2352,15 +2377,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr ltac:(eassumption) ltac:(eassumption))
-        as [pl hpl].
+        destruct (trel_to_heq (Γ',, A1') hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (hr' : B2'' ∼ B2').
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg hr' ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq (Γ',, A1') hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans (sHeqTrans pl pB) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2381,7 +2406,7 @@ Proof.
       }
       destruct hp3 as [p3 hp3].
       (* Also translating the typing hypothesis for B2 *)
-      destruct (X4 _ (trans_snoc hΓ hA2'))
+      destruct (H4 _ (trans_snoc hΓ hA2'))
         as [S' [B2''' hB2''']].
       assert (th : type_head (head (sSort s2))) by constructor.
       destruct (choose_type hg th hB2''') as [T' [[tB2 htB2] hh]].
@@ -2395,12 +2420,15 @@ Proof.
              ).
       { change (sSort s2) with (llift0 #|Γm| (sSort s2)) at 1.
         change (sSort s2) with (rlift0 #|Γm| (sSort s2)) at 2.
-        eapply (trel_to_heq' hg).
-        - destruct htB2 as [[? ?] ?].
+        assert (hr : B2' ∼ tB2).
+        { destruct htB2 as [[? ?] ?].
           destruct hB2' as [[? ?] ?].
           eapply trel_trans.
           + eapply trel_sym. eapply inrel_trel. eassumption.
           + apply inrel_trel. assumption.
+        }
+        edestruct (trel_to_heq' hg hr) as [p4 hp4].
+        exists p4. apply hp4.
         - eassumption.
         - destruct hB2' as [[? ?] ?]. assumption.
         - destruct htB2 as [[? ?] ?]. assumption.
@@ -2423,13 +2451,13 @@ Proof.
       rename p1 into pA, p5 into pB, hp1 into hpA, hp5 into hpB.
       rename tB2 into B2', htB2 into hB2'.
       (* We can now translate the functions. *)
-      destruct (X1 _ hΓ)
+      destruct (H1 _ hΓ)
         as [P1 [P1' [t1'' [t2'' [pt h3']]]]].
       destruct (eqtrans_trans hg h3') as [ht1'' ht2''].
       destruct (change_type hg ht1'' (trans_Prod hΓ hA1' hB1')) as [t1' ht1'].
       destruct (change_type hg ht2'' (trans_Prod hΓ hA1' hB1')) as [t2' ht2'].
       destruct h3' as [[[[[? ?] ?] ?] ?] hpt].
-      destruct (X6 _ hΓ)
+      destruct (H6 _ hΓ)
         as [P2 [t2''' ht2''']].
       destruct (change_type hg ht2''' (trans_Prod hΓ hA2' hB2')) as [tt2 htt2].
       clear ht2''' t2''' P2.
@@ -2446,15 +2474,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - apply inrel_trel. assumption.
         }
-        destruct (trel_to_heq hg r1 ltac:(eassumption) ltac:(eassumption))
-          as [pl hpl].
+        destruct (trel_to_heq Γ' hg r1) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (r2 : t2'' ∼ tt2).
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - apply inrel_trel. assumption.
         }
-        destruct (trel_to_heq hg r2 ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq Γ' hg r2) as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans pl (sHeqTrans pt pr)).
         eapply type_HeqTrans' ; try assumption.
         - eassumption.
@@ -2462,12 +2490,12 @@ Proof.
       }
       destruct hqt as [qt hqt].
       (* We then translate the arguments. *)
-      destruct (X2 _ hΓ)
+      destruct (H2 _ hΓ)
         as [A1'' [A1''' [u1'' [u2'' [pu h4']]]]].
       destruct (eqtrans_trans hg h4') as [hu1'' hu2''].
       destruct (change_type hg hu1'' hA1') as [u1' hu1'].
       destruct h4' as [[[[[? ?] ?] ?] ?] hpu].
-      destruct (X8 _ hΓ) as [A2'' [u2''' hu2''']].
+      destruct (H8 _ hΓ) as [A2'' [u2''' hu2''']].
       destruct (change_type hg hu2''' hA2') as [tu2 htu2].
       clear hu2''' u2''' A2''.
       assert (hqu : ∑ qu, Σ ;;; Γ' |-i qu : sHeq A1' u1' A2' tu2).
@@ -2480,15 +2508,15 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - apply inrel_trel. assumption.
         }
-        destruct (trel_to_heq hg r1 ltac:(eassumption) ltac:(eassumption))
-          as [pl hpl].
+        destruct (trel_to_heq Γ' hg r1) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
         assert (r2 : u2'' ∼ tu2).
         { eapply trel_trans.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - apply inrel_trel. assumption.
         }
-        destruct (trel_to_heq hg r2 ltac:(eassumption) ltac:(eassumption))
-          as [pr hpr].
+        destruct (trel_to_heq Γ' hg r2) as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
         exists (sHeqTrans pl (sHeqTrans pu pr)).
         eapply type_HeqTrans' ; try assumption.
         - eassumption.
@@ -2543,11 +2571,11 @@ Proof.
               eapply typing_subst ; eassumption.
 
     (* cong_Eq *)
-    + destruct (X _ hΓ)
+    + destruct (H _ hΓ)
         as [T1 [T2 [A1' [A2' [pA h1']]]]].
-      destruct (X0 _ hΓ)
+      destruct (H0 _ hΓ)
         as [A1'' [A1''' [u1' [u2' [pu h2']]]]].
-      destruct (X1 _ hΓ)
+      destruct (H1 _ hΓ)
         as [A1'''' [A1''''' [v1' [v2' [pv h3']]]]].
       destruct (eqtrans_trans hg h1') as [hA1' hA2'].
       destruct (eqtrans_trans hg h2') as [hu1' hu2'].
@@ -2573,7 +2601,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim1 htA1 hA1') as [p1 hp1].
+        destruct (trel_to_heq Γ' hg sim1) as [p1 hp1].
+        specialize (hp1 _ _  htA1 hA1').
         destruct hA2' as [_ hA2'].
         destruct htA2 as [[[? ?] ?] htA2].
         assert (sim2 : A2' ∼ tA2).
@@ -2581,7 +2610,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim2 hA2' htA2) as [p2 hp2].
+        destruct (trel_to_heq Γ' hg sim2) as [p2 hp2].
+        specialize (hp2 _ _ hA2' htA2).
         exists (sHeqTrans p1 (sHeqTrans pA p2)).
         eapply type_HeqTrans' ; try eassumption.
         eapply type_HeqTrans' ; eassumption.
@@ -2600,7 +2630,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim1 htu1 hu1') as [pl hpl].
+        destruct (trel_to_heq Γ' hg sim1) as [pl hpl].
+        specialize (hpl _ _ htu1 hu1').
         destruct hu2' as [_ hu2'].
         destruct htu2 as [[[? ?] ?] htu2].
         assert (sim2 : u2' ∼ tu2).
@@ -2608,7 +2639,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim2 hu2' htu2) as [pr hpr].
+        destruct (trel_to_heq Γ' hg sim2) as [pr hpr].
+        specialize (hpr _ _ hu2' htu2).
         exists (sHeqTrans (sHeqTrans pl pu) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2623,7 +2655,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim1 htv1 hv1') as [pl hpl].
+        destruct (trel_to_heq Γ' hg sim1) as [pl hpl].
+        specialize (hpl _ _ htv1 hv1').
         destruct hv2' as [_ hv2'].
         destruct htv2 as [[[? ?] ?] htv2].
         assert (sim2 : v2' ∼ tv2).
@@ -2631,7 +2664,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim2 hv2' htv2) as [pr hpr].
+        destruct (trel_to_heq Γ' hg sim2) as [pr hpr].
+        specialize (hpr _ _ hv2' htv2).
         exists (sHeqTrans (sHeqTrans pl pv) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2678,9 +2712,9 @@ Proof.
       * eapply type_CongEq' ; assumption.
 
     (* cong_Refl *)
-    + destruct (X _ hΓ)
+    + destruct (H _ hΓ)
         as [T1 [T2 [A1' [A2' [pA h1']]]]].
-      destruct (X0 _ hΓ)
+      destruct (H0 _ hΓ)
         as [A1'' [A1''' [u1' [u2' [pu h2']]]]].
       destruct (eqtrans_trans hg h1') as [hA1' hA2'].
       destruct (eqtrans_trans hg h2') as [hu1' hu2'].
@@ -2703,7 +2737,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim1 htA1 hA1') as [p1 hp1].
+        destruct (trel_to_heq Γ' hg sim1) as [p1 hp1].
+        specialize (hp1 _ _ htA1 hA1').
         destruct hA2' as [_ hA2'].
         destruct htA2 as [[[? ?] ?] htA2].
         assert (sim2 : A2' ∼ tA2).
@@ -2711,7 +2746,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim2 hA2' htA2) as [p2 hp2].
+        destruct (trel_to_heq Γ' hg sim2) as [p2 hp2].
+        specialize (hp2 _ _ hA2' htA2).
         exists (sHeqTrans p1 (sHeqTrans pA p2)).
         eapply type_HeqTrans' ; try assumption.
         - eassumption.
@@ -2729,7 +2765,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim1 htu1 hu1') as [pl hpl].
+        destruct (trel_to_heq Γ' hg sim1) as [pl hpl].
+        specialize (hpl _ _ htu1 hu1').
         destruct hu2' as [_ hu2'].
         destruct htu2 as [[[? ?] ?] htu2].
         assert (sim2 : u2' ∼ tu2).
@@ -2737,7 +2774,8 @@ Proof.
           - eapply trel_sym. eapply inrel_trel. eassumption.
           - eapply inrel_trel. eassumption.
         }
-        destruct (trel_to_heq hg sim2 hu2' htu2) as [pr hpr].
+        destruct (trel_to_heq Γ' hg sim2) as [pr hpr].
+        specialize (hpr _ _ hu2' htu2).
         exists (sHeqTrans (sHeqTrans pl pu) pr).
         eapply type_HeqTrans' ; try assumption.
         - eapply type_HeqTrans' ; eassumption.
@@ -2795,19 +2833,19 @@ Proof.
            ++ eassumption.
 
     (* reflection *)
-    + destruct (X _ hΓ) as [T' [e'' he'']].
+    + destruct (H _ hΓ) as [T' [e'' he'']].
       assert (th : type_head (head (sEq A u v))) by constructor.
       destruct (choose_type hg th he'') as [T'' [[e' he'] hh]].
       destruct T'' ; try (now inversion hh).
       rename T''1 into A', T''2 into u', T''3 into v'.
       clear hh he'' e'' he'' T' th.
       destruct he' as [[[? ieq] ?] he'].
-      destruct (istype_type hg he') as [? heq].
-      ttinv heq.
       exists A', A', u', v'.
       exists (sEqToHeq e').
       inversion ieq. subst.
       repeat split ; try eassumption.
+      destruct (istype_type hg he') as [? heq].
+      ttinv heq.
       eapply type_EqToHeq' ; assumption.
 
   Unshelve. all: try exact 0. exact nAnon.

@@ -10,7 +10,7 @@ Open Scope s_scope.
 
 Reserved Notation " Σ ;;; Γ '|-i' t : T " (at level 50, Γ, t, T at next level).
 
-Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
+Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
 | type_Rel Γ n :
     wf Σ Γ ->
     forall (isdecl : n < List.length Γ),
@@ -242,7 +242,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 
 where " Σ ;;; Γ '|-i' t : T " := (@typing Σ Γ t T) : i_scope
 
-with wf (Σ : sglobal_context) : scontext -> Type :=
+with wf (Σ : sglobal_context) : scontext -> Prop :=
 | wf_nil :
     wf Σ nil
 

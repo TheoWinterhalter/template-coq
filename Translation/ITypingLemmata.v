@@ -1008,7 +1008,7 @@ Proof.
           assert (n - #|Δ| = 0) by omega.
           set (ge := ge_sub isdecl h).
           generalize ge.
-          rewrite H. intro ge'.
+          rewrite H0. intro ge'.
           cbn. rewrite substP3 by omega.
           subst.
           replace #|Δ| with #|subst_context u Δ|
@@ -1427,11 +1427,11 @@ Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->
     Σ ;;; Γ |-i t : T ->
-    ∑ s, Σ ;;; Γ |-i T : sSort s.
+    exists s, Σ ;;; Γ |-i T : sSort s.
 Proof.
   intros Σ Γ t T hg H.
   induction H.
-  - revert n isdecl. induction w ; intros n isdecl.
+  - revert n isdecl. induction H ; intros n isdecl.
     + cbn in isdecl. easy.
     + destruct n.
       * cbn.
@@ -1439,7 +1439,7 @@ Proof.
         eapply typing_lift01 ; eassumption.
       * assert (isdecl' : n < #|Γ|).
         -- auto with arith.
-        -- destruct (IHw n isdecl') as [s' hh].
+        -- destruct (IHwf n isdecl') as [s' hh].
            exists s'. change (sSort s') with (lift0 1 (sSort s')).
            (* Take out as a lemma? *)
            assert (eq : forall t, lift0 (S (S n)) t = lift0 1 (lift0 (S n) t)).

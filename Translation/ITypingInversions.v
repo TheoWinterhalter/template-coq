@@ -9,7 +9,7 @@ Require Import util SAst SLiftSubst Equality SCommon Conversion ITyping.
 Lemma inversionRel :
   forall {Σ Γ n T},
     Σ ;;; Γ |-i sRel n : T ->
-    ∑ isdecl,
+    exists isdecl,
       let A := lift0 (S n) (safe_nth Γ (exist _ n isdecl)) in
       Σ |-i A = T.
 Proof.
@@ -33,7 +33,7 @@ Defined.
 Lemma inversionInd :
   forall {Σ Γ ind T},
     Σ ;;; Γ |-i sInd ind : T ->
-    ∑ univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
+    exists univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
       Σ |-i decl.(sind_type) = T.
 Proof.
   intros Σ Γ ind T h.
@@ -46,7 +46,7 @@ Defined.
 Lemma inversionConstruct :
   forall {Σ Γ ind i T},
     Σ ;;; Γ |-i sConstruct ind i : T ->
-    ∑ univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
+    exists univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
       Σ |-i stype_of_constructor (fst Σ) (ind, i) univs decl isdecl = T.
 Proof.
   intros Σ Γ ind i T h.
@@ -69,7 +69,7 @@ Defined.
 Lemma inversionProd :
   forall {Σ Γ n A B T},
     Σ ;;; Γ |-i sProd n A B : T ->
-    ∑ s1 s2,
+    exists s1 s2,
       (Σ ;;; Γ |-i A : sSort s1) *
       (Σ ;;; Γ ,, A |-i B : sSort s2) *
       (Σ |-i sSort (max_sort s1 s2) = T).
@@ -85,7 +85,7 @@ Defined.
 Lemma inversionLambda :
   forall {Σ Γ na A B t T},
     Σ ;;; Γ |-i sLambda na A B t : T ->
-      ∑ s1 s2 na',
+      exists s1 s2 na',
         (Σ ;;; Γ |-i A : sSort s1) *
         (Σ ;;; Γ ,, A |-i B : sSort s2) *
         (Σ ;;; Γ ,, A |-i t : B) *
@@ -103,7 +103,7 @@ Defined.
 Lemma inversionApp :
   forall {Σ Γ t A B u T},
     Σ ;;; Γ |-i sApp t A B u : T ->
-    ∑ s1 s2 n,
+    exists s1 s2 n,
       (Σ ;;; Γ |-i A : sSort s1) *
       (Σ ;;; Γ ,, A |-i B : sSort s2) *
       (Σ ;;; Γ |-i t : sProd n A B) *
@@ -122,7 +122,7 @@ Defined.
 Lemma inversionEq :
   forall {Σ Γ A u v T},
     Σ ;;; Γ |-i sEq A u v : T ->
-    ∑ s,
+    exists s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i u : A) *
       (Σ ;;; Γ |-i v : A) *
@@ -140,7 +140,7 @@ Defined.
 Lemma inversionRefl :
   forall {Σ Γ A u T},
     Σ ;;; Γ |-i sRefl A u : T ->
-    ∑ s,
+    exists s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i u : A) *
       (Σ |-i sEq A u u = T).
@@ -157,7 +157,7 @@ Defined.
 Lemma inversionJ :
   forall {Σ Γ A u P w v p T},
     Σ ;;; Γ |-i sJ A u P w v p : T ->
-    ∑ s1 s2,
+    exists s1 s2,
       (Σ ;;; Γ |-i A : sSort s1) *
       (Σ ;;; Γ |-i u : A) *
       (Σ ;;; Γ |-i v : A) *
@@ -179,7 +179,7 @@ Defined.
 Lemma inversionTransport :
   forall {Σ Γ A B p t T},
     Σ ;;; Γ |-i sTransport A B p t : T ->
-    ∑ s,
+    exists s,
       (Σ ;;; Γ |-i p : sEq (sSort s) A B) *
       (Σ ;;; Γ |-i t : A) *
       (Σ ;;; Γ |-i A : sSort s) *
@@ -197,7 +197,7 @@ Defined.
 Lemma inversionHeq :
   forall {Σ Γ A B a b T},
     Σ ;;; Γ |-i sHeq A a B b : T ->
-    ∑ s,
+    exists s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i a : A) *
@@ -215,7 +215,7 @@ Defined.
 Lemma inversionPack :
   forall {Σ Γ A1 A2 T},
     Σ ;;; Γ |-i sPack A1 A2 : T ->
-    ∑ s,
+    exists s,
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ |-i sSort s = T).
@@ -231,7 +231,7 @@ Defined.
 Lemma inversionHeqToEq :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sHeqToEq p : T ->
-    ∑ A u v s,
+    exists A u v s,
      (Σ ;;; Γ |-i p : sHeq A u A v) *
      (Σ ;;; Γ |-i A : sSort s) *
      (Σ ;;; Γ |-i u : A) *
@@ -250,7 +250,7 @@ Defined.
 Lemma inversionHeqRefl :
   forall {Σ Γ A a T},
     Σ ;;; Γ |-i sHeqRefl A a : T ->
-    ∑ s,
+    exists s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i a : A) *
       (Σ |-i sHeq A a A a = T).
@@ -266,7 +266,7 @@ Defined.
 Lemma inversionHeqSym :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sHeqSym p : T ->
-    ∑ A a B b s,
+    exists A a B b s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i a : A) *
@@ -285,7 +285,7 @@ Defined.
 Lemma inversionHeqTrans :
   forall {Σ Γ p q T},
     Σ ;;; Γ |-i sHeqTrans p q : T ->
-    ∑ A a B b C c s,
+    exists A a B b C c s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i C : sSort s) *
@@ -307,7 +307,7 @@ Defined.
 Lemma inversionHeqTransport :
   forall {Σ Γ p t T},
     Σ ;;; Γ |-i sHeqTransport p t : T ->
-    ∑ A B s,
+    exists A B s,
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
       (Σ ;;; Γ |-i t : A) *
@@ -325,7 +325,7 @@ Defined.
 Lemma inversionCongProd :
   forall {Σ Γ B1 B2 pA pB T},
     Σ ;;; Γ |-i sCongProd B1 B2 pA pB : T ->
-    ∑ s z nx ny A1 A2,
+    exists s z nx ny A1 A2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
@@ -351,7 +351,7 @@ Defined.
 Lemma inversionCongLambda :
   forall {Σ Γ B1 B2 t1 t2 pA pB pt T},
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt : T ->
-    ∑ s z nx ny A1 A2,
+    exists s z nx ny A1 A2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
@@ -383,7 +383,7 @@ Defined.
 Lemma inversionCongApp :
   forall {Σ Γ B1 B2 pu pA pB pv T},
     Σ ;;; Γ |-i sCongApp B1 B2 pu pA pB pv : T ->
-    ∑ s z nx ny A1 A2 u1 u2 v1 v2,
+    exists s z nx ny A1 A2 u1 u2 v1 v2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ ,, (sPack A1 A2)
        |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
@@ -415,7 +415,7 @@ Defined.
 Lemma inversionCongEq :
   forall {Σ Γ pA pu pv T},
     Σ ;;; Γ |-i sCongEq pA pu pv : T ->
-    ∑ s A1 A2 u1 u2 v1 v2,
+    exists s A1 A2 u1 u2 v1 v2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2) *
       (Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2) *
@@ -439,7 +439,7 @@ Defined.
 Lemma inversionCongRefl :
   forall {Σ Γ pA pu T},
     Σ ;;; Γ |-i sCongRefl pA pu : T ->
-    ∑ s A1 A2 u1 u2,
+    exists s A1 A2 u1 u2,
       (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
       (Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2) *
       (Σ ;;; Γ |-i A1 : sSort s) *
@@ -462,7 +462,7 @@ Defined.
 Lemma inversionEqToHeq :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sEqToHeq p : T ->
-    ∑ A u v s,
+    exists A u v s,
       (Σ ;;; Γ |-i p : sEq A u v) *
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i u : A) *
@@ -479,7 +479,7 @@ Defined.
 Lemma inversionHeqTypeEq :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sHeqTypeEq p : T ->
-    ∑ A u B v s,
+    exists A u B v s,
       (Σ ;;; Γ |-i p : sHeq A u B v) *
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
@@ -498,7 +498,7 @@ Defined.
 Lemma inversionProjT1 :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sProjT1 p : T ->
-    ∑ s A1 A2,
+    exists s A1 A2,
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i p : sPack A1 A2) *
@@ -515,7 +515,7 @@ Defined.
 Lemma inversionProjT2 :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sProjT2 p : T ->
-    ∑ s A1 A2,
+    exists s A1 A2,
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i p : sPack A1 A2) *
@@ -532,7 +532,7 @@ Defined.
 Lemma inversionProjTe :
   forall {Σ Γ p T},
     Σ ;;; Γ |-i sProjTe p : T ->
-    ∑ s A1 A2,
+    exists s A1 A2,
       (Σ ;;; Γ |-i A1 : sSort s) *
       (Σ ;;; Γ |-i A2 : sSort s) *
       (Σ ;;; Γ |-i p : sPack A1 A2) *
