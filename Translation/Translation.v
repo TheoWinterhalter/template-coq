@@ -711,7 +711,7 @@ Proof.
 Defined.
 
 Corollary trel_to_heq :
-  forall {Σ Γ} {t1 t2 : sterm},
+  forall {Σ} Γ {t1 t2 : sterm},
     type_glob Σ ->
     t1 ∼ t2 ->
     ∑ p,
@@ -938,8 +938,8 @@ Lemma inversion_transportType :
     type_glob Σ ->
     type_head (head A') ->
     Σ ;;; Γ' |-i transport_seq_app tseq A' : T ->
-    ∑ s,
-      (Σ ;;; Γ' |-i A' : sSort s) *
+    exists s,
+      (Σ ;;; Γ' |-i A' : sSort s) /\
       (Σ ;;; Γ' |-i T : sSort (succ_sort s)).
 Proof.
   intros Σ tseq. induction tseq ; intros Γ' A' T hg hh ht.
@@ -983,6 +983,42 @@ Proof.
       * econstructor. eapply typing_wf. eassumption.
       * apply conv_sym. eapply subj_conv ; eassumption.
 Defined.
+
+Lemma choose_type' :
+  forall {Σ A A' Γ Γ' t t'},
+    type_glob Σ ->
+    type_head (head A) ->
+    A ⊏ A' ->
+    Γ ⊂ Γ' ->
+    t ⊏ t' ->
+    ∑ A'',
+      (∑ t'',
+         Σ ;;; Γ' |-i t' : A' ->
+         Σ ;;;; Γ' |--- [ t'' ] : A'' # ⟦ Γ |--- [t] : A ⟧) *
+      (head A'' = head A).
+Proof.
+  intros Σ A A' Γ Γ' t t' hg hth hA hΓ ht.
+  destruct (trel_transport_seq hA) as [A'' [tseq [[hh heq] hrel]]].
+  exists A''. split.
+  - assert (simA : A' ∼ A'').
+    { apply trel_sym.
+      eapply trel_trans.
+      - apply trel_sym. apply inrel_trel. eassumption.
+      - apply inrel_trel. assumption.
+    }
+    destruct (trel_to_heq Γ' hg simA) as [p hp].
+    (* We need to fix sort_heq_ex so that it returns a term regardless of
+       typing. *)
+    destruct (sort_heq_ex hg hp) as [q hq].
+    exists (sTransport A' A'' q t').
+
+
+    intro h.
+    rewrite heq in h.
+    destruct (istype_type hg h) as [s hs].
+    assert (hth' : type_head (head A'')) by (now rewrite hh).
+    destruct (inversion_transportType hg hth' hs) as [s' [h' hss']].
+
 
 Lemma choose_type' :
   forall {Σ A A'},
