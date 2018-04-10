@@ -157,9 +157,6 @@ Ltac lift_sort :=
     change (sSort s) with ((sSort s){ n := u })
   end.
 
-Axiom cheating : forall {A}, A.
-Tactic Notation "cheat" := apply cheating.
-
 Lemma trel_to_heq' :
   forall {Σ t1 t2},
     type_glob Σ ->
@@ -696,15 +693,93 @@ Proof.
         apply rlift_conv. assumption.
 
   (* Ind *)
-  - (* Problem: We need to have a declaration of the inductive to know its type.
-       We could do as we did for the variables if we managed to prove that
-       having a declaration is decidable.
-     *)
-    cheat.
+  - case (declared_inductive_dec (fst Σ) ind).
+    + (* The inductive is declared. *)
+      intros [univs [decl isdecl]].
+      exists (sHeqRefl decl.(sind_type) (sInd ind)).
+      intros Γm U1 U2 hm h1 h2.
+      assert (h1' : Σ ;;; Γ ,,, Γm |-i sInd ind : llift0 #|Γm| U1).
+      { change (sInd ind) with (llift0 #|Γm| (sInd ind)).
+        eapply type_llift0 ; eassumption.
+      }
+      assert (h2' : Σ ;;; Γ ,,, Γm |-i sInd ind : rlift0 #|Γm| U2).
+      { change (sInd ind) with (rlift0 #|Γm| (sInd ind)).
+        eapply type_rlift0 ; eassumption.
+      }
+      pose proof (uniqueness h1' h2').
+      destruct (istype_type hg h1).
+      destruct (istype_type hg h2).
+      eapply type_conv.
+      * eapply type_HeqRefl' ; try assumption.
+        econstructor ; try eassumption.
+        eapply typing_wf. eassumption.
+      * eapply type_Heq.
+        -- lift_sort. eapply type_llift0 ; eassumption.
+        -- lift_sort. eapply type_conv.
+           ++ eapply type_rlift0 ; eassumption.
+           ++ cbn. econstructor. eapply typing_wf. eassumption.
+           ++ apply conv_sym. eapply subj_conv ; try eassumption.
+              ** cbn. lift_sort.
+                 eapply type_llift0 ; eassumption.
+              ** eapply type_rlift0 ; eassumption.
+        -- eapply type_llift0 ; eassumption.
+        -- eapply type_rlift0 ; eassumption.
+      * ttinv h1'. ttinv h2'.
+        destruct isdecl as [d1 [[hd1 ?] hn1]].
+        destruct isdecl0 as [d2 [[hd2 ?] hn2]].
+        destruct isdecl1 as [d3 [[hd3 ?] hn3]].
+        unfold sdeclared_minductive in *.
+        rewrite hd1 in hd2, hd3. inversion hd2. inversion hd3. subst.
+        rewrite hn1 in hn2, hn3. inversion hn2. inversion hn3. subst.
+        eapply cong_Heq.
+        all: try (apply conv_refl). all: assumption.
+    + (* The inductive isn't declared. We return garbage. *)
+      intros neq.
+      exists (sRel 0).
+      intros Γm U1 U2 hm h1 h2.
+      exfalso. ttinv h1.
+      apply neq. exists univs, decl. assumption.
 
   (* Construct *)
-  - (* Similar problem. *)
-    cheat.
+  - case (declared_constructor_dec (fst Σ) ind i).
+    + (* The constructor is declared. *)
+      intros [univs [decl isdecl]].
+      exists (sHeqRefl (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl) (sConstruct ind i)).
+      intros Γm U1 U2 hm h1 h2.
+      assert (h1' : Σ ;;; Γ ,,, Γm |-i sConstruct ind i : llift0 #|Γm| U1).
+      { change (sConstruct ind i) with (llift0 #|Γm| (sConstruct ind i)).
+        eapply type_llift0 ; eassumption.
+      }
+      assert (h2' : Σ ;;; Γ ,,, Γm |-i sConstruct ind i : rlift0 #|Γm| U2).
+      { change (sConstruct ind i) with (rlift0 #|Γm| (sConstruct ind i)).
+        eapply type_rlift0 ; eassumption.
+      }
+      pose proof (uniqueness h1' h2').
+      destruct (istype_type hg h1).
+      destruct (istype_type hg h2).
+      eapply type_conv.
+      * eapply type_HeqRefl' ; try assumption.
+        econstructor. eapply typing_wf. eassumption.
+      * eapply type_Heq.
+        -- lift_sort. eapply type_llift0 ; eassumption.
+        -- lift_sort. eapply type_conv.
+           ++ eapply type_rlift0 ; eassumption.
+           ++ cbn. econstructor. eapply typing_wf. eassumption.
+           ++ apply conv_sym. eapply subj_conv ; try eassumption.
+              ** cbn. lift_sort.
+                 eapply type_llift0 ; eassumption.
+              ** eapply type_rlift0 ; eassumption.
+        -- eapply type_llift0 ; eassumption.
+        -- eapply type_rlift0 ; eassumption.
+      * ttinv h1'. ttinv h2'.
+        eapply cong_Heq.
+        all: try (apply conv_refl).
+        all: erewrite SCommon.stype_of_constructor_eq ; eassumption.
+    + (* The constructor isn't declared. We return garbage. *)
+      intros neq. exists (sRel 0).
+      intros Γm U1 U2 hm h1 h2.
+      exfalso. ttinv h1.
+      apply neq. exists univs, decl. assumption.
 
   Unshelve.
   all: cbn ; try rewrite !length_cat ; omega.
