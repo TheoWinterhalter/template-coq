@@ -586,13 +586,13 @@ Defined.
 
 (*! Congruences for conversion *)
 
-Ltac conv_rewrite h :=
+Ltac conv_rewrite_l h :=
   let h' := fresh "h" in
   match type of h with
   | _ |-i ?A = ?B =>
     lazymatch goal with
-    | |- ?Σ |-i ?ctx = _ =>
-      lazymatch ctx with
+    | |- ?Σ |-i ?lctx = ?rctx =>
+      lazymatch lctx with
       | context T [A] =>
         let T1 := context T[A] in
         let T2 := context T[B] in
@@ -611,11 +611,17 @@ Ltac conv_rewrite h :=
           ]
         | apply (conv_trans h') ; clear h'
         ]
-      | _ => fail "Lhs doesn't contain " A
+      | _ => fail "Equation doesn't contain " A
       end
     | _ => fail "conv rewrite cannot apply to this goal"
     end
   end.
+
+Ltac conv_rewrite h :=
+  (conv_rewrite_l h) + (apply conv_sym ; conv_rewrite_l h ; apply conv_sym).
+
+Ltac conv_rewrite_sym h :=
+  conv_rewrite (conv_sym h).
 
 (* Ltac conv_rewrites hl := *)
 (*   match hl with *)
@@ -641,6 +647,23 @@ Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
 Tactic Notation "conv" "rewrite" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
        "," hyp(h5) "," hyp(h6) "," hyp(h7) :=
   conv rewrite h1 ; conv rewrite h2, h3, h4, h5, h6, h7.
+
+Tactic Notation "conv" "rewrite" "<-" hyp(h) := conv_rewrite_sym h.
+Tactic Notation "conv" "rewrite" "<-" hyp(h1) "," hyp(h2) :=
+  conv rewrite <- h1 ; conv rewrite <- h2.
+Tactic Notation "conv" "rewrite" "<-" hyp(h1) "," hyp(h2) "," hyp(h3) :=
+  conv rewrite <- h1 ; conv rewrite <- h2, h3.
+Tactic Notation "conv" "rewrite" "<-" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4) :=
+  conv rewrite <- h1 ; conv rewrite <- h2, h3, h4.
+Tactic Notation "conv" "rewrite" "<-" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) :=
+  conv rewrite <- h1 ; conv rewrite <- h2, h3, h4, h5.
+Tactic Notation "conv" "rewrite" "<-" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) "," hyp(h6) :=
+  conv rewrite <- h1 ; conv rewrite <- h2, h3, h4, h5, h6.
+Tactic Notation "conv" "rewrite" "<-" hyp(h1) "," hyp(h2) "," hyp(h3) "," hyp(h4)
+       "," hyp(h5) "," hyp(h6) "," hyp(h7) :=
+  conv rewrite <- h1 ; conv rewrite <- h2, h3, h4, h5, h6, h7.
 
 Lemma cong_Heq :
   forall {Σ A a B b A' a' B' b'},
