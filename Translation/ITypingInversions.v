@@ -641,5 +641,6 @@ Ltac ttinv h :=
     | sConstruct _ _ =>
       destruct (inversionConstruct h) as (univs & decl & isdecl & hh) ;
       splits_one hh
+    | sCase _ _ _ _ => destruct (inversionCase h)
     end
   end.
