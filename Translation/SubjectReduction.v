@@ -141,83 +141,106 @@ Defined.
 
 End ctxconv.
 
-Theorem subj_red :
-  forall {Σ Γ t u T},
-    type_glob Σ ->
-    fst Σ |-i t ▷ u ->
-    Σ ;;; Γ |-i t : T ->
-    Σ ;;; Γ |-i u : T.
-Proof.
-  intros Σ Γ t u T hg hr ht. revert Γ T ht.
-  induction hr.
-  - intros Γ T ht.
-    destruct (istype_type hg ht).
-    ttinv ht. ttinv h3.
-    destruct (prod_inv h6).
-    eapply type_conv ; try eassumption.
-    eapply typing_subst ; try eassumption.
-    eapply type_conv ; try eassumption.
-    eapply type_ctxconv ; try eassumption.
-    + econstructor ; try eassumption.
-      eapply typing_wf. eassumption.
-    + constructor ; try assumption.
-      apply ctxconv_refl.
-  - intros Γ T ht.
-    destruct (istype_type hg ht).
-    ttinv ht. ttinv h3.
-    destruct (eq_conv_inv h8) as [[? ?] ?].
-    eapply type_conv ; try eassumption.
-    eapply conv_trans ; try eassumption.
-    apply cong_subst.
-    + apply conv_sym.
-      apply cong_Refl ; assumption.
-    + apply substs_conv. eapply conv_trans ; try eassumption.
-      apply conv_sym. assumption.
-  - intros Γ T' ht.
-    destruct (istype_type hg ht).
-    ttinv ht. ttinv h.
-    destruct (eq_conv_inv h6) as [[? ?] ?].
-    eapply type_conv ; try eassumption.
-    eapply conv_trans.
-    + eapply conv_sym. eassumption.
-    + eapply conv_trans ; [| eassumption ]. assumption.
-  - intros Γ T ht.
-    ttinv ht. destruct (istype_type hg ht).
-    specialize (IHhr _ _ ltac:(eassumption)).
-    pose proof (conv_red_l _ _ _ _ hr (conv_refl _ _)).
-    eapply type_conv ; try eassumption.
-    eapply type_conv.
-    + econstructor ; try eassumption.
-      * eapply type_ctxconv ; try eassumption.
-        -- econstructor ; try eassumption.
-           eapply typing_wf. eassumption.
-        -- constructor ; try assumption.
-           apply ctxconv_refl.
-      * eapply type_ctxconv ; try eassumption.
-        -- econstructor ; try eassumption.
-           eapply typing_wf. eassumption.
-        -- constructor ; try assumption.
-           apply ctxconv_refl.
-    + econstructor ; eassumption.
-    + eapply cong_Prod ;
-      try (apply conv_refl) ;
-      try assumption ;
-      try (apply conv_sym ; assumption).
-  - intros Γ T ht.
-    ttinv ht. destruct (istype_type hg ht).
-    specialize (IHhr _ _ ltac:(eassumption)).
-    pose proof (conv_red_l _ _ _ _ hr (conv_refl _ _)).
-    eapply type_conv ; try eassumption.
-    eapply type_conv.
-    + econstructor ; try eassumption.
-      econstructor ; eassumption.
-    + econstructor ; eassumption.
-    + (* conv rewrite H0. *)
-      eapply cong_Prod ;
-      try (apply conv_refl) ;
-      try assumption ;
-      try (apply conv_sym ; assumption).
-Admitted.
+Section subjred.
+
+  Ltac sr' hg hr IHhr :=
+    intros Γ ? ht ;
+    ttinv ht ; destruct (istype_type hg ht) ;
+    specialize (IHhr _ _ ltac:(eassumption)) ;
+    pose proof (conv_red_l _ _ _ _ hr (conv_refl _ _)) as heq ;
+    (eapply type_conv ; try eassumption) ;
+    eapply type_conv ; [
+      (econstructor ; try eassumption) ;
+      econstructor ; eassumption
+    | econstructor ; eassumption
+    | try conv rewrite heq ; apply conv_refl
+    ].
+
+  Ltac sr :=
+    lazymatch goal with
+    | [ hg : type_glob ?Σ,
+        hr : _ |-i _ ▷ _,
+        ih : forall _ _, _ ;;; _ |-i _ : _ -> _ ;;; _ |-i _ : _
+      |- _ ] => sr' hg hr ih
+    | _ => fail "Failed to collect assumptions"
+    end.
+
+  Theorem subj_red :
+    forall {Σ Γ t u T},
+      type_glob Σ ->
+      fst Σ |-i t ▷ u ->
+      Σ ;;; Γ |-i t : T ->
+      Σ ;;; Γ |-i u : T.
+  Proof.
+    intros Σ Γ t u T hg hr ht. revert Γ T ht.
+    induction hr.
+    all: try sr.
+    - intros Γ T ht.
+      destruct (istype_type hg ht).
+      ttinv ht. ttinv h3.
+      destruct (prod_inv h6).
+      eapply type_conv ; try eassumption.
+      eapply typing_subst ; try eassumption.
+      eapply type_conv ; try eassumption.
+      eapply type_ctxconv ; try eassumption.
+      + econstructor ; try eassumption.
+        eapply typing_wf. eassumption.
+      + constructor ; try assumption.
+        apply ctxconv_refl.
+    - intros Γ T ht.
+      destruct (istype_type hg ht).
+      ttinv ht. ttinv h3.
+      destruct (eq_conv_inv h8) as [[? ?] ?].
+      eapply type_conv ; try eassumption.
+      eapply conv_trans ; try eassumption.
+      apply cong_subst.
+      + apply conv_sym.
+        apply cong_Refl ; assumption.
+      + apply substs_conv. eapply conv_trans ; try eassumption.
+        apply conv_sym. assumption.
+    - intros Γ T' ht.
+      destruct (istype_type hg ht).
+      ttinv ht. ttinv h.
+      destruct (eq_conv_inv h6) as [[? ?] ?].
+      eapply type_conv ; try eassumption.
+      eapply conv_trans.
+      + eapply conv_sym. eassumption.
+      + eapply conv_trans ; [| eassumption ]. assumption.
+    - intros Γ T ht.
+      ttinv ht. destruct (istype_type hg ht).
+      specialize (IHhr _ _ ltac:(eassumption)).
+      pose proof (conv_red_l _ _ _ _ hr (conv_refl _ _)).
+      eapply type_conv ; try eassumption.
+      eapply type_conv.
+      + econstructor ; try eassumption.
+        * eapply type_ctxconv ; try eassumption.
+          -- econstructor ; try eassumption.
+             eapply typing_wf. eassumption.
+          -- constructor ; try assumption.
+             apply ctxconv_refl.
+        * eapply type_ctxconv ; try eassumption.
+          -- econstructor ; try eassumption.
+             eapply typing_wf. eassumption.
+          -- constructor ; try assumption.
+             apply ctxconv_refl.
+      + econstructor ; eassumption.
+      + eapply cong_Prod ;
+          try (apply conv_refl) ;
+          try assumption ;
+          try (apply conv_sym ; assumption).
+    - (* intros Γ ? ht. *)
+      (* ttinv ht. destruct (istype_type hg ht). *)
+      (* specialize (IHhr _ _ ltac:(eassumption)). *)
+      (* pose proof (conv_red_l _ _ _ _ hr (conv_refl _ _)) as heq. *)
+      (* eapply type_conv ; try eassumption. *)
+      (* eapply type_conv. *)
+      (* + econstructor ; try eassumption. *)
+      (*   econstructor ; eassumption. *)
+      (* + econstructor ; eassumption. *)
+      (* + try conv rewrite heq. apply conv_refl. *)
+  Admitted.
+
+End subjred.
 
 Theorem subj_conv :
   forall {Σ Γ t u T U},
