@@ -1083,6 +1083,17 @@ Proof.
     eapply substs_red1. assumption.
 Defined.
 
+Corollary cong_subst :
+  forall {Σ n u1 u2 t1 t2},
+    Σ |-i u1 = u2 ->
+    Σ |-i t1 = t2 ->
+    Σ |-i t1{ n := u1 } = t2{ n := u2 }.
+Proof.
+  intros Σ n u1 u2 t1 t2 hu ht.
+  eapply conv_trans.
+  - eapply substs_conv. eassumption.
+  - eapply subst_conv. assumption.
+Defined.
 
 (*! Inversion results about conversion *)
 
