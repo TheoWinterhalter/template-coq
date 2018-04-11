@@ -92,27 +92,10 @@ Proof.
   - cheat.
   - econstructor. assumption.
   - econstructor.
-    + eapply type_ctxconv.
-      * lift_sort. eapply typing_lift01 ; try eassumption.
-      * assumption.
-      * econstructor.
-        -- assumption.
-        -- ih.
-      * econstructor.
-        -- assumption.
-        -- apply conv_refl.
-    + eapply type_ctxconv.
-      * eapply typing_lift01 ; try eassumption.
-      * assumption.
-      * econstructor.
-        -- assumption.
-        -- ih.
-      * econstructor.
-        -- assumption.
-        -- apply conv_refl.
-    + refine (type_Rel _ _ _ _ _).
-      * econstructor ; try assumption. ih.
-      * cbn. omega.
+    + lift_sort. eapply typing_lift01 ; try eassumption ; ih.
+    + eapply typing_lift01 ; try eassumption ; ih.
+    + refine (type_Rel _ _ _ _ _) ; [| cbn ; omega ].
+      econstructor ; try eassumption. ih.
   - eapply type_HeqTrans with (B := B) ; ih.
   - econstructor ; try ih.
     eapply type_ctxconv.
