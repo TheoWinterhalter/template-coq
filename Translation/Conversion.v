@@ -316,9 +316,17 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
     red1 Σ (sEqToHeq p) (sEqToHeq p')
 
 (** HeqTypeEq *)
-| heqtypeeq_red p p' :
+| heqtypeeq_red_ty_l A B p A' :
+    red1 Σ A A' ->
+    red1 Σ (sHeqTypeEq A B p) (sHeqTypeEq A' B p)
+
+| heqtypeeq_red_ty_r A B p B' :
+    red1 Σ B B' ->
+    red1 Σ (sHeqTypeEq A B p) (sHeqTypeEq A B' p)
+
+| heqtypeeq_red_prf A B p p' :
     red1 Σ p p' ->
-    red1 Σ (sHeqTypeEq p) (sHeqTypeEq p')
+    red1 Σ (sHeqTypeEq A B p) (sHeqTypeEq A B p')
 
 (** Pack *)
 | pack_red_l A1 A2 A1' :

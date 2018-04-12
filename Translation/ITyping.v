@@ -198,7 +198,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : B ->
-    Σ ;;; Γ |-i sHeqTypeEq p : sEq (sSort s) A B
+    Σ ;;; Γ |-i sHeqTypeEq A B p : sEq (sSort s) A B
 
 | type_Pack Γ A1 A2 s :
     Σ ;;; Γ |-i A1 : sSort s ->

@@ -2614,7 +2614,7 @@ Proof.
       destruct happ as [qapp happ].
       (* Finally we translate the right App to put it in the left Prod *)
       rename e into eA.
-      pose (e := sHeqTypeEq (sHeqSym qapp)).
+      pose (e := sHeqTypeEq (B2' {0 := tu2}) (B1'{0 := u1'}) (sHeqSym qapp)).
       pose (tapp := sTransport (B2' {0 := tu2}) (B1'{0 := u1'}) e (sApp tt2 A2' B2' tu2)).
       (* We conclude *)
       exists (B1'{0 := u1'}), (B1'{0 := u1'}).

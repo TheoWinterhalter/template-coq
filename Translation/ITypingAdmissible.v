@@ -423,7 +423,7 @@ Lemma type_HeqTypeEq' :
     type_glob Σ ->
     Σ ;;; Γ |-i p : sHeq A u B v ->
     Σ ;;; Γ |-i A : sSort s ->
-    Σ ;;; Γ |-i sHeqTypeEq p : sEq (sSort s) A B.
+    Σ ;;; Γ |-i sHeqTypeEq A B p : sEq (sSort s) A B.
 Proof.
   intros Σ Γ A u B v p s hg hp hA.
   destruct (istype_type hg hp) as [? i]. ttinv i.

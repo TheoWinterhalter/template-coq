@@ -29,7 +29,7 @@ Inductive sterm : Type :=
 | sCongEq (pA pu pv : sterm)
 | sCongRefl (pA pu : sterm)
 | sEqToHeq (p : sterm)
-| sHeqTypeEq (p : sterm)
+| sHeqTypeEq (A B p : sterm)
 (* Packing *)
 | sPack (A1 A2 : sterm)
 | sProjT1 (p : sterm)

@@ -254,10 +254,12 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "EqToHeq" p p' T)
       | TypeError t => raise (TypingError t)
       end
-    | sHeqTypeEq p =>
+    | sHeqTypeEq A B p =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ Γ B ;;
       p' <- tsl_rec fuel Σ Γ p ;;
       match infer_hnf fuel Σ Γ p' with
-      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ A' ; u' ; B' ; v' ]) =>
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; u' ; _ ; v' ]) =>
         myret Σ Γ (mkHeqTypeEq A' u' B' v' p')
       | Checked T => raise (UnexpectedTranslation "HeqTypeEq" p p' T)
       | TypeError t => raise (TypingError t)

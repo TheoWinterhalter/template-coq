@@ -117,11 +117,12 @@ Proof.
     pose proof (eq_conv_inv IHu). split_hyps.
     eapply conv_trans ; [| exact h8 ].
     apply cong_Heq ; assumption.
-  - specialize (IHu _ _ _ h0 h8).
-    pose proof (heq_conv_inv IHu). split_hyps.
+  - specialize (IHu1 _ _ _ h7 h13).
+    specialize (IHu3 _ _ _ h0 h8).
+    apply conv_sym in IHu1. pose proof (sort_conv_inv IHu1). subst.
+    pose proof (heq_conv_inv IHu3). split_hyps.
     eapply conv_trans ; [| exact h9 ].
-    apply cong_Eq ; try assumption.
-    (* apply conv_refl. *) admit.
+    apply cong_Eq ; assumption.
   - specialize (IHu1 _ _ _ h h0).
     eapply conv_trans ; [| exact h6 ].
     assumption.

@@ -178,7 +178,7 @@ Lemma sterm_rect_list :
        P (sCongEq pA pu pv)) ->
     (forall pA : sterm, P pA -> forall pu : sterm, P pu -> P (sCongRefl pA pu)) ->
     (forall p : sterm, P p -> P (sEqToHeq p)) ->
-    (forall p : sterm, P p -> P (sHeqTypeEq p)) ->
+    (forall A, P A -> forall B, P B -> forall p : sterm, P p -> P (sHeqTypeEq A B p)) ->
     (forall A1 : sterm, P A1 -> forall A2 : sterm, P A2 -> P (sPack A1 A2)) ->
     (forall p : sterm, P p -> P (sProjT1 p)) ->
     (forall p : sterm, P p -> P (sProjT2 p)) ->

@@ -477,9 +477,9 @@ Proof.
 Defined.
 
 Lemma inversionHeqTypeEq :
-  forall {Σ Γ p T},
-    Σ ;;; Γ |-i sHeqTypeEq p : T ->
-    exists A u B v s,
+  forall {Σ Γ A B p T},
+    Σ ;;; Γ |-i sHeqTypeEq A B p : T ->
+    exists u v s,
       (Σ ;;; Γ |-i p : sHeq A u B v) *
       (Σ ;;; Γ |-i A : sSort s) *
       (Σ ;;; Γ |-i B : sSort s) *
@@ -487,11 +487,11 @@ Lemma inversionHeqTypeEq :
       (Σ ;;; Γ |-i v : B) *
       (Σ |-i sEq (sSort s) A B = T).
 Proof.
-  intros Σ Γ p T h.
+  intros Σ Γ A B p T h.
   dependent induction h.
-  - exists A, u, B, v, s. repeat split. all: try assumption. apply conv_refl.
-  - destruct IHh1 as (A' & u & B' & v & s' & ?). split_hyps.
-    exists A', u, B', v, s'. repeat split. all: try assumption.
+  - exists u, v, s. repeat split. all: try assumption. apply conv_refl.
+  - destruct IHh1 as (u &  v & s' & ?). split_hyps.
+    exists u, v, s'. repeat split. all: try assumption.
     eapply conv_trans ; eassumption.
 Defined.
 
@@ -626,8 +626,8 @@ Ltac ttinv h :=
     | sEqToHeq _ =>
       destruct (inversionEqToHeq h) as (A & u & v & s & hh) ;
       splits_one hh
-    | sHeqTypeEq _ =>
-      destruct (inversionHeqTypeEq h) as (A & u & B & v & s & hh) ;
+    | sHeqTypeEq _ _ _ =>
+      destruct (inversionHeqTypeEq h) as (u & v & s & hh) ;
       splits_one hh
     | sPack _ _ => destruct (inversionPack h) as (s & hh) ; splits_one hh
     | sProjT1 _ =>

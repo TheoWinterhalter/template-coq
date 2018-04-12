@@ -60,8 +60,8 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq pA pA' && sterm_eq pu pu'
   | sEqToHeq p, sEqToHeq p' =>
       sterm_eq p p'
-  | sHeqTypeEq p, sHeqTypeEq p' =>
-      sterm_eq p p'
+  | sHeqTypeEq A B p, sHeqTypeEq A' B' p' =>
+      sterm_eq A A' && sterm_eq B B' && sterm_eq p p'
   | sPack A1 A2, sPack A1' A2' =>
       sterm_eq A1 A1' && sterm_eq A2 A2'
   | sProjT1 p, sProjT1 p' =>
@@ -234,14 +234,16 @@ Fixpoint reduce (t : sterm) : sterm :=
     | sRefl A' x' => sHeqRefl A' x'
     | _ => sEqToHeq p'
     end
-  | sHeqTypeEq p =>
+  | sHeqTypeEq A B p =>
+    let A' := reduce A in
+    let B' := reduce B in
     let p' := reduce p in
     (* Not enough annotation. *)
     (* match p' with *)
     (* | sHeqRefl A' x' => sHeqRefl A' x' *)
     (* | _ => sHeqTypeEq p' *)
     (* end *)
-    sHeqTypeEq p'
+    sHeqTypeEq A' B' p'
   | sPack A1 A2 =>
     let A1' := reduce A1 in
     let A2' := reduce A2 in
