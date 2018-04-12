@@ -337,6 +337,20 @@ Make Definition coq_red_vecb :=
     It gets translated to itself.
 *)
 
+Lemma zeroty : Σi;;; [] |-x sZero : sNat.
+Proof.
+  eapply xmeta_conv ; [
+    unshelve (eapply type_Construct) ; [
+      shelve
+    | shelve
+    | tdecl
+    | idtac
+    ]
+  | cbn ; reflexivity
+  ].
+  constructor.
+Defined.
+
 Lemma vecbzty :
   Σi ;;; [] |-x sApp (sApp sVec (sSort 0) vec_cod sBool)
                sNat (sSort 0)
@@ -350,21 +364,15 @@ Proof.
     + constructor.
     + apply natty.
   - apply vecbty.
-  - unfold sZero. unfold sNat.
-    eapply xmeta_conv.
-    + eapply type_Construct. constructor.
-    + Unshelve.
-      (* repeat econstructor; *)
-      (* try (simpl; omega); assert(H':=type_Construct Σi [] iNat 0 _ _ _ _ _); simpl in H'; *)
-      (* clear H; apply H'; try trivial. *)
-      all:admit.
-Admitted.
+  - apply zeroty.
+Defined.
 
 Definition itt_vecbz : sterm.
-  destruct (type_translation vecbzty istrans_nil) as [A [t [_ h]]].
+  destruct (type_translation vecbzty istrans_nil) as [_ [t [_ _]]].
   exact t.
 Defined.
 
+(* Unfortunately, there is still somthing wrong with that one... *)
 (* Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t). *)
 
 (* Definition tc_vecb : tsl_result term := *)
