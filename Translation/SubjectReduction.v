@@ -24,7 +24,17 @@ Proof.
   - constructor.
     + assumption.
     + apply conv_refl.
-Defined.
+Qed.
+
+Fact ctxconv_length :
+  forall {Σ Γ Δ},
+    ctxconv Σ Γ Δ ->
+    #|Γ| = #|Δ|.
+Proof.
+  intros Σ Γ Δ h. induction h.
+  - reflexivity.
+  - cbn. f_equal. assumption.
+Qed.
 
 Axiom cheating : forall {A}, A.
 Tactic Notation "cheat" := apply cheating.
@@ -92,7 +102,7 @@ Section subjred.
     - destruct n.
       + cbn. assumption.
       + cbn. apply IHh.
-  Defined.
+  Qed.
 
   Fixpoint type_ctxconv {Σ Γ Δ t A} (ht : Σ ;;; Γ |-i t : A) {struct ht} :
     type_glob Σ ->
@@ -158,7 +168,9 @@ Section subjred.
       + ih.
       + ih.
       + assumption.
-  Defined.
+
+        Unshelve. exact 0. rewrite <- ctxconv_length by eassumption. assumption.
+  Qed.
 
   Ltac sr' hg hr IHhr :=
     intros Γ ? ht ;

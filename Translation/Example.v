@@ -293,8 +293,6 @@ Definition itt_vecb : sterm.
   exact t.
 Defined.
 
-(* For some reason we have efficiency issues again. *)
-
 Definition itt_vecb' := ltac:(let t := eval lazy in itt_vecb in exact t).
 
 Definition tc_vecb : tsl_result term :=
