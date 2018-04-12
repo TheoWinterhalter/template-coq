@@ -81,6 +81,19 @@ Section subjred.
     | _ => fail "Cannot find type_ctxconv"
     end.
 
+  Fact safe_nth_conv :
+    forall {Σ Γ Δ},
+      ctxconv Σ Γ Δ ->
+      forall n is1 is2,
+        Σ |-i safe_nth Γ (exist _ n is1) = safe_nth Δ (exist _ n is2).
+  Proof.
+    intros Σ Γ Δ h. induction h ; intros n is1 is2.
+    - cbn. bang.
+    - destruct n.
+      + cbn. assumption.
+      + cbn. apply IHh.
+  Defined.
+
   Fixpoint type_ctxconv {Σ Γ Δ t A} (ht : Σ ;;; Γ |-i t : A) {struct ht} :
     type_glob Σ ->
     wf Σ Δ ->
@@ -89,7 +102,15 @@ Section subjred.
   Proof.
     intros hg hw hc. destruct ht.
     all: try (econstructor ; ih).
-    - cheat.
+    - eapply type_conv.
+      + econstructor. assumption.
+      + (* I have no idea how to deal with this.
+           Basically I need to be able to convert context for the types in the
+           context.
+           Maybe if I add an extra assumption stating this.
+         *)
+        cheat.
+      + apply lift_conv. apply conv_sym. apply safe_nth_conv. assumption.
     - econstructor. assumption.
     - econstructor.
       + lift_sort. eapply typing_lift01 ; try eassumption ; ih.
@@ -245,11 +266,14 @@ Section subjred.
       eapply type_conv.
       + econstructor ; try eassumption ;
         econstructor ; try eassumption.
-      (* + first [ *)
-      (*     econstructor ; eassumption *)
-      (*   | try lift_sort ; eapply typing_subst ; eassumption *)
-      (*   ]. *)
-      (* + try conv rewrite heq. apply conv_refl. *)
+        * econstructor ; eassumption.
+        * conv rewrite heq. apply conv_refl.
+      + first [
+          econstructor ; eassumption
+        | try lift_sort ; eapply typing_subst ; eassumption
+        ].
+      + eapply subst_conv. apply conv_sym. assumption.
+    -
   Admitted.
 
 End subjred.
