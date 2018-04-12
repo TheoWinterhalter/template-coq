@@ -13,8 +13,9 @@ Conversion.v
 XTyping.v
 ITyping.v
 ITypingInversions.v
-Uniqueness.v
 ITypingLemmata.v
+ContextConversion.v
+Uniqueness.v
 SubjectReduction.v
 ITypingAdmissible.v
 PackLifts.v

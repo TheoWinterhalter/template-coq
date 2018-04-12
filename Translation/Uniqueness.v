@@ -5,7 +5,7 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
 Require Import util SAst SLiftSubst Equality SCommon Conversion ITyping
-               ITypingInversions.
+               ITypingInversions ITypingLemmata ContextConversion.
 
 Ltac unitac h1 h2 :=
   ttinv h1 ; ttinv h2 ;
@@ -16,11 +16,12 @@ Ltac unitac h1 h2 :=
 
 Lemma uniqueness :
   forall {Σ Γ A B u},
+    type_glob Σ ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i u : B ->
     Σ |-i A = B.
 Proof.
-  intros Σ Γ A B u h1 h2.
+  intros Σ Γ A B u hg h1 h2.
   revert Γ A B h1 h2.
   induction u ; intros Γ A B h1 h2.
   all: try unitac h1 h2. all: try assumption.
@@ -61,12 +62,22 @@ Proof.
   - specialize (IHu3 _ _ _ h h0).
     pose proof (heq_conv_inv IHu3) as e3. split_hyps.
     pose proof (sort_conv_inv pi1_). subst.
+    assert (hh : Σ ;;; Γ,, A1 |-i u1 : sSort z0).
+    { eapply type_ctxconv ; try eassumption.
+      - econstructor ; try eassumption.
+        eapply typing_wf. eassumption.
+      - constructor.
+        + apply ctxconv_refl.
+        + apply conv_sym. assumption.
+    }
+    specialize (IHu1 _ _ _ h5 hh).
+    pose proof (sort_conv_inv IHu1). subst.
     eapply conv_trans ; [| exact h10 ].
     apply cong_Heq.
-    + (* apply conv_refl. *) admit.
+    + apply conv_refl.
     + apply cong_Prod ; try assumption.
       apply conv_refl.
-    + (* apply conv_refl. *) admit.
+    + apply conv_refl.
     + apply cong_Prod ; try assumption. apply conv_refl.
   - specialize (IHu5 _ _ _ h0 h12).
     pose proof (heq_conv_inv IHu5) as e5. split_hyps.
@@ -149,6 +160,6 @@ Proof.
     rewrite hn1 in hn2. inversion hn2. subst.
     apply conv_refl.
   - eapply conv_trans ; [| exact h0 ].
-    erewrite stype_of_constructor_eq. apply conv_refl.
-  - pose proof (inversionCase h1). easy.
-Admitted.
+    erewrite SCommon.stype_of_constructor_eq. apply conv_refl.
+  - ttinv h1.
+Defined.

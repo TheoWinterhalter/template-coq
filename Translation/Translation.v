@@ -255,7 +255,7 @@ Proof.
             by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
           eapply type_rlift0 ; eassumption.
         }
-        pose proof (uniqueness h1' h2').
+        pose proof (uniqueness hg h1' h2').
         destruct (istype_type hg h1').
         destruct (istype_type hg h2').
         eapply type_conv.
@@ -706,7 +706,7 @@ Proof.
       { change (sInd ind) with (rlift0 #|Γm| (sInd ind)).
         eapply type_rlift0 ; eassumption.
       }
-      pose proof (uniqueness h1' h2').
+      pose proof (uniqueness hg h1' h2').
       destruct (istype_type hg h1).
       destruct (istype_type hg h2).
       eapply type_conv.
@@ -754,7 +754,7 @@ Proof.
       { change (sConstruct ind i) with (rlift0 #|Γm| (sConstruct ind i)).
         eapply type_rlift0 ; eassumption.
       }
-      pose proof (uniqueness h1' h2').
+      pose proof (uniqueness hg h1' h2').
       destruct (istype_type hg h1).
       destruct (istype_type hg h2).
       eapply type_conv.
@@ -1051,7 +1051,7 @@ Proof.
     destruct (IHtseq Γ' A' T1 hg hh h4) as [s' [hAs hT1s]].
     exists s'. split.
     + assumption.
-    + pose proof (uniqueness h3 hT1s) as hs.
+    + pose proof (uniqueness hg h3 hT1s) as hs.
       apply conv_sym in hs. pose proof (sort_conv_inv hs) as es. rewrite es in *. clear hs.
       destruct (istype_type hg ht).
       eapply type_conv ; try eassumption.

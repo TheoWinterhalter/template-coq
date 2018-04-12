@@ -112,7 +112,7 @@ Proof.
   eapply type_conv.
   - eassumption.
   - eapply type_Sort. eapply typing_wf ; eassumption.
-  - apply (uniqueness h0 h6).
+  - apply (uniqueness hg h0 h6).
 Defined.
 
 Lemma type_HeqTransport' :
@@ -428,7 +428,7 @@ Proof.
   intros Σ Γ A u B v p s hg hp hA.
   destruct (istype_type hg hp) as [? i]. ttinv i.
   eapply type_HeqTypeEq ; try eassumption.
-  pose proof (uniqueness h hA).
+  pose proof (uniqueness hg h hA).
   eapply type_conv ; try eassumption.
   eapply type_Sort. eapply typing_wf. eassumption.
 Defined.
