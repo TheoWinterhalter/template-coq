@@ -169,6 +169,9 @@ Ltac disc uu e :=
   | _ => destruct uu ; cbn in e ; try discriminate e ; inversion e ; clear e
   end.
 
+Ltac go :=
+  econstructor ; try resolve2 ; try eassumption.
+
 Lemma nl_type :
   forall {Σ Γ t u T},
     type_glob Σ ->
@@ -232,7 +235,28 @@ Proof.
         -- resolve2.
         -- resolve2.
         -- apply conv_eq. assumption.
-      * admit.
+      * eapply type_ctxconv ; try eassumption.
+        -- eapply IHht4. assumption.
+        -- econstructor.
+           ++ econstructor.
+              ** eapply typing_wf. eassumption.
+              ** resolve2.
+           ++ econstructor.
+              ** lift_sort. eapply typing_lift01 ; try eassumption ; resolve2.
+              ** eapply typing_lift01 ; try eassumption ; try resolve2.
+                 eapply type_conv ; try resolve2.
+                 apply conv_eq. assumption.
+              ** eapply type_conv.
+                 --- econstructor. econstructor ; try resolve2.
+                     eapply typing_wf. eassumption.
+                 --- lift_sort.
+                     eapply typing_lift01 ; try eassumption ; resolve2.
+                 --- apply lift_conv. cbn. apply conv_refl.
+        -- repeat constructor.
+           ++ apply ctxconv_refl.
+           ++ assumption.
+           ++ cbn. f_equal ; try assumption.
+              all: apply nl_lift ; assumption.
       * eapply type_conv.
         -- resolve2.
         -- econstructor ; try resolve2.
@@ -241,7 +265,32 @@ Proof.
            ++ eapply type_conv ; try resolve2.
               apply conv_eq. assumption.
         -- apply conv_eq. cbn. f_equal ; assumption.
-      * admit.
+      * eapply type_conv ; try resolve2.
+        -- match goal with
+           | |- _ ;;; _ |-i _ : ?S =>
+             change S with (S{1 := uu2}{0 := sRefl uu1 uu2})
+           end.
+           eapply typing_subst2 ; try eassumption ; try resolve2.
+           ++ eapply IHht4. assumption.
+           ++ eapply type_conv ; try resolve2.
+              ** econstructor ; try resolve2.
+                 eapply type_conv ; try resolve2.
+                 apply conv_eq. assumption.
+              ** lift_sort.
+                 eapply typing_subst ; try eassumption ; try resolve2.
+                 econstructor.
+                 --- lift_sort. eapply typing_lift01 ; eassumption.
+                 --- eapply typing_lift01 ; eassumption.
+                 --- refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                     econstructor ; try eassumption.
+                     eapply typing_wf. eassumption.
+              ** cbn. rewrite !lift_subst, lift00.
+                 apply conv_eq. cbn. symmetry. f_equal ; assumption.
+        -- apply cong_subst.
+           ++ apply conv_eq. cbn. f_equal ; assumption.
+           ++ apply cong_subst.
+              ** apply conv_eq. assumption.
+              ** apply conv_eq. assumption.
     + match goal with
       | |- _ ;;; _ |-i _ : ?S =>
         change S with (S{1 := v}{0 := p})
@@ -253,7 +302,139 @@ Proof.
       * apply cong_subst.
         -- apply conv_eq. symmetry. assumption.
         -- apply conv_eq. symmetry. assumption.
-  -
+  - econstructor ; try resolve2.
+    + econstructor ; try resolve2.
+      * econstructor ; try resolve2.
+        -- econstructor ; try resolve2.
+           econstructor. eapply typing_wf. eassumption.
+        -- apply conv_eq. cbn. f_equal ; assumption.
+      * econstructor ; try resolve2.
+        apply conv_eq. assumption.
+    + eassumption.
+    + apply conv_eq. symmetry. assumption.
+  - econstructor ; try resolve2.
+    + econstructor ; try resolve2.
+      apply conv_eq. assumption.
+    + econstructor ; try resolve2.
+      apply conv_eq. assumption.
+  - econstructor ; try resolve2 ; eassumption.
+  - go.
+    + go. go. apply conv_eq. assumption.
+    + go.
+    + apply conv_eq. cbn. symmetry. f_equal ; assumption.
+  - go.
+  - go.
+  - go.
+    + go.
+    + go. go.
+    + go. cbn. symmetry. f_equal ; try assumption.
+      f_equal ; assumption.
+  - go.
+    + go. go.
+      * go.
+        -- go. econstructor.
+           ++ eapply typing_wf. eassumption.
+           ++ go.
+        -- go. econstructor.
+           ++ eapply typing_wf. eassumption.
+           ++ go.
+        -- lift_sort. eapply typing_subst ; try eassumption.
+           ++ lift_sort.
+              eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A1 ]) ;
+                try eassumption.
+              ** go.
+                 --- go. eapply typing_wf. eassumption.
+                 --- apply conv_refl.
+              ** eapply typing_wf. eassumption.
+           ++ cbn. eapply type_ProjT1 with (A2 := lift0 1 A2).
+              ** lift_sort. eapply typing_lift01 ; try eassumption.
+                 go.
+              ** lift_sort. eapply typing_lift01 ; try eassumption.
+                 go.
+              ** refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                 eapply typing_wf. eassumption.
+        -- lift_sort. eapply typing_subst ; try eassumption.
+           ++ lift_sort.
+              eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A2 ]) ;
+                try eassumption.
+              ** go.
+                 --- go. eapply typing_wf. eassumption.
+                 --- apply conv_refl.
+              ** eapply typing_wf. eassumption.
+           ++ cbn. eapply type_ProjT2 with (A1 := lift0 1 A1).
+              ** lift_sort. eapply typing_lift01 ; try eassumption.
+                 go.
+              ** lift_sort. eapply typing_lift01 ; try eassumption.
+                 go.
+              ** refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                 eapply typing_wf. eassumption.
+      * go. cbn. f_equal.
+        -- apply nl_subst.
+           ++ apply nl_lift. assumption.
+           ++ reflexivity.
+        -- apply nl_subst.
+           ++ apply nl_lift. assumption.
+           ++ reflexivity.
+    + go.
+      * go. eapply typing_wf. eassumption.
+      * go. eapply typing_wf. eassumption.
+      * go.
+      * go.
+    + go. cbn. symmetry. f_equal ; f_equal ; assumption.
+  - go.
+    + go.
+      * go.
+        -- go.
+           ++ go. eapply typing_wf. eassumption.
+           ++ go. eapply typing_wf. eassumption.
+           ++ lift_sort. admit.
+           ++ lift_sort. admit.
+        -- go. cbn. f_equal.
+           ++ apply nl_subst.
+              ** apply nl_lift. assumption.
+              ** reflexivity.
+           ++ apply nl_subst.
+              ** apply nl_lift. assumption.
+              ** reflexivity.
+      * go.
+        -- go.
+           ++ admit.
+           ++ admit.
+           ++ admit.
+           ++ admit.
+        -- admit.
+      * go. go.
+      * go. go.
+    + go.
+      * go.
+      * go.
+      * go.
+      * go.
+    + go. cbn. symmetry. f_equal.
+      * f_equal ; assumption.
+      * f_equal ; assumption.
+      * f_equal ; assumption.
+      * f_equal ; assumption.
+  - admit.
+  - go.
+  - go.
+  - go.
+  - admit.
+  - go.
+  - go.
+  - go.
+    + go.
+    + go.
+      * go.
+      * eapply type_ProjT2 with (A1 := A1) ; eassumption.
+    + go. symmetry. cbn. f_equal ; try assumption.
+      * f_equal. assumption.
+      * f_equal. assumption.
+  - go. admit.
+  - admit.
+  - go.
+  Unshelve. all: auto.
+  cbn. omega.
 Admitted.
 
 End nltype.
