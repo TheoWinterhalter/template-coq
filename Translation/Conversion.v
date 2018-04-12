@@ -430,8 +430,8 @@ Section nlred.
   Lemma nl_red1 :
     forall {Σ t t' u},
       Σ |-i t ▷ u ->
-         nleq t t' ->
-         exists u', (Σ |-i t' ▷ u') /\ (nleq u u').
+      nleq t t' ->
+      exists u', (Σ |-i t' ▷ u') /\ (nleq u u').
   Proof.
     intros Σ t t' u h. revert u h t'.
     induction t using sterm_rect_list.

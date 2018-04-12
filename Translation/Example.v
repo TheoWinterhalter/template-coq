@@ -370,6 +370,8 @@ Definition itt_vecbz : sterm.
   exact t.
 Defined.
 
+Print Assumptions itt_vecbz.
+
 (* Unfortunately, there is still somthing wrong with that one... *)
 (* Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t). *)
 

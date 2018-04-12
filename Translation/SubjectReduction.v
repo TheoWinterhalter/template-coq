@@ -127,6 +127,137 @@ Section subjred.
 
 End subjred.
 
+Section nltype.
+
+Ltac resolve :=
+  match goal with
+  | ih : forall u, nl ?t = nl u -> _ ;;; _ |-i u : ?T |- _ ;;; _ |-i ?v : ?T =>
+    eapply ih ; eassumption
+  end.
+
+Ltac eresolve :=
+  match goal with
+  | ih : forall u, nl ?t = nl u -> _ ;;; _ |-i u : _, e : nl ?t = nl ?v
+    |- _ ;;; _ |-i ?v : _ =>
+    eapply ih ; eassumption
+  end.
+
+Ltac resolve2 :=
+  match goal with
+  | ih : forall u, nl ?t = nl u -> _ ;;; ?Γ |-i u : _, e : nl ?t = nl ?v
+    |- _ ;;; ?Γ |-i ?v : _ =>
+    eapply ih ; eassumption
+  | ih : forall u, nl ?t = nl u -> _ ;;; ?Γ,, ?A |-i u : _, e : nl ?t = nl ?v
+    |- _ ;;; ?Γ,, ?B |-i ?v : _ =>
+    eapply type_ctxconv ; [
+      eapply ih ; eassumption
+    | assumption
+    | econstructor ; [
+        eapply typing_wf ; eassumption
+      | eresolve
+      ]
+    | constructor ; [
+        apply ctxconv_refl
+      | apply conv_eq ; assumption
+      ]
+    ]
+  end.
+
+Ltac disc uu e :=
+  match goal with
+  | h : _ |-i _ = _ |- _ => idtac
+  | _ => destruct uu ; cbn in e ; try discriminate e ; inversion e ; clear e
+  end.
+
+Lemma nl_type :
+  forall {Σ Γ t u T},
+    type_glob Σ ->
+    Σ ;;; Γ |-i t : T ->
+    nl t = nl u ->
+    Σ ;;; Γ |-i u : T.
+Proof.
+  intros Σ Γ t u T hg ht e. revert u e.
+  induction ht ; intros uu e.
+  all: disc uu e.
+  all: try (econstructor ; eresolve).
+  all: try (econstructor ; resolve2).
+  - subst. econstructor. assumption.
+  - subst. econstructor. assumption.
+  - eapply type_conv.
+    + econstructor ; try resolve2.
+      eapply type_conv.
+      * resolve2.
+      * resolve2.
+      * apply conv_eq. assumption.
+    + econstructor ; eassumption.
+    + apply conv_eq. symmetry. cbn. f_equal ; assumption.
+  - eapply type_conv.
+    + econstructor ; try resolve2.
+      * eapply type_conv.
+        -- resolve2.
+        -- econstructor ; resolve2.
+        -- apply conv_eq. cbn. f_equal ; assumption.
+      * eapply type_conv.
+        -- resolve2.
+        -- resolve2.
+        -- apply conv_eq. assumption.
+    + lift_sort. eapply typing_subst ; eassumption.
+    + apply cong_subst.
+      * apply conv_eq. symmetry. assumption.
+      * apply conv_eq. symmetry. assumption.
+  - econstructor ; try resolve2.
+    + eapply type_conv.
+      * resolve2.
+      * resolve2.
+      * apply conv_eq. assumption.
+    + eapply type_conv.
+      * resolve2.
+      * resolve2.
+      * apply conv_eq. assumption.
+  - eapply type_conv.
+    + econstructor ; try resolve2.
+      eapply type_conv.
+      * resolve2.
+      * resolve2.
+      * apply conv_eq. assumption.
+    + econstructor ; eassumption.
+    + apply conv_eq. symmetry. cbn. f_equal ; assumption.
+  - eapply type_conv.
+    + econstructor ; try resolve2.
+      eapply type_conv.
+      * resolve2.
+      * resolve2.
+      * apply conv_eq. assumption.
+      * eapply type_conv.
+        -- resolve2.
+        -- resolve2.
+        -- apply conv_eq. assumption.
+      * admit.
+      * eapply type_conv.
+        -- resolve2.
+        -- econstructor ; try resolve2.
+           ++ eapply type_conv ; try resolve2.
+              apply conv_eq. assumption.
+           ++ eapply type_conv ; try resolve2.
+              apply conv_eq. assumption.
+        -- apply conv_eq. cbn. f_equal ; assumption.
+      * admit.
+    + match goal with
+      | |- _ ;;; _ |-i _ : ?S =>
+        change S with (S{1 := v}{0 := p})
+      end.
+      eapply typing_subst2 ; try eassumption.
+      cbn. rewrite !lift_subst, lift00. assumption.
+    + apply cong_subst.
+      * apply conv_eq. symmetry. assumption.
+      * apply cong_subst.
+        -- apply conv_eq. symmetry. assumption.
+        -- apply conv_eq. symmetry. assumption.
+  -
+Admitted.
+
+End nltype.
+
 Theorem subj_conv :
   forall {Σ Γ t u T U},
     type_glob Σ ->
@@ -137,12 +268,13 @@ Theorem subj_conv :
 Proof.
   intros Σ Γ t u T U hg hr ht hu. revert Γ T U ht hu.
   induction hr ; intros Γ T U ht hu.
-  - (* Need yet another result here about nl... *)
-    admit.
+  - eapply uniqueness ; try eassumption.
+    eapply nl_type ; try eassumption.
+    symmetry. assumption.
   - eapply IHhr.
     + eapply subj_red ; eassumption.
     + assumption.
   - eapply IHhr.
     + eassumption.
     + eapply subj_red ; eassumption.
-Admitted.
+Qed.
