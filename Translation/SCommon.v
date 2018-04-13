@@ -1,4 +1,4 @@
-From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
+From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation Require Import util SAst SInduction SLiftSubst.
@@ -245,13 +245,13 @@ Next Obligation.
   destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''.
   noconf H''.
-Qed.
+Defined.
 Next Obligation.
   subst decl.
   destruct H as [d [H H']].
   destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''. discriminate.
-Qed.
+Defined.
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},

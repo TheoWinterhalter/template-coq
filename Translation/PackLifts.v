@@ -1,6 +1,7 @@
 (* Lifts for packing *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
+From Coq Require Import Bool String List BinPos Compare_dec Omega.
+From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
 Require Import util SAst SInduction SLiftSubst Equality SCommon XTyping
@@ -1245,8 +1246,8 @@ Proof.
             rewrite lift_llift3 by omega. reflexivity.
         + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
           rewrite <- llift_subst.
-          change (sRefl (llift #|Γm| #|Δ| A) (llift #|Γm| #|Δ| u))
-            with (llift #|Γm| #|Δ| (sRefl A u)).
+          change (sRefl (llift #|Γm| #|Δ| A0) (llift #|Γm| #|Δ| u))
+            with (llift #|Γm| #|Δ| (sRefl A0 u)).
           replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
           rewrite <- llift_subst. f_equal. omega.
       - cbn. eapply type_Transport ; emh.
@@ -1373,8 +1374,8 @@ Proof.
             rewrite lift_rlift3 by omega. reflexivity.
         + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
           rewrite <- rlift_subst.
-          change (sRefl (rlift #|Γm| #|Δ| A) (rlift #|Γm| #|Δ| u))
-            with (rlift #|Γm| #|Δ| (sRefl A u)).
+          change (sRefl (rlift #|Γm| #|Δ| A0) (rlift #|Γm| #|Δ| u))
+            with (rlift #|Γm| #|Δ| (sRefl A0 u)).
           replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
           rewrite <- rlift_subst. f_equal. omega.
       - cbn. eapply type_Transport ; emh.
@@ -1445,54 +1446,27 @@ Proof.
     }
 
   (* wf_llift' *)
-  - { dependent destruction h.
-      - destruct Δ.
-        + cbn. rewrite cat_nil in x. destruct (nil_eq_cat x) as [e e1].
-          subst. intros hg hm.
-          dependent destruction hm. constructor.
-        + cbn in x. inversion x.
-      - destruct Δ.
-        + cbn. rewrite cat_nil in x.
-          intros hg hm. eapply wf_mix ; [| eassumption ].
-          destruct Γ1.
-          * rewrite cat_nil in x. subst. econstructor ; eassumption.
-          * cbn in x. inversion x. subst.
-            eapply inversion_wf_cat. eassumption.
-        + cbn. cbn in x. inversion x. subst.
-          intros hg hm. econstructor.
-          * eapply wf_llift' ; eassumption.
-          * eapply type_llift' with (A := sSort s) ; eassumption.
-
-      (* BELOW is how it should have looked! *)
-      (* destruct Δ. *)
-      (* - cbn. rewrite cat_nil in h. *)
-      (*   intros hg hm. eapply wf_mix. *)
-      (*   + eapply inversion_wf_cat. eassumption. *)
-      (*   + eassumption. *)
-      (* - cbn. intros hg hm. dependent destruction h. *)
-      (*   econstructor. *)
-      (*   + eapply wf_llift' ; eassumption. *)
-      (*   + eapply type_llift' with (A := sSort s0) ; eassumption. *)
+  - { destruct Δ.
+      - cbn. rewrite cat_nil in h.
+        intros hg hm. eapply wf_mix.
+        + eapply inversion_wf_cat. eassumption.
+        + eassumption.
+      - cbn. intros hg hm. dependent destruction h.
+        econstructor.
+        + eapply wf_llift' ; eassumption.
+        + eapply type_llift' with (A := sSort s0) ; eassumption.
     }
 
   (* wf_rlift' *)
-  - { dependent destruction h.
-      - destruct Δ.
-        + cbn. rewrite cat_nil in x. destruct (nil_eq_cat x) as [e e1].
-          subst. intros hg hm.
-          dependent destruction hm. constructor.
-        + cbn in x. inversion x.
-      - destruct Δ.
-        + cbn. rewrite cat_nil in x.
-          intros hg hm. eapply wf_mix ; [| eassumption ].
-          destruct Γ2.
-          * rewrite cat_nil in x. subst. econstructor ; eassumption.
-          * cbn in x. inversion x. subst.
-            eapply inversion_wf_cat. eassumption.
-        + cbn. cbn in x. inversion x. subst.
-          intros hg hm. econstructor.
-          * eapply wf_rlift' ; eassumption.
-          * eapply type_rlift' with (A := sSort s) ; eassumption.
+  - { destruct Δ.
+      - cbn. rewrite cat_nil in h.
+        intros hg hm. eapply wf_mix.
+        + eapply inversion_wf_cat. eassumption.
+        + eassumption.
+      - cbn. intros hg hm. dependent destruction h.
+        econstructor.
+        + eapply wf_rlift' ; eassumption.
+        + eapply type_rlift' with (A := sSort s0) ; eassumption.
     }
 
   Unshelve.
