@@ -34,6 +34,32 @@ Section subjred.
     | _ => fail "Failed to collect assumptions"
     end.
 
+  Ltac canvas' hg hr IHhr :=
+    intros Γ ? ht ;
+    ttinv ht ; destruct (istype_type hg ht) ;
+    try specialize (IHhr _ _ ltac:(eassumption)) ;
+    pose proof (conv_red_l _ _ _ _ hr (conv_refl _ _)) as heq ;
+    (eapply type_conv ; try eassumption) ;
+    eapply type_conv ; [
+      try ((econstructor ; try eassumption) ;
+      econstructor ; eassumption)
+    | first [
+        econstructor ; eassumption
+      | try lift_sort ; eapply typing_subst ; eassumption
+      | idtac
+      ]
+    | try conv rewrite heq ; try apply conv_refl
+    ].
+
+  Ltac canvas :=
+    lazymatch goal with
+    | [ hg : type_glob ?Σ,
+        hr : _ |-i _ ▷ _,
+        ih : forall _ _, _ ;;; _ |-i _ : _ -> _ ;;; _ |-i _ : _
+      |- _ ] => canvas' hg hr ih
+    | _ => fail "Failed to collect assumptions"
+    end.
+
   Theorem subj_red :
     forall {Σ Γ t u T},
       type_glob Σ ->
@@ -122,7 +148,308 @@ Section subjred.
         | try lift_sort ; eapply typing_subst ; eassumption
         ].
       + eapply subst_conv. apply conv_sym. assumption.
-    -
+    - canvas.
+      apply substs_conv. apply conv_sym. assumption.
+    - canvas.
+      + econstructor ; try assumption.
+        eapply type_ctxconv ; try eassumption.
+        * econstructor ; try eassumption.
+          eapply typing_wf. eassumption.
+        * econstructor ; try eassumption.
+          apply ctxconv_refl.
+      + econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. apply conv_sym.
+      apply cong_Eq ; try apply conv_refl ; try assumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; eassumption.
+        * econstructor ; eassumption.
+        * eapply type_ctxconv ; try eassumption.
+          -- econstructor.
+             ++ econstructor ; try eassumption.
+                eapply typing_wf. eassumption.
+             ++ econstructor.
+                ** lift_sort. eapply typing_lift01 ; try eassumption.
+                ** eapply typing_lift01 ; try eassumption.
+                   econstructor ; try eassumption.
+                ** refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                   econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+          -- constructor.
+             ++ constructor ; try assumption. apply ctxconv_refl.
+             ++ apply cong_Eq ; try apply conv_refl.
+                apply lift_conv. assumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+          -- apply cong_Eq ; try apply conv_refl. assumption.
+        * econstructor ; try eassumption.
+          -- match goal with
+             | |- _ ;;; _ |-i _ : ?S =>
+               change S with (S{1 := u}{0 := sRefl A' u})
+             end.
+             eapply typing_subst2 ; try eassumption.
+             cbn. rewrite !lift_subst, lift00.
+             econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+             ++ apply conv_sym. apply cong_Eq ; try apply conv_refl.
+                assumption.
+          -- apply substs_conv. conv rewrite heq. apply conv_refl.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{1 := v}{0 := p})
+        end.
+        eapply typing_subst2 ; try eassumption.
+        cbn. rewrite !lift_subst, lift00.
+        assumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * eapply type_ctxconv ; try eassumption.
+          -- econstructor.
+             ++ econstructor ; try eassumption.
+                eapply typing_wf. eassumption.
+             ++ econstructor.
+                ** lift_sort. eapply typing_lift01 ; try eassumption.
+                ** eapply typing_lift01 ; try eassumption.
+                ** refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                   econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+          -- constructor.
+             ++ apply ctxconv_refl.
+             ++ apply cong_Eq ; try apply conv_refl.
+                apply lift_conv. assumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- apply cong_Eq ; try apply conv_refl. assumption.
+        * econstructor ; try eassumption.
+          -- match goal with
+             | |- _ ;;; _ |-i _ : ?S =>
+               change S with (S{1 := u'}{0 := sRefl A u'})
+             end.
+             eapply typing_subst2 ; try eassumption.
+             cbn. rewrite !lift_subst, lift00.
+             econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+             ++ apply conv_sym. apply cong_Eq ; try apply conv_refl.
+                assumption.
+          -- apply cong_subst.
+             ++ conv rewrite heq. apply conv_refl.
+             ++ apply substs_conv. assumption.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{1 := v}{0 := p})
+        end.
+        eapply typing_subst2 ; try eassumption.
+        cbn. rewrite !lift_subst, lift00.
+        assumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          econstructor ; try eassumption.
+          -- match goal with
+             | |- _ ;;; _ |-i _ : ?S =>
+               change S with (S{1 := u}{0 := sRefl A u})
+             end.
+             eapply typing_subst2 ; try eassumption.
+             cbn. rewrite !lift_subst, lift00.
+             econstructor ; try eassumption.
+          -- apply subst_conv. apply subst_conv. assumption.
+        * match goal with
+          | |- _ ;;; _ |-i _ : ?S =>
+            change S with (S{1 := v}{0 := p})
+          end.
+          eapply typing_subst2 ; try eassumption.
+          cbn. rewrite !lift_subst, lift00.
+          assumption.
+        * apply subst_conv. apply subst_conv. apply conv_sym. assumption.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{1 := v}{0 := p})
+        end.
+        eapply typing_subst2 ; try eassumption.
+        cbn. rewrite !lift_subst, lift00.
+        assumption.
+    - canvas.
+      match goal with
+      | |- _ ;;; _ |-i _ : ?S =>
+        change S with (S{1 := v}{0 := p})
+      end.
+      eapply typing_subst2 ; try eassumption.
+      cbn. rewrite !lift_subst, lift00.
+      assumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- apply cong_Eq ; try apply conv_refl. assumption.
+        * match goal with
+          | |- _ ;;; _ |-i _ : ?S =>
+            change S with (S{1 := v}{0 := p})
+          end.
+          eapply typing_subst2 ; try eassumption.
+          cbn. rewrite !lift_subst, lift00.
+          assumption.
+        * apply subst_conv. apply substs_conv. apply conv_sym. assumption.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{1 := v}{0 := p})
+        end.
+        eapply typing_subst2 ; try eassumption.
+        cbn. rewrite !lift_subst, lift00.
+        assumption.
+    - canvas.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{1 := v}{0 := p})
+        end.
+        eapply typing_subst2 ; try eassumption.
+        cbn. rewrite !lift_subst, lift00.
+        assumption.
+      + apply substs_conv. apply conv_sym. assumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             econstructor. eapply typing_wf. eassumption.
+          -- apply cong_Eq ; try apply conv_refl. assumption.
+        * econstructor ; try eassumption.
+      + eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             econstructor. eapply typing_wf. eassumption.
+          -- apply cong_Eq ; try apply conv_refl. assumption.
+        * apply conv_sym. assumption.
+      + eassumption.
+    - canvas. eassumption.
+    - canvas. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. apply conv_sym.
+      apply cong_Heq ; try assumption ; try apply conv_refl.
+    - canvas. apply conv_sym.
+      apply cong_Heq ; try assumption ; try apply conv_refl.
+    - canvas. apply conv_sym. assumption.
+    - canvas.
+      eapply type_HeqTrans with (B := B) (b := b) ; try eassumption.
+    - canvas.
+      eapply type_HeqTrans with (B := B) (b := b) ; try eassumption.
+    - canvas.
+      + econstructor.
+        * eapply type_HeqTransport ; [ .. | eassumption | eassumption ] ; eassumption.
+        * econstructor ; try eassumption.
+          econstructor ; try eassumption.
+        * apply cong_Heq ; try apply conv_refl.
+          conv rewrite heq. apply conv_refl.
+      + econstructor ; try eassumption.
+        econstructor ; try eassumption.
+    - canvas.
+      + econstructor.
+        * eapply type_HeqTransport ; [ .. | eassumption | eassumption ] ; eassumption.
+        * econstructor ; try eassumption.
+          econstructor ; try eassumption.
+        * apply conv_sym. apply cong_Heq ; try apply conv_refl.
+          -- assumption.
+          -- conv rewrite heq. apply conv_refl.
+      + econstructor ; try eassumption.
+        econstructor ; try eassumption.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - canvas. econstructor ; try eassumption.
+      + econstructor. eapply typing_wf. eassumption.
+      + econstructor. eapply typing_wf. eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor. eapply typing_wf. eassumption.
+      + econstructor. eapply typing_wf. eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor. eapply typing_wf. eassumption.
+      + econstructor. eapply typing_wf. eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas.
+      + eapply type_HeqTypeEq with (u := u) (v := v) ; try assumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             econstructor ; try eassumption.
+          -- conv rewrite heq. apply conv_refl.
+        * econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+        econstructor. eapply typing_wf. eassumption.
+    - canvas.
+      + eapply type_HeqTypeEq with (u := u) (v := v) ; try assumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             econstructor ; try eassumption.
+          -- conv rewrite heq. apply conv_refl.
+        * econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+        econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor ; try eassumption.
+      econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas.
+      + eassumption.
+      + apply conv_sym. assumption.
+    - canvas.
+      + eapply type_ProjT2 with (A1 := A1) ; try eassumption.
+      + eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * eapply type_ProjTe with (A1 := A1) (A2 := A2) ; try eassumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- eapply type_ProjT2 with (A1 := A1) ; try eassumption.
+        * apply cong_Heq ; try apply conv_refl.
+          -- conv rewrite heq. apply conv_refl.
+          -- conv rewrite heq. apply conv_refl.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * eapply type_ProjT2 with (A1 := A1) ; try eassumption.
+
+    Unshelve. auto.
   Admitted.
 
 End subjred.
