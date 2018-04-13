@@ -377,12 +377,6 @@ Definition itt_vecbz : sterm.
   exact t.
 Defined.
 
-Print Assumptions itt_vecbz.
-
-(* Print Assumptions Top.itt_vecb. *)
-(* Print Assumptions Quotes.cong_prod. *)
-
-(* Unfortunately, there is still somthing wrong with that one... *)
 Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t).
 
 Definition red_itt_vecbz := reduce itt_vecbz'.
@@ -403,93 +397,3 @@ Make Definition coq_red_vecbz :=
               end)
       in exact t
   ).
-
-Lemma genvecty :
-  Σi ;;; [] |-x sProd (nNamed "n") sNat
-               (sApp (sApp sVec (sSort 0) vec_cod sBool)
-                     sNat (sSort 0)
-                     (sRel 0))
-             : sSort (max_sort 0 0).
-Proof.
-  econstructor.
-  - apply natty.
-  - {
-  eapply type_App with (s1 := 0) (s2 := max 0 1).
-  - { eapply xmeta_conv.
-  - eapply type_Ind.
-    + repeat econstructor.
-    + Unshelve.
-      repeat econstructor;
-      try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
-        clear H; apply H'; try trivial. shelve.
-  - cbn. reflexivity.
-        }
-  - repeat constructor.
-    econstructor.
-    + repeat econstructor.
-    + { eapply xmeta_conv.
-  - eapply type_Ind.
-    + repeat econstructor.
-    + Unshelve.
-      repeat econstructor;
-      try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
-        clear H; apply H'; try trivial. shelve. shelve.
-  - cbn. reflexivity.
-        }
-  - { eapply xmeta_conv.
-      { eapply type_App with (s1 := 1) (s2 := max 0 1).
-        - repeat econstructor.
-        - repeat econstructor.
-        - { eapply xmeta_conv.
-            - eapply type_Ind.
-              + repeat econstructor.
-              + Unshelve.
-                repeat econstructor;
-                  try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
-                    clear H; apply H'; try trivial. all: shelve.
-            - cbn. reflexivity.
-          }
-        - { eapply xmeta_conv.
-    + eapply type_Ind.
-      * repeat econstructor.
-      * Unshelve.
-        repeat econstructor;
-        try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
-        clear H; apply H'; try trivial. shelve.
-    + cbn. reflexivity.
-          }
-      }
-      cbn. reflexivity.
-    }
-  - refine (type_Rel _ _ _ _ _).
-    + repeat econstructor.
-    + auto.
- }
-Defined.
-
-Definition itt : sterm.
-  destruct (type_translation genvecty istrans_nil) as [_ [t [_ _]]].
-  exact t.
-Defined.
-
-Definition itt' := ltac:(let t := eval lazy in itt in exact t).
-
-Definition red_itt := reduce itt'.
-
-Definition red_itt' := ltac:(let t := eval lazy in red_itt in exact t).
-
-
-
-Lemma idzeroty : Σi;;; [] |-x sZero : sNat.
-Proof.
-  eapply xmeta_conv ; [
-    unshelve (eapply type_Construct) ; [
-      shelve
-    | shelve
-    | tdecl
-    | idtac
-    ]
-  | cbn ; reflexivity
-  ].
-  constructor.
-Defined.
