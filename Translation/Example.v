@@ -493,10 +493,3 @@ Proof.
   ].
   constructor.
 Defined.
-
-Definition itt_zero : sterm.
-  destruct (type_translation zeroty istrans_nil) as [_ [t [_ _]]].
-  exact t.
-Defined.
-
-Definition itt_zero' := ltac:(let t := eval lazy in itt_zero in exact t).
