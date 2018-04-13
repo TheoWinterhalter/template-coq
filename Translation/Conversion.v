@@ -629,7 +629,10 @@ Ltac conv_rewrite h :=
   (conv_rewrite_l h) + (apply conv_sym ; conv_rewrite_l h ; apply conv_sym).
 
 Ltac conv_rewrite_sym h :=
-  conv_rewrite (conv_sym h).
+  let h' := fresh "h" in
+  pose proof (conv_sym h) as h' ;
+  conv_rewrite h' ;
+  clear h'.
 
 (* Ltac conv_rewrites hl := *)
 (*   match hl with *)
