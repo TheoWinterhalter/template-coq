@@ -55,30 +55,45 @@ Ltac lift_sort :=
 
 Section ctxconv.
 
-  Ltac tih type_ctxconv :=
+  (* This should be the normal definition. *)
+  Definition isType Σ Γ A :=
+    exists s, Σ ;;; Γ |-i A : sSort s.
+
+  Ltac type_type hA tih type_ctxconv :=
+    first [
+      destruct hA as [? hA] ; ttinv hA ; eexists ; eassumption
+    | eexists ; eassumption
+    | eexists ; econstructor ; eassumption
+    | eexists ; econstructor ; eapply typing_wf ; eassumption
+    | eexists ; econstructor ; econstructor ; try eassumption ; tih hA type_ctxconv
+    ].
+
+  Ltac tih hA type_ctxconv :=
     lazymatch goal with
     | |- _ ;;; (?Δ,, ?A),, ?B |-i _ : _ =>
       eapply type_ctxconv ; [
         eassumption
       | assumption
       | econstructor ; [
-          econstructor ; [ assumption | tih type_ctxconv ]
+          econstructor ; [ assumption | tih hA type_ctxconv ]
         | idtac
         ]
       | econstructor ; [
           econstructor ; [ assumption | apply conv_refl ]
         | apply conv_refl
         ]
+      | type_type hA tih type_ctxconv
       ]
     | |- _ ;;; ?Δ,, ?A |-i _ : _ =>
       eapply type_ctxconv ; [
         eassumption
       | assumption
-      | econstructor ; [ assumption | tih type_ctxconv ]
+      | econstructor ; [ assumption | tih hA type_ctxconv ]
       | econstructor ; [ assumption | apply conv_refl ]
+      | type_type hA tih type_ctxconv
       ]
     | |- _ ;;; _ |-i _ : _ =>
-      eapply type_ctxconv ; eassumption
+      eapply type_ctxconv ; [ eassumption .. | type_type hA tih type_ctxconv ]
     | _ => fail "Not applicable tih"
     end.
 
@@ -86,8 +101,14 @@ Section ctxconv.
     lazymatch goal with
     | type_ctxconv :
         forall (Σ : sglobal_context) (Γ Δ : scontext) (t A : sterm),
-          Σ;;; Γ |-i t : A -> type_glob Σ -> wf Σ Δ -> ctxconv Σ Γ Δ -> Σ;;; Δ |-i t : A
-      |- _ => tih type_ctxconv
+          Σ;;; Γ |-i t : A ->
+          type_glob Σ ->
+          wf Σ Δ ->
+          ctxconv Σ Γ Δ ->
+          isType Σ Δ A ->
+          Σ;;; Δ |-i t : A,
+      hA : isType _ _ _
+      |- _ => tih hA type_ctxconv
     | _ => fail "Cannot find type_ctxconv"
     end.
 
@@ -108,20 +129,27 @@ Section ctxconv.
     type_glob Σ ->
     wf Σ Δ ->
     ctxconv Σ Γ Δ ->
+    isType Σ Δ A ->
     Σ ;;; Δ |-i t : A.
   Proof.
-    intros hg hw hc. destruct ht.
+    intros hg hw hc hA. destruct ht.
     all: try (econstructor ; ih).
-    - eapply type_conv.
+    - destruct hA.
+      eapply type_conv.
       + econstructor. assumption.
-      + (* I have no idea how to deal with this.
-           Basically I need to be able to convert context for the types in the
-           context.
-           Maybe if I add an extra assumption stating this.
-         *)
-        cheat.
+      + eassumption.
       + apply lift_conv. apply conv_sym. apply safe_nth_conv. assumption.
     - econstructor. assumption.
+    - econstructor ; try ih.
+      eapply type_ctxconv ; [
+        eassumption
+      | assumption
+      | econstructor ; [ assumption | tih hA type_ctxconv ]
+      | econstructor ; [ assumption | apply conv_refl ]
+      | try type_type hA tih type_ctxconv
+      ].
+      destruct hA as [? hA]. ttinv hA. eexists. eassumption.
+      econstructor. econstructor ; try eassumption. ih.
     - econstructor.
       + lift_sort. eapply typing_lift01 ; try eassumption ; ih.
       + eapply typing_lift01 ; try eassumption ; ih.
