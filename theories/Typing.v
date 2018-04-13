@@ -51,7 +51,7 @@ Definition ident_eq (x y : ident) :=
 Lemma ident_eq_spec x y : reflect (x = y) (ident_eq x y).
 Proof.
   unfold ident_eq. destruct string_dec; constructor; auto.
-Qed.
+Defined.
 
 Fixpoint lookup_env (Σ : global_declarations) (id : ident) : option global_decl :=
   match Σ with

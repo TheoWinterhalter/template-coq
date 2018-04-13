@@ -349,6 +349,13 @@ Proof.
   constructor.
 Defined.
 
+Definition itt_zero : sterm.
+  destruct (type_translation zeroty istrans_nil) as [_ [t [_ _]]].
+  exact t.
+Defined.
+
+Definition itt_zero' := ltac:(let t := eval lazy in itt_zero in exact t).
+
 Lemma vecbzty :
   Σi ;;; [] |-x sApp (sApp sVec (sSort 0) vec_cod sBool)
                sNat (sSort 0)
@@ -372,20 +379,124 @@ Defined.
 
 Print Assumptions itt_vecbz.
 
+(* Print Assumptions Top.itt_vecb. *)
+(* Print Assumptions Quotes.cong_prod. *)
+
 (* Unfortunately, there is still somthing wrong with that one... *)
-(* Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t). *)
+Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t).
 
-(* Definition tc_vecb : tsl_result term := *)
-(*   tsl_rec (2 ^ 18) Σ [] itt_vecb'. *)
+Definition red_itt_vecbz := reduce itt_vecbz'.
 
-(* Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t). *)
+Definition red_itt_vecbz' := ltac:(let t := eval lazy in red_itt_vecbz in exact t).
 
-(* Make Definition coq_vecb := *)
-(*   ltac:( *)
-(*     let t := eval lazy in *)
-(*              (match tc_vecb' with *)
-(*               | Success t => t *)
-(*               | _ => tSort Universe.type0 *)
-(*               end) *)
-(*       in exact t *)
-(*   ). *)
+Definition tc_red_vecbz : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] red_itt_vecbz'.
+
+Definition tc_red_vecbz' := ltac:(let t := eval lazy in tc_red_vecbz in exact t).
+
+Make Definition coq_red_vecbz :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_red_vecbz' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
+
+Lemma genvecty :
+  Σi ;;; [] |-x sProd (nNamed "n") sNat
+               (sApp (sApp sVec (sSort 0) vec_cod sBool)
+                     sNat (sSort 0)
+                     (sRel 0))
+             : sSort (max_sort 0 0).
+Proof.
+  econstructor.
+  - apply natty.
+  - {
+  eapply type_App with (s1 := 0) (s2 := max 0 1).
+  - { eapply xmeta_conv.
+  - eapply type_Ind.
+    + repeat econstructor.
+    + Unshelve.
+      repeat econstructor;
+      try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+        clear H; apply H'; try trivial. shelve.
+  - cbn. reflexivity.
+        }
+  - repeat constructor.
+    econstructor.
+    + repeat econstructor.
+    + { eapply xmeta_conv.
+  - eapply type_Ind.
+    + repeat econstructor.
+    + Unshelve.
+      repeat econstructor;
+      try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+        clear H; apply H'; try trivial. shelve. shelve.
+  - cbn. reflexivity.
+        }
+  - { eapply xmeta_conv.
+      { eapply type_App with (s1 := 1) (s2 := max 0 1).
+        - repeat econstructor.
+        - repeat econstructor.
+        - { eapply xmeta_conv.
+            - eapply type_Ind.
+              + repeat econstructor.
+              + Unshelve.
+                repeat econstructor;
+                  try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+                    clear H; apply H'; try trivial. all: shelve.
+            - cbn. reflexivity.
+          }
+        - { eapply xmeta_conv.
+    + eapply type_Ind.
+      * repeat econstructor.
+      * Unshelve.
+        repeat econstructor;
+        try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
+        clear H; apply H'; try trivial. shelve.
+    + cbn. reflexivity.
+          }
+      }
+      cbn. reflexivity.
+    }
+  - refine (type_Rel _ _ _ _ _).
+    + repeat econstructor.
+    + auto.
+ }
+Defined.
+
+Definition itt : sterm.
+  destruct (type_translation genvecty istrans_nil) as [_ [t [_ _]]].
+  exact t.
+Defined.
+
+Definition itt' := ltac:(let t := eval lazy in itt in exact t).
+
+Definition red_itt := reduce itt'.
+
+Definition red_itt' := ltac:(let t := eval lazy in red_itt in exact t).
+
+
+
+Lemma idzeroty : Σi;;; [] |-x sZero : sNat.
+Proof.
+  eapply xmeta_conv ; [
+    unshelve (eapply type_Construct) ; [
+      shelve
+    | shelve
+    | tdecl
+    | idtac
+    ]
+  | cbn ; reflexivity
+  ].
+  constructor.
+Defined.
+
+Definition itt_zero : sterm.
+  destruct (type_translation zeroty istrans_nil) as [_ [t [_ _]]].
+  exact t.
+Defined.
+
+Definition itt_zero' := ltac:(let t := eval lazy in itt_zero in exact t).

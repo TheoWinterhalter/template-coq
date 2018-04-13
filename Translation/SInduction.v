@@ -18,7 +18,7 @@ Lemma on_snd_on_snd {A B} (f g : B -> B) (d : A * B) :
   on_snd f (on_snd g d) = on_snd (fun x => f (g x)) d.
 Proof.
   destruct d; reflexivity.
-Qed.
+Defined.
 
 Lemma compose_on_snd {A B C D} (f : C -> D) (g : B -> C) :
   compose (A := A * B) (on_snd f) (on_snd g) = on_snd (compose f g).
