@@ -36,9 +36,6 @@ Proof.
   - cbn. f_equal. assumption.
 Qed.
 
-Axiom cheating : forall {A}, A.
-Tactic Notation "cheat" := apply cheating.
-
 Ltac lift_sort :=
   match goal with
   | |- _ ;;; _ |-i lift ?n ?k ?t : ?S => change S with (lift n k S)
@@ -78,6 +75,38 @@ Section ctxconv.
       ctxctx Σ Γ Δ ->
       isType Σ Δ A ->
       ctxctx Σ (Γ,, A) (Δ,, B).
+
+  Fact ctxctx_type :
+    forall {Σ Γ Δ n} isdecl,
+      type_glob Σ ->
+      wf Σ Γ ->
+      wf Σ Δ ->
+      ctxctx Σ Γ Δ ->
+      isType Σ Δ (lift0 (S n) (safe_nth Γ (exist _ n isdecl))).
+  Proof.
+    intros Σ Γ Δ n isdecl hg w1 w2 hc.
+    revert n isdecl w1 w2.
+    induction hc ; intros n isdecl w1 w2.
+    - cbn. bang.
+    - destruct n.
+      + cbn.
+        destruct H.
+        dependent destruction w2.
+        eexists. lift_sort.
+        eapply typing_lift01 ; eassumption.
+      + cbn.
+        dependent destruction w1.
+        dependent destruction w2.
+        match goal with
+        | |- context [ exist _ _ ?isdecl ] =>
+          set (is' := isdecl)
+        end.
+        destruct (IHhc _ is' w1 w2).
+        eexists.
+        replace (S (S n)) with (1 + (S n))%nat by omega.
+        rewrite <- liftP3 with (k := 0) by omega.
+        lift_sort. eapply typing_lift01 ; eassumption.
+  Defined.
 
   Ltac tih type_ctxconv' :=
     lazymatch goal with
@@ -134,9 +163,10 @@ Section ctxconv.
   Proof.
     intros hg hw hcc hc. destruct ht.
     all: try (econstructor ; ih).
-    - eapply type_conv.
+    - destruct (ctxctx_type isdecl hg H hw hcc).
+      eapply type_conv.
       + econstructor. assumption.
-      + lift_sort. cheat.
+      + eassumption.
       + apply lift_conv. apply conv_sym. apply safe_nth_conv. assumption.
     - econstructor. assumption.
     - econstructor.
@@ -199,7 +229,7 @@ Section ctxconv.
       + ih.
       + assumption.
 
-    Unshelve. exact 0. rewrite <- ctxconv_length by eassumption. assumption.
+    Unshelve. rewrite <- ctxconv_length by eassumption. assumption.
   Qed.
 
   Ltac type_type hA tih type_ctxconv :=
