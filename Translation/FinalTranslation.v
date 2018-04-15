@@ -2,8 +2,10 @@
 
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
-From Template Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
-From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping Quotes.
+From Template
+Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
+From Translation
+Require Import util SAst SInduction SLiftSubst SCommon ITyping Quotes.
 
 Import MonadNotation.
 
@@ -96,7 +98,7 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       A' <- tsl_rec fuel Σ Γ A ;;
       t' <- tsl_rec fuel Σ (Γ ,, vass n A') t ;;
       ret (tLambda n A' t')
-    | sApp u n A B v =>
+    | sApp u A B v =>
       u' <- tsl_rec fuel Σ Γ u ;;
       v' <- tsl_rec fuel Σ Γ v ;;
       myret Σ Γ (tApp u' [v'])
@@ -252,10 +254,12 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "EqToHeq" p p' T)
       | TypeError t => raise (TypingError t)
       end
-    | sHeqTypeEq p =>
+    | sHeqTypeEq A B p =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ Γ B ;;
       p' <- tsl_rec fuel Σ Γ p ;;
       match infer_hnf fuel Σ Γ p' with
-      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ A' ; u' ; B' ; v' ]) =>
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; u' ; _ ; v' ]) =>
         myret Σ Γ (mkHeqTypeEq A' u' B' v' p')
       | Checked T => raise (UnexpectedTranslation "HeqTypeEq" p p' T)
       | TypeError t => raise (TypingError t)
@@ -309,8 +313,8 @@ Fixpoint tsl_ctx (fuel : nat) (Σ : global_context) (Γ : scontext)
   | [] => ret []
   | a :: Γ =>
     Γ' <- tsl_ctx fuel Σ Γ ;;
-    A' <- tsl_rec fuel Σ Γ' (sdecl_type a) ;;
-    ret (Γ' ,, vass (sdecl_name a) A')
+    A' <- tsl_rec fuel Σ Γ' a ;;
+    ret (Γ' ,, vass nAnon A')
   end.
 
 (* We define a term that mentions everything that the global context should

@@ -7,11 +7,12 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega Bool_nat.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingMore.
+                                ITypingLemmata ITypingAdmissible.
 
 Definition proj_1 {A} {P : A -> Prop} : {a:A | P a} -> A :=
   fun X => match X with exist _ a _ => a end.
 
+(* TODO: Use eq_term instead?? *)
 Fixpoint sterm_eq (t u : sterm) : bool :=
   match t, u with
   | sRel n, sRel m =>
@@ -22,7 +23,7 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq A A' && sterm_eq B B'
   | sLambda nx A B t, sLambda nx' A' B' t' =>
       sterm_eq A A' && sterm_eq B B' && sterm_eq t t'
-  | sApp u n A B v,  sApp u' n' A' B' v' =>
+  | sApp u A B v,  sApp u' A' B' v' =>
       sterm_eq A A' && sterm_eq B B' && sterm_eq u u' && sterm_eq v v'
   | sEq A u v,  sEq A' u' v' =>
       sterm_eq A A' && sterm_eq u u' && sterm_eq v v'
@@ -59,8 +60,8 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq pA pA' && sterm_eq pu pu'
   | sEqToHeq p, sEqToHeq p' =>
       sterm_eq p p'
-  | sHeqTypeEq p, sHeqTypeEq p' =>
-      sterm_eq p p'
+  | sHeqTypeEq A B p, sHeqTypeEq A' B' p' =>
+      sterm_eq A A' && sterm_eq B B' && sterm_eq p p'
   | sPack A1 A2, sPack A1' A2' =>
       sterm_eq A1 A1' && sterm_eq A2 A2'
   | sProjT1 p, sProjT1 p' =>
@@ -90,12 +91,12 @@ Fixpoint reduce (t : sterm) : sterm :=
     let B' := reduce B in
     let t' := reduce t in
     sLambda nx A' B' t'
-  | sApp u n A B v =>
+  | sApp u A B v =>
     let u' := reduce u in
     let A' := reduce A in
     let B' := reduce B in
     let v' := reduce v in
-    sApp u' n A' B' v'
+    sApp u' A' B' v'
   | sEq A u v =>
     let A' := reduce A in
     let u' := reduce u in
@@ -207,7 +208,7 @@ Fixpoint reduce (t : sterm) : sterm :=
     let B2' := reduce B2 in
     match pA', pB', pu', pv' with
     | sHeqRefl _ A', sHeqRefl _ _, sHeqRefl _ u', sHeqRefl _ v' =>
-      sHeqRefl (B1'{ 0 := v' }) (sApp u' nAnon A' B1' v')
+      sHeqRefl (B1'{ 0 := v' }) (sApp u' A' B1' v')
     | _,_,_,_ => sCongApp B1' B2' pu' pA' pB' pv'
     end
   | sCongEq pA pu pv =>
@@ -233,14 +234,16 @@ Fixpoint reduce (t : sterm) : sterm :=
     | sRefl A' x' => sHeqRefl A' x'
     | _ => sEqToHeq p'
     end
-  | sHeqTypeEq p =>
+  | sHeqTypeEq A B p =>
+    let A' := reduce A in
+    let B' := reduce B in
     let p' := reduce p in
     (* Not enough annotation. *)
     (* match p' with *)
     (* | sHeqRefl A' x' => sHeqRefl A' x' *)
     (* | _ => sHeqTypeEq p' *)
     (* end *)
-    sHeqTypeEq p'
+    sHeqTypeEq A' B' p'
   | sPack A1 A2 =>
     let A1' := reduce A1 in
     let A2' := reduce A2 in

@@ -3,8 +3,8 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
-From Translation Require Import SAst SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingMore XTyping
+From Translation Require Import util SAst SLiftSubst SCommon ITyping
+                                ITypingLemmata ITypingAdmissible XTyping
                                 Translation Reduction FinalTranslation.
 
 Open Scope string_scope.
@@ -50,7 +50,7 @@ Ltac unsafe_tdecl :=
 (* Instead of doing econstructor, we're doing something slightly smarter. *)
 Ltac econstr :=
   match goal with
-  | |- _ ;;; _ |-i sApp _ _ _ _ _ : _ =>
+  | |- _ ;;; _ |-i sApp _ _ _ _ : _ =>
     refine (IT.type_App _ _ _ _ _ _ _ _ _ _ _ _ _)
   | |- _ ;;; _ |-i sRel _ : _ =>
     refine (IT.type_Rel _ _ _ _ _)
@@ -108,9 +108,9 @@ Definition lΣi := [
             sProd (nNamed "A")
                   (sSort 0)
                   (sApp (sApp (sRel 1)
-                              (nNamed "A") (sSort 0) vec_cod
+                              (sSort 0) vec_cod
                               (sRel 0))
-                        nAnon sNat (sSort 0)
+                        sNat (sSort 0)
                         sZero),
             0) ;
            ("vcons",
@@ -119,18 +119,18 @@ Definition lΣi := [
                          (sProd (nNamed "n") sNat
                                 (sProd nAnon
                                        (sApp (sApp (sRel 3)
-                                                   (nNamed "A") (sSort 0)
+                                                   (sSort 0)
                                                    vec_cod
                                                    (sRel 2))
-                                             nAnon sNat (sSort 0)
+                                             sNat (sSort 0)
                                              (sRel 0))
                                        (sApp (sApp (sRel 4)
-                                                   (nNamed "A") (sSort 0)
+                                                   (sSort 0)
                                                    vec_cod
                                                    (sRel 3))
-                                             nAnon sNat (sSort 0)
+                                             sNat (sSort 0)
                                              (sApp sSuc
-                                                   nAnon sNat sNat
+                                                   sNat sNat
                                                    (sRel 1)))))),
             3)
          ] ;
@@ -203,9 +203,6 @@ Ltac tind :=
 
 Definition Σi := (lΣi, init_graph).
 
-Axiom cheating : forall {A}, A.
-Tactic Notation "cheat" := apply cheating.
-
 Fact hΣi : type_glob Σi.
 (* Proof. *)
   tenv.
@@ -221,7 +218,7 @@ Fact hΣi : type_glob Σi.
     + exists (max 0 0). magic.
   (* vec *)
   - tind.
-    + exists (max_sort 1 (max 0 1)). repeat econstr.
+    + exists (max_sort 1 (max 0 1)). magic.
     + exists (max_sort 1 0).
       econstr.
       * magic.
@@ -237,19 +234,19 @@ Fact hΣi : type_glob Σi.
       match goal with
       | |- ?Σ' ;;; _ |-i _ : _ => set (Σ := Σ')
       end.
-      set (Γ1 := [svass (nNamed "vec") vec_type]).
-      set (Γ2 := Γ1,, svass (nNamed "A") (sSort 0)).
-      set (Γ3 := Γ2,, svass nAnon (sRel 0)).
-      set (Γ4 := Γ3,, svass (nNamed "n") sNat).
-      set (Γ5 := Γ4,, svass nAnon sNat).
-      set (Γ5' := Γ4,, svass (nNamed "A") (sSort 0)).
-      set (Γ6' := Γ5',, svass nAnon sNat).
+      set (Γ1 := [vec_type]).
+      set (Γ2 := Γ1,,(sSort 0)).
+      set (Γ3 := Γ2,, (sRel 0)).
+      set (Γ4 := Γ3,, sNat).
+      set (Γ5 := Γ4,, sNat).
+      set (Γ5' := Γ4,, (sSort 0)).
+      set (Γ6' := Γ5',, sNat).
       set (Γ5'' := Γ4,,
-           svass nAnon (sApp
+                     (sApp
                           (sApp (sRel 3)
-                                (nNamed "A") (sSort 0)
+                                (sSort 0)
                                 vec_cod (sRel 2))
-                          nAnon sNat (sSort 0) (sRel 0))).
+                          sNat (sSort 0) (sRel 0))).
       assert (IT.wf Σ Γ1) by magic.
       assert (IT.wf Σ Γ2) by magic.
       assert (IT.wf Σ Γ3) by magic.
@@ -296,7 +293,7 @@ Inductive wfb : scontext -> list sterm -> Type :=
 | wfb_nil Γ : wfb Γ []
 | wfb_cons Γ A s bl :
     Σi ;;; Γ |-x A : sSort s ->
-    wfb (svass pn A :: Γ) bl ->
+    wfb (A :: Γ) bl ->
     wfb Γ (A :: bl).
 
 Derive Signature for wfb.
@@ -317,7 +314,7 @@ Proof.
         with (sProd pn a (multiProd (s :: bl))).
       dependent destruction h.
       dependent destruction h.
-      destruct (IHbl (ssnoc Γ0 (svass pn A))) as [z hz].
+      destruct (IHbl (ssnoc Γ0 A)) as [z hz].
       * econstructor.
         -- assumption.
         -- eassumption.
@@ -337,7 +334,7 @@ Inductive wbtm : scontext -> list sterm -> sterm -> Type :=
     wbtm Γ [ A ] t
 | wbtm_cons Γ A B s bl t :
     Σi ;;; Γ |-x A : sSort s ->
-    wbtm (svass pn A :: Γ) (B :: bl) t ->
+    wbtm (A :: Γ) (B :: bl) t ->
     wbtm Γ (A :: B :: bl) t.
 
 Derive Signature for wbtm.
@@ -375,7 +372,7 @@ Proof.
       change (multiLam (a :: s :: bl) t)
         with (sLambda pn a (multiProd (s :: bl)) (multiLam (s :: bl) t)).
       dependent destruction hwb.
-      destruct (@type_multiProd (B :: bl0) (ssnoc Γ0 (svass pn A))) as [z hz].
+      destruct (@type_multiProd (B :: bl0) (ssnoc Γ0 A)) as [z hz].
       * econstructor.
         -- assumption.
         -- eassumption.
@@ -410,4 +407,4 @@ Proof.
 Defined.
 
 Definition type_translation {Γ t A} h {Γ'} hΓ :=
-  pi2_ _ _ (pi1_ _ _ (@complete_translation Σi hΣi)) Γ t A h Γ' hΓ.
+  pi2_ (pi1_ (@complete_translation Σi hΣi)) Γ t A h Γ' hΓ.

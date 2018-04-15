@@ -1,19 +1,11 @@
-From Coq Require Import Bool String List Program BinPos Compare_dec Omega.
+From Coq Require Import Bool String List BinPos Compare_dec Omega.
+From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst.
+From Translation Require Import util SAst SInduction SLiftSubst.
 
-Record scontext_decl := { sdecl_name : name ;
-                          sdecl_body : option sterm ;
-                          sdecl_type : sterm }.
+Definition scontext := list sterm.
 
-Definition svass x A :=
-  {| sdecl_name := x; sdecl_body := None; sdecl_type := A |}.
-Definition svdef x t A :=
-  {| sdecl_name := x; sdecl_body := Some t; sdecl_type := A |}.
-
-Definition scontext := (list scontext_decl).
-
-Definition ssnoc (Γ : scontext) (d : scontext_decl) := d :: Γ.
+Definition ssnoc (Γ : scontext) (d : sterm) := d :: Γ.
 
 Notation " Γ ,, d " := (ssnoc Γ d) (at level 20, d at next level) : s_scope.
 Delimit Scope s_scope with s.
@@ -93,11 +85,11 @@ Proof.
 Defined.
 
 Lemma eq_safe_nth :
-  forall {Γ n x A isdecl isdecl'},
-    safe_nth (Γ ,, svass x A) (exist _ (S n) isdecl') =
+  forall {Γ n A isdecl isdecl'},
+    safe_nth (Γ ,, A) (exist _ (S n) isdecl') =
     safe_nth Γ (exist _ n isdecl).
 Proof.
-  intros Γ n x A isdecl isdecl'.
+  intros Γ n A isdecl isdecl'.
   apply eq_safe_nth'.
 Defined.
 
@@ -253,13 +245,13 @@ Next Obligation.
   destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''.
   noconf H''.
-Qed.
+Defined.
 Next Obligation.
   subst decl.
   destruct H as [d [H H']].
   destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''. discriminate.
-Qed.
+Defined.
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},
@@ -275,45 +267,115 @@ Proof.
   rewrite j1 in j2. now inversion j2.
 Defined.
 
-(* Lifting of context *)
+Fact declared_inductive_dec Σ ind :
+  dec (∑ univs decl, sdeclared_inductive Σ ind univs decl).
+Proof.
+  case_eq (slookup_env Σ (inductive_mind ind)).
+  - intros d mdecl.
+    destruct d as [? ? | mind d].
+    + right. intros [_ [decl [decl' [[bot _] _]]]].
+      unfold sdeclared_minductive in bot.
+      rewrite bot in mdecl. inversion mdecl.
+    + case_eq (nth_error (sind_bodies d) (inductive_ind ind)).
+      * intros decl h. left.
+        exists (sind_universes d), decl, d.
+        unfold sdeclared_minductive.
+        repeat split ; try assumption.
+        clear - mdecl.
+        induction Σ.
+        -- cbn in mdecl. discriminate.
+        -- cbn.
+           case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident a)).
+           ++ intros e. cbn in mdecl. rewrite e in mdecl.
+              destruct a.
+              ** cbn in *. inversion mdecl.
+              ** cbn in *.
+                 case_eq (string_dec (inductive_mind ind) k).
+                 --- intros. subst. inversion mdecl. subst. reflexivity.
+                 --- intros neq eq. unfold ident_eq in e. rewrite eq in e.
+                     discriminate.
+           ++ intros e. cbn in mdecl. rewrite e in mdecl.
+              apply IHΣ. assumption.
+      * intros h. right.
+        intros [univs [decl [decl' [[mdecl' _] hnth]]]].
+        unfold sdeclared_minductive in mdecl'.
+        rewrite mdecl' in mdecl. inversion mdecl. subst.
+        rewrite hnth in h. discriminate.
+  - intro h.
+    right. intros [univs [decl [decl' [[mdecl' _] hnth]]]].
+    unfold sdeclared_minductive in mdecl'. rewrite mdecl' in h.
+    discriminate.
+Defined.
 
-Definition lift_decl n k d : scontext_decl :=
-  {| sdecl_name := sdecl_name d ;
-     sdecl_body := option_map (lift n k) (sdecl_body d) ;
-     sdecl_type := lift n k (sdecl_type d)
-  |}.
+Fact declared_constructor_dec Σ ind i :
+  dec (∑ univs decl, sdeclared_constructor Σ (ind, i) univs decl).
+Proof.
+  case (declared_inductive_dec Σ ind).
+  - intros [univs [decl isdecl]].
+    case_eq (nth_error (sind_ctors decl) i).
+    + intros d hi.
+      left. exists univs, d, decl. split ; assumption.
+    + intros h. right.
+      intros [u [d [dd [[d' [[md' _] hd']] bot]]]].
+      destruct isdecl as [d'' [[md'' _] hd'']].
+      unfold sdeclared_minductive in md', md''.
+      rewrite md'' in md'. clear md''. inversion md'. subst.
+      rewrite hd'' in hd'. clear hd''. inversion hd'. subst.
+      rewrite h in bot. discriminate.
+  - intros ndecl. right.
+    intros [u [d [dd [[d' [[md' ?] hd']] bot]]]].
+    apply ndecl.
+    exists u, dd, d'. repeat split ; assumption.
+Defined.
+
+Fact stype_of_constructor_irr :
+  forall {Σ ind n univs decl}
+    {is1 is2 : sdeclared_constructor Σ (ind, n) univs decl},
+    stype_of_constructor Σ (ind, n) univs decl is1 =
+    stype_of_constructor Σ (ind, n) univs decl is2.
+Proof.
+  intros Σ ind n univs decl is1 is2.
+  funelim (stype_of_constructor Σ (ind, n) univs decl is1) ; try bang.
+  funelim (stype_of_constructor Σ (ind, n) univs decl is2) ; try bang.
+  reflexivity.
+Defined.
+
+Fact stype_of_constructor_eq :
+  forall {Σ ind n u1 u2 d1 d2}
+    {is1 : sdeclared_constructor Σ (ind, n) u1 d1}
+    {is2 : sdeclared_constructor Σ (ind, n) u2 d2},
+    stype_of_constructor Σ (ind, n) u1 d1 is1 =
+    stype_of_constructor Σ (ind, n) u2 d2 is2.
+Proof.
+  intros Σ ind n u1 u2 d1 d2 is1 is2.
+  assert (hh : (u1 = u2) * (d1 = d2)).
+  { destruct is1 as [? [[d1' [[hd1' ?] hn1']] hn1]].
+    destruct is2 as [? [[d2' [[hd2' ?] hn2']] hn2]].
+    unfold sdeclared_minductive in *.
+    rewrite hd1' in hd2'. inversion hd2'. subst.
+    rewrite hn1' in hn2'. inversion hn2'. subst.
+    split ; [ reflexivity |].
+    rewrite hn1 in hn2. inversion hn2. subst.
+    reflexivity.
+  }
+  destruct hh. subst.
+  apply stype_of_constructor_irr.
+Defined.
+
+(* Lifting of context *)
 
 Fixpoint lift_context n Γ : scontext :=
   match Γ with
   | nil => nil
-  | A :: Γ => (lift_decl n #|Γ| A) :: (lift_context n Γ)
+  | A :: Γ => (lift n #|Γ| A) :: (lift_context n Γ)
   end.
-
-Fact lift_decl0 :
-  forall {d k}, lift_decl 0 k d = d.
-Proof.
-  intros d k.
-  destruct d as [x b A].
-  unfold lift_decl. cbn. rewrite lift00. f_equal.
-  destruct b.
-  - cbn. rewrite lift00. reflexivity.
-  - reflexivity.
-Defined.
 
 Fact lift_context0 :
   forall {Γ}, lift_context 0 Γ = Γ.
 Proof.
   intro Γ. induction Γ.
   - reflexivity.
-  - cbn. rewrite lift_decl0. rewrite IHΓ. reflexivity.
-Defined.
-
-Fact lift_decl_svass :
-  forall na A n k,
-    lift_decl n k (svass na A) = svass na (lift n k A).
-Proof.
-  intros na A n k.
-  reflexivity.
+  - cbn. rewrite lift00. rewrite IHΓ. reflexivity.
 Defined.
 
 Fact lift_context_length :
@@ -327,8 +389,8 @@ Defined.
 
 Fact safe_nth_lift_context :
   forall {Γ Δ : scontext} {n isdecl isdecl'},
-    sdecl_type (safe_nth (lift_context #|Γ| Δ) (exist _ n isdecl)) =
-    lift #|Γ| (#|Δ| - n - 1) (sdecl_type (safe_nth Δ (exist _ n isdecl'))).
+    safe_nth (lift_context #|Γ| Δ) (exist _ n isdecl) =
+    lift #|Γ| (#|Δ| - n - 1) (safe_nth Δ (exist _ n isdecl')).
 Proof.
   intros Γ Δ. induction Δ.
   - cbn. easy.
@@ -339,8 +401,8 @@ Defined.
 
 Fact lift_context_ex :
   forall {Δ Ξ : scontext} {n isdecl isdecl'},
-    lift0 (S n) (sdecl_type (safe_nth (lift_context #|Δ| Ξ) (exist _ n isdecl))) =
-    lift #|Δ| #|Ξ| (lift0 (S n) (sdecl_type (safe_nth Ξ (exist _ n isdecl')))).
+    lift0 (S n) (safe_nth (lift_context #|Δ| Ξ) (exist _ n isdecl)) =
+    lift #|Δ| #|Ξ| (lift0 (S n) (safe_nth Ξ (exist _ n isdecl'))).
 Proof.
   intros Δ Ξ n isdecl isdecl'.
   erewrite safe_nth_lift_context.
@@ -360,25 +422,11 @@ Defined.
 
 (* Substitution in context *)
 
-Definition subst_decl n u d : scontext_decl :=
-  {| sdecl_name := sdecl_name d ;
-     sdecl_body := option_map (subst u n) (sdecl_body d) ;
-     sdecl_type := (sdecl_type d){ n := u }
-  |}.
-
 Fixpoint subst_context u Δ :=
   match Δ with
   | nil => nil
-  | A :: Δ => (subst_decl #|Δ| u A) :: (subst_context u Δ)
+  | A :: Δ => (A{ #|Δ| := u }) :: (subst_context u Δ)
   end.
-
-Fact subst_decl_svass :
-  forall na A n u,
-    subst_decl n u (svass na A) = svass na (A{ n := u }).
-Proof.
-  intros na A n u.
-  reflexivity.
-Defined.
 
 Fact subst_context_length :
   forall {u Ξ}, #|subst_context u Ξ| = #|Ξ|.
@@ -391,8 +439,8 @@ Defined.
 
 Fact safe_nth_subst_context :
   forall {Δ : scontext} {n u isdecl isdecl'},
-    sdecl_type (safe_nth (subst_context u Δ) (exist _ n isdecl)) =
-    (sdecl_type (safe_nth Δ (exist _ n isdecl'))) { #|Δ| - S n := u }.
+    (safe_nth (subst_context u Δ) (exist _ n isdecl)) =
+    (safe_nth Δ (exist _ n isdecl')) { #|Δ| - S n := u }.
 Proof.
   intro Δ. induction Δ.
   - cbn. easy.

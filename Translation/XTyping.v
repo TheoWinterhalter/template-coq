@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import SAst SLiftSubst SCommon.
+From Translation Require Import util SAst SLiftSubst SCommon.
 
 Reserved Notation " Σ ;;; Γ '|-x' t : T " (at level 50, Γ, t, T at next level).
 Reserved Notation " Σ ;;; Γ '|-x' t = u : T " (at level 50, Γ, t, u, T at next level).
@@ -12,7 +12,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 | type_Rel Γ n :
     wf Σ Γ ->
     forall (isdecl : n < List.length Γ),
-      Σ ;;; Γ |-x (sRel n) : lift0 (S n) (safe_nth Γ (exist _ n isdecl)).(sdecl_type)
+      Σ ;;; Γ |-x (sRel n) : lift0 (S n) (safe_nth Γ (exist _ n isdecl))
 
 | type_Sort Γ s :
     wf Σ Γ ->
@@ -20,21 +20,21 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
 
 | type_Prod Γ n t b s1 s2 :
     Σ ;;; Γ |-x t : sSort s1 ->
-    Σ ;;; Γ ,, svass n t |-x b : sSort s2 ->
+    Σ ;;; Γ ,, t |-x b : sSort s2 ->
     Σ ;;; Γ |-x (sProd n t b) : sSort (max_sort s1 s2)
 
 | type_Lambda Γ n n' t b s1 s2 bty :
     Σ ;;; Γ |-x t : sSort s1 ->
-    Σ ;;; Γ ,, svass n t |-x bty : sSort s2 ->
-    Σ ;;; Γ ,, svass n t |-x b : bty ->
+    Σ ;;; Γ ,, t |-x bty : sSort s2 ->
+    Σ ;;; Γ ,, t |-x b : bty ->
     Σ ;;; Γ |-x (sLambda n t bty b) : sProd n' t bty
 
 | type_App Γ n s1 s2 t A B u :
     Σ ;;; Γ |-x A : sSort s1 ->
-    Σ ;;; Γ ,, svass n A |-x B : sSort s2 ->
+    Σ ;;; Γ ,, A |-x B : sSort s2 ->
     Σ ;;; Γ |-x t : sProd n A B ->
     Σ ;;; Γ |-x u : A ->
-    Σ ;;; Γ |-x (sApp t n A B u) : B{ 0 := u }
+    Σ ;;; Γ |-x (sApp t A B u) : B{ 0 := u }
 
 | type_Eq Γ s A u v :
     Σ ;;; Γ |-x A : sSort s ->
@@ -70,10 +70,10 @@ with wf (Σ : sglobal_context) : scontext -> Type :=
 | wf_nil :
     wf Σ nil
 
-| wf_snoc Γ x A s :
+| wf_snoc Γ A s :
     wf Σ Γ ->
     Σ ;;; Γ |-x A : sSort s ->
-    wf Σ (Γ ,, svass x A)
+    wf Σ (Γ ,, A)
 
 with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Type :=
 | eq_reflexivity Γ u A :
@@ -91,10 +91,10 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
 
 | eq_beta Γ s1 s2 n A B t u :
     Σ ;;; Γ |-x A : sSort s1 ->
-    Σ ;;; Γ ,, svass n A |-x B : sSort s2 ->
-    Σ ;;; Γ ,, svass n A |-x t : B ->
+    Σ ;;; Γ ,, A |-x B : sSort s2 ->
+    Σ ;;; Γ ,, A |-x t : B ->
     Σ ;;; Γ |-x u : A ->
-    Σ ;;; Γ |-x sApp (sLambda n A B t) n A B u = t{ 0 := u } : B{ 0 := u }
+    Σ ;;; Γ |-x sApp (sLambda n A B t) A B u = t{ 0 := u } : B{ 0 := u }
 
 | eq_conv Γ s T1 T2 t1 t2 :
     Σ ;;; Γ |-x t1 = t2 : T1 ->
@@ -103,33 +103,33 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
 
 | cong_Prod Γ n1 n2 A1 A2 B1 B2 s1 s2 :
     Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x B1 = B2 : sSort s2 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x B1 : sSort s2 ->
-    Σ ;;; Γ ,, svass n2 A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
     Σ ;;; Γ |-x (sProd n1 A1 B1) = (sProd n2 A2 B2) : sSort (max_sort s1 s2)
 
 | cong_Lambda Γ n1 n2 n' A1 A2 B1 B2 t1 t2 s1 s2 :
     Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x B1 = B2 : sSort s2 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x t1 = t2 : B1 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x B1 : sSort s2 ->
-    Σ ;;; Γ ,, svass n2 A2 |-x B2 : sSort s2 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x t1 : B1 ->
-    Σ ;;; Γ ,, svass n2 A2 |-x t2 : B2 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x t1 = t2 : B1 ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x t1 : B1 ->
+    Σ ;;; Γ ,, A2 |-x t2 : B2 ->
     Σ ;;; Γ |-x (sLambda n1 A1 B1 t1) = (sLambda n2 A2 B2 t2) : sProd n' A1 B1
 
 | cong_App Γ n1 n2 s1 s2 t1 t2 A1 A2 B1 B2 u1 u2 :
     Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
     Σ ;;; Γ |-x t1 = t2 : sProd n1 A1 B1 ->
     Σ ;;; Γ |-x u1 = u2 : A1 ->
-    Σ ;;; Γ ,, svass n1 A1 |-x B1 : sSort s2 ->
-    Σ ;;; Γ ,, svass n2 A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
     Σ ;;; Γ |-x t1 : sProd n1 A1 B1 ->
     Σ ;;; Γ |-x t2 : sProd n2 A2 B2 ->
     Σ ;;; Γ |-x u1 : A1 ->
     Σ ;;; Γ |-x u2 : A2 ->
-    Σ ;;; Γ |-x (sApp t1 n1 A1 B1 u1) = (sApp t2 n2 A2 B2 u2) : B1{ 0 := u1 }
+    Σ ;;; Γ |-x (sApp t1 A1 B1 u1) = (sApp t2 A2 B2 u2) : B1{ 0 := u1 }
 
 | cong_Eq Γ s A1 A2 u1 u2 v1 v2 :
     Σ ;;; Γ |-x A1 = A2 : sSort s ->

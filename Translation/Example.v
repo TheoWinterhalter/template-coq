@@ -6,7 +6,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import SAst SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingMore XTyping
+                                ITypingLemmata ITypingAdmissible XTyping
                                 Translation Reduction FinalTranslation
                                 ExamplesUtil.
 
@@ -253,7 +253,7 @@ Make Definition coq_vec :=
 *)
 
 Lemma vecbty :
-  Σi ;;; [] |-x sApp sVec (nNamed "A") (sSort 0) vec_cod sBool : vec_cod.
+  Σi ;;; [] |-x sApp sVec (sSort 0) vec_cod sBool : vec_cod.
 Proof.
   eapply type_App with (s1 := 1) (s2 := max 0 1).
   - repeat constructor.
@@ -267,6 +267,7 @@ Proof.
            repeat econstructor;
            try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
            clear H; apply H'; try trivial.
+           shelve.
       * cbn. reflexivity.
     + repeat econstructor.
   - eapply xmeta_conv.
@@ -275,7 +276,7 @@ Proof.
       * Unshelve.
         repeat econstructor;
         try (simpl; omega); assert(H':=type_Construct Σ Γ c i u _ _ H); simpl in H';
-        clear H; apply H'; try trivial.
+        clear H; apply H'; try trivial. shelve.
     + cbn. reflexivity.
   - eapply xmeta_conv.
     + eapply type_Ind.
@@ -292,33 +293,72 @@ Definition itt_vecb : sterm.
   exact t.
 Defined.
 
-(* For some reason we have efficiency issues again. *)
+Definition itt_vecb' := ltac:(let t := eval lazy in itt_vecb in exact t).
 
-(* Definition itt_vecb' := ltac:(let t := eval lazy in itt_vecb in exact t). *)
+Definition tc_vecb : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] itt_vecb'.
 
-(* Definition tc_vecb : tsl_result term := *)
-(*   tsl_rec (2 ^ 18) Σ [] itt_vecb'. *)
+Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t).
 
-(* Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t). *)
+Make Definition coq_vecb :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_vecb' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
 
-(* Make Definition coq_vecb := *)
-(*   ltac:( *)
-(*     let t := eval lazy in *)
-(*              (match tc_vecb' with *)
-(*               | Success t => t *)
-(*               | _ => tSort Universe.type0 *)
-(*               end) *)
-(*       in exact t *)
-(*   ). *)
+(* Once simplified it is more interesting I believe *)
+Definition red_itt_vecb := reduce itt_vecb'.
+
+Definition red_itt_vecb' := ltac:(let t := eval lazy in red_itt_vecb in exact t).
+
+Definition tc_red_vecb : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] red_itt_vecb'.
+
+Definition tc_red_vecb' := ltac:(let t := eval lazy in tc_red_vecb in exact t).
+
+Make Definition coq_red_vecb :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_red_vecb' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
 
 (*! EXAMPLE 4'':
     vec bool zero
     It gets translated to itself.
 *)
 
+Lemma zeroty : Σi;;; [] |-x sZero : sNat.
+Proof.
+  eapply xmeta_conv ; [
+    unshelve (eapply type_Construct) ; [
+      shelve
+    | shelve
+    | tdecl
+    | idtac
+    ]
+  | cbn ; reflexivity
+  ].
+  constructor.
+Defined.
+
+Definition itt_zero : sterm.
+  destruct (type_translation zeroty istrans_nil) as [_ [t [_ _]]].
+  exact t.
+Defined.
+
+Definition itt_zero' := ltac:(let t := eval lazy in itt_zero in exact t).
+
 Lemma vecbzty :
-  Σi ;;; [] |-x sApp (sApp sVec (nNamed "A") (sSort 0) vec_cod sBool)
-               nAnon sNat (sSort 0)
+  Σi ;;; [] |-x sApp (sApp sVec (sSort 0) vec_cod sBool)
+               sNat (sSort 0)
                sZero
              : sSort 0.
 Proof.
@@ -329,34 +369,31 @@ Proof.
     + constructor.
     + apply natty.
   - apply vecbty.
-  - unfold sZero. unfold sNat.
-    eapply xmeta_conv.
-    + eapply type_Construct. constructor.
-    + Unshelve.
-      (* repeat econstructor; *)
-      (* try (simpl; omega); assert(H':=type_Construct Σi [] iNat 0 _ _ _ _ _); simpl in H'; *)
-      (* clear H; apply H'; try trivial. *)
-      all:admit.
-Admitted.
+  - apply zeroty.
+Defined.
 
 Definition itt_vecbz : sterm.
-  destruct (type_translation vecbzty istrans_nil) as [A [t [_ h]]].
+  destruct (type_translation vecbzty istrans_nil) as [_ [t [_ _]]].
   exact t.
 Defined.
 
-(* Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t). *)
+Definition itt_vecbz' := ltac:(let t := eval lazy in itt_vecbz in exact t).
 
-(* Definition tc_vecb : tsl_result term := *)
-(*   tsl_rec (2 ^ 18) Σ [] itt_vecb'. *)
+Definition red_itt_vecbz := reduce itt_vecbz'.
 
-(* Definition tc_vecb' := ltac:(let t := eval lazy in tc_vecb in exact t). *)
+Definition red_itt_vecbz' := ltac:(let t := eval lazy in red_itt_vecbz in exact t).
 
-(* Make Definition coq_vecb := *)
-(*   ltac:( *)
-(*     let t := eval lazy in *)
-(*              (match tc_vecb' with *)
-(*               | Success t => t *)
-(*               | _ => tSort Universe.type0 *)
-(*               end) *)
-(*       in exact t *)
-(*   ). *)
+Definition tc_red_vecbz : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] red_itt_vecbz'.
+
+Definition tc_red_vecbz' := ltac:(let t := eval lazy in tc_red_vecbz in exact t).
+
+Make Definition coq_red_vecbz :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_red_vecbz' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).

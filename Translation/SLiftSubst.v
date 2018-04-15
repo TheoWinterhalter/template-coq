@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst.
-From Translation Require Import SAst SInduction.
+From Translation Require Import util SAst SInduction.
 
 (* Set Asymmetric Patterns. *)
 
@@ -11,8 +11,8 @@ Fixpoint lift n k t : sterm :=
   match t with
   | sRel i => if Nat.leb k i then sRel (n + i) else sRel i
   | sLambda na T V M => sLambda na (lift n k T) (lift n (S k) V) (lift n (S k) M)
-  | sApp u na A B v =>
-    sApp (lift n k u) na (lift n k A) (lift n (S k) B) (lift n k v)
+  | sApp u A B v =>
+    sApp (lift n k u) (lift n k A) (lift n (S k) B) (lift n k v)
   | sProd na A B => sProd na (lift n k A) (lift n (S k) B)
   | sEq A u v => sEq (lift n k A) (lift n k u) (lift n k v)
   | sRefl A u => sRefl (lift n k A) (lift n k u)
@@ -45,7 +45,7 @@ Fixpoint lift n k t : sterm :=
   | sCongEq pA pu pv => sCongEq (lift n k pA) (lift n k pu) (lift n k pv)
   | sCongRefl pA pu => sCongRefl (lift n k pA) (lift n k pu)
   | sEqToHeq p => sEqToHeq (lift n k p)
-  | sHeqTypeEq p => sHeqTypeEq (lift n k p)
+  | sHeqTypeEq A B p => sHeqTypeEq (lift n k A) (lift n k B) (lift n k p)
   | sPack A1 A2 => sPack (lift n k A1) (lift n k A2)
   | sProjT1 p => sProjT1 (lift n k p)
   | sProjT2 p => sProjT2 (lift n k p)
@@ -70,8 +70,8 @@ Fixpoint subst t k u :=
     end
   | sLambda na T V M =>
     sLambda na (subst t k T) (subst t (S k) V) (subst t (S k) M)
-  | sApp u na A B v =>
-    sApp (subst t k u) na (subst t k A) (subst t (S k) B) (subst t k v)
+  | sApp u A B v =>
+    sApp (subst t k u) (subst t k A) (subst t (S k) B) (subst t k v)
   | sProd na A B => sProd na (subst t k A) (subst t (S k) B)
   | sEq A u v => sEq (subst t k A) (subst t k u) (subst t k v)
   | sRefl A u => sRefl (subst t k A) (subst t k u)
@@ -104,7 +104,7 @@ Fixpoint subst t k u :=
   | sCongEq pA pu pv => sCongEq (subst t k pA) (subst t k pu) (subst t k pv)
   | sCongRefl pA pu => sCongRefl (subst t k pA) (subst t k pu)
   | sEqToHeq p => sEqToHeq (subst t k p)
-  | sHeqTypeEq p => sHeqTypeEq (subst t k p)
+  | sHeqTypeEq A B p => sHeqTypeEq (subst t k A) (subst t k B) (subst t k p)
   | sPack A1 A2 => sPack (subst t k A1) (subst t k A2)
   | sProjT1 p => sProjT1 (subst t k p)
   | sProjT2 p => sProjT2 (subst t k p)
@@ -132,7 +132,7 @@ Fixpoint closed_above k t :=
   | sProd _ A B => closed_above k A && closed_above (S k) B
   | sLambda _ A B t =>
     closed_above k A && closed_above (S k) B && closed_above (S k) t
-  | sApp u _ A B v =>
+  | sApp u A B v =>
     closed_above k u &&
     closed_above k A &&
     closed_above (S k) B &&
@@ -178,7 +178,7 @@ Fixpoint closed_above k t :=
     closed_above k pA && closed_above k pu && closed_above k pv
   | sCongRefl pA pu => closed_above k pA && closed_above k pu
   | sEqToHeq p => closed_above k p
-  | sHeqTypeEq p => closed_above k p
+  | sHeqTypeEq A B p => closed_above k A && closed_above k B && closed_above k p
   | sPack A1 A2 => closed_above k A1 && closed_above k A2
   | sProjT1 p => closed_above k p
   | sProjT2 p => closed_above k p
@@ -362,33 +362,6 @@ Proof.
     eapply (case_brs_map_spec X).
     intros x h. apply h.
 Defined.
-
-Ltac bprop' H H' :=
-  match type of H with
-  | (?n <=? ?m) = true => pose proof (leb_complete _ _ H) as H'
-  | (?n <=? ?m) = false => pose proof (leb_complete_conv _ _ H) as H'
-  | (?n <? ?m) = true => pose proof (proj1 (Nat.ltb_lt n m) H) as H'
-  | (?n <? ?m) = false => pose proof (proj1 (Nat.ltb_ge n m) H) as H'
-  | (?x ?= ?y) = Gt => pose proof (nat_compare_Gt_gt _ _ H) as H'
-  | (?x ?= ?y) = Eq => pose proof (Nat.compare_eq _ _ H) as H'
-  | (?x ?= ?y) = Lt => pose proof (nat_compare_Lt_lt _ _ H) as H'
-  end.
-
-(* Doesn't work. :( *)
-Tactic Notation "brop" constr(H) "as" constr(H') := bprop' H H'.
-
-Tactic Notation "bprop" constr(H) := let H' := fresh H in bprop' H  H'.
-
-Ltac propb :=
-  match goal with
-  | |- (_ <=? _) = true => apply leb_correct
-  | |- (_ <=? _) = false => apply leb_correct_conv
-  | |- (_ <? _) = true => apply Nat.ltb_lt
-  | |- (_ <? _) = false => apply Nat.ltb_ge
-  | |- (_ ?= _) = Lt => apply Nat.compare_lt_iff
-  | |- (_ ?= _) = Eq => apply Nat.compare_eq_iff
-  | |- (_ ?= _) = Gt => apply Nat.compare_gt_iff
-  end.
 
 Lemma liftP3 :
   forall t i k j n,

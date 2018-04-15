@@ -3,14 +3,21 @@
 -R . Translation
 -arg "-w default,-notation-overridden"
 
+util.v
 SAst.v
 SInduction.v
+Equality.v
 SLiftSubst.v
 SCommon.v
-ITyping.v
+Conversion.v
 XTyping.v
+ITyping.v
+ITypingInversions.v
 ITypingLemmata.v
-ITypingMore.v
+ContextConversion.v
+Uniqueness.v
+SubjectReduction.v
+ITypingAdmissible.v
 PackLifts.v
 Translation.v
 Reduction.v

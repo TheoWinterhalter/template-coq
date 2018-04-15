@@ -3,12 +3,13 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst.
-From Translation Require Import SAst.
+From Translation Require Import util SAst.
 
 Open Scope type_scope.
 
 Definition on_snd {A B B'} (f : B -> B') (x : A * B) : A * B' :=
-  let '(u,v) := x in (u, f v).
+  (* let '(u,v) := x in (u, f v). *)
+  (fst x, f (snd x)).
 
 Definition test_snd {A B} (f : B -> bool) (p : A * B) :=
   f (snd p).
@@ -17,10 +18,10 @@ Lemma on_snd_on_snd {A B} (f g : B -> B) (d : A * B) :
   on_snd f (on_snd g d) = on_snd (fun x => f (g x)) d.
 Proof.
   destruct d; reflexivity.
-Qed.
+Defined.
 
-Lemma compose_on_snd {A B} (f g : B -> B) :
-  compose (A:=A * B) (on_snd f) (on_snd g) = on_snd (compose f g).
+Lemma compose_on_snd {A B C D} (f : C -> D) (g : B -> C) :
+  compose (A := A * B) (on_snd f) (on_snd g) = on_snd (compose f g).
 Proof.
   reflexivity.
 Defined.
@@ -87,8 +88,35 @@ Inductive ForallT {A : Type} (P : A -> Type) : list A -> Type :=
 | ForallT_nil : ForallT P []
 | ForallT_cons x l : P x -> ForallT P l -> ForallT P (x :: l).
 
+Derive Signature for ForallT.
+
+Lemma ForallT_nth :
+  forall {A} {P : A -> Type} {l n t},
+    ForallT P l ->
+    nth_error l n = Some t ->
+    P t.
+Proof.
+  intros A P l n t h hn. revert n t hn.
+  induction h ; intros n t hn.
+  - destruct n ; cbn in hn ; discriminate hn.
+  - destruct n.
+    + cbn in hn. inversion hn. subst. assumption.
+    + cbn in hn. eapply IHh. eassumption.
+Defined.
+
 Definition sCaseBrsT (P : sterm -> Type) (brs : list (nat * sterm)) :=
   ForallT (fun x => P (snd x)) brs.
+
+Fact sCaseBrsT_nth :
+  forall {P brs n p},
+    sCaseBrsT P brs ->
+    nth_error brs n = Some p ->
+    P (snd p).
+Proof.
+  intros P brs n p h hn.
+  unfold sCaseBrsT in h.
+  eapply @ForallT_nth with (P := fun p => P (snd p)) ; eassumption.
+Defined.
 
 Lemma sterm_rect_list :
   forall P : sterm -> Type,
@@ -98,10 +126,10 @@ Lemma sterm_rect_list :
     (forall (nx : name) (A : sterm), P A -> forall B : sterm, P B -> forall t : sterm, P t ->
        P (sLambda nx A B t)) ->
     (forall u : sterm, P u ->
-     forall (nx : name) (A : sterm), P A ->
+     forall (A : sterm), P A ->
      forall B : sterm, P B ->
      forall v : sterm, P v ->
-       P (sApp u nx A B v)) ->
+       P (sApp u A B v)) ->
     (forall A : sterm, P A -> forall u : sterm, P u -> forall v : sterm, P v -> P (sEq A u v)) ->
     (forall A : sterm, P A -> forall u : sterm, P u -> P (sRefl A u)) ->
     (forall A : sterm, P A ->
@@ -150,7 +178,7 @@ Lemma sterm_rect_list :
        P (sCongEq pA pu pv)) ->
     (forall pA : sterm, P pA -> forall pu : sterm, P pu -> P (sCongRefl pA pu)) ->
     (forall p : sterm, P p -> P (sEqToHeq p)) ->
-    (forall p : sterm, P p -> P (sHeqTypeEq p)) ->
+    (forall A, P A -> forall B, P B -> forall p : sterm, P p -> P (sHeqTypeEq A B p)) ->
     (forall A1 : sterm, P A1 -> forall A2 : sterm, P A2 -> P (sPack A1 A2)) ->
     (forall p : sterm, P p -> P (sProjT1 p)) ->
     (forall p : sterm, P p -> P (sProjT2 p)) ->
@@ -176,7 +204,7 @@ Proof.
   apply auxt.
 Defined.
 
-Lemma forall_map_spec {A} {P : A -> Type} {l} {f g : A -> A} :
+Lemma forall_map_spec {A} {P : A -> Type} {l B} {f g : A -> B} :
   ForallT P l ->
   (forall x, P x -> f x = g x) ->
   map f l = map g l.
@@ -186,7 +214,7 @@ Proof.
   f_equal. apply IHX. apply Heq.
 Defined.
 
-Lemma on_snd_spec {A B} (P : B -> Type) (f g : B -> B) (x : A * B) :
+Lemma on_snd_spec {A B C} (P : B -> Type) (f g : B -> C) (x : A * B) :
   P (snd x) -> (forall x, P x -> f x = g x) ->
   on_snd f x = on_snd g x.
 Proof.
@@ -194,7 +222,7 @@ Proof.
   now rewrite H; auto.
 Defined.
 
-Lemma case_brs_map_spec {P : sterm -> Type} {l} {f g : sterm -> sterm} :
+Lemma case_brs_map_spec {P : sterm -> Type} {l A} {f g : sterm -> A} :
   sCaseBrsT P l ->
   (forall x, P x -> f x = g x) ->
   map (on_snd f) l = map (on_snd g) l.
