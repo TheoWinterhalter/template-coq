@@ -232,132 +232,25 @@ Section ctxconv.
     Unshelve. rewrite <- ctxconv_length by eassumption. assumption.
   Qed.
 
-  Ltac type_type hA tih type_ctxconv :=
-    first [
-      destruct hA as [? hA] ; ttinv hA ; eexists ; eassumption
-    | eexists ; eassumption
-    | eexists ; econstructor ; eassumption
-    | eexists ; econstructor ; eapply typing_wf ; eassumption
-    | eexists ; econstructor ; econstructor ; try eassumption ; tih hA type_ctxconv
-    ].
-
-  Ltac tih hA type_ctxconv :=
-    lazymatch goal with
-    | |- _ ;;; (?Δ,, ?A),, ?B |-i _ : _ =>
-      eapply type_ctxconv ; [
-        eassumption
-      | assumption
-      | econstructor ; [
-          econstructor ; [ assumption | tih hA type_ctxconv ]
-        | idtac
-        ]
-      | econstructor ; [
-          econstructor ; [ assumption | apply conv_refl ]
-        | apply conv_refl
-        ]
-      | type_type hA tih type_ctxconv
-      ]
-    | |- _ ;;; ?Δ,, ?A |-i _ : _ =>
-      eapply type_ctxconv ; [
-        eassumption
-      | assumption
-      | econstructor ; [ assumption | tih hA type_ctxconv ]
-      | econstructor ; [ assumption | apply conv_refl ]
-      | type_type hA tih type_ctxconv
-      ]
-    | |- _ ;;; _ |-i _ : _ =>
-      eapply type_ctxconv ; [ eassumption .. | type_type hA tih type_ctxconv ]
-    | _ => fail "Not applicable tih"
-    end.
-
-  Ltac ih :=
-    lazymatch goal with
-    | type_ctxconv :
-        forall (Σ : sglobal_context) (Γ Δ : scontext) (t A : sterm),
-          Σ;;; Γ |-i t : A ->
-          type_glob Σ ->
-          wf Σ Δ ->
-          ctxconv Σ Γ Δ ->
-          isType Σ Δ A ->
-          Σ;;; Δ |-i t : A,
-      hA : isType _ _ _
-      |- _ => tih hA type_ctxconv
-    | _ => fail "Cannot find type_ctxconv"
-    end.
-
-  Fixpoint type_ctxconv {Σ Γ Δ t A} (ht : Σ ;;; Γ |-i t : A) {struct ht} :
+  Lemma type_ctxconv {Σ Γ Δ t A} (ht : Σ ;;; Γ |-i t : A) :
     type_glob Σ ->
     wf Σ Δ ->
     ctxconv Σ Γ Δ ->
-    isType Σ Δ A ->
     Σ ;;; Δ |-i t : A.
   Proof.
-    intros hg hw hc hA. destruct ht.
-    all: try (econstructor ; ih).
-    - destruct hA.
-      eapply type_conv.
-      + econstructor. assumption.
-      + eassumption.
-      + apply lift_conv. apply conv_sym. apply safe_nth_conv. assumption.
-    - econstructor. assumption.
-    - econstructor ; try ih.
-      eapply type_ctxconv ; [
-        eassumption
-      | assumption
-      | econstructor ; [ assumption | tih hA type_ctxconv ]
-      | econstructor ; [ assumption | apply conv_refl ]
-      | try type_type hA tih type_ctxconv
-      ].
-      destruct hA as [? hA]. ttinv hA. eexists. eassumption.
-      econstructor. econstructor ; try eassumption. ih.
-    - econstructor.
-      + lift_sort. eapply typing_lift01 ; try eassumption ; ih.
-      + eapply typing_lift01 ; try eassumption ; ih.
-      + refine (type_Rel _ _ _ _ _) ; [| cbn ; omega ].
-        econstructor ; try eassumption. ih.
-    - eapply type_HeqTrans with (B := B) ; ih.
-    - econstructor ; try ih.
-      eapply type_ctxconv.
-      + eassumption.
-      + assumption.
-      + econstructor ; try assumption.
-        econstructor ; ih.
-      + econstructor ; try assumption.
-        apply conv_refl.
-    - econstructor ; try ih.
-      + eapply type_ctxconv.
-        * eassumption.
-        * assumption.
-        * econstructor ; try assumption.
-          econstructor ; ih.
-        * econstructor ; try assumption.
-          apply conv_refl.
-      + eapply type_ctxconv.
-        * eassumption.
-        * assumption.
-        * econstructor ; try assumption.
-          econstructor ; ih.
-        * econstructor ; try assumption.
-          apply conv_refl.
-    - econstructor ; try ih.
-      eapply type_ctxconv.
-      + eassumption.
-      + assumption.
-      + econstructor ; try assumption.
-        econstructor ; ih.
-      + econstructor ; try assumption.
-        apply conv_refl.
-    - eapply type_ProjT2 with (A1 := A1) ; ih.
-    - econstructor.
-      + assumption.
-      + eassumption.
-    - econstructor. assumption.
-    - econstructor.
-      + ih.
-      + ih.
-      + assumption.
-
-        Unshelve. exact 0. rewrite <- ctxconv_length by eassumption. assumption.
+    intros hg hw hc.
+    eapply type_ctxconv' ; try eassumption.
+    assert (w1 : wf Σ Γ).
+    { eapply typing_wf. eassumption. }
+    clear t A ht. revert hw.
+    induction hc ; intro w2.
+    - constructor.
+    - dependent destruction w1.
+      dependent destruction w2.
+      econstructor.
+      + eapply IHhc ; assumption.
+      + eexists. eapply type_ctxconv' ; try eassumption.
+        eapply IHhc ; assumption.
   Qed.
 
 End ctxconv.
