@@ -1,4 +1,4 @@
-(* Reducing ITT terms *)
+ (* Reducing ITT terms *)
 
 (* We're only reducing the decorations that are induced by translation, not the
    usual redexes. *)
@@ -74,6 +74,7 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       eq_ind i i'
   | sConstruct i k, sConstruct i' k' =>
       eq_ind i i' && eq_nat k k'
+  | sElim i, sElim i' => eq_ind i i'
   | _ , _ => false
   end.
 
@@ -264,4 +265,5 @@ Fixpoint reduce (t : sterm) : sterm :=
     let c' := reduce c in
     let brs' := map (on_snd reduce) brs in
     sCase indn p' c' brs'
+  | sElim ind => sElim ind
   end.

@@ -74,6 +74,7 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sCase indn p c brs =>
     let brs' := List.map (on_snd (llift γ δ)) brs in
     sCase indn (llift γ δ p) (llift γ δ c) brs'
+  | sElim ind => sElim ind
   end.
 
 Notation llift0 γ t := (llift γ 0 t).
@@ -133,6 +134,7 @@ Fixpoint rlift γ δ t : sterm :=
   | sCase indn p c brs =>
     let brs' := List.map (on_snd (rlift γ δ)) brs in
     sCase indn (rlift γ δ p) (rlift γ δ c) brs'
+  | sElim ind => sElim ind
   end.
 
 Notation rlift0 γ t := (rlift γ 0 t).

@@ -162,4 +162,5 @@ Proof.
   - eapply conv_trans ; [| exact h0 ].
     erewrite SCommon.stype_of_constructor_eq. apply conv_refl.
   - ttinv h1.
+  - ttinv h1.
 Defined.

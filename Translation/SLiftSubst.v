@@ -56,6 +56,7 @@ Fixpoint lift n k t : sterm :=
   | sCase indn p c brs =>
     let brs' := List.map (on_snd (lift n k)) brs in
     sCase indn (lift n k p) (lift n k c) brs'
+  | sElim ind => sElim ind
   end.
 
 Notation lift0 n t := (lift n 0 t).
@@ -115,6 +116,7 @@ Fixpoint subst t k u :=
   | sCase indn p c brs =>
     let brs' := List.map (on_snd (subst t k)) brs in
     sCase indn (subst t k p) (subst t k c) brs'
+  | sElim ind => sElim ind
   end.
 
 Notation subst0 t u := (subst t 0 u).
@@ -189,6 +191,7 @@ Fixpoint closed_above k t :=
     closed_above k p &&
     closed_above k c &&
     forallb (test_snd (closed_above k)) brs
+  | sElim ind => true
   end.
 
 Definition closed t := closed_above 0 t = true.

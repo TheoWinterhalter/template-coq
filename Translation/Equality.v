@@ -40,6 +40,7 @@ Inductive nlterm : Type :=
 | nlInd (ind : inductive)
 | nlConstruct (ind : inductive) (n : nat)
 | nlCase (indn : inductive * nat) (p c : nlterm) (brs : list (nat * nlterm))
+| nlElim (ind : inductive)
 .
 
 Fixpoint nl (t : sterm) : nlterm :=
@@ -75,6 +76,7 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sInd ind => nlInd ind
   | sConstruct ind n => nlConstruct ind n
   | sCase indn p c brs => nlCase indn (nl p) (nl c) (map (on_snd nl) brs)
+  | sElim ind => nlElim ind
   end.
 
 Fact inductive_dec : forall (i i' : inductive), { i = i'} + { i <> i' }.

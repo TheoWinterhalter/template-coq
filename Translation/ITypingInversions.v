@@ -66,6 +66,16 @@ Proof.
   dependent induction h. assumption.
 Defined.
 
+(* TMP *)
+Lemma inversionElim :
+  forall {Σ Γ ind T},
+    Σ ;;; Γ |-i sElim ind : T ->
+    False.
+Proof.
+  intros Σ Γ ind T h.
+  dependent induction h. assumption.
+Defined.
+
 Lemma inversionProd :
   forall {Σ Γ n A B T},
     Σ ;;; Γ |-i sProd n A B : T ->
@@ -642,5 +652,6 @@ Ltac ttinv h :=
       destruct (inversionConstruct h) as (univs & decl & isdecl & hh) ;
       splits_one hh
     | sCase _ _ _ _ => destruct (inversionCase h)
+    | sElim _ => destruct (inversionElim h)
     end
   end.
