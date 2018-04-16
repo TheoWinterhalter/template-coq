@@ -66,36 +66,30 @@ states admissible rules in ITT.
 
 #### Translation
 
-PackLifts and Translation
+[PackLifts](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/PackLifts.v)
+defines the lifting operations related to packing. Packing consists in taking two types `A1` and `A2`
+and yielding the following record type (where `x ≅ y` stands for heterogenous equality between `x` and `y`).
+```coq
+Record Pack A1 A2 := pack {
+  ProjT1 : A1 ;
+  ProjT2 : A2 ;
+  ProjTe : ProjT1 ≅ ProjT2
+}.
+```
+[Translation](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Translation.v)
+contains the translation from ETT to ITT.
 
-#### Final transaltion
+#### Translation from ITT to TemplateCoq and Coq
 
-TODO
-
-### Description of the files (**OLD**)
-
-- `SAst.v` describes common syntax (in a similar fashion to `Ast.v` of
-   `theories`) to both ETT and ITT.
-- `SInduction.v` is about an induction principle on the AST that gives
-  properties to the lists of terms.
-- `SLiftSubst.v` describes meta-operations on the syntax (namely lifting and substitution).
-- `SCommon.v` states common definitions like context.
-
-- `ITyping.v` contains the typing rules of ITT.
-- `XTyping.v` contains the typing rules of ETT.
-
-- `ITypingLemmata.v` contains lemmata regarding typing in ITT.
-- `ITypingLemmata.v` contains inversion and admissibility lemmata in ITT.
-- `PackLifts.v` contains the necessary lifts to deal with packing.
-
-- `Translation.v` contains the translation itself and the necessary
-  lemmata.
-- `Reduction.v` is about a notion of reduction to simplify the output
-  of the translation (thus reducing the use of axioms when they aren't
-  needed).
-- `Quotes.v` contains quotations of terms for the final translation.
-- `FinalTranslation.v` containes the transaltion from ITT to
-  TemplateCoq (meaning we can reify terms of ITT).
-- `ExamplesUtil.v` contains utils for the examples.
-- `Example.v` contains an example of the two translations chained to
-  build a Coq term from an ETT derivation.
+Before we transalte from ITT to TemplateCoq, we have a *pruning* phase that removes unnecessary transports
+from ITT terms, it is defined in
+[Reduction](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Reduction.v).
+Then to realise the sugar of ITT, we define some constants in
+[Quotes](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Quotes.v)
+and then quote them to TemplateCoq inner representation of terms.
+The translation from ITT to TemplateCoq is done in
+[FinalTranslation](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/FinalTranslation.v).
+The module [ExamplesUtil](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ExamplesUtil.v)
+provides useful lemmata and the proof of well-formedness of a global context with `nat`, `bool` and `vec` inductive types.
+Finally, some examples can be found in
+[Example](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Example.v).
