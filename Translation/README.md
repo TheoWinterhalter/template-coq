@@ -1,4 +1,4 @@
-# Translation from ETT to ITT and then to TemplateCoq
+# Translation from ETT to ITT and then to TemplateCoq (and thus Coq)
 
 ### Prerequisites
 
@@ -11,7 +11,53 @@ You also need the Equations plugin to build it. See [here](http://mattam82.githu
 
 To build the project, you only need to `make`.
 
-### Detail of the files
+
+### Structure of the project
+
+*The file [util.v](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/util.v)
+provides useful lemmata that aren't specific to the formalisation.*
+
+#### Syntax
+
+In [SAst](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/SAst.v)
+we define the common syntax to both ETT (Extensional type theory) and ITT (our own version of Itensional
+type theory with some sugar) in the form of a simple inductive type `sterm`.
+The module [SInduction](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/SInduction.v)
+provides useful induction principles on this type. Since terms (`sterm`) are annotated with names—for
+printing—which are irrelevant for computation and typing, we define an erasure map `nl : sterm -> nlterm`
+in [Equality](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Equality.v)
+from which we derive a decidable equality on `sterm`.
+We then define lifting operations, substitution and closedness in 
+[SLiftSubst](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/SLiftSubst.v).
+
+#### Typing
+
+First, in [SCommon](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/SCommon.v)
+we define common utility to both ETT and ITT, namely with the definition of contexts (`scontext`) and global
+contexts (`sglobal_context`), the latter containing the declarations of inductive types.
+[Conversion](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Conversion.v)
+is about the untyped conversion used in ITT (conversion `Σ |-i t = u` is derived from one-step reduction
+`Σ |-i t ▷ u`) and contains the only axiom of the whole formalisation.
+[XTyping](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/XTyping.v)
+contains the definition of typing rule of ETT (`Σ ;;; Γ |-x t : A`), mutually defined with a typed
+conversion (`Σ ;;; Γ |-x t = u : A`) and the well-formedness of contexts (`wf Σ Γ`).
+[ITyping](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ITyping.v)
+is the same for ITT (with the difference that the conversion isn't mutually defined but instead the
+one defined in [Conversion](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Conversion.v))
+except that it also defines a notion of well-formedness of global declarations (`type_glob Σ`).
+
+#### Lemmata regarding ITT
+
+In [ITypingInversions](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ITypingInversions.v)
+one can find an inversion lemma for each constructor of the syntax, together with the tactic `ttinv`
+to apply the right one.
+In [ITypingLemmata](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ITypingLemmata.v)
+are proven a list of different lemmata regarding ITT, including the fact that whenever we have
+`Σ ;;; Γ |-i t : A` then `A` is well sorted and that lifting and substitution preserve typing.
+
+#### TODO
+
+### Description of the files (**OLD**)
 
 - `SAst.v` describes common syntax (in a similar fashion to `Ast.v` of
    `theories`) to both ETT and ITT.
