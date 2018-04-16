@@ -54,8 +54,23 @@ to apply the right one.
 In [ITypingLemmata](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ITypingLemmata.v)
 are proven a list of different lemmata regarding ITT, including the fact that whenever we have
 `Σ ;;; Γ |-i t : A` then `A` is well sorted and that lifting and substitution preserve typing.
+Context conversion and the associated typing preservation lemma are found in
+[ContextConversion](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ContextConversion.v).
+A uniqueness of typing lemma (if `Σ ;;; Γ |-i t :A` and `Σ ;;; Γ |-i t :B` then `Σ |-i A = B`) is proven in
+[Uniqueness](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/Uniqueness.v).
+Subject reduction and the corollary that we call subject conversion (whenever two terms are convertible
+and well-typed, their types are also convertible) are proven in
+[SubjectReduction](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/SubjectReduction.v).
+[ITypingAdmissible](https://github.com/TheoWinterhalter/template-coq/blob/reflection/Translation/ITypingAdmissible.v)
+states admissible rules in ITT.
 
-#### TODO
+#### Translation
+
+PackLifts and Translation
+
+#### Final transaltion
+
+TODO
 
 ### Description of the files (**OLD**)
 
