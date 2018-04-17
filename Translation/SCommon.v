@@ -12,6 +12,32 @@ Delimit Scope s_scope with s.
 
 Record squash (A : Set) : Prop := { _ : A }.
 
+(* Named contexts *)
+Definition nctx := list (name * sterm).
+
+(* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
+Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
+  match Γ with
+  | [] => T
+  | (nx,A) :: Γ => Prods Γ (sProd nx A T)
+  end.
+
+(* If Γ ⊢ t : T then ⊢ Lams Γ T t : Prods Γ T *)
+Fixpoint Lams (Γ : nctx) (T t : sterm) : sterm :=
+  match Γ with
+  | [] => t
+  | (nx,A) :: Γ => Lams Γ (sProd nx A T) (sLambda nx A T t)
+  end.
+
+(* If ⊢ u : Prods Γ T and ⊢ l : Γ then ⊢ Apps u Γ T l : T[l] *)
+Fixpoint Apps (u : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
+  match Γ, l with
+  | [], _ => u
+  | _, [] => u
+  | (nx,A) :: Γ, t :: l =>
+    sApp (Apps u Γ (sProd nx A T) l) A T t
+  end.
+
 (* Common lemmata *)
 
 Definition max_sort := max.
