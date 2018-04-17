@@ -39,4 +39,6 @@ Inductive sterm : Type :=
 | sInd (ind : inductive)
 | sConstruct (ind : inductive) (n : nat)
 | sCase (indn : inductive * nat) (p c : sterm) (brs : list (nat * sterm))
+(* Equality axioms *)
+| sBeta (A B t u : sterm)
 .

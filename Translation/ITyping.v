@@ -2,7 +2,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
-Require Import util SAst SInduction SLiftSubst SCommon Conversion.
+Require Import util SAst SInduction SLiftSubst SCommon.
 
 Open Scope s_scope.
 
@@ -234,11 +234,14 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i (sConstruct ind i)
              : stype_of_constructor (fst Σ) (ind, i) univs decl isdecl
 
-| type_conv Γ t A B s :
-    Σ ;;; Γ |-i t : A ->
-    Σ ;;; Γ |-i B : sSort s ->
-    Σ |-i A = B ->
-    Σ ;;; Γ |-i t : B
+| type_Beta Γ s1 s2 A B t u nx :
+    Σ ;;; Γ,, A |-i t : B ->
+    Σ ;;; Γ |-i u : A ->
+    Σ ;;; Γ |-i A : sSort s1 ->
+    Σ ;;; Γ,, A |-i B : sSort s2 ->
+    Σ ;;; Γ |-i sBeta A B t u : sEq (B{ 0 := u })
+                                   (sApp (sLambda nx A B t) A B u)
+                                   (t{ 0 := u })
 
 where " Σ ;;; Γ '|-i' t : T " := (@typing Σ Γ t T) : i_scope
 
@@ -251,6 +254,8 @@ with wf (Σ : sglobal_context) : scontext -> Prop :=
     Σ ;;; Γ |-i A : sSort s ->
     wf Σ (Γ ,, A)
 .
+
+Open Scope i_scope.
 
 (* | eq_JRefl Γ nx ne s1 s2 A u P w : *)
 (*     Σ ;;; Γ |-i A : sSort s1 -> *)

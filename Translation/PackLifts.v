@@ -5,7 +5,7 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
 From Translation
 Require Import util SAst SInduction SLiftSubst Equality SCommon XTyping
-               Conversion ITyping ITypingLemmata ITypingAdmissible.
+               ITyping ITypingLemmata ITypingAdmissible.
 
 (* In order to do things properly we need to extend the context heterogenously,
    this is done by extending the context with packed triples
@@ -74,6 +74,9 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sCase indn p c brs =>
     let brs' := List.map (on_snd (llift γ δ)) brs in
     sCase indn (llift γ δ p) (llift γ δ c) brs'
+  | sBeta A B f u =>
+    sBeta (llift γ δ A) (llift γ (S δ) B)
+          (llift γ (S δ) f) (llift γ δ u)
   end.
 
 Notation llift0 γ t := (llift γ 0 t).
@@ -133,6 +136,9 @@ Fixpoint rlift γ δ t : sterm :=
   | sCase indn p c brs =>
     let brs' := List.map (on_snd (rlift γ δ)) brs in
     sCase indn (rlift γ δ p) (rlift γ δ c) brs'
+  | sBeta A B f u =>
+    sBeta (rlift γ δ A) (rlift γ (S δ) B)
+          (rlift γ (S δ) f) (rlift γ δ u)
   end.
 
 Notation rlift0 γ t := (rlift γ 0 t).
@@ -911,40 +917,6 @@ Proof.
   eassumption.
 Defined.
 
-Fixpoint llift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
-  Σ |-i llift n k t1 ▷ llift n k t2
-
-with llift_redbrs1 {Σ n k b1 b2} (h : redbrs1 Σ b1 b2) :
-  redbrs1 Σ
-          (map (on_snd (llift n k)) b1) (map (on_snd (llift n k)) b2).
-Proof.
-  - { destruct h ; cbn ;
-      try match goal with
-          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
-            match tt with
-            | context [t] =>
-              econstructor ;
-              eapply llift_red1 ; [ exact h | .. ]
-            end
-          end.
-      - eapply meta_red_eq ; [ econstructor |].
-        replace k with (k + 0)%nat by omega.
-        rewrite llift_subst.
-        replace (k + 0)%nat with k by omega.
-        replace (S k + 0)%nat with (S k) by omega.
-        reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor | reflexivity ].
-        eapply llift_redbrs1. assumption.
-    }
-
-  - { destruct h.
-      - econstructor. eapply llift_red1. assumption.
-      - cbn. econstructor. eapply llift_redbrs1. assumption.
-    }
-Defined.
-
 Lemma nl_llift :
   forall {t u n k},
     nl t = nl u ->
@@ -973,56 +945,6 @@ Proof.
   - intros h e. exfalso. apply h. apply e.
 Defined.
 
-Lemma llift_conv :
-  forall {Σ n k t1 t2},
-    Σ |-i t1 = t2 ->
-    Σ |-i llift n k t1 = llift n k t2.
-Proof.
-  intros Σ n k t1 t2 h.
-  induction h.
-  - apply conv_eq. apply nl_llift. assumption.
-  - eapply conv_red_l.
-    + eapply llift_red1. eassumption.
-    + assumption.
-  - eapply conv_red_r.
-    + eassumption.
-    + eapply llift_red1. eassumption.
-Defined.
-
-Fixpoint rlift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
-  Σ |-i rlift n k t1 ▷ rlift n k t2
-
-with rlift_redbrs1 {Σ n k b1 b2} (h : redbrs1 Σ b1 b2) :
-  redbrs1 Σ
-          (map (on_snd (rlift n k)) b1) (map (on_snd (rlift n k)) b2).
-Proof.
-  - { destruct h ; cbn ;
-      try match goal with
-          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
-            match tt with
-            | context [t] =>
-              econstructor ;
-              eapply rlift_red1 ; [ exact h | .. ]
-            end
-          end.
-      - eapply meta_red_eq ; [ econstructor |].
-        replace k with (k + 0)%nat by omega.
-        rewrite rlift_subst.
-        replace (k + 0)%nat with k by omega.
-        replace (S k + 0)%nat with (S k) by omega.
-        reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor | reflexivity ].
-        eapply rlift_redbrs1. assumption.
-    }
-
-  - { destruct h.
-      - econstructor. eapply rlift_red1. assumption.
-      - cbn. econstructor. eapply rlift_redbrs1. assumption.
-    }
-Defined.
-
 Lemma nl_rlift :
   forall {t u n k},
     nl t = nl u ->
@@ -1049,22 +971,6 @@ Proof.
         inversion h. subst. f_equal. unfold compose. apply p. cbn. assumption.
       * apply IHX. now inversion h.
   - intros h e. exfalso. apply h. apply e.
-Defined.
-
-Lemma rlift_conv :
-  forall {Σ n k t1 t2},
-    Σ |-i t1 = t2 ->
-    Σ |-i rlift n k t1 = rlift n k t2.
-Proof.
-  intros Σ n k t1 t2 h.
-  induction h.
-  - apply conv_eq. apply nl_rlift. assumption.
-  - eapply conv_red_l.
-    + eapply rlift_red1. eassumption.
-    + assumption.
-  - eapply conv_red_r.
-    + eassumption.
-    + eapply rlift_red1. eassumption.
 Defined.
 
 Ltac lh h :=
@@ -1313,8 +1219,10 @@ Proof.
         + eassumption.
       - cbn. erewrite llift_type_of_constructor by eassumption.
         eapply type_Construct. eapply wf_llift' ; eassumption.
-      - eapply type_conv ; try emh.
-        eapply llift_conv. assumption.
+      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite !llift_subst. cbn.
+        replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        eapply type_Beta ; emh.
     }
 
   (* type_rlift' *)
@@ -1441,8 +1349,10 @@ Proof.
         + eassumption.
       - cbn. erewrite rlift_type_of_constructor by eassumption.
         eapply type_Construct. eapply wf_rlift' ; eassumption.
-      - eapply type_conv ; try emh.
-        eapply rlift_conv. assumption.
+      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite !rlift_subst. cbn.
+        replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        eapply type_Beta ; emh.
     }
 
   (* wf_llift' *)

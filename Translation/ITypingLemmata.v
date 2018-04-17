@@ -2,8 +2,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
-Require Import util SAst SInduction SLiftSubst SCommon Conversion
-               ITyping ITypingInversions.
+Require Import util SAst SInduction SLiftSubst SCommon ITyping.
 
 (* Lemmata about typing *)
 
@@ -139,32 +138,6 @@ Proof.
   rewrite <- eq in H. inversion H. subst. reflexivity.
 Defined.
 
-Fixpoint weak_glob_red1 {Σ d t1 t2} (h : Σ |-i t1 ▷ t2) :
-  (d::Σ) |-i t1 ▷ t2
-
-with weak_glob_redbrs1 {Σ d b1 b2} (h : redbrs1 Σ b1 b2) :
-  redbrs1 (d::Σ) b1 b2.
-Proof.
-  - induction h ; try (econstructor ; eassumption).
-    econstructor. eapply weak_glob_redbrs1. assumption.
-  - destruct h.
-    + econstructor. eapply weak_glob_red1. assumption.
-    + econstructor. eapply weak_glob_redbrs1. assumption.
-Defined.
-
-Lemma weak_glob_conv :
-  forall {Σ ϕ d t1 t2},
-    (Σ, ϕ) |-i t1 = t2 ->
-    (d::Σ, ϕ) |-i t1 = t2.
-Proof.
-  intros Σ ϕ d t1 t2 h. induction h.
-  all: try (econstructor ; eassumption).
-  - cbn in *. eapply conv_red_l ; try eassumption.
-    cbn. eapply weak_glob_red1. assumption.
-  - cbn in *. eapply conv_red_r ; try eassumption.
-    cbn. eapply weak_glob_red1. assumption.
-Defined.
-
 Fixpoint weak_glob_type {Σ ϕ Γ t A} (h : (Σ,ϕ) ;;; Γ |-i t : A) :
   forall {d},
     fresh_global (sglobal_decl_ident d) Σ ->
@@ -179,7 +152,6 @@ Proof.
   - { dependent destruction h ; intros d fd.
       all: try (econstructor ; try apply weak_glob_wf ;
                 try apply weak_glob_type ;
-                try apply weak_glob_conv ;
                 eassumption
                ).
       - eapply type_HeqTrans with (B := B) (b := b).
@@ -854,8 +826,13 @@ Proof.
         + eassumption.
       - cbn. erewrite lift_type_of_constructor by eassumption.
         eapply type_Construct. now apply wf_lift.
-      - eapply type_conv ; try eih.
-        eapply lift_conv. assumption.
+      - cbn.
+        change (lift #|Δ| #|Ξ| (B {0 := u}))
+          with (lift #|Δ| (0 + #|Ξ|) (B { 0 := u })).
+        change (lift #|Δ| #|Ξ| (t0 {0 := u}))
+          with (lift #|Δ| (0 + #|Ξ|) (t0 { 0 := u })).
+        rewrite !substP1.
+        eapply type_Beta ; eih.
     }
 
   (* wf_lift *)
@@ -1133,8 +1110,13 @@ Proof.
         + eassumption.
       - cbn. erewrite subst_type_of_constructor by eassumption.
         eapply type_Construct. now eapply wf_subst.
-      - cbn. eapply type_conv ; try esh.
-        eapply subst_conv. eassumption.
+      - cbn.
+        change ((B0 {0 := u0}) {#|Δ| := u})
+          with ((B0 {0 := u0}) {0 + #|Δ| := u}).
+        change ((t0 {0 := u0}) {#|Δ| := u})
+          with ((t0 {0 := u0}) {0 + #|Δ| := u}).
+        rewrite !substP4. cbn.
+        eapply type_Beta ; esh.
     }
 
   (* wf_subst *)
@@ -1532,5 +1514,11 @@ Proof.
       * assumption.
       * rewrite nil_cat. assumption.
     + cbn. apply nil_cat.
-  - exists s. assumption.
+  - exists s2. eapply type_Eq.
+    + change (sSort s2) with ((sSort s2){ 0 := u }).
+      eapply typing_subst ; eassumption.
+    + eapply type_App ; try eassumption.
+      eapply type_Lambda ; eassumption.
+    + eapply typing_subst ; eassumption.
+  Unshelve. auto.
 Defined.

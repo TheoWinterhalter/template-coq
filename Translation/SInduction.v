@@ -189,6 +189,7 @@ Lemma sterm_rect_list :
      forall c : sterm, P c ->
      forall brs : list (nat * sterm), sCaseBrsT P brs ->
        P (sCase indn p c brs)) ->
+    (forall A, P A -> forall B, P B -> forall t, P t -> forall u, P u -> P (sBeta A B t u)) ->
     forall t : sterm, P t.
 Proof.
   intros until t. revert t.

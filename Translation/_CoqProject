@@ -9,14 +9,10 @@ SInduction.v
 Equality.v
 SLiftSubst.v
 SCommon.v
-Conversion.v
 XTyping.v
 ITyping.v
-ITypingInversions.v
 ITypingLemmata.v
-ContextConversion.v
 Uniqueness.v
-SubjectReduction.v
 ITypingAdmissible.v
 PackLifts.v
 Translation.v

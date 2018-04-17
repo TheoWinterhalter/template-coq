@@ -2,8 +2,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
-Require Import util SAst SLiftSubst SCommon Conversion ITyping ITypingInversions
-               ITypingLemmata Uniqueness SubjectReduction.
+Require Import util SAst SLiftSubst SCommon ITyping ITypingLemmata Uniqueness.
 
 Corollary sorts_in_sort :
   forall {Σ Γ s1 s2 s3},
@@ -12,11 +11,8 @@ Corollary sorts_in_sort :
     s1 = s2.
 Proof.
   intros Σ Γ s1 s2 s3 h1 h2.
-  ttinv h1. ttinv h2.
-  pose proof (conv_trans h (conv_sym h0)) as eq.
-  pose proof (sort_conv_inv eq).
-  unfold succ_sort, sort in *.
-  omega.
+  inversion h1. inversion h2.
+  subst. inversion H5. reflexivity.
 Defined.
 
 (* We state some admissible typing rules *)
@@ -29,13 +25,8 @@ Lemma heq_sort :
 Proof.
   intros Σ Γ s1 s2 A B p hg h.
   destruct (istype_type hg h) as [? i].
-  ttinv i.
-  ttinv h0. ttinv h5.
-  pose proof (conv_trans h1 (conv_sym h6)) as eq.
-  pose proof (sort_conv_inv eq).
-  assert (s1 = s2) by (unfold succ_sort, sort in * ; omega).
-  subst. clear eq H h1 h6.
-  assumption.
+  inversion i. subst.
+  inversion H5. subst. inversion H6. subst. exact h.
 Defined.
 
 Lemma type_HeqToEq' :
@@ -46,7 +37,7 @@ Lemma type_HeqToEq' :
 Proof.
   intros Σ Γ A u v p hg h.
   destruct (istype_type hg h) as [? i].
-  ttinv i.
+  inversion i.
   eapply type_HeqToEq ; eassumption.
 Defined.
 
@@ -58,7 +49,7 @@ Fact sort_heq :
 Proof.
   intros Σ Γ s1 s2 A B e hg h.
   destruct (istype_type hg h) as [? hty].
-  ttinv hty.
+  inversion hty.
   eapply type_HeqToEq' ; try assumption.
   eapply heq_sort ; eassumption.
 Defined.
@@ -92,7 +83,7 @@ Lemma type_HeqSym' :
 Proof.
   intros Σ Γ A a B b p hg h.
   destruct (istype_type hg h) as [? hty].
-  ttinv hty.
+  inversion hty.
   now eapply type_HeqSym.
 Defined.
 
@@ -105,14 +96,11 @@ Lemma type_HeqTrans' :
 Proof.
   intros Σ Γ A a B b C c p q hg h1 h2.
   destruct (istype_type hg h1) as [? i1].
-  ttinv i1.
+  inversion i1.
   destruct (istype_type hg h2) as [? i2].
-  ttinv i2.
+  inversion i2. subst.
   eapply type_HeqTrans. all: try eassumption.
-  eapply type_conv.
-  - eassumption.
-  - eapply type_Sort. eapply typing_wf ; eassumption.
-  - apply (uniqueness hg h0 h6).
+  rewrite (uniqueness hg H6 H15). assumption.
 Defined.
 
 Lemma type_HeqTransport' :
@@ -124,7 +112,7 @@ Lemma type_HeqTransport' :
 Proof.
   intros Σ Γ s A B p t hg ht hp.
   destruct (istype_type hg hp) as [? i].
-  ttinv i.
+  inversion i.
   eapply type_HeqTransport ; eassumption.
 Defined.
 
@@ -142,8 +130,8 @@ Lemma type_CongProd'' :
          (sSort (max_sort s z)) (sProd ny A2 B2).
 Proof.
   intros Σ Γ s z nx ny A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
-  destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
-  destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+  destruct (istype_type hg hpA) as [? ipA]. inversion ipA.
+  destruct (istype_type hg hpB) as [? ipB]. inversion ipB.
   eapply type_CongProd.
   all: eassumption.
 Defined.
@@ -159,9 +147,9 @@ Lemma prod_sorts :
 Proof.
   intros Σ Γ s1 s2 z1 z2 A1 A2 B1 B2 pA pB hg hpA hpB.
   split.
-  - destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
+  - destruct (istype_type hg hpA) as [? ipA]. inversion ipA.
     eapply sorts_in_sort ; eassumption.
-  - destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+  - destruct (istype_type hg hpB) as [? ipB]. inversion ipB.
     eapply sorts_in_sort ; eassumption.
 Defined.
 
@@ -206,9 +194,9 @@ Lemma type_CongLambda'' :
 Proof.
   intros Σ Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt
          hg hpA hpB hpt hB1 hB2 ht1 ht2.
-  destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
-  destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
-  destruct (istype_type hg hpt) as [? ipt]. ttinv ipt.
+  destruct (istype_type hg hpA) as [? ipA]. inversion ipA.
+  destruct (istype_type hg hpB) as [? ipB]. inversion ipB.
+  destruct (istype_type hg hpt) as [? ipt]. inversion ipt.
   eapply type_CongLambda ; eassumption.
 Defined.
 
@@ -256,10 +244,10 @@ Lemma type_CongApp'' :
 Proof.
   intros Σ Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
          hg hpA hpB hpu hpv hB1 hB2.
-  destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
-  destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
-  destruct (istype_type hg hpu) as [? ipu]. ttinv ipu.
-  destruct (istype_type hg hpv) as [? ipv]. ttinv ipv.
+  destruct (istype_type hg hpA) as [? ipA]. inversion ipA.
+  destruct (istype_type hg hpB) as [? ipB]. inversion ipB.
+  destruct (istype_type hg hpu) as [? ipu]. inversion ipu.
+  destruct (istype_type hg hpv) as [? ipv]. inversion ipv.
   eapply type_CongApp ; eassumption.
 Defined.
 
@@ -295,9 +283,9 @@ Lemma type_CongEq'' :
                sHeq (sSort s) (sEq A1 u1 v1) (sSort s) (sEq A2 u2 v2).
 Proof.
   intros Σ Γ s A1 A2 u1 u2 v1 v2 pA pu pv hg hpA hpu hpv.
-  destruct (istype_type hg hpA) as [? iA]. ttinv iA.
-  destruct (istype_type hg hpu) as [? iu]. ttinv iu.
-  destruct (istype_type hg hpv) as [? iv]. ttinv iv.
+  destruct (istype_type hg hpA) as [? iA]. inversion iA.
+  destruct (istype_type hg hpu) as [? iu]. inversion iu.
+  destruct (istype_type hg hpv) as [? iv]. inversion iv.
   eapply type_CongEq.
   all: assumption.
 Defined.
@@ -313,10 +301,11 @@ Lemma type_CongEq' :
                     (sSort s2) (sEq A2 u2 v2).
 Proof.
   intros Σ Γ s1 s2 A1 A2 u1 u2 v1 v2 pA pu pv hg hpA hpu hpv.
-  destruct (istype_type hg hpA) as [? iA]. ttinv iA.
-  destruct (istype_type hg hpu) as [? iu]. ttinv iu.
-  destruct (istype_type hg hpv) as [? iv]. ttinv iv.
-  pose proof (sorts_in_sort h h4). subst.
+  destruct (istype_type hg hpA) as [? iA]. inversion iA.
+  destruct (istype_type hg hpu) as [? iu]. inversion iu.
+  destruct (istype_type hg hpv) as [? iv]. inversion iv.
+  subst.
+  pose proof (sorts_in_sort H5 H6). subst.
   eapply type_CongEq''.
   all: assumption.
 Defined.
@@ -330,8 +319,8 @@ Lemma type_CongRefl'' :
                sHeq (sEq A1 u1 u1) (sRefl A1 u1) (sEq A2 u2 u2) (sRefl A2 u2).
 Proof.
   intros Σ Γ s A1 A2 u1 u2 pA pu hg hpA hpu.
-  destruct (istype_type hg hpA) as [? iA]. ttinv iA.
-  destruct (istype_type hg hpu) as [? iu]. ttinv iu.
+  destruct (istype_type hg hpA) as [? iA]. inversion iA.
+  destruct (istype_type hg hpu) as [? iu]. inversion iu.
   eapply type_CongRefl.
   all: eassumption.
 Defined.
@@ -345,8 +334,8 @@ Lemma type_CongRefl' :
                sHeq (sEq A1 u1 u1) (sRefl A1 u1) (sEq A2 u2 u2) (sRefl A2 u2).
 Proof.
   intros Σ Γ s1 s2 A1 A2 u1 u2 pA pu hg hpA hpu.
-  destruct (istype_type hg hpA) as [? iA]. ttinv iA.
-  destruct (istype_type hg hpu) as [? iu]. ttinv iu.
+  destruct (istype_type hg hpA) as [? iA]. inversion iA.
+  destruct (istype_type hg hpu) as [? iu]. inversion iu.
   eapply type_CongRefl'' ; try eassumption.
   eapply heq_sort ; eassumption.
 Defined.
@@ -358,7 +347,7 @@ Lemma type_EqToHeq' :
     Σ ;;; Γ |-i sEqToHeq p : sHeq A u A v.
 Proof.
   intros Σ Γ A u v p hg h.
-  destruct (istype_type hg h) as [? i]. ttinv i.
+  destruct (istype_type hg h) as [? i]. inversion i.
   eapply type_EqToHeq ; eassumption.
 Defined.
 
@@ -369,7 +358,7 @@ Lemma type_ProjT1' :
     Σ ;;; Γ |-i sProjT1 p : A1.
 Proof.
   intros Σ Γ A1 A2 p hg hp.
-  destruct (istype_type hg hp) as [? i]. ttinv i.
+  destruct (istype_type hg hp) as [? i]. inversion i.
   eapply type_ProjT1 ; [.. | eassumption] ; eassumption.
 Defined.
 
@@ -380,7 +369,7 @@ Lemma type_ProjT2' :
     Σ ;;; Γ |-i sProjT2 p : A2.
 Proof.
   intros Σ Γ A1 A2 p hg hp.
-  destruct (istype_type hg hp) as [? i]. ttinv i.
+  destruct (istype_type hg hp) as [? i]. inversion i.
   eapply type_ProjT2 ; [.. | eassumption] ; eassumption.
 Defined.
 
@@ -391,7 +380,7 @@ Lemma type_ProjTe' :
     Σ ;;; Γ |-i sProjTe p : sHeq A1 (sProjT1 p) A2 (sProjT2 p).
 Proof.
   intros Σ Γ A1 A2 p hg hp.
-  destruct (istype_type hg hp) as [? i]. ttinv i.
+  destruct (istype_type hg hp) as [? i]. inversion i.
   eapply type_ProjTe ; [.. | eassumption] ; eassumption.
 Defined.
 
@@ -414,7 +403,7 @@ Lemma type_Transport' :
     Σ ;;; Γ |-i sTransport T1 T2 p t : T2.
 Proof.
   intros Σ Γ s T1 T2 p t hg hp ht.
-  destruct (istype_type hg hp) as [? i]. ttinv i.
+  destruct (istype_type hg hp) as [? i]. inversion i.
   eapply type_Transport ; eassumption.
 Defined.
 
@@ -426,9 +415,8 @@ Lemma type_HeqTypeEq' :
     Σ ;;; Γ |-i sHeqTypeEq A B p : sEq (sSort s) A B.
 Proof.
   intros Σ Γ A u B v p s hg hp hA.
-  destruct (istype_type hg hp) as [? i]. ttinv i.
+  destruct (istype_type hg hp) as [? i]. inversion i.
   eapply type_HeqTypeEq ; try eassumption.
-  pose proof (uniqueness hg h hA).
-  eapply type_conv ; try eassumption.
-  eapply type_Sort. eapply typing_wf. eassumption.
+  pose proof (uniqueness hg H5 hA). subst.
+  inversion H9. subst. assumption.
 Defined.
