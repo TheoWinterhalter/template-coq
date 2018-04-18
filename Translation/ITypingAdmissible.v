@@ -420,3 +420,17 @@ Proof.
   pose proof (uniqueness hg H5 hA). subst.
   inversion H9. subst. assumption.
 Defined.
+
+Lemma type_Beta' :
+  forall {Σ Γ A B t u nx},
+    type_glob Σ ->
+    Σ;;; Γ,, A |-i t : B ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ |-i sBeta A B t u
+            : sEq (B {0 := u}) (sApp (sLambda nx A B t) A B u) (t {0 := u}).
+Proof.
+  intros Σ Γ A B t u nx hg ht hu.
+  destruct (istype_type hg ht).
+  destruct (istype_type hg hu).
+  eapply type_Beta ; eassumption.
+Defined.

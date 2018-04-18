@@ -744,41 +744,25 @@ Proof.
   - cbn in *. destruct A' ; try (now inversion hh).
     + exists (succ_sort s). split.
       * apply type_Sort. apply (typing_wf ht).
-      * inversion ht. destruct (istype_type hg ht).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; try eassumption.
-           econstructor. eapply typing_wf. eassumption.
+      * inversion ht. apply type_Sort. apply (typing_wf ht).
     + inversion ht.
       exists (max_sort s1 s2). split.
       * now apply type_Prod.
-      * destruct (istype_type hg ht).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; try eassumption.
-           econstructor. eapply typing_wf. eassumption.
+      * apply type_Sort. apply (typing_wf ht).
     + inversion ht.
       exists s. split.
       * now apply type_Eq.
-      * destruct (istype_type hg ht).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; try eassumption.
-           econstructor. eapply typing_wf. eassumption.
+      * apply type_Sort. apply (typing_wf ht).
 
   - destruct a. cbn in ht.
     change (fold_right transport_data_app A' tseq)
       with (transport_seq_app tseq A') in ht.
-    inversion ht.
-    destruct (IHtseq Γ' A' T1 hg hh h4) as [s' [hAs hT1s]].
+    inversion ht. subst.
+    destruct (IHtseq Γ' A' T1 hg hh H8) as [s' [hAs hT1s]].
     exists s'. split.
     + assumption.
-    + pose proof (uniqueness hg h3 hT1s) as hs.
-      apply conv_sym in hs. pose proof (sort_conv_inv hs) as es. rewrite es in *. clear hs.
-      destruct (istype_type hg ht).
-      eapply type_conv ; try eassumption.
-      * econstructor. eapply typing_wf. eassumption.
-      * apply conv_sym. eapply subj_conv ; eassumption.
+    + pose proof (uniqueness hg H4 hT1s) as hs. inversion hs. subst.
+      assumption.
 Defined.
 
 Lemma choose_type' :
@@ -816,11 +800,10 @@ Proof.
       specialize (hp (sSort s) (sSort s)).
       rewrite <- heq in hs.
       assert (hAs : Σ ;;; Γ' |-i A'' : sSort s).
-      { eapply type_conv.
+      { eapply meta_conv.
         - eassumption.
-        - eapply type_Sort. eapply typing_wf. eassumption.
         - cut (s' = s).
-          + intro. subst. apply conv_refl.
+          + intro. subst. reflexivity.
           + eapply sorts_in_sort ; try eassumption.
             apply type_Sort. apply (typing_wf h').
       }
@@ -1498,10 +1481,10 @@ Proof.
       destruct (H2 _ hΓ) as [A'' [u'' hu'']].
       destruct (change_type hg hu'' hA') as [u' hu'].
       clear hu'' A'' u''.
-      (* Now we conclude using reflexivity *)
+      (* Now we conclude using beta *)
       exists (B'{0 := u'}), (B'{0 := u'}).
       exists (sApp (sLambda n A' B' t') A' B' u'), (t'{0 := u'}).
-      exists (sHeqRefl (B'{0 := u'}) (t'{0 := u'})).
+      exists (sEqToHeq (sBeta A' B' t' u')).
       destruct hA' as [[[? ?] ?] ?].
       destruct hB' as [[[? ?] ?] ?].
       destruct ht' as [[[? ?] ?] ?].
@@ -1513,23 +1496,8 @@ Proof.
       * constructor ; try assumption.
         constructor ; assumption.
       * eapply inrel_subst ; assumption.
-      * eapply type_conv.
-        -- apply @type_HeqRefl with (s := s2).
-           ++ change (sSort s2) with ((sSort s2){0 := u'}).
-              eapply typing_subst ; eassumption.
-           ++ eapply typing_subst ; eassumption.
-        -- apply @type_Heq with (s := s2).
-           ++ change (sSort s2) with ((sSort s2){0 := u'}).
-              eapply typing_subst ; eassumption.
-           ++ change (sSort s2) with ((sSort s2){0 := u'}).
-              eapply typing_subst ; eassumption.
-           ++ eapply type_App. all: try eassumption.
-              eapply type_Lambda. all: eassumption.
-           ++ eapply typing_subst ; eassumption.
-        -- apply cong_Heq.
-           all: try (apply conv_refl).
-           eapply conv_red_r ; [| econstructor ].
-           apply conv_refl.
+      * eapply type_EqToHeq' ; try assumption.
+        eapply type_Beta' ; eassumption.
 
     (* eq_conv *)
     + (* Translating the conversion *)
@@ -2644,8 +2612,6 @@ Proof.
       destruct (istype_type hg he') as [? heq].
       inversion heq.
       eapply type_EqToHeq' ; assumption.
-
-  Unshelve. all: try exact 0. exact nAnon.
 
 Defined.
 
