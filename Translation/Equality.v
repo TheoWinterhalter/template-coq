@@ -44,6 +44,7 @@ Inductive nlterm : Type :=
 | nlCase (indn : inductive * nat) (p c : nlterm) (brs : list (nat * nlterm))
 | nlBeta (A B t u : nlterm)
 | nlJRefl (A u P w : nlterm)
+| nlTransportRefl (A u : nlterm)
 .
 
 Fixpoint nl (t : sterm) : nlterm :=
@@ -84,6 +85,7 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sCase indn p c brs => nlCase indn (nl p) (nl c) (map (on_snd nl) brs)
   | sBeta A B t u => nlBeta (nl A) (nl B) (nl t) (nl u)
   | sJRefl A u P w => nlJRefl (nl A) (nl u) (nl P) (nl w)
+  | sTransportRefl A u => nlTransportRefl (nl A) (nl u)
   end.
 
 Fact inductive_dec : forall (i i' : inductive), { i = i'} + { i <> i' }.

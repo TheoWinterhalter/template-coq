@@ -195,6 +195,7 @@ Lemma sterm_rect_list :
        P (sCase indn p c brs)) ->
     (forall A, P A -> forall B, P B -> forall t, P t -> forall u, P u -> P (sBeta A B t u)) ->
     (forall A, P A -> forall u, P u -> forall P', P P' -> forall w, P w -> P (sJRefl A u P' w)) ->
+    (forall A, P A -> forall u, P u -> P (sTransportRefl A u)) ->
     forall t : sterm, P t.
 Proof.
   intros until t. revert t.

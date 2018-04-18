@@ -68,6 +68,7 @@ Fixpoint lift n k t : sterm :=
           (lift n (S k) t) (lift n k u)
   | sJRefl A u P w =>
     sJRefl (lift n k A) (lift n k u) (lift n (S (S k)) P) (lift n k w)
+  | sTransportRefl A u => sTransportRefl (lift n k A) (lift n k u)
   end.
 
 Notation lift0 n t := (lift n 0 t).
@@ -139,6 +140,7 @@ Fixpoint subst t k u :=
           (subst t (S k) f) (subst t k u)
   | sJRefl A u P w =>
     sJRefl (subst t k A) (subst t k u) (subst t (S (S k)) P) (subst t k w)
+  | sTransportRefl A u => sTransportRefl (subst t k A) (subst t k u)
   end.
 
 Notation subst0 t u := (subst t 0 u).
@@ -236,6 +238,7 @@ Fixpoint closed_above k t :=
     closed_above k u &&
     closed_above (S (S k)) P &&
     closed_above k w
+  | sTransportRefl A u => closed_above k A && closed_above k u
   end.
 
 Definition closed t := closed_above 0 t = true.

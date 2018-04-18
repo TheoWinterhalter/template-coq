@@ -87,6 +87,7 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sJRefl A u P w =>
     sJRefl (llift γ δ A) (llift γ δ u)
            (llift γ (S (S δ)) P) (llift γ δ w)
+  | sTransportRefl A u => sTransportRefl (llift γ δ A) (llift γ δ u)
   end.
 
 Notation llift0 γ t := (llift γ 0 t).
@@ -159,6 +160,7 @@ Fixpoint rlift γ δ t : sterm :=
   | sJRefl A u P w =>
     sJRefl (rlift γ δ A) (rlift γ δ u)
            (rlift γ (S (S δ)) P) (rlift γ δ w)
+  | sTransportRefl A u => sTransportRefl (rlift γ δ A) (rlift γ δ u)
   end.
 
 Notation rlift0 γ t := (rlift γ 0 t).
@@ -1263,6 +1265,7 @@ Proof.
             with (llift #|Γm| #|Δ| (sRefl A0 u)).
           replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
           rewrite <- llift_subst. f_equal. omega.
+      - cbn. eapply type_TransportRefl ; emh.
     }
 
   (* type_rlift' *)
@@ -1413,6 +1416,7 @@ Proof.
             with (rlift #|Γm| #|Δ| (sRefl A0 u)).
           replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
           rewrite <- rlift_subst. f_equal. omega.
+      - cbn. eapply type_TransportRefl ; emh.
     }
 
   (* wf_llift' *)

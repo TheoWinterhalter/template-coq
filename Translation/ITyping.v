@@ -269,6 +269,12 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i sJRefl A u P w :
                sEq (P{ 1 := u }{ 0 := sRefl A u }) (sJ A u P w u (sRefl A u)) w
 
+| type_TransportRefl Γ s A t :
+    Σ ;;; Γ |-i A : sSort s ->
+    Σ ;;; Γ |-i t : A ->
+    Σ ;;; Γ |-i sTransportRefl A t :
+               sEq A (sTransport A A (sRefl (sSort s) A) t) t
+
 where " Σ ;;; Γ '|-i' t : T " := (@typing Σ Γ t T) : i_scope
 
 with wf (Σ : sglobal_context) : scontext -> Prop :=

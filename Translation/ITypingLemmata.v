@@ -852,6 +852,7 @@ Proof.
           change (sRefl (lift #|Δ| #|Ξ| A0) (lift #|Δ| #|Ξ| u))
             with (lift #|Δ| #|Ξ| (sRefl A0 u)).
           rewrite <- substP1. reflexivity.
+      - cbn. eapply type_TransportRefl ; eih.
     }
 
   (* wf_lift *)
@@ -1156,6 +1157,7 @@ Proof.
           change (sRefl (A0 {0 + #|Δ| := u}) (u0 {0 + #|Δ| := u}))
             with ((sRefl A0 u0){ 0 + #|Δ| := u}).
           rewrite <- substP4. reflexivity.
+      - cbn. eapply type_TransportRefl ; esh.
     }
 
   (* wf_subst *)
@@ -1570,5 +1572,9 @@ Proof.
       eapply type_Refl ; eassumption.
     + eapply type_J ; try eassumption.
       eapply type_Refl ; eassumption.
+  - exists s. eapply type_Eq ; try eassumption.
+    eapply type_Transport ; try eassumption.
+    eapply type_Refl ; try eassumption.
+    econstructor. eapply typing_wf. eassumption.
   Unshelve. auto.
 Defined.

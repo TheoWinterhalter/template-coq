@@ -15,7 +15,7 @@ Inductive sterm : Type :=
 | sEq (A u v : sterm)
 | sRefl (A u : sterm)
 | sJ (A u P w v p : sterm)
-| sTransport (T1 T2 p t : sterm) (* TODO3 REMOVE? *)
+| sTransport (T1 T2 p t : sterm)
 (* Heterogenous equality *)
 | sHeq (A a B b : sterm)
 | sHeqToEq (p : sterm)
@@ -44,5 +44,5 @@ Inductive sterm : Type :=
 (* Equality axioms *)
 | sBeta (A B t u : sterm)
 | sJRefl (A u P w : sterm)
-(* TODO3 ADD sTransportRefl? *)
+| sTransportRefl (A t : sterm)
 .
