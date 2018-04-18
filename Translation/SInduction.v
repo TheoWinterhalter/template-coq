@@ -150,6 +150,8 @@ Lemma sterm_rect_list :
      forall b : sterm, P b ->
        P (sHeq A a B b)) ->
     (forall p : sterm, P p -> P (sHeqToEq p)) ->
+    (forall A, P A -> forall B, P B -> forall a, P a -> forall b, P b -> forall p, P p -> forall q, P q ->
+       P (sHeqConstr A B a b p q)) ->
     (forall A : sterm, P A -> forall a : sterm, P a -> P (sHeqRefl A a)) ->
     (forall p : sterm, P p -> P (sHeqSym p)) ->
     (forall p : sterm, P p -> forall q : sterm, P q -> P (sHeqTrans p q)) ->
@@ -179,6 +181,8 @@ Lemma sterm_rect_list :
     (forall pA : sterm, P pA -> forall pu : sterm, P pu -> P (sCongRefl pA pu)) ->
     (forall p : sterm, P p -> P (sEqToHeq p)) ->
     (forall A, P A -> forall B, P B -> forall p : sterm, P p -> P (sHeqTypeEq A B p)) ->
+    (forall A, P A -> forall B, P B -> forall a, P a -> forall b, P b -> forall p, P p ->
+       P (sHeqTermEq A B a b p)) ->
     (forall A1 : sterm, P A1 -> forall A2 : sterm, P A2 -> P (sPack A1 A2)) ->
     (forall p : sterm, P p -> P (sProjT1 p)) ->
     (forall p : sterm, P p -> P (sProjT2 p)) ->
@@ -190,6 +194,7 @@ Lemma sterm_rect_list :
      forall brs : list (nat * sterm), sCaseBrsT P brs ->
        P (sCase indn p c brs)) ->
     (forall A, P A -> forall B, P B -> forall t, P t -> forall u, P u -> P (sBeta A B t u)) ->
+    (forall A, P A -> forall u, P u -> forall P', P P' -> forall w, P w -> P (sJRefl A u P' w)) ->
     forall t : sterm, P t.
 Proof.
   intros until t. revert t.

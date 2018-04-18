@@ -28,6 +28,10 @@ Fixpoint lift n k t : sterm :=
   | sHeq A a B b =>
     sHeq (lift n k A) (lift n k a) (lift n k B) (lift n k b)
   | sHeqToEq p => sHeqToEq (lift n k p)
+  | sHeqConstr A B a b p q =>
+    sHeqConstr (lift n k A) (lift n k B)
+               (lift n k a) (lift n k b)
+               (lift n k p) (lift n k q)
   | sHeqRefl A a => sHeqRefl (lift n k A) (lift n k a)
   | sHeqSym p => sHeqSym (lift n k p)
   | sHeqTrans p q => sHeqTrans (lift n k p) (lift n k q)
@@ -46,6 +50,9 @@ Fixpoint lift n k t : sterm :=
   | sCongRefl pA pu => sCongRefl (lift n k pA) (lift n k pu)
   | sEqToHeq p => sEqToHeq (lift n k p)
   | sHeqTypeEq A B p => sHeqTypeEq (lift n k A) (lift n k B) (lift n k p)
+  | sHeqTermEq A B a b p =>
+    sHeqTermEq (lift n k A) (lift n k B)
+               (lift n k a) (lift n k b) (lift n k p)
   | sPack A1 A2 => sPack (lift n k A1) (lift n k A2)
   | sProjT1 p => sProjT1 (lift n k p)
   | sProjT2 p => sProjT2 (lift n k p)
@@ -59,6 +66,8 @@ Fixpoint lift n k t : sterm :=
   | sBeta A B t u =>
     sBeta (lift n k A) (lift n (S k) B)
           (lift n (S k) t) (lift n k u)
+  | sJRefl A u P w =>
+    sJRefl (lift n k A) (lift n k u) (lift n (S (S k)) P) (lift n k w)
   end.
 
 Notation lift0 n t := (lift n 0 t).
@@ -90,6 +99,10 @@ Fixpoint subst t k u :=
   | sHeq A a B b =>
     sHeq (subst t k A) (subst t k a) (subst t k B) (subst t k b)
   | sHeqToEq p => sHeqToEq (subst t k p)
+  | sHeqConstr A B a b p q =>
+    sHeqConstr (subst t k A) (subst t k B)
+               (subst t k a) (subst t k b)
+               (subst t k p) (subst t k q)
   | sHeqRefl A a => sHeqRefl (subst t k A) (subst t k a)
   | sHeqSym p => sHeqSym (subst t k p)
   | sHeqTrans p q => sHeqTrans (subst t k p) (subst t k q)
@@ -108,6 +121,9 @@ Fixpoint subst t k u :=
   | sCongRefl pA pu => sCongRefl (subst t k pA) (subst t k pu)
   | sEqToHeq p => sEqToHeq (subst t k p)
   | sHeqTypeEq A B p => sHeqTypeEq (subst t k A) (subst t k B) (subst t k p)
+  | sHeqTermEq A B a b p =>
+    sHeqTermEq (subst t k A) (subst t k B)
+               (subst t k a) (subst t k b) (subst t k p)
   | sPack A1 A2 => sPack (subst t k A1) (subst t k A2)
   | sProjT1 p => sProjT1 (subst t k p)
   | sProjT2 p => sProjT2 (subst t k p)
@@ -121,6 +137,8 @@ Fixpoint subst t k u :=
   | sBeta A B f u =>
     sBeta (subst t k A) (subst t (S k) B)
           (subst t (S k) f) (subst t k u)
+  | sJRefl A u P w =>
+    sJRefl (subst t k A) (subst t k u) (subst t (S (S k)) P) (subst t k w)
   end.
 
 Notation subst0 t u := (subst t 0 u).
@@ -165,6 +183,13 @@ Fixpoint closed_above k t :=
     closed_above k B &&
     closed_above k b
   | sHeqToEq p => closed_above k p
+  | sHeqConstr A B a b p q =>
+    closed_above k A &&
+    closed_above k B &&
+    closed_above k a &&
+    closed_above k b &&
+    closed_above k p &&
+    closed_above k q
   | sHeqRefl A a => closed_above k A && closed_above k a
   | sHeqSym p => closed_above k p
   | sHeqTrans p q => closed_above k p && closed_above k q
@@ -185,6 +210,12 @@ Fixpoint closed_above k t :=
   | sCongRefl pA pu => closed_above k pA && closed_above k pu
   | sEqToHeq p => closed_above k p
   | sHeqTypeEq A B p => closed_above k A && closed_above k B && closed_above k p
+  | sHeqTermEq A B a b p =>
+    closed_above k A &&
+    closed_above k B &&
+    closed_above k a &&
+    closed_above k b &&
+    closed_above k p
   | sPack A1 A2 => closed_above k A1 && closed_above k A2
   | sProjT1 p => closed_above k p
   | sProjT2 p => closed_above k p
@@ -200,6 +231,11 @@ Fixpoint closed_above k t :=
     closed_above (S k) B &&
     closed_above (S k) f &&
     closed_above k u
+  | sJRefl A u P w =>
+    closed_above k A &&
+    closed_above k u &&
+    closed_above (S (S k)) P &&
+    closed_above k w
   end.
 
 Definition closed t := closed_above 0 t = true.

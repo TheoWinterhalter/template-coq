@@ -46,6 +46,10 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sHeq A a B b =>
     sHeq (llift γ δ A) (llift γ δ a) (llift γ δ B) (llift γ δ b)
   | sHeqToEq p => sHeqToEq (llift γ δ p)
+  | sHeqConstr A B a b p q =>
+    sHeqConstr (llift γ δ A) (llift γ δ B)
+               (llift γ δ a) (llift γ δ b)
+               (llift γ δ p) (llift γ δ q)
   | sHeqRefl A a => sHeqRefl (llift γ δ A) (llift γ δ a)
   | sHeqSym p => sHeqSym (llift γ δ p)
   | sHeqTrans p q => sHeqTrans (llift γ δ p) (llift γ δ q)
@@ -64,6 +68,9 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sCongRefl pA pu => sCongRefl (llift γ δ pA) (llift γ δ pu)
   | sEqToHeq p => sEqToHeq (llift γ δ p)
   | sHeqTypeEq A B p => sHeqTypeEq (llift γ δ A) (llift γ δ B) (llift γ δ p)
+  | sHeqTermEq A B a b p =>
+    sHeqTermEq (llift γ δ A) (llift γ δ B)
+               (llift γ δ a) (llift γ δ b) (llift γ δ p)
   | sSort x => sSort x
   | sPack A B => sPack (llift γ δ A) (llift γ δ B)
   | sProjT1 x => sProjT1 (llift γ δ x)
@@ -77,6 +84,9 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sBeta A B f u =>
     sBeta (llift γ δ A) (llift γ (S δ) B)
           (llift γ (S δ) f) (llift γ δ u)
+  | sJRefl A u P w =>
+    sJRefl (llift γ δ A) (llift γ δ u)
+           (llift γ (S (S δ)) P) (llift γ δ w)
   end.
 
 Notation llift0 γ t := (llift γ 0 t).
@@ -108,6 +118,10 @@ Fixpoint rlift γ δ t : sterm :=
   | sHeq A a B b =>
     sHeq (rlift γ δ A) (rlift γ δ a) (rlift γ δ B) (rlift γ δ b)
   | sHeqToEq p => sHeqToEq (rlift γ δ p)
+  | sHeqConstr A B a b p q =>
+    sHeqConstr (rlift γ δ A) (rlift γ δ B)
+               (rlift γ δ a) (rlift γ δ b)
+               (rlift γ δ p) (rlift γ δ q)
   | sHeqRefl A a => sHeqRefl (rlift γ δ A) (rlift γ δ a)
   | sHeqSym p => sHeqSym (rlift γ δ p)
   | sHeqTrans p q => sHeqTrans (rlift γ δ p) (rlift γ δ q)
@@ -126,6 +140,9 @@ Fixpoint rlift γ δ t : sterm :=
   | sCongRefl pA pu => sCongRefl (rlift γ δ pA) (rlift γ δ pu)
   | sEqToHeq p => sEqToHeq (rlift γ δ p)
   | sHeqTypeEq A B p => sHeqTypeEq (rlift γ δ A) (rlift γ δ B) (rlift γ δ p)
+  | sHeqTermEq A B a b p =>
+    sHeqTermEq (rlift γ δ A) (rlift γ δ B)
+               (rlift γ δ a) (rlift γ δ b) (rlift γ δ p)
   | sSort x => sSort x
   | sPack A B => sPack (rlift γ δ A) (rlift γ δ B)
   | sProjT1 x => sProjT1 (rlift γ δ x)
@@ -139,6 +156,9 @@ Fixpoint rlift γ δ t : sterm :=
   | sBeta A B f u =>
     sBeta (rlift γ δ A) (rlift γ (S δ) B)
           (rlift γ (S δ) f) (rlift γ δ u)
+  | sJRefl A u P w =>
+    sJRefl (rlift γ δ A) (rlift γ δ u)
+           (rlift γ (S (S δ)) P) (rlift γ δ w)
   end.
 
 Notation rlift0 γ t := (rlift γ 0 t).
@@ -1159,6 +1179,7 @@ Proof.
       - cbn. eapply type_Transport ; emh.
       - cbn. eapply type_Heq ; emh.
       - cbn. eapply type_HeqToEq ; emh.
+      - cbn. eapply type_HeqConstr ; emh.
       - cbn. eapply type_HeqRefl ; emh.
       - cbn. eapply type_HeqSym ; emh.
       - cbn.
@@ -1209,6 +1230,7 @@ Proof.
       - cbn. eapply type_CongRefl ; emh.
       - cbn. eapply type_EqToHeq ; emh.
       - cbn. eapply type_HeqTypeEq ; emh.
+      - cbn. eapply type_HeqTermEq ; emh.
       - cbn. eapply type_Pack ; emh.
       - cbn. eapply @type_ProjT1 with (A2 := llift #|Γm| #|Δ| A2) ; emh.
       - cbn. eapply @type_ProjT2 with (A1 := llift #|Γm| #|Δ| A1) ; emh.
@@ -1223,6 +1245,24 @@ Proof.
         rewrite !llift_subst. cbn.
         replace (#|Δ| + 0)%nat with #|Δ| by omega.
         eapply type_Beta ; emh.
+      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite llift_subst.
+        replace (S #|Δ| + 0)%nat with (#|Δ| + 1)%nat by omega.
+        rewrite llift_subst.
+        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
+        eapply type_JRefl ; emh.
+        + cbn. unfold ssnoc. cbn. f_equal. f_equal.
+          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+            rewrite lift_llift3 by omega. reflexivity.
+          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+            rewrite lift_llift3 by omega. reflexivity.
+        + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
+          rewrite <- llift_subst.
+          change (sRefl (llift #|Γm| #|Δ| A0) (llift #|Γm| #|Δ| u))
+            with (llift #|Γm| #|Δ| (sRefl A0 u)).
+          replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
+          rewrite <- llift_subst. f_equal. omega.
     }
 
   (* type_rlift' *)
@@ -1289,6 +1329,7 @@ Proof.
       - cbn. eapply type_Transport ; emh.
       - cbn. eapply type_Heq ; emh.
       - cbn. eapply type_HeqToEq ; emh.
+      - cbn. eapply type_HeqConstr ; emh.
       - cbn. eapply type_HeqRefl ; emh.
       - cbn. eapply type_HeqSym ; emh.
       - cbn.
@@ -1339,6 +1380,7 @@ Proof.
       - cbn. eapply type_CongRefl ; emh.
       - cbn. eapply type_EqToHeq ; emh.
       - cbn. eapply type_HeqTypeEq ; emh.
+      - cbn. eapply type_HeqTermEq ; emh.
       - cbn. eapply type_Pack ; emh.
       - cbn. eapply @type_ProjT1 with (A2 := rlift #|Γm| #|Δ| A2) ; emh.
       - cbn. eapply @type_ProjT2 with (A1 := rlift #|Γm| #|Δ| A1) ; emh.
@@ -1353,6 +1395,24 @@ Proof.
         rewrite !rlift_subst. cbn.
         replace (#|Δ| + 0)%nat with #|Δ| by omega.
         eapply type_Beta ; emh.
+      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite rlift_subst.
+        replace (S #|Δ| + 0)%nat with (#|Δ| + 1)%nat by omega.
+        rewrite rlift_subst.
+        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        replace (S (#|Δ| + 1))%nat with (S (S #|Δ|)) by omega.
+        eapply type_JRefl ; emh.
+        + cbn. unfold ssnoc. cbn. f_equal. f_equal.
+          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+            rewrite lift_rlift3 by omega. reflexivity.
+          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+            rewrite lift_rlift3 by omega. reflexivity.
+        + replace (S (S #|Δ|)) with ((S #|Δ|) + 1)%nat by omega.
+          rewrite <- rlift_subst.
+          change (sRefl (rlift #|Γm| #|Δ| A0) (rlift #|Γm| #|Δ| u))
+            with (rlift #|Γm| #|Δ| (sRefl A0 u)).
+          replace (#|Δ| + 1)%nat with (S #|Δ| + 0)%nat by omega.
+          rewrite <- rlift_subst. f_equal. omega.
     }
 
   (* wf_llift' *)

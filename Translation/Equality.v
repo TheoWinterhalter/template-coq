@@ -20,6 +20,7 @@ Inductive nlterm : Type :=
 (* Heterogenous equality *)
 | nlHeq (A a B b : nlterm)
 | nlHeqToEq (p : nlterm)
+| nlHeqConstr (A B a b p q : nlterm)
 | nlHeqRefl (A a : nlterm)
 | nlHeqSym (p : nlterm)
 | nlHeqTrans (p q : nlterm)
@@ -31,6 +32,7 @@ Inductive nlterm : Type :=
 | nlCongRefl (pA pu : nlterm)
 | nlEqToHeq (p : nlterm)
 | nlHeqTypeEq (A B p : nlterm)
+| nlHeqTermEq (A B a b p : nlterm)
 (* Packing *)
 | nlPack (A1 A2 : nlterm)
 | nlProjT1 (p : nlterm)
@@ -41,6 +43,7 @@ Inductive nlterm : Type :=
 | nlConstruct (ind : inductive) (n : nat)
 | nlCase (indn : inductive * nat) (p c : nlterm) (brs : list (nat * nlterm))
 | nlBeta (A B t u : nlterm)
+| nlJRefl (A u P w : nlterm)
 .
 
 Fixpoint nl (t : sterm) : nlterm :=
@@ -56,6 +59,8 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sTransport T1 T2 p t => nlTransport (nl T1) (nl T2) (nl p) (nl t)
   | sHeq A a B b => nlHeq (nl A) (nl a) (nl B) (nl b)
   | sHeqToEq p => nlHeqToEq (nl p)
+  | sHeqConstr A B a b p q =>
+    nlHeqConstr (nl A) (nl B) (nl a) (nl b) (nl p) (nl q)
   | sHeqRefl A a => nlHeqRefl (nl A) (nl a)
   | sHeqSym p => nlHeqSym (nl p)
   | sHeqTrans p q => nlHeqTrans (nl p) (nl q)
@@ -69,6 +74,7 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sCongRefl pA pu => nlCongRefl (nl pA) (nl pu)
   | sEqToHeq p => nlEqToHeq (nl p)
   | sHeqTypeEq A B p => nlHeqTypeEq (nl A) (nl B) (nl p)
+  | sHeqTermEq A B a b p => nlHeqTermEq (nl A) (nl B) (nl a) (nl b) (nl p)
   | sPack A1 A2 => nlPack (nl A1) (nl A2)
   | sProjT1 p => nlProjT1 (nl p)
   | sProjT2 p => nlProjT2 (nl p)
@@ -77,6 +83,7 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sConstruct ind n => nlConstruct ind n
   | sCase indn p c brs => nlCase indn (nl p) (nl c) (map (on_snd nl) brs)
   | sBeta A B t u => nlBeta (nl A) (nl B) (nl t) (nl u)
+  | sJRefl A u P w => nlJRefl (nl A) (nl u) (nl P) (nl w)
   end.
 
 Fact inductive_dec : forall (i i' : inductive), { i = i'} + { i <> i' }.

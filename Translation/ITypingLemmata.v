@@ -765,6 +765,7 @@ Proof.
       - cbn. eapply type_Transport ; eih.
       - cbn. eapply type_Heq ; eih.
       - cbn. eapply type_HeqToEq ; eih.
+      - cbn. eapply type_HeqConstr ; eih.
       - cbn. eapply type_HeqRefl ; eih.
       - cbn. eapply type_HeqSym ; eih.
       - cbn. eapply @type_HeqTrans with (B := lift #|Δ| #|Ξ| B) (b := lift #|Δ| #|Ξ| b) ; eih.
@@ -816,6 +817,7 @@ Proof.
       - cbn. eapply type_CongRefl ; eih.
       - cbn. eapply type_EqToHeq ; eih.
       - cbn. eapply type_HeqTypeEq ; eih.
+      - cbn. eapply type_HeqTermEq ; eih.
       - cbn. eapply type_Pack ; eih.
       - cbn. eapply @type_ProjT1 with (A2 := lift #|Δ| #|Ξ| A2) ; eih.
       - cbn. eapply @type_ProjT2 with (A1 := lift #|Δ| #|Ξ| A1) ; eih.
@@ -833,6 +835,23 @@ Proof.
           with (lift #|Δ| (0 + #|Ξ|) (t0 { 0 := u })).
         rewrite !substP1.
         eapply type_Beta ; eih.
+      - cbn. change (#|Ξ|) with (0 + #|Ξ|)%nat.
+        rewrite substP1.
+        replace (S (0 + #|Ξ|)) with (1 + #|Ξ|)%nat by omega.
+        rewrite substP1.
+        cbn. eapply type_JRefl ; eih.
+        + cbn. unfold ssnoc. cbn.
+          f_equal. f_equal.
+          * replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
+            apply liftP2. omega.
+          * replace (S #|Ξ|) with (1 + #|Ξ|)%nat by omega.
+            apply liftP2. omega.
+        + replace (S (S #|Ξ|)) with (1 + (S (0 + #|Ξ|)))%nat by omega.
+          rewrite <- substP1.
+          replace (1 + (0 + #|Ξ|))%nat with (S (0 + #|Ξ|))%nat by omega.
+          change (sRefl (lift #|Δ| #|Ξ| A0) (lift #|Δ| #|Ξ| u))
+            with (lift #|Δ| #|Ξ| (sRefl A0 u)).
+          rewrite <- substP1. reflexivity.
     }
 
   (* wf_lift *)
@@ -1052,6 +1071,7 @@ Proof.
       - cbn. eapply type_Transport ; esh.
       - cbn. eapply type_Heq ; esh.
       - cbn. eapply type_HeqToEq ; esh.
+      - cbn. eapply type_HeqConstr ; esh.
       - cbn. eapply type_HeqRefl ; esh.
       - cbn. eapply type_HeqSym ; esh.
       - cbn. eapply type_HeqTrans with (B := B0{ #|Δ| := u }) (b := b{ #|Δ| := u }) ; esh.
@@ -1100,6 +1120,7 @@ Proof.
       - cbn. eapply type_CongRefl ; esh.
       - cbn. eapply type_EqToHeq ; esh.
       - cbn. eapply type_HeqTypeEq ; esh.
+      - cbn. eapply type_HeqTermEq ; esh.
       - cbn. eapply type_Pack ; esh.
       - cbn. eapply @type_ProjT1 with (A2 := A2{#|Δ| := u}) ; esh.
       - cbn. eapply @type_ProjT2 with (A1 := A1{#|Δ| := u}) ; esh.
@@ -1117,6 +1138,24 @@ Proof.
           with ((t0 {0 := u0}) {0 + #|Δ| := u}).
         rewrite !substP4. cbn.
         eapply type_Beta ; esh.
+      - cbn.
+        change (#|Δ|) with (0 + #|Δ|)%nat.
+        rewrite substP4.
+        replace (S (0 + #|Δ|)) with (1 + #|Δ|)%nat by omega.
+        rewrite substP4.
+        eapply type_JRefl ; esh.
+        + cbn. unfold ssnoc. cbn.
+          f_equal. f_equal.
+          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+            apply substP2. omega.
+          * replace (S #|Δ|) with (1 + #|Δ|)%nat by omega.
+            apply substP2. omega.
+        + replace (S (S #|Δ|)) with (1 + (S (0 + #|Δ|)))%nat by omega.
+          rewrite <- substP4.
+          replace (1 + (0 + #|Δ|))%nat with (S (0 + #|Δ|))%nat by omega.
+          change (sRefl (A0 {0 + #|Δ| := u}) (u0 {0 + #|Δ| := u}))
+            with ((sRefl A0 u0){ 0 + #|Δ| := u}).
+          rewrite <- substP4. reflexivity.
     }
 
   (* wf_subst *)
@@ -1452,6 +1491,7 @@ Proof.
   - exists s. apply type_Heq ; assumption.
   - exists s. apply type_Heq ; assumption.
   - exists s. apply type_Heq ; assumption.
+  - exists s. apply type_Heq ; assumption.
   - exists s. apply type_Heq. all: try assumption.
     eapply type_Transport ; eassumption.
   - exists (succ_sort (max_sort s z)).
@@ -1485,6 +1525,9 @@ Proof.
   - exists s. apply type_Heq ; assumption.
   - exists (succ_sort s). eapply type_Eq ; try assumption.
     apply type_Sort. apply (typing_wf H).
+  - exists s. eapply type_Eq ; try assumption.
+    eapply type_Transport ; try eassumption.
+    eapply type_HeqTypeEq ; eassumption.
   - exists (succ_sort s). apply type_Sort. apply (typing_wf H).
   - exists s. assumption.
   - exists s. assumption.
@@ -1520,5 +1563,12 @@ Proof.
     + eapply type_App ; try eassumption.
       eapply type_Lambda ; eassumption.
     + eapply typing_subst ; eassumption.
+  - exists s2. eapply type_Eq ; try assumption.
+    + change (sSort s2) with ((sSort s2){ 1 := u }{ 0 := sRefl A u }).
+      eapply typing_subst2 ; try eassumption.
+      cbn. rewrite !lift_subst, lift00.
+      eapply type_Refl ; eassumption.
+    + eapply type_J ; try eassumption.
+      eapply type_Refl ; eassumption.
   Unshelve. auto.
 Defined.
