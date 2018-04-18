@@ -220,74 +220,43 @@ Proof.
             by (unfold rlift ; rewrite e ; rewrite e0 ; reflexivity).
           eapply type_rlift0 ; eassumption.
         }
-        pose proof (uniqueness hg h1' h2').
-        destruct (istype_type hg h1').
-        destruct (istype_type hg h2').
-        eapply type_conv.
+        pose proof (uniqueness hg h1' h2') as eq.
+        destruct (istype_type hg h1'). rewrite <- eq.
+        inversion h1'.
+        match type of H2 with
+        | ?A'' = _ => set (A' := A'') in *
+        end.
+        replace A with A'.
         -- eapply type_HeqRefl' ; try eassumption.
-           subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
-           eapply meta_conv.
-           ++ eapply type_Rel. eapply typing_wf. eassumption.
-           ++ erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
-              reflexivity.
-        -- eapply type_Heq ; try eassumption.
-           eapply type_conv ; try eassumption.
-           ++ econstructor. eapply typing_wf. eassumption.
-           ++ apply conv_sym. eapply subj_conv ; eassumption.
-        -- inversion h1'. inversion h2'.
-           apply cong_Heq. all: try (apply conv_refl).
-           ++ eapply conv_trans ; try eassumption.
-              subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
-              apply conv_eq. f_equal. f_equal.
-              erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
-              reflexivity.
-           ++ eapply conv_trans ; try eassumption.
-              subst y A. revert isdecl0. rewrite <- ml. intro isdecl0.
-              apply conv_eq. f_equal. f_equal.
-              erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
-              reflexivity.
+           rewrite H2. assumption.
+        -- subst A A' y. subst.
+           revert isdecl0. rewrite <- ml. intro isdecl0.
+           erewrite @safe_nth_ge with (isdecl' := isdecl0) by omega.
+           reflexivity.
       * (* In case the variable isn't in the context at all,
            it is bound to be ill-typed and we can return garbage.
          *)
         exists (sRel 0).
         intros Γm U1 U2 hm h1 h2.
-        exfalso. inversion h1. clear h. rewrite length_cat in is. omega.
+        exfalso. inversion h1. clear H2. rewrite length_cat in isdecl1. omega.
 
   (* Left transport *)
   - destruct (IHsim Γ Γ1 Γ2) as [q hq].
     exists (sHeqTrans (sHeqSym (sHeqTransport (llift0 #|Γ1| p) (llift0 #|Γ1| t1))) q).
     intros Γm U1 U2 hm h1 h2.
     pose proof (mix_length1 hm) as ml. rewrite <- ml.
-    inversion h1.
-    specialize (hq _ _ _ hm h6 h2).
+    inversion h1. subst.
+    specialize (hq _ _ _ hm H8 h2).
     destruct (istype_type hg hq) as [s' h'].
-    inversion h'. pose proof (sort_conv_inv h8). subst. clear h8.
+    inversion h'. subst.
     eapply type_HeqTrans' ; try assumption.
     + eapply type_HeqSym' ; try assumption.
-      eapply type_conv.
-      * eapply type_HeqTransport' ; try assumption.
-        -- eapply type_llift0 ; eassumption.
-        -- instantiate (2 := s). instantiate (1 := llift0 #|Γm| T2).
-           change (sEq (sSort s) (llift0 #|Γm| T1) (llift0 #|Γm| T2))
-             with (llift0 #|Γm| (sEq (sSort s) T1 T2)).
-           eapply type_llift0 ; eassumption.
-      * instantiate (1 := s).
-        instantiate (1 := llift0 #|Γm| t1).
-        instantiate (1 := llift0 #|Γm| T1).
-        match goal with
-        | |- ?Σ ;;; ?Γ |-i ?T : ?s =>
-          change T with (llift0 #|Γm| (sHeq T1 t1 U1 (sTransport T1 T2 p t1)))
-        end.
-        lift_sort.
-        eapply type_llift0 ; try eassumption.
-        apply type_Heq ; try assumption.
-        destruct (istype_type hg h1).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; eassumption.
-      * apply cong_Heq.
-        all: try (apply conv_refl).
-        eapply llift_conv. assumption.
+      cbn.
+      eapply type_HeqTransport' ; try assumption.
+      instantiate (1 := s).
+      change (sEq (sSort s) (llift0 #|Γm| T1) (llift0 #|Γm| U1))
+        with (llift0 #|Γm| (sEq (sSort s) T1 U1)).
+      eapply type_llift0 ; eassumption.
     + assumption.
 
   (* Right transport *)
@@ -295,35 +264,18 @@ Proof.
     exists (sHeqTrans q (sHeqTransport (rlift0 #|Γ1| p) (rlift0 #|Γ1| t2))).
     intros Γm U1 U2 hm h1 h2.
     pose proof (mix_length1 hm) as ml. rewrite <- ml.
-    inversion h2.
-    specialize (hq _ _ _ hm h1 h6).
+    inversion h2. subst.
+    specialize (hq _ _ _ hm h1 H8).
     destruct (istype_type hg hq) as [s' h'].
-    inversion h'. pose proof (sort_conv_inv h8). subst. clear h8.
+    inversion h'. subst.
     cbn.
     eapply type_HeqTrans' ; try assumption.
     + eassumption.
-    + eapply type_conv.
-      * eapply type_HeqTransport' ; try assumption.
-        -- eapply type_rlift0 ; eassumption.
-        -- instantiate (2 := s). instantiate (1 := rlift0 #|Γm| T2).
-           change (sEq (sSort s) (rlift0 #|Γm| T1) (rlift0 #|Γm| T2))
-             with (rlift0 #|Γm| (sEq (sSort s) T1 T2)).
-           eapply type_rlift0 ; eassumption.
-      * instantiate (1 := s).
-        match goal with
-        | |- ?Σ ;;; ?Γ |-i ?T : ?s =>
-          change T with (rlift0 #|Γm| (sHeq T1 t2 U2 (sTransport T1 T2 p t2)))
-        end.
-        lift_sort.
-        eapply type_rlift0 ; try eassumption.
-        apply type_Heq ; try assumption.
-        destruct (istype_type hg h2).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym. eapply subj_conv ; eassumption.
-      * apply cong_Heq.
-        all: try (apply conv_refl).
-        eapply rlift_conv. assumption.
+    + cbn. eapply type_HeqTransport' ; try assumption.
+      instantiate (1 := s).
+      change (sEq (sSort s) (rlift0 #|Γm| T1) (rlift0 #|Γm| U2))
+        with (rlift0 #|Γm| (sEq (sSort s) T1 U2)).
+      eapply type_rlift0 ; eassumption.
 
   (* Prod *)
   - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
