@@ -173,7 +173,7 @@ Proof.
 Defined.
 
 Lemma type_CongLambda'' :
-  forall {Σ Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt},
+  forall {Σ Γ s z nx nx' ny ny' A1 A2 B1 B2 t1 t2 pA pB pt},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
     Σ ;;; Γ ,, (sPack A1 A2)
@@ -189,10 +189,10 @@ Lemma type_CongLambda'' :
     Σ ;;; Γ ,, A1 |-i t1 : B1 ->
     Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
-               sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
-                    (sProd ny A2 B2) (sLambda ny A2 B2 t2).
+               sHeq (sProd nx A1 B1) (sLambda nx' A1 B1 t1)
+                    (sProd ny A2 B2) (sLambda ny' A2 B2 t2).
 Proof.
-  intros Σ Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt
+  intros Σ Γ s z nx nx' ny ny' A1 A2 B1 B2 t1 t2 pA pB pt
          hg hpA hpB hpt hB1 hB2 ht1 ht2.
   destruct (istype_type hg hpA) as [? ipA]. inversion ipA.
   destruct (istype_type hg hpB) as [? ipB]. inversion ipB.
@@ -201,7 +201,7 @@ Proof.
 Defined.
 
 Lemma type_CongLambda' :
-  forall {Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 t1 t2 pA pB pt},
+  forall {Σ Γ s1 s2 z1 z2 nx ny nx' ny' A1 A2 B1 B2 t1 t2 pA pB pt},
     type_glob Σ ->
     Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
     Σ ;;; Γ ,, (sPack A1 A2)
@@ -217,10 +217,10 @@ Lemma type_CongLambda' :
     Σ ;;; Γ ,, A1 |-i t1 : B1 ->
     Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
-               sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
-                    (sProd ny A2 B2) (sLambda ny A2 B2 t2).
+               sHeq (sProd nx A1 B1) (sLambda nx' A1 B1 t1)
+                    (sProd ny A2 B2) (sLambda ny' A2 B2 t2).
 Proof.
-  intros Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 t1 t2 pA pB pt hg
+  intros Σ Γ s1 s2 z1 z2 nx ny nx' ny' A1 A2 B1 B2 t1 t2 pA pB pt hg
          hpA hpB hpt hB1 hB2 ht1 ht2.
   destruct (prod_sorts hg hpA hpB) as [e1 e2].
   subst. rename s2 into s, z2 into z.

@@ -123,7 +123,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
          (sSort (max_sort s z)) (sProd ny A2 B2)
 
-| type_CongLambda Γ s z nx ny A1 A2 B1 B2 t1 t2 pA pB pt :
+| type_CongLambda Γ s z nx nx' ny ny' A1 A2 B1 B2 t1 t2 pA pB pt :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
     Σ ;;; Γ ,, (sPack A1 A2)
     |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
@@ -140,8 +140,8 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ ,, A1 |-i t1 : B1 ->
     Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
-               sHeq (sProd nx A1 B1) (sLambda nx A1 B1 t1)
-                    (sProd ny A2 B2) (sLambda ny A2 B2 t2)
+               sHeq (sProd nx A1 B1) (sLambda nx' A1 B1 t1)
+                    (sProd ny A2 B2) (sLambda ny' A2 B2 t2)
 
 | type_CongApp Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
