@@ -283,12 +283,12 @@ Proof.
     exists (sCongProd (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pA pB).
     intros Γm U1 U2 hm h1 h2.
     pose proof (mix_length1 hm) as ml. rewrite <- ml.
-    inversion h1. inversion h2.
-    specialize (hpA _ _ _ hm h h0).
+    inversion h1. inversion h2. subst.
+    specialize (hpA _ _ _ hm H4 H11).
     destruct (istype_type hg hpA) as [s iA].
-    inversion iA. pose proof (sort_conv_inv h9). subst. clear h9.
+    inversion iA. subst.
     assert (s1 = s0).
-    { cbn in h12, h5. eapply sorts_in_sort ; eassumption. }
+    { cbn in H7, H8. eapply sorts_in_sort ; eassumption. }
     subst.
     assert (hm' :
               ismix Σ Γ
@@ -297,45 +297,21 @@ Proof.
                     (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
-    specialize (hpB _ _ _ hm' h4 h7).
-    destruct (istype_type hg hpB) as [? iB]. inversion iB.
-    pose proof (sort_conv_inv h13) as hh. symmetry in hh. subst. clear h13.
+    specialize (hpB _ _ _ hm' H5 H12).
+    destruct (istype_type hg hpB) as [? iB]. inversion iB. subst.
     assert (s3 = s2).
-    { cbn in h16, h8. eapply sorts_in_sort ; eassumption. }
+    { cbn in H13, H14. eapply sorts_in_sort ; eassumption. }
     subst.
     destruct (istype_type hg h1).
     destruct (istype_type hg h2).
-    eapply type_conv.
-    + eapply type_CongProd' ; try assumption.
-      * eassumption.
-      * rewrite llift_substProj, rlift_substProj.
-        apply hpB.
-      * lift_sort.
-        eapply type_llift1 ; eassumption.
-      * lift_sort.
-        eapply type_rlift1 ; eassumption.
-    + instantiate (1 := succ_sort (max_sort s0 s2)).
-      eapply type_Heq.
-      * lift_sort. eapply type_llift0 ; try eassumption.
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym.
-           eapply subj_conv ; [ assumption | .. | eassumption ] ;
-           try eassumption.
-           econstructor. eapply typing_wf. eassumption.
-      * lift_sort. eapply type_rlift0 ; try eassumption.
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym.
-           eapply subj_conv ; [ assumption | .. | eassumption ] ;
-           try eassumption.
-           econstructor. eapply typing_wf. eassumption.
-      * eapply type_llift0 ; eassumption.
-      * eapply type_rlift0 ; eassumption.
-    + cbn. apply cong_Heq.
-      all: try (apply conv_refl).
-      * lift_sort. apply llift_conv. assumption.
-      * lift_sort. apply rlift_conv. assumption.
+    cbn.
+    eapply type_CongProd' ; try assumption.
+    + rewrite llift_substProj, rlift_substProj.
+      apply hpB.
+    + lift_sort.
+      eapply type_llift1 ; eassumption.
+    + lift_sort.
+      eapply type_rlift1 ; eassumption.
 
   (* Eq *)
   - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
@@ -343,76 +319,25 @@ Proof.
     destruct (IHsim3 Γ Γ1 Γ2) as [pv hpv].
     exists (sCongEq pA pu pv).
     intros Γm U1 U2 hm h1 h2.
-    inversion h1. inversion h2.
-    specialize (hpA _ _ _ hm h0 h6).
-    specialize (hpu _ _ _ hm h5 h9).
-    specialize (hpv _ _ _ hm h4 h8).
-    destruct (istype_type hg hpA) as [? ipA]. inversion ipA.
-    apply conv_sym in h11. pose proof (sort_conv_inv h11). subst. clear h11.
+    inversion h1. inversion h2. subst.
+    specialize (hpA _ _ _ hm H3 H11).
+    specialize (hpu _ _ _ hm H5 H13).
+    specialize (hpv _ _ _ hm H6 H14).
+    destruct (istype_type hg hpA) as [? ipA]. inversion ipA. subst.
     assert (s0 = s).
-    { cbn in h, h14. eapply sorts_in_sort ; eassumption. }
+    { cbn in H8, H9. eapply sorts_in_sort ; eassumption. }
     subst.
-    eapply type_conv.
-    + eapply type_CongEq' ; eassumption.
-    + instantiate (1 := succ_sort s).
-      eapply type_Heq.
-      * destruct (istype_type hg h1). lift_sort.
-        eapply type_llift0 ; try eassumption.
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym.
-           eapply subj_conv ; [ assumption | .. | eassumption ] ;
-           try eassumption.
-           econstructor. eapply typing_wf. eassumption.
-      * destruct (istype_type hg h2). lift_sort.
-        eapply type_rlift0 ; try eassumption.
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym.
-           eapply subj_conv ; [ assumption | .. | eassumption ] ;
-           try eassumption.
-           econstructor. eapply typing_wf. eassumption.
-      * eapply type_llift0 ; eassumption.
-      * eapply type_rlift0 ; eassumption.
-    + apply cong_Heq.
-      all: try (apply conv_refl).
-      * lift_sort. apply llift_conv. assumption.
-      * lift_sort. apply rlift_conv. assumption.
+    eapply type_CongEq' ; eassumption.
 
   (* Sort *)
   - exists (sHeqRefl (sSort (succ_sort s)) (sSort s)).
     intros Γm U1 U2 hm h1 h2.
-    inversion h1. inversion h2.
+    inversion h1. inversion h2. subst.
     assert (hwf : wf Σ (Γ ,,, Γm)).
-    { eapply @wf_llift with (Δ := []) ; try eassumption.
-      eapply typing_wf ; eassumption.
+    { eapply @wf_llift with (Δ := []) ; [ .. | eassumption ] ; eassumption.
     }
-    eapply type_conv.
-    + eapply type_HeqRefl' ; try assumption.
-      apply type_Sort. eassumption.
-    + instantiate (1 := succ_sort (succ_sort s)).
-      eapply type_Heq.
-      * lift_sort. eapply type_llift0 ; try eassumption.
-        destruct (istype_type hg h1).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym.
-           eapply subj_conv ; [ assumption | .. | eassumption ] ;
-           try eassumption.
-           econstructor. eapply typing_wf. eassumption.
-      * lift_sort. eapply type_rlift0 ; try eassumption.
-        destruct (istype_type hg h2).
-        eapply type_conv ; try eassumption.
-        -- econstructor. eapply typing_wf. eassumption.
-        -- apply conv_sym.
-           eapply subj_conv ; [ assumption | .. | eassumption ] ;
-           try eassumption.
-           econstructor. eapply typing_wf. eassumption.
-      * eapply type_llift0 ; eassumption.
-      * eapply type_rlift0 ; eassumption.
-    + cbn. apply cong_Heq. all: try (apply conv_refl).
-      * lift_sort. apply llift_conv. assumption.
-      * lift_sort. apply rlift_conv. assumption.
+    eapply type_HeqRefl' ; try assumption.
+    econstructor. assumption.
 
   (* Lambda *)
   - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
@@ -422,12 +347,11 @@ Proof.
                    (llift #|Γ1| 1 u1) (rlift #|Γ1| 1 u2) pA pB pu).
     intros Γm U1 U2 hm h1 h2.
     pose proof (mix_length1 hm) as ml. rewrite <- ml.
-    inversion h1. inversion h2.
-    specialize (hpA _ _ _ hm h0 h6).
-    destruct (istype_type hg hpA) as [? iA]. inversion iA.
-    pose proof (sort_conv_inv h11). subst. clear h11.
+    inversion h1. inversion h2. subst.
+    specialize (hpA _ _ _ hm H5 H14).
+    destruct (istype_type hg hpA) as [? iA]. inversion iA. subst.
     assert (s1 = s0).
-    { cbn in h12, h5. eapply sorts_in_sort ; eassumption. }
+    { cbn in H8, H9. eapply sorts_in_sort ; eassumption. }
     subst.
     assert (hm' :
               ismix Σ Γ
@@ -436,13 +360,29 @@ Proof.
                     (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
     ).
     { econstructor ; eassumption. }
-    specialize (hpB _ _ _ hm' h5 h9).
-    specialize (hpu _ _ _ hm' h4 h8).
+    specialize (hpB _ _ _ hm' H6 H15).
+    specialize (hpu _ _ _ hm' H7 H16).
     assert (s3 = s2).
-    { destruct (istype_type hg hpB) as [? ipB]. inversion ipB.
-      apply conv_sym in h15. pose proof (sort_conv_inv h15). subst. clear h15.
-      cbn in h10, h18. eapply sorts_in_sort ; eassumption.
+    { destruct (istype_type hg hpB) as [? ipB]. inversion ipB. subst.
+      eapply sorts_in_sort ; eassumption.
     } subst.
+    cbn.
+    eapply meta_conv.
+    + eapply type_CongLambda' ; try assumption.
+      * eassumption.
+      * rewrite llift_substProj, rlift_substProj. apply hpB.
+      * rewrite !llift_substProj, !rlift_substProj. apply hpu.
+      * lift_sort.
+        eapply type_llift1 ; eassumption.
+      * lift_sort.
+        eapply type_rlift1 ; eassumption.
+      * eapply type_llift1 ; eassumption.
+      * eapply type_rlift1 ; eassumption.
+    + (* Problem: type_CongLambda' forces the two names to be the same.
+         Once removed, we will no longer need meta_conv here.
+       *)
+      f_equal.
+
     eapply type_conv.
     + eapply type_CongLambda' ; try assumption.
       * eassumption.
