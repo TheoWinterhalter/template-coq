@@ -252,30 +252,12 @@ with wf (Σ : sglobal_context) : scontext -> Prop :=
     wf Σ (Γ ,, A)
 .
 
-(* | eq_JRefl Γ nx ne s1 s2 A u P w : *)
-(*     Σ ;;; Γ |-i A : sSort s1 -> *)
-(*     Σ ;;; Γ |-i u : A -> *)
-(*     Σ ;;; Γ ,, svass nx A ,, svass ne (sEq (lift0 1 A) (lift0 1 u) (sRel 0)) |-i P : sSort s2 -> *)
-(*     Σ ;;; Γ |-i w : P{ 1 := u }{ 0 := sRefl A u } -> *)
-(*     Σ ;;; Γ |-i sJ A u P w u (sRefl A u) = w : P{ 1 := u }{ 0 := sRefl A u } *)
-
-(* | eq_TransportRefl Γ s A t : *)
-(*     Σ ;;; Γ |-i A : sSort s -> *)
-(*     Σ ;;; Γ |-i t : A -> *)
-(*     Σ ;;; Γ |-i sTransport A A (sRefl (sSort s) A) t = t : A *)
-
-(* | eq_HeqToEqRefl Γ s A u : *)
-(*     Σ ;;; Γ |-i A : sSort s -> *)
-(*     Σ ;;; Γ |-i u : A -> *)
-(*     Σ ;;; Γ |-i sHeqToEq (sHeqRefl A u) = sRefl A u : sEq A u u *)
-
 Derive Signature for typing.
 Derive Signature for wf.
 
 Delimit Scope i_scope with i.
 
-(* Temporary:
-   We define the notion of ETT compatibility to restrict the syntax
+(* We define the notion of ETT compatibility to restrict the syntax
    to the one that is allowed in ETT.
  *)
 Inductive Xcomp : sterm -> Type :=
