@@ -34,7 +34,7 @@ Lemma inversionInd :
   forall {Σ Γ ind T},
     Σ ;;; Γ |-i sInd ind : T ->
     exists univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-      Σ |-i decl.(sind_type) = T.
+      Σ |-i stype_of_inductive isdecl = T.
 Proof.
   intros Σ Γ ind T h.
   dependent induction h.

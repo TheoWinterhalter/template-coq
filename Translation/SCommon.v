@@ -15,6 +15,8 @@ Record squash (A : Set) : Prop := { _ : A }.
 (* Named contexts *)
 Definition nctx := list (name * sterm).
 
+Definition nlctx : nctx -> scontext := map snd.
+
 (* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
 Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
   match Γ with
@@ -193,14 +195,16 @@ Defined.
 
 Record sone_inductive_body := {
   sind_name : ident;
-  sind_type : sterm;
+  sind_type : sterm; (* In TC, it is closed, for us it will be in the context of
+                        parameters *)
   sind_kelim : list sort_family; (* TC *)
   sind_ctors : list (ident * sterm * nat);
   sind_projs : list (ident * sterm)
 }.
 
 Record smutual_inductive_body := {
-  sind_npars : nat;
+  sind_params : nctx ; (* The context of parameters, replaces ind_npar by its
+                          length *)
   sind_bodies : list sone_inductive_body ;
   sind_universes : universe_context }.
 
@@ -255,6 +259,27 @@ Definition sinds ind (l : list sone_inductive_body) :=
 
 Definition inspect {A} (x : A) : { y : A | y = x } := exist _ x eq_refl.
 Require Import Equations.NoConfusion.
+
+Equations stype_of_inductive Σ ind univs decl
+  (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
+  stype_of_inductive Σ ind univs decl isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
+  | exist (Some (SInductiveDecl _ decl')) _ :=
+    Prods decl'.(sind_params) decl.(sind_type) ;
+  | exist decl' H := !
+  }.
+Next Obligation.
+  subst decl'. destruct isdecl as [d [[hd ?] ?]].
+  unfold sdeclared_minductive in hd.
+  rewrite <- H in hd. inversion hd.
+Defined.
+Next Obligation.
+  subst decl'. destruct isdecl as [d [[hd ?] ?]].
+  unfold sdeclared_minductive in hd.
+  rewrite <- H in hd. inversion hd.
+Defined.
+
+Arguments stype_of_inductive {_ _ _ _} _.
+
 Equations stype_of_constructor (Σ : sglobal_declarations)
   (c : inductive * nat) (univs : universe_context)
   (decl : ident * sterm * nat)

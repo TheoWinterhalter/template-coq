@@ -226,7 +226,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
 | type_Ind Γ ind :
     wf Σ Γ ->
     forall univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-      Σ ;;; Γ |-i sInd ind : decl.(sind_type)
+      Σ ;;; Γ |-i sInd ind : stype_of_inductive isdecl
 
 | type_Construct Γ ind i :
     wf Σ Γ ->
@@ -326,7 +326,7 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext)
 | type_ind_nil : type_inddecls Σ pars Γ []
 | type_ind_cons na ty cstrs projs kelim l :
     (** Arity is well-formed *)
-    isArity Σ [] ty ->
+    isArity Σ pars ty ->
     (** TMP: The type can be written in ETT *)
     Xcomp ty ->
     (** Constructors are well-typed *)
@@ -338,14 +338,15 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext)
     (** TODO: check kelim*)
     type_inddecls Σ pars Γ (Build_sone_inductive_body na ty kelim cstrs projs :: l).
 
-Definition type_inductive Σ inds :=
-  (** FIXME: should be pars ++ arities w/o params *)
-  type_inddecls Σ [] (arities_context inds) inds.
+Definition type_inductive Σ pars inds :=
+  ForallT Xcomp pars *
+  type_inddecls Σ pars (arities_context inds) inds.
 
 Definition type_global_decl Σ decl : Type :=
   match decl with  (* TODO universes *)
   | SConstantDecl id d => (* type_constant_decl Σ d *) ()
-  | SInductiveDecl ind inds => type_inductive Σ inds.(sind_bodies)
+  | SInductiveDecl ind inds =>
+    type_inductive Σ (nlctx inds.(sind_params)) inds.(sind_bodies)
   end.
 
 Inductive fresh_global (s : string) : sglobal_declarations -> Prop :=

@@ -62,12 +62,12 @@ Defined.
 
 Fact typed_ind_type' :
   forall {Σ : sglobal_context} {decl'},
-    type_inductive Σ (sind_bodies decl') ->
+    type_inductive Σ (nlctx decl'.(sind_params)) (sind_bodies decl') ->
     forall {n decl},
       nth_error (sind_bodies decl') n = Some decl ->
-      isType Σ [] (sind_type decl).
+      isType Σ (nlctx decl'.(sind_params)) (sind_type decl).
 Proof.
-  intros Σ decl' hind. unfold type_inductive in hind.
+  intros Σ decl' [hx hind].
   induction hind.
   - intros n decl h.
     destruct n ; cbn in h ; inversion h.
@@ -186,7 +186,7 @@ Proof.
         all: apply weak_glob_type ; eassumption.
       - eapply type_ProjT2 with (A1 := A1).
         all: apply weak_glob_type ; eassumption.
-      - eapply type_Ind with (univs := univs).
+      - eapply type_Ind.
         + apply weak_glob_wf ; assumption.
         + destruct isdecl as [decl' [[h1 h2] h3]].
           exists decl'. repeat split.
