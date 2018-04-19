@@ -434,3 +434,175 @@ Proof.
   destruct (istype_type hg hu).
   eapply type_Beta ; eassumption.
 Defined.
+
+
+Notation sArrow A B := (sProd nAnon A (lift0 1 B)).
+Notation up := (lift 1 0).
+Notation up2 := (lift 2 0).
+Notation up3 := (lift 3 0).
+
+(* Ltac closed_goal := *)
+(*   match goal with *)
+(*   | |- ?T => assert_fails ltac:(has_evar T) *)
+(*   end. *)
+
+Ltac tea :=
+  match goal with
+  | |- _ ;;; _ |-i _ : _ => try eassumption
+  | |- wf _ _ => try eassumption
+  | |- type_glob _ => try eassumption
+  | |- _ < _ => try (cbn; omega)
+  | |- _ <= _ => try (cbn; omega)
+  | |- sSort _ = sSort _ => cbn; rewrite ?max_id(* ; try reflexivity *)
+  | |- _ = _ => cbn; rewrite ?lift_lift(* ; try reflexivity *)
+  | _ => idtac
+  end.
+
+Ltac typ :=
+  match goal with
+  | |- _ ;;; _ |-i sApp _ _ _ _ : _ =>
+    refine (type_App _ _ _ _ _ _ _ _ _ _ _ _ _); tea
+  | |- _ ;;; ?Γ |-i sJ _ _ _ _ _ _ : ?T =>
+    first [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ) |
+           let t := fresh "t" in evar (t : sterm);
+           refine (eq_rect t
+                           (fun T' => _ ;;; Γ |-i sJ _ _ _ _ _ _ : T') _ T _);
+           subst t;
+           [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ )|] ]; tea
+  | |- ?Σ ;;; ?Γ |-i sRel ?n : ?T =>
+    first [refine (type_Rel Σ Γ n _ _) |
+           let t := fresh "t" in evar (t : sterm);
+           refine (eq_rect t
+                           (fun T' => Σ ;;; Γ |-i sRel n : T') _ T _);
+           subst t;
+           [refine (type_Rel _ _ _ _ _)|] ]; tea
+  | |- ?Σ ;;; ?Γ |-i sProd ?n ?A ?B : ?S =>
+    first [eapply type_Prod |
+           let s1 := fresh "s" in let s2 := fresh "s" in
+           evar (s1 : sort); evar (s2 : sort);
+           refine (eq_rect (sSort (max_sort s1 s2))
+                           (fun S' => _ ;;; Γ |-i sProd n A B : S') _ S _);
+           subst s1 s2;
+           [eapply type_Prod|] ]; tea
+  | |- _ ;;; _ |-i up ?T : ?A =>
+    first [eapply typing_lift01 | eapply (typing_lift01 (A:=A))]; tea
+  | h : _ ;;; _ |-i ?T : _ , h' : type_glob _ |- _ ;;; _  |-i up ?T : ?A =>
+    eapply (typing_lift01 h' h); tea
+  | |- _ ;;; _ |-i up2 ?T : ?A =>
+    first [eapply typing_lift02 | eapply (typing_lift02 (A:=A))]; tea
+  | |- ?Σ ;;; ?Γ ,, ?A1 ,, ?A2 ,, ?A3 |-i up3 _ : ?T
+    => first [refine (@type_lift Σ Γ [A3; A2; A1] nil _ _ _ _ _) |
+              refine (@type_lift Σ Γ [A3; A2; A1] nil _ T _ _ _)]; tea
+  | |- wf _ _ => try (eapply typing_wf; eassumption); econstructor; tea
+  | _ => econstructor; tea
+  end.
+
+Ltac rtyp := repeat typ.
+
+Ltac rew1 := cbn; rewrite ?lift_lift, ?liftP3, ?substP3, ?lift00 by omega; cbn.
+
+Ltac rew1in X := cbn in X; rewrite ?lift_lift, ?liftP3, ?substP3, ?lift00 in X by omega; cbn in X.
+
+(* We need to add s *)
+Definition sTransport' T1 T2 s p t :=
+  sJ (sSort s) T1 (sRel 1) t T2 p.
+
+Definition type_Transport'' Σ Γ s T1 T2 p t
+           (HΣ : type_glob Σ)
+           (HT1 : Σ ;;; Γ |-i T1 : sSort s)
+           (HT2 : Σ ;;; Γ |-i T2 : sSort s)
+           (Hp : Σ ;;; Γ |-i p : sEq (sSort s) T1 T2)
+           (Ht : Σ ;;; Γ |-i t : T1)
+  : Σ ;;; Γ |-i sTransport' T1 T2 s p t : T2.
+  unfold sTransport'.
+  refine (let XX := type_J Σ Γ _ s (sSort s) T1 T2 (sRel 1) p t in _).
+  rew1in XX. eapply XX; tea; rtyp.
+Defined.
+
+
+Definition Sym A u v p
+  := sJ A u (sEq (lift0 2 A) (sRel 1) (lift0 2 u)) (sRefl A u) v p.
+
+Definition type_Sym Σ Γ s A u v p
+           (HΣ : type_glob Σ)
+  : Σ ;;; Γ |-i p : sEq A u v ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ |-i v : A ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i Sym A u v p : sEq A v u.
+  intros H H0 H1 H2. unfold Sym. rtyp. all: rew1; typ.
+Defined.
+
+
+Definition Trans A u v w p q
+  := sJ A v (sEq (lift0 2 A) (lift0 2 u) (sRel 1)) p w q.
+
+Definition type_Trans Σ Γ s A u v w p q
+           (HΣ : type_glob Σ)
+  : Σ ;;; Γ |-i p : sEq A u v ->
+    Σ ;;; Γ |-i q : sEq A v w ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ |-i v : A ->
+    Σ;;; Γ |-i w : A ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i Trans A u v w p q : sEq A u w.
+  intros H H0 H1 H2 H3 H4. unfold Trans. rtyp. all: rew1; rtyp; tea.
+Defined.
+
+
+
+
+
+Definition type_move_transport_aux {Σ Γ A u B p s} :
+    type_glob Σ ->
+    Σ;;; Γ |-i p : sEq (sSort s) A B ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i B : sSort s ->
+    Σ;;; Γ |-i u : A ->
+    exists q', Σ;;; Γ |-i q' :
+    sProd (nNamed "v") B (sArrow (sEq (up B) (sTransport (up A) (up B) (up p) (up u)) (sRel 0))
+    (sEq (up A) (up u) (sTransport (up B) (up A) (Sym (sSort s) (up A) (up B) (up p)) (sRel 0)))).
+
+  intros H H0 H1 H2. econstructor.
+  simple refine (let XX := type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 _ in _); tea.
+  5: rtyp. exact s.
+  - (* the predicate *)
+    exact (sProd (nNamed "v") (sRel 1) (sArrow (sEq (sRel 2) (sTransport (up3 A) (sRel 2) (sRel 1) (up3 u)) (sRel 0))
+    (sEq (up3 A) (up3 u) (sTransport (sRel 2) (up3 A) (Sym (sSort s) (up3 A) (sRel 2) (sRel 1)) (sRel 0))))).
+  - (* idmap *)
+    shelve.
+  - (* the predicate is well sorted *)
+    unfold Sym. rtyp. all: rew1; rtyp.
+  - (* idmap inhabit the predicate in refl *)
+    (* rtyp. *)
+    admit.
+  - clearbody XX. rew1in XX. rew1. exact XX.
+Admitted.
+
+
+
+Definition type_move_transport Σ Γ A u B v p q s :
+    type_glob Σ ->
+    Σ;;; Γ |-i p : sEq (sSort s) A B ->
+    Σ;;; Γ |-i q : sEq B (sTransport A B p u) v ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i B : sSort s ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ |-i v : B ->
+    exists q', Σ;;; Γ |-i q' : sEq A u (sTransport B A (Sym (sSort s) A B p) v).
+  intros HΣ H H0 H1 H2 H3 H4.
+  pose proof (type_move_transport_aux HΣ H H1 H2 H3).
+  destruct H5. econstructor.
+  simple refine (let YY := type_App _ _ _ _ _ _ _ _ _ _ _ H5 H4 in _);
+    try eassumption.
+  - unfold Sym. rtyp. all: rew1; rtyp.
+  - clearbody YY; cbn in YY. clear H5.
+    rew1in YY.
+    simple refine (let ZZ := type_App _ _ _ _ _ _ _ _ _ _ _ YY H0 in _);
+      try clear YY; tea.
+    1-2: assumption.
+    + rtyp.
+    + rtyp. all: rew1; rtyp.
+    + clearbody ZZ; clear YY. rew1in ZZ.
+      exact ZZ.
+Defined.
