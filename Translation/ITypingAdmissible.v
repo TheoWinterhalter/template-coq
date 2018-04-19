@@ -550,7 +550,11 @@ Definition type_Trans Σ Γ s A u v w p q
 Defined.
 
 
-
+Ltac lift_sort :=
+  match goal with
+  | |- _ ;;; _ |-i lift ?n ?k ?t : ?S => change S with (lift n k S)
+  | |- _ ;;; _ |-i ?t { ?n := ?u } : ?S => change S with (S {n := u})
+  end.
 
 
 Definition type_move_transport_aux {Σ Γ A u B p s} :
@@ -575,8 +579,45 @@ Definition type_move_transport_aux {Σ Γ A u B p s} :
     unfold Sym. rtyp. all: rew1; rtyp.
   - (* idmap inhabit the predicate in refl *)
     (* rtyp. *)
-    admit.
+    cbn. eapply type_Lambda.
+    + rew1. eassumption.
+    + rew1. rtyp. all: rew1 ; rtyp.
+      lift_sort.
+      match goal with
+      | |- _ ;;; (((?Γ',, ?A1),, ?A2),, ?A3),, ?A4 |-i _ : _ =>
+        eapply @type_lift with (Δ := [],, A1,, A2,, A3,, A4) (Ξ := [])
+      end ; try assumption.
+      cbn. rtyp.
+      lift_sort.
+      match goal with
+      | |- _ ;;; ?A3 :: ?A2 :: ?A1 :: _ |-i _ : _ =>
+        eapply @type_lift with (Δ := [],, A1,, A2,, A3) (Ξ := [])
+      end ; try assumption.
+      cbn. rtyp.
+    + rew1. eapply type_Lambda.
+      * rtyp.
+      * rtyp. all: rew1 ; rtyp.
+        lift_sort.
+        match goal with
+        | |- _ ;;; (((?Γ',, ?A1),, ?A2),, ?A3),, ?A4 |-i _ : _ =>
+          eapply @type_lift with (Δ := [],, A1,, A2,, A3,, A4) (Ξ := [])
+        end ; try assumption.
+        cbn. rtyp.
+        lift_sort.
+        match goal with
+        | |- _ ;;; ?A3 :: ?A2 :: ?A1 :: _ |-i _ : _ =>
+          eapply @type_lift with (Δ := [],, A1,, A2,, A3) (Ξ := [])
+        end ; try assumption.
+        cbn. rtyp.
+      * eapply meta_conv.
+        -- refine (type_Rel _ _ 0 _ _).
+           ++ rtyp.
+           ++ cbn. omega.
+        -- cbn. rew1.
+           (* Are you sure you got the predicate right? *)
+           give_up.
   - clearbody XX. rew1in XX. rew1. exact XX.
+  Unshelve. all: constructor.
 Admitted.
 
 
