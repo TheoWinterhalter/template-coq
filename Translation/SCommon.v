@@ -295,13 +295,25 @@ Quote Recursively Definition event := even.
 
 Scheme even_rect' := Induction for even Sort Type.
 
+Quote Recursively Definition ter := even_rect'.
+
 Equations type_of_elim Σ ind univs decl
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
   type_of_elim Σ ind univs decl isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
-    | exist (Some (SInductiveDecl _ d)) _ :=
-      (* let partys := firstn d.(sind_npars) decl.(sind_type) in *)
-      sRel 0 ;
-    | exist decl H := !
+  | exist (Some (SInductiveDecl _ d)) _ :=
+    let pars := d.(sind_params) in
+    (* TWO THINGS
+       - Elim should have a sort argument.
+       - We may need to split ind_type in the end.
+         We don't want to quantifty overt the parameters again.
+         We might even have to cut it in three parts:
+         params, indices and sort.
+     *)
+    (* let Pty := Prods ((Apps ~ind ~indicesAsRels) ++ sind_indices decl) (sSort s) in *)
+    let Pty := sRel 0 in
+    let P := (nNamed "P", Pty) in
+    Prods (P :: pars) (sRel 0) ;
+  | exist decl' H := !
   }.
 Next Obligation.
   destruct isdecl as [? [[hm ?] ?]].
