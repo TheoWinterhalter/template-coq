@@ -32,13 +32,14 @@ Fixpoint Lams (Γ : nctx) (T t : sterm) : sterm :=
   end.
 
 (* If ⊢ u : Prods Γ T and ⊢ l : Γ then ⊢ Apps u Γ T l : T[l] *)
-Fixpoint Apps (u : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
-  match Γ, l with
-  | [], _ => u
-  | _, [] => u
-  | (nx,A) :: Γ, t :: l =>
-    sApp (Apps u Γ (sProd nx A T) l) A T t
-  end.
+(* Fixpoint Apps (u : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm := *)
+(*   match Γ, l with *)
+(*   | [], _ => u *)
+(*   | _, [] => u *)
+(*   | (nx,A) :: Γ, t :: l => *)
+(*     sApp (Apps u Γ (sProd nx A T) l) (substl l A) (substln 1 T) (substln 1 t) *)
+(*   end. *)
+(* We would need some substln that does successive { n := _ } *)
 
 (* Common lemmata *)
 
