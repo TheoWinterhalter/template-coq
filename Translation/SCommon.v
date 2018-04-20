@@ -260,26 +260,6 @@ Definition sinds ind (l : list sone_inductive_body) :=
 Definition inspect {A} (x : A) : { y : A | y = x } := exist _ x eq_refl.
 Require Import Equations.NoConfusion.
 
-Equations stype_of_inductive Σ ind univs decl
-  (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
-  stype_of_inductive Σ ind univs decl isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
-  | exist (Some (SInductiveDecl _ decl')) _ :=
-    Prods decl'.(sind_params) decl.(sind_type) ;
-  | exist decl' H := !
-  }.
-Next Obligation.
-  subst decl'. destruct isdecl as [d [[hd ?] ?]].
-  unfold sdeclared_minductive in hd.
-  rewrite <- H in hd. inversion hd.
-Defined.
-Next Obligation.
-  subst decl'. destruct isdecl as [d [[hd ?] ?]].
-  unfold sdeclared_minductive in hd.
-  rewrite <- H in hd. inversion hd.
-Defined.
-
-Arguments stype_of_inductive {_ _ _ _} _.
-
 Equations stype_of_constructor (Σ : sglobal_declarations)
   (c : inductive * nat) (univs : universe_context)
   (decl : ident * sterm * nat)
@@ -303,6 +283,44 @@ Next Obligation.
   destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''. discriminate.
 Defined.
+
+Inductive even (x : bool) : nat -> Type :=
+| evenO : even x 0
+| evenS n : odd true n -> even x (S n)
+
+with odd (x : bool) : nat -> Type :=
+| oddS n : even true n -> odd x (S n).
+
+Quote Recursively Definition event := even.
+
+Scheme even_rect' := Induction for even Sort Type.
+
+Equations type_of_elim Σ ind univs decl
+  (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
+  type_of_elim Σ ind univs decl isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
+    | exist (Some (SInductiveDecl _ d)) _ :=
+      (* let partys := firstn d.(sind_npars) decl.(sind_type) in *)
+      sRel 0 ;
+    | exist decl H := !
+  }.
+Next Obligation.
+  destruct isdecl as [? [[hm ?] ?]].
+  unfold sdeclared_minductive in hm.
+  rewrite <- H in hm. discriminate hm.
+Defined.
+Next Obligation.
+  destruct isdecl as [? [[hm ?] ?]].
+  unfold sdeclared_minductive in hm.
+  rewrite <- H in hm. discriminate hm.
+Defined.
+
+  (* let partys := firstn d.(npars) decl.(sind_type) in *)
+  (* let pty := ? in *)
+  (* let ftyl := ? in *)
+  (* let nftyl := map (fun t => (nNamed "f", t)) ftyl in *)
+  (* Prods (params ++ (nNamed "P", pty) :: nftyl ++ indices ++ (nNamed "e", $indty@params@indices))%list *)
+  (*       $P@params@indices *)
+
 
 Fact declared_inductive_eq :
   forall {Σ : sglobal_context} {ind univs1 decl1 univs2 decl2},

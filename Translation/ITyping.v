@@ -226,7 +226,7 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
 | type_Ind Γ ind :
     wf Σ Γ ->
     forall univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-      Σ ;;; Γ |-i sInd ind : stype_of_inductive isdecl
+      Σ ;;; Γ |-i sInd ind : decl.(sind_type)
 
 | type_Construct Γ ind i :
     wf Σ Γ ->
@@ -326,7 +326,7 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext)
 | type_ind_nil : type_inddecls Σ pars Γ []
 | type_ind_cons na ty cstrs projs kelim l :
     (** Arity is well-formed *)
-    isArity Σ pars ty ->
+    isArity Σ [] ty ->
     (** TMP: The type can be written in ETT *)
     Xcomp ty ->
     (** Constructors are well-typed *)
@@ -340,6 +340,12 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext)
 
 Definition type_inductive Σ pars inds :=
   ForallT Xcomp pars *
+  (** FIXME: should be pars ++ arities w/o params *)
+  (* I don't know if it still should be fixed.
+     To be honest, I believe ind_type and the types of constructors
+     in the declaration should be in the context of parameters.
+     For now, we'll do as TemplateCoq.
+   *)
   type_inddecls Σ pars (arities_context inds) inds.
 
 Definition type_global_decl Σ decl : Type :=

@@ -65,7 +65,7 @@ Fact typed_ind_type' :
     type_inductive Σ (nlctx decl'.(sind_params)) (sind_bodies decl') ->
     forall {n decl},
       nth_error (sind_bodies decl') n = Some decl ->
-      isType Σ (nlctx decl'.(sind_params)) (sind_type decl).
+      isType Σ [] (sind_type decl).
 Proof.
   intros Σ decl' [hx hind].
   induction hind.
@@ -186,7 +186,7 @@ Proof.
         all: apply weak_glob_type ; eassumption.
       - eapply type_ProjT2 with (A1 := A1).
         all: apply weak_glob_type ; eassumption.
-      - eapply type_Ind.
+      - eapply type_Ind with (univs := univs).
         + apply weak_glob_wf ; assumption.
         + destruct isdecl as [decl' [[h1 h2] h3]].
           exists decl'. repeat split.
@@ -282,12 +282,12 @@ Defined.
 
 Fact xcomp_ind_type' :
   forall {Σ : sglobal_context} {decl'},
-    type_inductive Σ (sind_bodies decl') ->
+    type_inductive Σ (nlctx decl'.(sind_params)) (sind_bodies decl') ->
     forall {n decl},
       nth_error (sind_bodies decl') n = Some decl ->
       Xcomp (sind_type decl).
 Proof.
-  intros Σ decl' hind. unfold type_inductive in hind.
+  intros Σ decl' [hx hind].
   induction hind.
   - intros n decl h.
     destruct n ; cbn in h ; inversion h.
@@ -326,13 +326,13 @@ Proof.
 Defined.
 
 Fact type_inddecls_constr :
-  forall {Σ : sglobal_context} {inds Γ},
-    type_inddecls Σ [] Γ inds ->
+  forall {Σ : sglobal_context} {params inds Γ},
+    type_inddecls Σ params Γ inds ->
     forall {n decl},
       nth_error inds n = Some decl ->
       type_constructors Σ Γ (sind_ctors decl).
 Proof.
-  intros Σ inds Γ hind. induction hind.
+  intros Σ params inds Γ hind. induction hind.
   - intros n decl h.
     destruct n ; cbn in h ; inversion h.
   - intros n decl h.
@@ -343,14 +343,13 @@ Proof.
 Defined.
 
 Fact type_ind_type_constr :
-  forall {Σ : sglobal_context} {inds},
-    type_inductive Σ inds ->
+  forall {Σ : sglobal_context} {params inds},
+    type_inductive Σ params inds ->
     forall {n decl},
       nth_error inds n = Some decl ->
       type_constructors Σ (arities_context inds) (sind_ctors decl).
 Proof.
-  intros Σ inds hind n decl h.
-  unfold type_inductive in hind.
+  intros Σ params inds [hx hind] n decl h.
   eapply type_inddecls_constr ; eassumption.
 Defined.
 
@@ -512,11 +511,11 @@ Proof.
 Defined.
 
 Fact closed_sinds :
-  forall {Σ id l},
-      type_inductive Σ l ->
+  forall {Σ id pars l},
+      type_inductive Σ pars l ->
       closed_list (sinds id l).
 Proof.
-  intros Σ id l ti.
+  intros Σ id pars l [_ ti].
   unfold type_inductive in ti. induction ti.
   - cbn. constructor.
   - rewrite sinds_cons. econstructor.
@@ -603,11 +602,11 @@ Proof.
 Defined.
 
 Fact xcomp_sinds :
-  forall {Σ id l},
-      type_inductive Σ l ->
+  forall {Σ id pars l},
+      type_inductive Σ pars l ->
       xcomp_list (sinds id l).
 Proof.
-  intros Σ id l ti.
+  intros Σ id pars l [_ ti].
   unfold type_inductive in ti. induction ti.
   - cbn. constructor.
   - rewrite sinds_cons. econstructor.

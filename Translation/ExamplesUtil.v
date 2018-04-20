@@ -98,7 +98,7 @@ Ltac magic :=
 
 Definition lΣi := [
   SInductiveDecl "Translation.Quotes.vec" {|
-    sind_npars := 1;
+    sind_params := [ (nNamed "A", sSort 0) ];
     sind_bodies := [
       {| sind_name := "vec";
          sind_type := vec_type ;
@@ -143,7 +143,7 @@ Definition lΣi := [
       |})
   |} ;
   SInductiveDecl "Coq.Init.Datatypes.nat" {|
-    sind_npars := 0;
+    sind_params := [];
     sind_bodies := [
       {| sind_name := "nat";
          sind_type := sSort 0 ;
@@ -161,7 +161,7 @@ Definition lΣi := [
       |})
   |} ;
   SInductiveDecl "Coq.Init.Datatypes.bool" {|
-    sind_npars := 0;
+    sind_params := [];
     sind_bodies := [
       {| sind_name := "bool";
          sind_type := sSort 0 ;
@@ -191,7 +191,7 @@ Ltac xcomp :=
   | |- Xcomp _ => repeat econstructor
   end.
 
-Ltac tind :=
+Ltac tinddecl :=
   cbn ; constructor ; [
     idtac
   | repeat constructor
@@ -199,6 +199,12 @@ Ltac tind :=
     ; try xcomp
   | cbn ; constructor
   | cbn ; constructor
+  ].
+
+Ltac tind :=
+  split ; [
+    repeat constructor
+  | tinddecl
   ].
 
 Definition Σi := (lΣi, init_graph).
