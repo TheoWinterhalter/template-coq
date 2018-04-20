@@ -313,6 +313,11 @@ Equations type_of_elim Σ ind univs decl
     (* let Pty := Prods ((Apps ~ind ~indicesAsRels) ++ sind_indices decl) (sSort s) in *)
     let Pty := sRel 0 in
     let P := (nNamed "P", Pty) in
+    (* Same for constructors' types, we need to know the indices that
+       the inductive type is applied to.
+       This looks like fundamental changes.
+     *)
+    (* let fl := map (fun '(c,ty,_) => ) *)
     Prods (P :: pars) (sRel 0) ;
   | exist decl' H := !
   }.
