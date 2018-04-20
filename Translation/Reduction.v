@@ -40,8 +40,6 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq p p'
   | sHeqRefl A a, sHeqRefl A' a' =>
       sterm_eq A A' && sterm_eq a a'
-  | sHeqSym p, sHeqSym p' =>
-      sterm_eq p p'
   | sHeqTrans p q, sHeqTrans p' q' =>
       sterm_eq p p' && sterm_eq q q'
   | sHeqTransport p t, sHeqTransport p' t' =>
@@ -144,12 +142,6 @@ Fixpoint reduce (t : sterm) : sterm :=
     let A' := reduce A in
     let a' := reduce a in
     sHeqRefl A' a'
-  | sHeqSym p =>
-    let p' := reduce p in
-    match p' with
-    | sHeqRefl A a => sHeqRefl A a
-    | _ => sHeqSym p'
-    end
   | sHeqTrans p q =>
     let p' := reduce p in
     let q' := reduce q in

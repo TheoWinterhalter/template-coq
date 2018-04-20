@@ -75,18 +75,6 @@ Proof.
   eapply type_HeqRefl ; eassumption.
 Defined.
 
-Lemma type_HeqSym' :
-  forall {Σ Γ A a B b p},
-    type_glob Σ ->
-    Σ ;;; Γ |-i p : sHeq A a B b ->
-    Σ ;;; Γ |-i sHeqSym p : sHeq B b A a.
-Proof.
-  intros Σ Γ A a B b p hg h.
-  destruct (istype_type hg h) as [? hty].
-  inversion hty.
-  now eapply type_HeqSym.
-Defined.
-
 Lemma type_HeqTrans' :
   forall {Σ Γ A a B b C c p q},
     type_glob Σ ->
@@ -471,14 +459,14 @@ Ltac tea :=
 Ltac typ :=
   match goal with
   | |- _ ;;; _ |-i sApp _ _ _ _ : _ =>
-    first [refine (type_App _ _ _ _ _ _ _ _ _ _ _ _ _) |
-           eapply meta_conv; [refine (type_App _ _ _ _ _ _ _ _ _ _ _ _ _)|] ]
+    first [refine (type_App _ _ _ _) |
+           eapply meta_conv; [refine (type_App _ _ _ _)|] ]
   | |- _ ;;; ?Γ |-i sJ _ _ _ _ _ _ : ?T =>
-    first [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ) |
-           eapply meta_conv; [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ )|] ]
+    first [refine (type_J _ _ _ _ _ _) |
+           eapply meta_conv; [refine (type_J _ _ _ _ _ _)|] ]
   | |- ?Σ ;;; ?Γ |-i sRel ?n : ?T =>
     first [refine (type_Rel Σ Γ n _ _) |
-           eapply meta_conv; [refine (type_Rel _ _ _ _ _)|] ]
+           eapply meta_conv; [refine (type_Rel _ _)|] ]
   | |- ?Σ ;;; ?Γ |-i sProd ?n ?A ?B : ?S =>
     first [eapply type_Prod |
            eapply meta_conv; [eapply type_Prod|] ]
@@ -518,14 +506,15 @@ Definition type_Transport'' {Σ Γ s T1 T2 p t}
            (Hp : Σ ;;; Γ |-i p : sEq (sSort s) T1 T2)
            (Ht : Σ ;;; Γ |-i t : T1)
   : Σ ;;; Γ |-i sTransport' T1 T2 s p t : T2.
-  unfold sTransport'.
-  refine (let XX := type_J Σ Γ _ s (sSort s) T1 T2 (sRel 1) p t in _).
-  rew1 in XX. eapply XX; tea; rtyp.
+  unfold sTransport'. rtyp. rew1; tea.
 Defined.
 
 
-Definition Sym A u v p
-  := sJ A u (sEq (lift0 2 A) (sRel 1) (lift0 2 u)) (sRefl A u) v p.
+(* Definition Sym A u v p *)
+(*   := sJ A u (sEq (lift0 2 A) (sRel 1) (lift0 2 u)) (sRefl A u) v p. *)
+
+Notation Sym A u v p
+  := (sJ A u (sEq (lift0 2 A) (sRel 1) (lift0 2 u)) (sRefl A u) v p).
 
 Definition type_Sym {Σ Γ s A u v p}
            (HΣ : type_glob Σ)
@@ -534,7 +523,7 @@ Definition type_Sym {Σ Γ s A u v p}
     Σ;;; Γ |-i v : A ->
     Σ;;; Γ |-i A : sSort s ->
     Σ;;; Γ |-i Sym A u v p : sEq A v u.
-  intros H H0 H1 H2. unfold Sym. rtyp. all: rew1; typ.
+  intros H H0 H1 H2. rtyp. rew1; typ.
 Defined.
 
 
@@ -589,18 +578,19 @@ Definition type_ap_transport {Σ Γ A u B p q e s} :
 Defined.
 
 
-Definition pmove_transport_aux {Σ Γ A u B p s} :
+Definition pmove_transport_aux {A u B p s} :
+  existsT q', forall Σ Γ,
     type_glob Σ ->
     Σ;;; Γ |-i p : sEq (sSort s) A B ->
     Σ;;; Γ |-i A : sSort s ->
     Σ;;; Γ |-i B : sSort s ->
     Σ;;; Γ |-i u : A ->
-    existsT q', Σ;;; Γ |-i q' :
+    Σ;;; Γ |-i q' :
     sProd (nNamed "v") B (sArrow (sEq (up B) (sTransport (up A) (up B) (up p) (up u)) (sRel 0))
     (sEq (up A) (up u) (sTransport (up B) (up A) (Sym (sSort s) (up A) (up B) (up p)) (sRel 0)))).
-
-  intros H H0 H1 H2. econstructor.
-  simple refine (let XX := type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ H0 _ in _); tea.
+  econstructor.
+  intros Σ Γ H H0 H1 H2 H3.
+  simple refine (let XX := type_J _ _ _ _ H0 _ in _); tea.
   5: rtyp. exact s.
   - (* the predicate *)
     exact (sProd (nNamed "v") (sRel 1) (sArrow (sEq (sRel 2) (sTransport (up3 A) (sRel 2) (sRel 1) (up3 u)) (sRel 0))
@@ -608,7 +598,7 @@ Definition pmove_transport_aux {Σ Γ A u B p s} :
   - (* idmap *)
     shelve.
   - (* the predicate is well sorted *)
-    unfold Sym. rtyp. all: rew1; rtyp.
+    rtyp. all: rew1; rtyp.
   - (* idmap inhabit the predicate in refl *)
     rew1.
     eapply type_Lambda.
@@ -631,8 +621,8 @@ Definition pmove_transport_aux {Σ Γ A u B p s} :
              1-4: rtyp. rew1; rtyp. 2: rtyp.
              { eapply type_Sym; tea. 2-4: rtyp.
                2: rew1; rtyp.
-               refine (let XX := type_JRefl _ _ _ _ (sSort s) (up2 A) (sEq (sSort s) (sRel 1) (up4 A))
-         (sRefl (sSort s) (up2 A)) _ _ _ _ in _).
+               refine (let XX := type_JRefl (P := sEq (sSort s) (sRel 1) (up4 A))
+                                            _ _ _ _ in _).
                clearbody XX; rew1 in XX. exact XX.
                Unshelve. 6-8: rtyp. 4: rew1; rtyp.
                2-3: econstructor. shelve.
@@ -640,8 +630,16 @@ Definition pmove_transport_aux {Σ Γ A u B p s} :
   - clearbody XX. rew1 in XX. rew1. exact XX.
 Defined.
 
+Definition smove_transport_aux A u B p s
+  := Eval cbn in projT1 (@pmove_transport_aux A u B p s).
 
-Definition pmove_transport {Σ Γ A u B v p q s} :
+Definition type_move_transport_aux {A u B p s Σ Γ} H H0 H1 H2 H3
+  := projT2 (@pmove_transport_aux A u B p s) Σ Γ H H0 H1 H2 H3.
+
+
+
+Definition pmove_transport {A u B v p q s} :
+  existsT q', forall Σ Γ,
     type_glob Σ ->
     Σ;;; Γ |-i p : sEq (sSort s) A B ->
     Σ;;; Γ |-i q : sEq B (sTransport A B p u) v ->
@@ -649,16 +647,15 @@ Definition pmove_transport {Σ Γ A u B v p q s} :
     Σ;;; Γ |-i B : sSort s ->
     Σ;;; Γ |-i u : A ->
     Σ;;; Γ |-i v : B ->
-    existsT q', Σ;;; Γ |-i q' : sEq A u (sTransport B A (Sym (sSort s) A B p) v).
-  intros HΣ H H0 H1 H2 H3 H4.
-  pose proof (pmove_transport_aux HΣ H H1 H2 H3).
-  destruct H5 as [t H5]. econstructor.
-  simple refine (let YY := type_App _ _ _ _ _ _ _ _ _ _ _ H5 H4 in _);
+    Σ;;; Γ |-i q' : sEq A u (sTransport B A (Sym (sSort s) A B p) v).
+  econstructor. intros Σ Γ HΣ H H0 H1 H2 H3 H4.
+  pose proof (type_move_transport_aux HΣ H H1 H2 H3).
+  simple refine (let YY := type_App _ _ H5 H4 in _);
     try eassumption.
-  - unfold Sym. rtyp. all: rew1; rtyp.
+  - rtyp. all: rew1; rtyp.
   - clearbody YY; cbn in YY. clear H5.
     rew1 in YY.
-    simple refine (let ZZ := type_App _ _ _ _ _ _ _ _ _ _ _ YY H0 in _);
+    simple refine (let ZZ := type_App _ _ YY H0 in _);
       try clear YY; tea.
     1-2: assumption.
     + rtyp.
@@ -667,25 +664,53 @@ Definition pmove_transport {Σ Γ A u B v p q s} :
       exact ZZ.
 Defined.
 
-Definition type_move_transport {Σ Γ A u B v p q s} HΣ H H0 H1 H2 H3 H4
-  := projT2 (@pmove_transport Σ Γ A u B v p q s HΣ H H0 H1 H2 H3 H4).
+Definition smove_transport A u B v p q s
+  := projT1 (@pmove_transport A u B v p q s).
 
-Definition type_HeqSym Σ Γ A a B b p s :
+Definition type_move_transport {Σ Γ A u B v p q s} HΣ H H0 H1 H2 H3 H4
+  := projT2 (@pmove_transport A u B v p q s) Σ Γ HΣ H H0 H1 H2 H3 H4.
+
+
+Definition pHeqSym A a B b p s :
+    existsT p', forall Σ Γ , type_glob Σ ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i B : sSort s ->
+    Σ;;; Γ |-i a : A ->
+    Σ;;; Γ |-i b : B ->
+    Σ;;; Γ |-i p : sHeq A a B b ->
+    Σ;;; Γ |-i p' : sHeq B b A a.
+  econstructor. intros Σ Γ X H0 H1 H2 H3 H4. 
+  simple refine (let XX := type_HeqTypeEq H4 _ _ _ _ in _); tea.
+  simple refine (let YY := type_HeqTermEq H4 _ _ _ _ in _); tea.
+  clearbody XX; clearbody YY; clear H4.
+  eapply type_HeqConstr; tea.
+  - eapply type_Sym; tea. rtyp.
+  - eapply type_Sym; tea. 2: rtyp; rew1; rtyp.
+    unshelve eapply type_move_transport; tea.
+Defined.
+
+Definition sHeqSym A a B b p s := Eval cbn in projT1 (@pHeqSym A a B b p s).
+
+Definition type_HeqSym {Σ Γ A a B b p s} :
     type_glob Σ ->
     Σ;;; Γ |-i A : sSort s ->
     Σ;;; Γ |-i B : sSort s ->
     Σ;;; Γ |-i a : A ->
     Σ;;; Γ |-i b : B ->
     Σ;;; Γ |-i p : sHeq A a B b ->
-    existsT p', Σ;;; Γ |-i p' : sHeq B b A a.
-  intros H H0 H1 H2 H3 H4.
-  simple refine (let XX := type_HeqTypeEq _ _ _ _ _ _ _ _ H4 _ _ _ _ in _); tea.
-  simple refine (let YY := type_HeqTermEq _ _ _ _ _ _ _ _ H4 _ _ _ _ in _); tea.
-  clearbody XX; clearbody YY; clear H4. econstructor.
-  eapply type_HeqConstr; tea.
-  - eapply type_Sym; tea. rtyp.
-  - eapply type_Sym; tea. 2: unfold Sym; rtyp; rew1; rtyp.
-    unshelve eapply type_move_transport; tea.
-Defined.
+    Σ;;; Γ |-i sHeqSym A a B b p s : sHeq B b A a
+  := projT2 (@pHeqSym A a B b p s) Σ Γ.
 
-(* Eval cbn in (fun Σ Γ A a B b p s H H0 H1 H2 H3 H4 => projT1 (@type_HeqSym Σ Γ A a B b p s H H0 H1 H2 H3 H4)). *)
+Lemma type_HeqSym' {Σ Γ A a B b p s} :
+    type_glob Σ ->
+    Σ ;;; Γ |-i p : sHeq A a B b ->
+    Σ ;;; Γ |-i A : sSort s ->
+    Σ ;;; Γ |-i sHeqSym A a B b p s : sHeq B b A a.
+Proof.
+  intros hg h hA.
+  destruct (istype_type hg h) as [? hty].
+  inversion hty.
+  pose proof (uniqueness hg H5 hA).
+  inversion H9; subst.
+  eapply type_HeqSym; tea.
+Defined.

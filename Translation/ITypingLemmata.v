@@ -154,11 +154,11 @@ Proof.
                 try apply weak_glob_type ;
                 eassumption
                ).
-      - eapply type_HeqTrans with (B := B) (b := b).
+      - eapply @type_HeqTrans with (B := B) (b := b).
         all: apply weak_glob_type ; eassumption.
-      - eapply type_ProjT2 with (A1 := A1).
+      - eapply @type_ProjT2 with (A1 := A1).
         all: apply weak_glob_type ; eassumption.
-      - eapply type_Ind with (univs := univs).
+      - eapply @type_Ind with (univs := univs).
         + apply weak_glob_wf ; assumption.
         + destruct isdecl as [decl' [[h1 h2] h3]].
           exists decl'. repeat split.
@@ -767,7 +767,6 @@ Proof.
       - cbn. eapply type_HeqToEq ; eih.
       - cbn. eapply type_HeqConstr ; eih.
       - cbn. eapply type_HeqRefl ; eih.
-      - cbn. eapply type_HeqSym ; eih.
       - cbn. eapply @type_HeqTrans with (B := lift #|Δ| #|Ξ| B) (b := lift #|Δ| #|Ξ| b) ; eih.
       - cbn. eapply type_HeqTransport ; eih.
       - cbn. eapply type_CongProd ; try eih.
@@ -1074,8 +1073,7 @@ Proof.
       - cbn. eapply type_HeqToEq ; esh.
       - cbn. eapply type_HeqConstr ; esh.
       - cbn. eapply type_HeqRefl ; esh.
-      - cbn. eapply type_HeqSym ; esh.
-      - cbn. eapply type_HeqTrans with (B := B0{ #|Δ| := u }) (b := b{ #|Δ| := u }) ; esh.
+      - cbn. eapply @type_HeqTrans with (B := B0{ #|Δ| := u }) (b := b{ #|Δ| := u }) ; esh.
       - cbn. eapply type_HeqTransport ; esh.
       - cbn. eapply type_CongProd ; esh.
         cbn. f_equal.
@@ -1490,7 +1488,6 @@ Proof.
   - eexists. eassumption.
   - exists (succ_sort s). apply type_Sort. apply (typing_wf H).
   - exists s. apply type_Eq ; assumption.
-  - exists s. apply type_Heq ; assumption.
   - exists s. apply type_Heq ; assumption.
   - exists s. apply type_Heq ; assumption.
   - exists s. apply type_Heq ; assumption.

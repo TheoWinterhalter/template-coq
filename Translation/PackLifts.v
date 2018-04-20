@@ -51,7 +51,6 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
                (llift γ δ a) (llift γ δ b)
                (llift γ δ p) (llift γ δ q)
   | sHeqRefl A a => sHeqRefl (llift γ δ A) (llift γ δ a)
-  | sHeqSym p => sHeqSym (llift γ δ p)
   | sHeqTrans p q => sHeqTrans (llift γ δ p) (llift γ δ q)
   | sHeqTransport p t => sHeqTransport (llift γ δ p) (llift γ δ t)
   | sCongProd B1 B2 p q =>
@@ -124,7 +123,6 @@ Fixpoint rlift γ δ t : sterm :=
                (rlift γ δ a) (rlift γ δ b)
                (rlift γ δ p) (rlift γ δ q)
   | sHeqRefl A a => sHeqRefl (rlift γ δ A) (rlift γ δ a)
-  | sHeqSym p => sHeqSym (rlift γ δ p)
   | sHeqTrans p q => sHeqTrans (rlift γ δ p) (rlift γ δ q)
   | sHeqTransport p t => sHeqTransport (rlift γ δ p) (rlift γ δ t)
   | sCongProd B1 B2 p q =>
@@ -620,7 +618,7 @@ Proof.
   - cbn. assumption.
   - cbn. econstructor.
     + assumption.
-    + eapply type_Pack with (s := s) ; assumption.
+    + eapply (type_Pack (s := s)) ; assumption.
 Defined.
 
 Fact mix'_length1 :
@@ -1183,7 +1181,6 @@ Proof.
       - cbn. eapply type_HeqToEq ; emh.
       - cbn. eapply type_HeqConstr ; emh.
       - cbn. eapply type_HeqRefl ; emh.
-      - cbn. eapply type_HeqSym ; emh.
       - cbn.
         eapply @type_HeqTrans
           with (B := llift #|Γm| #|Δ| B) (b := llift #|Γm| #|Δ| b) ; emh.
@@ -1334,7 +1331,6 @@ Proof.
       - cbn. eapply type_HeqToEq ; emh.
       - cbn. eapply type_HeqConstr ; emh.
       - cbn. eapply type_HeqRefl ; emh.
-      - cbn. eapply type_HeqSym ; emh.
       - cbn.
         eapply @type_HeqTrans
           with (B := rlift #|Γm| #|Δ| B) (b := rlift #|Γm| #|Δ| b) ; emh.

@@ -22,7 +22,6 @@ Inductive nlterm : Type :=
 | nlHeqToEq (p : nlterm)
 | nlHeqConstr (A B a b p q : nlterm)
 | nlHeqRefl (A a : nlterm)
-| nlHeqSym (p : nlterm)
 | nlHeqTrans (p q : nlterm)
 | nlHeqTransport (p t : nlterm)
 | nlCongProd (B1 B2 pA pB : nlterm)
@@ -63,7 +62,6 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sHeqConstr A B a b p q =>
     nlHeqConstr (nl A) (nl B) (nl a) (nl b) (nl p) (nl q)
   | sHeqRefl A a => nlHeqRefl (nl A) (nl a)
-  | sHeqSym p => nlHeqSym (nl p)
   | sHeqTrans p q => nlHeqTrans (nl p) (nl q)
   | sHeqTransport p t => nlHeqTransport (nl p) (nl t)
   | sCongProd B1 B2 pA pB => nlCongProd (nl B1) (nl B2) (nl pA) (nl pB)

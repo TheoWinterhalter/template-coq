@@ -21,7 +21,6 @@ Inductive sterm : Type :=
 | sHeqToEq (p : sterm)
 | sHeqConstr (A B a b p q : sterm)
 | sHeqRefl (A a : sterm) (* TODO2 REMOVE *)
-| sHeqSym (p : sterm) (* TODO REMOVE *)
 | sHeqTrans (p q : sterm) (* TODO REMOVE *)
 | sHeqTransport (p t : sterm) (* TODO REMOVE *)
 | sCongProd (B1 B2 pA pB : sterm) (* TODO REMOVE *)

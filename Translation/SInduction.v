@@ -153,7 +153,6 @@ Lemma sterm_rect_list :
     (forall A, P A -> forall B, P B -> forall a, P a -> forall b, P b -> forall p, P p -> forall q, P q ->
        P (sHeqConstr A B a b p q)) ->
     (forall A : sterm, P A -> forall a : sterm, P a -> P (sHeqRefl A a)) ->
-    (forall p : sterm, P p -> P (sHeqSym p)) ->
     (forall p : sterm, P p -> forall q : sterm, P q -> P (sHeqTrans p q)) ->
     (forall p : sterm, P p -> forall t : sterm, P t -> P (sHeqTransport p t)) ->
     (forall B1 : sterm, P B1 ->

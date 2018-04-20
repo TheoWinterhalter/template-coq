@@ -33,7 +33,6 @@ Fixpoint lift n k t : sterm :=
                (lift n k a) (lift n k b)
                (lift n k p) (lift n k q)
   | sHeqRefl A a => sHeqRefl (lift n k A) (lift n k a)
-  | sHeqSym p => sHeqSym (lift n k p)
   | sHeqTrans p q => sHeqTrans (lift n k p) (lift n k q)
   | sHeqTransport p t => sHeqTransport (lift n k p) (lift n k t)
   | sCongProd B1 B2 pA pB =>
@@ -105,7 +104,6 @@ Fixpoint subst t k u :=
                (subst t k a) (subst t k b)
                (subst t k p) (subst t k q)
   | sHeqRefl A a => sHeqRefl (subst t k A) (subst t k a)
-  | sHeqSym p => sHeqSym (subst t k p)
   | sHeqTrans p q => sHeqTrans (subst t k p) (subst t k q)
   | sHeqTransport p u => sHeqTransport (subst t k p) (subst t k u)
   | sCongProd B1 B2 pA pB =>
@@ -193,7 +191,6 @@ Fixpoint closed_above k t :=
     closed_above k p &&
     closed_above k q
   | sHeqRefl A a => closed_above k A && closed_above k a
-  | sHeqSym p => closed_above k p
   | sHeqTrans p q => closed_above k p && closed_above k q
   | sHeqTransport p u => closed_above k p && closed_above k u
   | sCongProd B1 B2 pA pB =>

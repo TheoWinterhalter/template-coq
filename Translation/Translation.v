@@ -242,7 +242,7 @@ Proof.
 
   (* Left transport *)
   - destruct (IHsim Γ Γ1 Γ2) as [q hq].
-    exists (sHeqTrans (sHeqSym (sHeqTransport (llift0 #|Γ1| p) (llift0 #|Γ1| t1))) q).
+    eexists (sHeqTrans (sHeqSym _ _ _ _ (sHeqTransport (llift0 #|Γ1| p) (llift0 #|Γ1| t1)) _) q).
     intros Γm U1 U2 hm h1 h2.
     pose proof (mix_length1 hm) as ml. rewrite <- ml.
     inversion h1. subst.
