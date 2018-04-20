@@ -293,8 +293,8 @@ Inductive Xcomp : sterm -> Type :=
 
 Derive Signature for Xcomp.
 
-Definition isType (Σ : sglobal_context) (Γ : scontext) (t : sterm) :=
-  ∑ s, Σ ;;; Γ |-i t : sSort s.
+Definition isType Σ Γ A :=
+  exists s, Σ ;;; Γ |-i A : sSort s.
 
 Inductive type_constructors (Σ : sglobal_context) (Γ : scontext) :
   list (ident * sterm * nat) -> Type :=
@@ -376,3 +376,16 @@ Derive Signature for type_global_env.
 
 Definition type_glob (Σ : sglobal_context) : Type :=
   type_global_env (snd Σ) (fst Σ).
+
+
+
+
+
+Inductive typed_list Σ Γ : list sterm -> scontext -> Prop :=
+| typed_list_nil : typed_list Σ Γ [] []
+| typed_list_cons A l Δ T :
+    typed_list Σ Γ l Δ ->
+    Σ ;;; Γ ,,, Δ |-i A : T ->
+    typed_list Σ Γ (A :: l) (Δ ,, T).
+
+Derive Signature for typed_list.

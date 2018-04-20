@@ -39,6 +39,57 @@ Proof.
   intros Σ Γ t T H. induction H ; easy.
 Defined.
 
+Lemma type_Prods :
+  forall {Σ Γ Δ T},
+    isType Σ (Γ,,, nlctx Δ) T ->
+    isType Σ Γ (Prods Δ T).
+Proof.
+  intros Σ Γ Δ T h. revert Γ T h.
+  induction Δ as [| [nx A] Δ ih ] ; intros Γ T h.
+  - cbn in *. assumption.
+  - simpl in *. eapply ih.
+    destruct h as [s h].
+    pose proof (typing_wf h) as hw.
+    dependent destruction hw.
+    eexists. eapply type_Prod.
+    + eassumption.
+    + eassumption.
+Defined.
+
+Lemma type_Lams :
+  forall {Σ Γ Δ t T},
+    Σ ;;; Γ,,, nlctx Δ |-i t : T ->
+    isType Σ (Γ,,, nlctx Δ) T ->
+    Σ ;;; Γ |-i Lams Δ T t : Prods Δ T.
+Proof.
+  intros Σ Γ Δ t T h1 h2. revert Γ t T h1 h2.
+  induction Δ as [| [nx A] Δ ih] ; intros Γ t T h1 h2.
+  - cbn in *. assumption.
+  - simpl in *. eapply ih.
+    + pose proof (typing_wf h1) as hw.
+      dependent destruction hw.
+      destruct h2 as [s' h2].
+      eapply type_Lambda ; eassumption.
+    + pose proof (typing_wf h1) as hw.
+      dependent destruction hw.
+      destruct h2 as [s' h2].
+      eexists. econstructor ; eassumption.
+Defined.
+
+Lemma type_Apps :
+  forall {Σ Γ Δ f l T},
+    Σ ;;; Γ |-i f : Prods Δ T ->
+    typed_list Σ Γ l (nlctx Δ) ->
+    isType Σ (Γ,,, nlctx Δ) T ->
+    Σ ;;; Γ |-i Apps f Δ T l : substl l T.
+Proof.
+  intros Σ Γ Δ. revert Γ.
+  induction Δ as [| [nx A] Δ ih] ; intros Γ f l T hf hl hT.
+  - cbn in *. dependent destruction hl. cbn. assumption.
+  - dependent destruction hl. simpl in *.
+    rename l0 into l, A0 into t.
+Abort.
+
 Fact type_ctx_closed_above :
   forall {Σ Γ t T},
     Σ ;;; Γ |-i t : T ->
@@ -1177,13 +1228,6 @@ Proof.
   - assumption.
   - cbn. assumption.
 Defined.
-
-Inductive typed_list Σ Γ : list sterm -> scontext -> Type :=
-| typed_list_nil : typed_list Σ Γ [] []
-| typed_list_cons A l Δ T :
-    typed_list Σ Γ l Δ ->
-    Σ ;;; Γ ,,, Δ |-i A : T ->
-    typed_list Σ Γ (A :: l) (Δ ,, T).
 
 Corollary type_substl :
   forall {Σ l Γ Δ},

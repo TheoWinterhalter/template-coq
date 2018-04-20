@@ -65,10 +65,6 @@ Section ctxconv.
       + cbn. apply IHh.
   Defined.
 
-  (* This should be the normal definition. *)
-  Definition isType Σ Γ A :=
-    exists s, Σ ;;; Γ |-i A : sSort s.
-
   Inductive ctxctx Σ : scontext -> scontext -> Prop :=
   | ctxctx_nil : ctxctx Σ [] []
   | ctxctx_cons Γ Δ A B :
