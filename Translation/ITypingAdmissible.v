@@ -440,11 +440,18 @@ Notation sArrow A B := (sProd nAnon A (lift0 1 B)).
 Notation up := (lift 1 0).
 Notation up2 := (lift 2 0).
 Notation up3 := (lift 3 0).
+Notation up4 := (lift 4 0).
 
 (* Ltac closed_goal := *)
 (*   match goal with *)
 (*   | |- ?T => assert_fails ltac:(has_evar T) *)
 (*   end. *)
+
+Ltac rew1 := cbn; rewrite ?lift_lift, ?liftP3, ?substP3, ?lift00 by omega; cbn.
+
+Tactic Notation "rew1" "in" hyp(X)
+  := cbn in X; rewrite ?lift_lift, ?liftP3, ?substP3, ?lift00
+       in X by omega; cbn in X.
 
 Ltac tea :=
   match goal with
@@ -453,61 +460,58 @@ Ltac tea :=
   | |- type_glob _ => try eassumption
   | |- _ < _ => try (cbn; omega)
   | |- _ <= _ => try (cbn; omega)
-  | |- sSort _ = sSort _ => cbn; rewrite ?max_id(* ; try reflexivity *)
-  | |- _ = _ => cbn; rewrite ?lift_lift(* ; try reflexivity *)
+  | |- sSort ?s1 = sSort ?s2 =>
+    rew1; rewrite ?max_id; tryif has_evar s1 + has_evar s2
+    then idtac else (try reflexivity)
+  | |- ?t1 = ?t2 =>
+    rew1; tryif has_evar t1 + has_evar t2 then idtac else (try reflexivity)
   | _ => idtac
   end.
 
 Ltac typ :=
   match goal with
   | |- _ ;;; _ |-i sApp _ _ _ _ : _ =>
-    refine (type_App _ _ _ _ _ _ _ _ _ _ _ _ _); tea
+    first [refine (type_App _ _ _ _ _ _ _ _ _ _ _ _ _) |
+           eapply meta_conv; [refine (type_App _ _ _ _ _ _ _ _ _ _ _ _ _)|] ]
   | |- _ ;;; ?Γ |-i sJ _ _ _ _ _ _ : ?T =>
     first [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ) |
-           let t := fresh "t" in evar (t : sterm);
-           refine (eq_rect t
-                           (fun T' => _ ;;; Γ |-i sJ _ _ _ _ _ _ : T') _ T _);
-           subst t;
-           [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ )|] ]; tea
+           eapply meta_conv; [refine (type_J _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ )|] ]
   | |- ?Σ ;;; ?Γ |-i sRel ?n : ?T =>
     first [refine (type_Rel Σ Γ n _ _) |
-           let t := fresh "t" in evar (t : sterm);
-           refine (eq_rect t
-                           (fun T' => Σ ;;; Γ |-i sRel n : T') _ T _);
-           subst t;
-           [refine (type_Rel _ _ _ _ _)|] ]; tea
+           eapply meta_conv; [refine (type_Rel _ _ _ _ _)|] ]
   | |- ?Σ ;;; ?Γ |-i sProd ?n ?A ?B : ?S =>
     first [eapply type_Prod |
-           let s1 := fresh "s" in let s2 := fresh "s" in
-           evar (s1 : sort); evar (s2 : sort);
-           refine (eq_rect (sSort (max_sort s1 s2))
-                           (fun S' => _ ;;; Γ |-i sProd n A B : S') _ S _);
-           subst s1 s2;
-           [eapply type_Prod|] ]; tea
-  | |- _ ;;; _ |-i up ?T : ?A =>
-    first [eapply typing_lift01 | eapply (typing_lift01 (A:=A))]; tea
-  | h : _ ;;; _ |-i ?T : _ , h' : type_glob _ |- _ ;;; _  |-i up ?T : ?A =>
-    eapply (typing_lift01 h' h); tea
-  | |- _ ;;; _ |-i up2 ?T : ?A =>
-    first [eapply typing_lift02 | eapply (typing_lift02 (A:=A))]; tea
+           eapply meta_conv; [eapply type_Prod|] ]
+
+  | |- _ ;;; _ |-i up ?T : ?AA =>
+    first [eapply typing_lift01 | eapply (typing_lift01 (A:=AA))]
+  | h : _ ;;; _ |-i ?T : _ , h' : type_glob _ |- _ ;;; _  |-i up ?T : _ =>
+    eapply (typing_lift01 h' h)
+
+  | |- _ ;;; _ |-i up2 ?T : ?AA =>
+    first [eapply typing_lift02 | eapply (typing_lift02 (A:=AA))]
+  | h : _ ;;; _ |-i ?T : _ , h' : type_glob _ |- _ ;;; _  |-i up2 ?T : _ =>
+    eapply (typing_lift02 h' h)
+
   | |- ?Σ ;;; ?Γ ,, ?A1 ,, ?A2 ,, ?A3 |-i up3 _ : ?T
     => first [refine (@type_lift Σ Γ [A3; A2; A1] nil _ _ _ _ _) |
-              refine (@type_lift Σ Γ [A3; A2; A1] nil _ T _ _ _)]; tea
-  | |- wf _ _ => try (eapply typing_wf; eassumption); econstructor; tea
-  | _ => econstructor; tea
-  end.
+              refine (@type_lift Σ Γ [A3; A2; A1] nil _ T _ _ _)]
+
+  | |- ?Σ ;;; ?Γ ,, ?A1 ,, ?A2 ,, ?A3 ,, ?A4 |-i up4 _ : ?T
+    => first [refine (@type_lift Σ Γ [A4; A3; A2; A1] nil _ _ _ _ _) |
+              refine (@type_lift Σ Γ [A4; A3; A2; A1] nil _ T _ _ _)]
+
+  | |- wf _ _ => try (eapply typing_wf; eassumption); econstructor
+  | _ => econstructor
+  end; tea.
 
 Ltac rtyp := repeat typ.
-
-Ltac rew1 := cbn; rewrite ?lift_lift, ?liftP3, ?substP3, ?lift00 by omega; cbn.
-
-Ltac rew1in X := cbn in X; rewrite ?lift_lift, ?liftP3, ?substP3, ?lift00 in X by omega; cbn in X.
 
 (* We need to add s *)
 Definition sTransport' T1 T2 s p t :=
   sJ (sSort s) T1 (sRel 1) t T2 p.
 
-Definition type_Transport'' Σ Γ s T1 T2 p t
+Definition type_Transport'' {Σ Γ s T1 T2 p t}
            (HΣ : type_glob Σ)
            (HT1 : Σ ;;; Γ |-i T1 : sSort s)
            (HT2 : Σ ;;; Γ |-i T2 : sSort s)
@@ -516,14 +520,14 @@ Definition type_Transport'' Σ Γ s T1 T2 p t
   : Σ ;;; Γ |-i sTransport' T1 T2 s p t : T2.
   unfold sTransport'.
   refine (let XX := type_J Σ Γ _ s (sSort s) T1 T2 (sRel 1) p t in _).
-  rew1in XX. eapply XX; tea; rtyp.
+  rew1 in XX. eapply XX; tea; rtyp.
 Defined.
 
 
 Definition Sym A u v p
   := sJ A u (sEq (lift0 2 A) (sRel 1) (lift0 2 u)) (sRefl A u) v p.
 
-Definition type_Sym Σ Γ s A u v p
+Definition type_Sym {Σ Γ s A u v p}
            (HΣ : type_glob Σ)
   : Σ ;;; Γ |-i p : sEq A u v ->
     Σ;;; Γ |-i u : A ->
@@ -537,7 +541,7 @@ Defined.
 Definition Trans A u v w p q
   := sJ A v (sEq (lift0 2 A) (lift0 2 u) (sRel 1)) p w q.
 
-Definition type_Trans Σ Γ s A u v w p q
+Definition type_Trans {Σ Γ s A u v w p q}
            (HΣ : type_glob Σ)
   : Σ ;;; Γ |-i p : sEq A u v ->
     Σ ;;; Γ |-i q : sEq A v w ->
@@ -546,24 +550,52 @@ Definition type_Trans Σ Γ s A u v w p q
     Σ;;; Γ |-i w : A ->
     Σ;;; Γ |-i A : sSort s ->
     Σ;;; Γ |-i Trans A u v w p q : sEq A u w.
-  intros H H0 H1 H2 H3 H4. unfold Trans. rtyp. all: rew1; rtyp; tea.
+  intros H H0 H1 H2 H3 H4. unfold Trans. rtyp. rew1; tea.
 Defined.
 
-
+(* to remove? *)
 Ltac lift_sort :=
   match goal with
   | |- _ ;;; _ |-i lift ?n ?k ?t : ?S => change S with (lift n k S)
   | |- _ ;;; _ |-i ?t { ?n := ?u } : ?S => change S with (S {n := u})
   end.
 
+Notation "'existsT'  x .. y , P" := (sigT (fun x => .. (sigT (fun y => P)) ..))
+  (at level 200, x binder, y binder, right associativity) : type_scope.
 
-Definition type_move_transport_aux {Σ Γ A u B p s} :
+
+
+(* Definition ap_transport {A B} (p q : A = B) (x : A) (e : p = q) *)
+(*   : transport p x = transport q x. *)
+(*   refine (J _ p (fun q' _ => transport p x = transport q' x) _ _ e). *)
+(*   reflexivity. *)
+(* Defined. *)
+
+Definition sap_transport A u B p q e s
+  := sJ (sEq (sSort s) A B) p (sEq (up2 B) (sTransport (up2 A) (up2 B) (up2 p) (up2 u)) (sTransport (up2 A) (up2 B) (sRel 1) (up2 u))) (sRefl B (sTransport A B p u)) q e.
+
+Definition type_ap_transport {Σ Γ A u B p q e s} :
+    type_glob Σ ->
+    Σ;;; Γ |-i p : sEq (sSort s) A B ->
+    Σ;;; Γ |-i q : sEq (sSort s) A B ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i B : sSort s ->
+    Σ;;; Γ |-i e : sEq (sEq (sSort s) A B) p q ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ |-i sap_transport A u B p q e s
+             : sEq B (sTransport A B p u) (sTransport A B q u).
+  intros X H H0 H1 H2 H3 H4. unfold sap_transport.
+  rtyp. rew1; rtyp.
+Defined.
+
+
+Definition pmove_transport_aux {Σ Γ A u B p s} :
     type_glob Σ ->
     Σ;;; Γ |-i p : sEq (sSort s) A B ->
     Σ;;; Γ |-i A : sSort s ->
     Σ;;; Γ |-i B : sSort s ->
     Σ;;; Γ |-i u : A ->
-    exists q', Σ;;; Γ |-i q' :
+    existsT q', Σ;;; Γ |-i q' :
     sProd (nNamed "v") B (sArrow (sEq (up B) (sTransport (up A) (up B) (up p) (up u)) (sRel 0))
     (sEq (up A) (up u) (sTransport (up B) (up A) (Sym (sSort s) (up A) (up B) (up p)) (sRel 0)))).
 
@@ -578,51 +610,38 @@ Definition type_move_transport_aux {Σ Γ A u B p s} :
   - (* the predicate is well sorted *)
     unfold Sym. rtyp. all: rew1; rtyp.
   - (* idmap inhabit the predicate in refl *)
-    (* rtyp. *)
-    cbn. eapply type_Lambda.
-    + rew1. eassumption.
-    + rew1. rtyp. all: rew1 ; rtyp.
-      lift_sort.
-      match goal with
-      | |- _ ;;; (((?Γ',, ?A1),, ?A2),, ?A3),, ?A4 |-i _ : _ =>
-        eapply @type_lift with (Δ := [],, A1,, A2,, A3,, A4) (Ξ := [])
-      end ; try assumption.
-      cbn. rtyp.
-      lift_sort.
-      match goal with
-      | |- _ ;;; ?A3 :: ?A2 :: ?A1 :: _ |-i _ : _ =>
-        eapply @type_lift with (Δ := [],, A1,, A2,, A3) (Ξ := [])
-      end ; try assumption.
-      cbn. rtyp.
-    + rew1. eapply type_Lambda.
+    rew1.
+    eapply type_Lambda.
+    + eassumption.
+    + rtyp. rew1; rtyp.
+    + eapply type_Lambda.
       * rtyp.
-      * rtyp. all: rew1 ; rtyp.
-        lift_sort.
-        match goal with
-        | |- _ ;;; (((?Γ',, ?A1),, ?A2),, ?A3),, ?A4 |-i _ : _ =>
-          eapply @type_lift with (Δ := [],, A1,, A2,, A3,, A4) (Ξ := [])
-        end ; try assumption.
-        cbn. rtyp.
-        lift_sort.
-        match goal with
-        | |- _ ;;; ?A3 :: ?A2 :: ?A1 :: _ |-i _ : _ =>
-          eapply @type_lift with (Δ := [],, A1,, A2,, A3) (Ξ := [])
-        end ; try assumption.
-        cbn. rtyp.
-      * eapply meta_conv.
-        -- refine (type_Rel _ _ 0 _ _).
-           ++ rtyp.
-           ++ cbn. omega.
-        -- cbn. rew1.
-           (* Are you sure you got the predicate right? *)
-           give_up.
-  - clearbody XX. rew1in XX. rew1. exact XX.
-  Unshelve. all: constructor.
-Admitted.
+      * rtyp. rew1; rtyp.
+      * eapply (type_Trans (p := Sym _ _ _ (sTransportRefl (up2 A) (up2 u))));
+          tea.
+        { eapply type_Sym; rtyp; tea. }
+        2-5: rtyp. 2: rew1; rtyp.
+        { eapply (type_Trans (p := sRel 0)); tea.
+           rtyp. 2-5: rtyp. 2: rew1; rtyp.
+           eapply (type_Trans (p := Sym _ _ _
+                                        (sTransportRefl (up2 A) (sRel 1)))); tea.
+           { eapply type_Sym; rtyp; tea. }
+           2-5: rtyp. 2: rew1; rtyp.
+           { eapply type_ap_transport; tea.
+             1-4: rtyp. rew1; rtyp. 2: rtyp.
+             { eapply type_Sym; tea. 2-4: rtyp.
+               2: rew1; rtyp.
+               refine (let XX := type_JRefl _ _ _ _ (sSort s) (up2 A) (sEq (sSort s) (sRel 1) (up4 A))
+         (sRefl (sSort s) (up2 A)) _ _ _ _ in _).
+               clearbody XX; rew1 in XX. exact XX.
+               Unshelve. 6-8: rtyp. 4: rew1; rtyp.
+               2-3: econstructor. shelve.
+             }}}
+  - clearbody XX. rew1 in XX. rew1. exact XX.
+Defined.
 
 
-
-Definition type_move_transport Σ Γ A u B v p q s :
+Definition pmove_transport {Σ Γ A u B v p q s} :
     type_glob Σ ->
     Σ;;; Γ |-i p : sEq (sSort s) A B ->
     Σ;;; Γ |-i q : sEq B (sTransport A B p u) v ->
@@ -630,20 +649,43 @@ Definition type_move_transport Σ Γ A u B v p q s :
     Σ;;; Γ |-i B : sSort s ->
     Σ;;; Γ |-i u : A ->
     Σ;;; Γ |-i v : B ->
-    exists q', Σ;;; Γ |-i q' : sEq A u (sTransport B A (Sym (sSort s) A B p) v).
+    existsT q', Σ;;; Γ |-i q' : sEq A u (sTransport B A (Sym (sSort s) A B p) v).
   intros HΣ H H0 H1 H2 H3 H4.
-  pose proof (type_move_transport_aux HΣ H H1 H2 H3).
-  destruct H5. econstructor.
+  pose proof (pmove_transport_aux HΣ H H1 H2 H3).
+  destruct H5 as [t H5]. econstructor.
   simple refine (let YY := type_App _ _ _ _ _ _ _ _ _ _ _ H5 H4 in _);
     try eassumption.
   - unfold Sym. rtyp. all: rew1; rtyp.
   - clearbody YY; cbn in YY. clear H5.
-    rew1in YY.
+    rew1 in YY.
     simple refine (let ZZ := type_App _ _ _ _ _ _ _ _ _ _ _ YY H0 in _);
       try clear YY; tea.
     1-2: assumption.
     + rtyp.
     + rtyp. all: rew1; rtyp.
-    + clearbody ZZ; clear YY. rew1in ZZ.
+    + clearbody ZZ; clear YY. rew1 in ZZ.
       exact ZZ.
 Defined.
+
+Definition type_move_transport {Σ Γ A u B v p q s} HΣ H H0 H1 H2 H3 H4
+  := projT2 (@pmove_transport Σ Γ A u B v p q s HΣ H H0 H1 H2 H3 H4).
+
+Definition type_HeqSym Σ Γ A a B b p s :
+    type_glob Σ ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i B : sSort s ->
+    Σ;;; Γ |-i a : A ->
+    Σ;;; Γ |-i b : B ->
+    Σ;;; Γ |-i p : sHeq A a B b ->
+    existsT p', Σ;;; Γ |-i p' : sHeq B b A a.
+  intros H H0 H1 H2 H3 H4.
+  simple refine (let XX := type_HeqTypeEq _ _ _ _ _ _ _ _ H4 _ _ _ _ in _); tea.
+  simple refine (let YY := type_HeqTermEq _ _ _ _ _ _ _ _ H4 _ _ _ _ in _); tea.
+  clearbody XX; clearbody YY; clear H4. econstructor.
+  eapply type_HeqConstr; tea.
+  - eapply type_Sym; tea. rtyp.
+  - eapply type_Sym; tea. 2: unfold Sym; rtyp; rew1; rtyp.
+    unshelve eapply type_move_transport; tea.
+Defined.
+
+(* Eval cbn in (fun Σ Γ A a B b p s H H0 H1 H2 H3 H4 => projT1 (@type_HeqSym Σ Γ A a B b p s H H0 H1 H2 H3 H4)). *)
