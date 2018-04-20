@@ -339,6 +339,7 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext)
     type_inddecls Σ pars Γ (Build_sone_inductive_body na ty kelim cstrs projs :: l).
 
 Definition type_inductive Σ pars inds :=
+  wf Σ pars *
   ForallT Xcomp pars *
   (** FIXME: should be pars ++ arities w/o params *)
   (* I don't know if it still should be fixed.

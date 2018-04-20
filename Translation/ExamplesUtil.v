@@ -203,7 +203,10 @@ Ltac tinddecl :=
 
 Ltac tind :=
   split ; [
-    repeat constructor
+    split ; [
+      idtac
+    | repeat constructor
+    ]
   | tinddecl
   ].
 
@@ -214,16 +217,19 @@ Fact hΣi : type_glob Σi.
   tenv.
   (* bool *)
   - tind.
+    + magic.
     + exists 1. repeat econstr.
     + exists 0. repeat econstr.
     + exists 0. repeat econstr.
   (* nat *)
   - tind.
+    + magic.
     + exists 1. constructor. constructor.
     + exists 0. magic.
     + exists (max 0 0). magic.
   (* vec *)
   - tind.
+    + magic.
     + exists (max_sort 1 (max 0 1)). magic.
     + exists (max_sort 1 0).
       econstr.
