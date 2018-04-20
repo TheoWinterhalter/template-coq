@@ -18,26 +18,26 @@ Defined.
 (* We state some admissible typing rules *)
 
 Lemma heq_sort :
-  forall {Σ Γ s1 s2 A B p},
+  forall {Σ Γ s1 s2 z A B p},
     type_glob Σ ->
-    Σ ;;; Γ |-i p : sHeq (sSort s1) A (sSort s2) B ->
-    Σ ;;; Γ |-i p : sHeq (sSort s1) A (sSort s1) B.
+    Σ ;;; Γ |-i p : sHeq z (sSort s1) A (sSort s2) B ->
+    Σ ;;; Γ |-i p : sHeq z (sSort s1) A (sSort s1) B.
 Proof.
-  intros Σ Γ s1 s2 A B p hg h.
+  intros Σ Γ s1 s2 z A B p hg h.
   destruct (istype_type hg h) as [? i].
-  inversion i. subst.
-  inversion H5. subst. inversion H6. subst. exact h.
+  inversion i.
+  pose proof (sorts_in_sort H4 H7). subst. assumption.
 Defined.
 
 Lemma type_HeqToEq' :
-  forall {Σ Γ A u v p},
+  forall {Σ Γ A u v p s},
     type_glob Σ ->
-    Σ ;;; Γ |-i p : sHeq A u A v ->
+    Σ ;;; Γ |-i p : sHeq s A u A v ->
     Σ ;;; Γ |-i sHeqToEq p : sEq A u v.
 Proof.
-  intros Σ Γ A u v p hg h.
+  intros Σ Γ A u v p s hg h.
   destruct (istype_type hg h) as [? i].
-  inversion i.
+  inversion i. subst.
   eapply type_HeqToEq ; eassumption.
 Defined.
 

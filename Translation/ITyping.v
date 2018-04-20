@@ -70,10 +70,10 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i a : A ->
     Σ ;;; Γ |-i b : B ->
-    Σ ;;; Γ |-i sHeq A a B b : sSort s
+    Σ ;;; Γ |-i sHeq s A a B b : sSort s
 
 | type_HeqToEq {Γ A u v p s} :
-    Σ ;;; Γ |-i p : sHeq A u A v ->
+    Σ ;;; Γ |-i p : sHeq s A u A v ->
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : A ->
@@ -86,12 +86,12 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : B ->
-    Σ ;;; Γ |-i sHeqConstr A B u v p q : sHeq A u B v
+    Σ ;;; Γ |-i sHeqConstr A B u v p q : sHeq s A u B v
 
 | type_HeqRefl {Γ A a s} :
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i a : A ->
-    Σ ;;; Γ |-i sHeqRefl A a : sHeq A a A a
+    Σ ;;; Γ |-i sHeqRefl A a : sHeq s A a A a
 
 | type_HeqTrans Γ A a B b C c p q s :
     Σ ;;; Γ |-i A : sSort s ->
@@ -100,37 +100,37 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i a : A ->
     Σ ;;; Γ |-i b : B ->
     Σ ;;; Γ |-i c : C ->
-    Σ ;;; Γ |-i p : sHeq A a B b ->
-    Σ ;;; Γ |-i q : sHeq B b C c ->
-    Σ ;;; Γ |-i sHeqTrans p q : sHeq A a C c
+    Σ ;;; Γ |-i p : sHeq s A a B b ->
+    Σ ;;; Γ |-i q : sHeq s B b C c ->
+    Σ ;;; Γ |-i sHeqTrans p q : sHeq s A a C c
 
 | type_HeqTransport Γ A B p t s :
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i t : A ->
     Σ ;;; Γ |-i p : sEq (sSort s) A B ->
-    Σ ;;; Γ |-i sHeqTransport p t : sHeq A t B (sTransport A B p t)
+    Σ ;;; Γ |-i sHeqTransport p t : sHeq s A t B (sTransport A B p t)
 
 | type_CongProd Γ s z nx ny A1 A2 B1 B2 pA pB :
-    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ |-i pA : sHeq (succ_sort s) (sSort s) A1 (sSort s) A2 ->
     Σ ;;; Γ ,, (sPack A1 A2)
-    |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+    |-i pB : sHeq (succ_sort s) (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
     Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
     Σ ;;; Γ |-i sCongProd B1 B2 pA pB :
-    sHeq (sSort (max_sort s z)) (sProd nx A1 B1)
+    sHeq (succ_sort (max_sort s z)) (sSort (max_sort s z)) (sProd nx A1 B1)
          (sSort (max_sort s z)) (sProd ny A2 B2)
 
 | type_CongLambda Γ s z nx nx' ny ny' A1 A2 B1 B2 t1 t2 pA pB pt :
-    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ |-i pA : sHeq (succ_sort s) (sSort s) A1 (sSort s) A2 ->
     Σ ;;; Γ ,, (sPack A1 A2)
-    |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+    |-i pB : sHeq (succ_sort z) (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
     Σ ;;; Γ ,, (sPack A1 A2)
-    |-i pt : sHeq ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+    |-i pt : sHeq z ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 t1){ 0 := sProjT1 (sRel 0) })
                  ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })
                  ((lift 1 1 t2){ 0 := sProjT2 (sRel 0) }) ->
@@ -141,16 +141,16 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ ,, A1 |-i t1 : B1 ->
     Σ ;;; Γ ,, A2 |-i t2 : B2 ->
     Σ ;;; Γ |-i sCongLambda B1 B2 t1 t2 pA pB pt :
-               sHeq (sProd nx A1 B1) (sLambda nx' A1 B1 t1)
+               sHeq (max_sort s z) (sProd nx A1 B1) (sLambda nx' A1 B1 t1)
                     (sProd ny A2 B2) (sLambda ny' A2 B2 t2)
 
 | type_CongApp Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv :
-    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ |-i pA : sHeq (succ_sort s) (sSort s) A1 (sSort s) A2 ->
     Σ ;;; Γ ,, (sPack A1 A2)
-    |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+    |-i pB : sHeq (succ_sort z) (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
                  (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
-    Σ ;;; Γ |-i pu : sHeq (sProd nx A1 B1) u1 (sProd ny A2 B2) u2 ->
-    Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2 ->
+    Σ ;;; Γ |-i pu : sHeq (max_sort s z) (sProd nx A1 B1) u1 (sProd ny A2 B2) u2 ->
+    Σ ;;; Γ |-i pv : sHeq s A1 v1 A2 v2 ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
@@ -160,13 +160,13 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i v1 : A1 ->
     Σ ;;; Γ |-i v2 : A2 ->
     Σ ;;; Γ |-i sCongApp B1 B2 pu pA pB pv :
-               sHeq (B1{0 := v1}) (sApp u1 A1 B1 v1)
+               sHeq z (B1{0 := v1}) (sApp u1 A1 B1 v1)
                     (B2{0 := v2}) (sApp u2 A2 B2 v2)
 
 | type_CongEq Γ s A1 A2 u1 u2 v1 v2 pA pu pv :
-    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2 ->
-    Σ ;;; Γ |-i pv : sHeq A1 v1 A2 v2 ->
+    Σ ;;; Γ |-i pA : sHeq (succ_sort s) (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ |-i pu : sHeq s A1 u1 A2 u2 ->
+    Σ ;;; Γ |-i pv : sHeq s A1 v1 A2 v2 ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ |-i u1 : A1 ->
@@ -174,27 +174,27 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i v1 : A1 ->
     Σ ;;; Γ |-i v2 : A2 ->
     Σ ;;; Γ |-i sCongEq pA pu pv :
-               sHeq (sSort s) (sEq A1 u1 v1) (sSort s) (sEq A2 u2 v2)
+               sHeq (succ_sort s) (sSort s) (sEq A1 u1 v1) (sSort s) (sEq A2 u2 v2)
 
 | type_CongRefl Γ s A1 A2 u1 u2 pA pu :
-    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
-    Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2 ->
+    Σ ;;; Γ |-i pA : sHeq (succ_sort s) (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ |-i pu : sHeq (succ_sort s) A1 u1 A2 u2 ->
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ |-i u1 : A1 ->
     Σ ;;; Γ |-i u2 : A2 ->
     Σ ;;; Γ |-i sCongRefl pA pu :
-               sHeq (sEq A1 u1 u1) (sRefl A1 u1) (sEq A2 u2 u2) (sRefl A2 u2)
+               sHeq s (sEq A1 u1 u1) (sRefl A1 u1) (sEq A2 u2 u2) (sRefl A2 u2)
 
 | type_EqToHeq Γ A u v p s :
     Σ ;;; Γ |-i p : sEq A u v ->
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i v : A ->
-    Σ ;;; Γ |-i sEqToHeq p : sHeq A u A v
+    Σ ;;; Γ |-i sEqToHeq p : sHeq s A u A v
 
 | type_HeqTypeEq {Γ A u B v p s} :
-    Σ ;;; Γ |-i p : sHeq A u B v ->
+    Σ ;;; Γ |-i p : sHeq s A u B v ->
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i u : A ->
@@ -202,7 +202,7 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i sHeqTypeEq A B p : sEq (sSort s) A B
 
 | type_HeqTermEq {Γ A u B v p s} :
-    Σ ;;; Γ |-i p : sHeq A u B v ->
+    Σ ;;; Γ |-i p : sHeq s A u B v ->
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i B : sSort s ->
     Σ ;;; Γ |-i u : A ->
@@ -231,7 +231,7 @@ Inductive typing {Σ : sglobal_context} : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i A1 : sSort s ->
     Σ ;;; Γ |-i A2 : sSort s ->
     Σ ;;; Γ |-i p : sPack A1 A2 ->
-    Σ ;;; Γ |-i sProjTe p : sHeq A1 (sProjT1 p) A2 (sProjT2 p)
+    Σ ;;; Γ |-i sProjTe p : sHeq s A1 (sProjT1 p) A2 (sProjT2 p)
 
 | type_Ind {Γ ind} :
     @wf Σ Γ ->

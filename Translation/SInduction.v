@@ -144,11 +144,12 @@ Lemma sterm_rect_list :
      forall p : sterm, P p ->
      forall t : sterm, P t ->
        P (sTransport T1 T2 p t)) ->
-    (forall A : sterm, P A ->
+    (forall s,
+     forall A : sterm, P A ->
      forall a : sterm, P a ->
      forall B : sterm, P B ->
      forall b : sterm, P b ->
-       P (sHeq A a B b)) ->
+       P (sHeq s A a B b)) ->
     (forall p : sterm, P p -> P (sHeqToEq p)) ->
     (forall A, P A -> forall B, P B -> forall a, P a -> forall b, P b -> forall p, P p -> forall q, P q ->
        P (sHeqConstr A B a b p q)) ->

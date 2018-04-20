@@ -147,12 +147,12 @@ Lemma trel_to_heq' :
     type_glob Σ ->
     t1 ∼ t2 ->
     forall Γ Γ1 Γ2,
-      ∑ p,
+      ∑ p s,
         forall {Γm T1 T2},
           ismix Σ Γ Γ1 Γ2 Γm ->
           Σ ;;; Γ ,,, Γ1 |-i t1 : T1 ->
           Σ ;;; Γ ,,, Γ2 |-i  t2 : T2 ->
-          Σ ;;; Γ ,,, Γm |-i p : sHeq (llift0 #|Γm| T1)
+          Σ ;;; Γ ,,, Γm |-i p : sHeq s (llift0 #|Γm| T1)
                                      (llift0 #|Γm| t1)
                                      (rlift0 #|Γm| T2)
                                      (rlift0 #|Γm| t2).

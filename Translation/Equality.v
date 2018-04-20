@@ -18,7 +18,7 @@ Inductive nlterm : Type :=
 | nlJ (A u P w v p : nlterm)
 | nlTransport (T1 T2 p t : nlterm)
 (* Heterogenous equality *)
-| nlHeq (A a B b : nlterm)
+| nlHeq (s : sort) (A a B b : nlterm)
 | nlHeqToEq (p : nlterm)
 | nlHeqConstr (A B a b p q : nlterm)
 | nlHeqRefl (A a : nlterm)
@@ -57,7 +57,7 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sRefl A u => nlRefl (nl A) (nl u)
   | sJ A u P w v p => nlJ (nl A) (nl u) (nl P) (nl w) (nl v) (nl p)
   | sTransport T1 T2 p t => nlTransport (nl T1) (nl T2) (nl p) (nl t)
-  | sHeq A a B b => nlHeq (nl A) (nl a) (nl B) (nl b)
+  | sHeq s A a B b => nlHeq s (nl A) (nl a) (nl B) (nl b)
   | sHeqToEq p => nlHeqToEq (nl p)
   | sHeqConstr A B a b p q =>
     nlHeqConstr (nl A) (nl B) (nl a) (nl b) (nl p) (nl q)
