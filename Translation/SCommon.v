@@ -301,12 +301,12 @@ Scheme even_rect' := Induction for even Sort Type.
 
 Quote Recursively Definition ter := even_rect'.
 
-Equations type_of_elim Σ ind univs decl
+Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
-  type_of_elim Σ ind univs decl isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
+  type_of_elim Σ ind univs decl s isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
   | exist (Some (SInductiveDecl _ d)) _ :=
     let pars := d.(sind_params) in
-    (* let Pty := Prods ((Apps ~ind ~indicesAsRels) ++ sind_indices decl) (sSort s) in *)
+    (* let Pty := Prods ((Apps ~ind ~indicesAsRels) ++ decl.(sind_indices)) (sSort s) in *)
     let Pty := sRel 0 in
     let P := (nNamed "P", Pty) in
     (* Same for constructors' types, we need to know the indices that

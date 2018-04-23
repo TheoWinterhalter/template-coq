@@ -68,11 +68,11 @@ Defined.
 
 (* TMP *)
 Lemma inversionElim :
-  forall {Σ Γ ind T},
-    Σ ;;; Γ |-i sElim ind : T ->
+  forall {Σ Γ ind s T},
+    Σ ;;; Γ |-i sElim ind s : T ->
     False.
 Proof.
-  intros Σ Γ ind T h.
+  intros Σ Γ ind s T h.
   dependent induction h. assumption.
 Defined.
 
@@ -652,6 +652,6 @@ Ltac ttinv h :=
       destruct (inversionConstruct h) as (univs & decl & isdecl & hh) ;
       splits_one hh
     | sCase _ _ _ _ => destruct (inversionCase h)
-    | sElim _ => destruct (inversionElim h)
+    | sElim _ _ => destruct (inversionElim h)
     end
   end.

@@ -189,7 +189,7 @@ Lemma sterm_rect_list :
      forall c : sterm, P c ->
      forall brs : list (nat * sterm), sCaseBrsT P brs ->
        P (sCase indn p c brs)) ->
-    (forall ind : inductive, P (sElim ind)) ->
+    (forall ind s, P (sElim ind s)) ->
     forall t : sterm, P t.
 Proof.
   intros until t. revert t.

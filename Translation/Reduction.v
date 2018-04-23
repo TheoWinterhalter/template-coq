@@ -74,7 +74,7 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       eq_ind i i'
   | sConstruct i k, sConstruct i' k' =>
       eq_ind i i' && eq_nat k k'
-  | sElim i, sElim i' => eq_ind i i'
+  | sElim i s, sElim i' s' => eq_ind i i' && eq_nat s s'
   | _ , _ => false
   end.
 
@@ -265,5 +265,5 @@ Fixpoint reduce (t : sterm) : sterm :=
     let c' := reduce c in
     let brs' := map (on_snd reduce) brs in
     sCase indn p' c' brs'
-  | sElim ind => sElim ind
+  | sElim ind s => sElim ind s
   end.
