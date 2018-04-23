@@ -531,3 +531,6 @@ Proof.
     + cbn. replace (#|Δ| - 0) with #|Δ| by omega. reflexivity.
     + cbn. erewrite IHΔ. reflexivity.
 Defined.
+
+Definition substln_context l Ξ :=
+  List.fold_left (fun Γ u => subst_context u Γ) l Ξ.

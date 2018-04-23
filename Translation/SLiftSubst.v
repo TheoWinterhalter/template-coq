@@ -126,6 +126,11 @@ Notation "M { j := N }" := (subst N j M) (at level 10, right associativity) : s_
 Definition substl l t :=
   List.fold_left (fun t u => subst0 u t) l t.
 
+Open Scope s_scope.
+
+Definition substln l n t :=
+  List.fold_left (fun t u => t{ n := u }) l t.
+
 (* Notion of closedness *)
 Fixpoint closed_above k t :=
   match t with

@@ -1229,6 +1229,28 @@ Proof.
   - cbn. assumption.
 Defined.
 
+Corollary type_substln :
+  forall {Σ l Γ Δ},
+    type_glob Σ ->
+    typed_list Σ Γ l Δ ->
+    forall {t T Ξ},
+      Σ ;;; Γ ,,, Δ ,,, Ξ |-i t : T ->
+      Σ ;;; Γ ,,, substln_context l Ξ |-i substln l #|Ξ| t : substln l #|Ξ| T.
+Proof.
+  intros Σ l Γ Δ hg tl.
+  induction tl ; intros u C Ξ h.
+  - cbn. assumption.
+  - simpl.
+    replace #|Ξ| with #|subst_context A Ξ|
+      by (now rewrite subst_context_length).
+    apply IHtl.
+    rewrite subst_context_length.
+    eapply type_subst.
+    + exact h.
+    + assumption.
+    + assumption.
+Defined.
+
 Corollary type_substl :
   forall {Σ l Γ Δ},
     type_glob Σ ->
