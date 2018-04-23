@@ -254,6 +254,21 @@ Definition sdeclared_constructor Σ cstr univs decl :=
   ∑ decl', (sdeclared_inductive Σ ind univs decl') *
            (List.nth_error decl'.(sind_ctors) k = Some decl).
 
+Lemma declared_inductive_constructor :
+  forall {Σ ind univs decl},
+    sdeclared_inductive Σ ind univs decl ->
+    forall {n},
+      n < #|decl.(sind_ctors)| ->
+      ∑ d, sdeclared_constructor Σ (ind, n) univs d.
+Proof.
+  intros Σ ind univs decl isdecl n hn.
+  case_eq (nth_error decl.(sind_ctors) n).
+  - intros d eq. exists d, decl. split ; assumption.
+  - intros eq. exfalso.
+    pose proof (proj1 (nth_error_None _ _) eq).
+    omega.
+Defined.
+
 Definition sinds ind (l : list sone_inductive_body) :=
   let fix aux n :=
       match n with
@@ -323,9 +338,14 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     in
     let Pty := Prods ((nAnon, indinst) :: indices) (sSort s) in
     let P := (nNamed "P", Pty) in
-    (* Same for constructors' types, we need to know the indices that
-       the inductive type is applied to.
-       This looks like fundamental changes.
+    (* We need to add a param-free type of constructor.
+       It will be then computed like type_of_constructor but
+       but with substln _ #|pars| instead of substl.
+       Once we have that, we take the number corresponding to the inductive
+       (in the mib) as a parameter to go through the obtained type,
+       placing instances of P whenever we encounter the right inductive.
+       This in itself, requires to be able to read of the indices arguments of
+       the inductive.
      *)
     (* let fl := map (fun '(c,ty,_) => ) *)
     let fl := [] in
