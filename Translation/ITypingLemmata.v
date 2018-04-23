@@ -76,20 +76,6 @@ Proof.
       eexists. econstructor ; eassumption.
 Defined.
 
-(* Lemma type_Apps : *)
-(*   forall {Σ Γ Δ f l T}, *)
-(*     Σ ;;; Γ |-i f : Prods Δ T -> *)
-(*     typed_list Σ Γ l (nlctx Δ) -> *)
-(*     isType Σ (Γ,,, nlctx Δ) T -> *)
-(*     Σ ;;; Γ |-i Apps f Δ T l : substl l T. *)
-(* Proof. *)
-(*   intros Σ Γ Δ. revert Γ. *)
-(*   induction Δ as [| [nx A] Δ ih] ; intros Γ f l T hf hl hT. *)
-(*   - cbn in *. dependent destruction hl. cbn. assumption. *)
-(*   - dependent destruction hl. simpl in *. *)
-(*     rename l0 into l, A0 into t. *)
-(* Abort. *)
-
 Fact type_ctx_closed_above :
   forall {Σ Γ t T},
     Σ ;;; Γ |-i t : T ->
@@ -1251,6 +1237,14 @@ Proof.
     + assumption.
 Defined.
 
+Fact substln_sort :
+  forall {l n s}, substln l n (sSort s) = sSort s.
+Proof.
+  intro l. induction l ; intros n s.
+  - cbn. reflexivity.
+  - simpl. apply IHl.
+Defined.
+
 Corollary type_substl :
   forall {Σ l Γ Δ},
     type_glob Σ ->
@@ -1275,6 +1269,90 @@ Proof.
   intro l. induction l ; intro s.
   - cbn. reflexivity.
   - rewrite substl_cons. cbn. apply IHl.
+Defined.
+
+Fact substl1_subst0 :
+  forall {l t u},
+    (substln l 1 t){ 0 := substl l u } = substl l (t{ 0 := u }).
+Proof.
+  intros l. induction l ; intros t u.
+  - cbn. reflexivity.
+  - simpl. rewrite IHl. f_equal.
+    change 0 with (0 + 0)%nat at 4.
+    rewrite substP4. cbn.
+    reflexivity.
+Defined.
+
+Fact substln_context_nil :
+  forall {l},
+    substln_context l [] = [].
+Proof.
+  intros l. induction l.
+  - reflexivity.
+  - simpl. assumption.
+Defined.
+
+Fact substln_context_cons :
+  forall {l A Γ},
+    substln_context l (Γ,, A) = substln_context l Γ,, substln l #|Γ| A.
+Proof.
+  intros l. induction l ; intros A Γ.
+  - cbn. reflexivity.
+  - simpl. rewrite IHl.
+    rewrite subst_context_length. reflexivity.
+Defined.
+
+(* TODO Define substl as substln _ 0 *)
+Fact substl_substln0 :
+  forall {l u},
+    substl l u = substln l 0 u.
+Proof.
+  intro l. induction l ; intro u.
+  - cbn. reflexivity.
+  - simpl. rewrite IHl. reflexivity.
+Defined.
+
+Fact substl_Prod :
+  forall {l nx A B},
+    substl l (sProd nx A B) =
+    sProd nx (substl l A) (substln l 1 B).
+Proof.
+  intro l. induction l ; intros nx A B.
+  - cbn. reflexivity.
+  - simpl. rewrite IHl.
+    reflexivity.
+Defined.
+
+Lemma type_Apps :
+  forall {Σ Γ Δ f l T},
+    type_glob Σ ->
+    Σ ;;; Γ |-i f : Prods Δ T ->
+    typed_list Σ Γ l (nlctx Δ) ->
+    isType Σ (Γ,,, nlctx Δ) T ->
+    Σ ;;; Γ |-i Apps f Δ T l : substl l T.
+Proof.
+  intros Σ Γ Δ f l T hg. revert Γ f l T .
+  induction Δ as [| [nx A] Δ ih] ; intros Γ f l T hf hl hT.
+  - cbn in *. dependent destruction hl. cbn. assumption.
+  - dependent destruction hl. simpl in *.
+    rename l0 into l, A0 into t.
+    rewrite <- substl1_subst0.
+    destruct hT as [s hT].
+    pose proof (typing_wf hT) as hw.
+    dependent destruction hw.
+    rename A0 into A, s0 into s'.
+    eapply type_App.
+    + erewrite <- substl_sort.
+      eapply type_substl ; eassumption.
+    + erewrite <- substln_sort.
+      pose proof (type_substln hg hl (Ξ := [ A ]) hT) as hh.
+      simpl in hh. rewrite substln_context_cons in hh. simpl in hh.
+      rewrite <- substl_substln0, substln_context_nil in hh.
+      apply hh.
+    + rewrite <- substl_Prod.
+      eapply ih ; try eassumption.
+      eexists. econstructor ; eassumption.
+    + eapply type_substl ; eassumption.
 Defined.
 
 Fact ind_bodies_declared :
