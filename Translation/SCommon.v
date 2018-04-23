@@ -200,7 +200,10 @@ Record sone_inductive_body := {
                         parameters *)
   sind_kelim : list sort_family; (* TC *)
   sind_ctors : list (ident * sterm * nat);
-  sind_projs : list (ident * sterm)
+  sind_projs : list (ident * sterm);
+  (* I add the following, to recover info later. *)
+  sind_indices : nctx;
+  sind_sort : sort
 }.
 
 Record smutual_inductive_body := {
@@ -303,13 +306,6 @@ Equations type_of_elim Σ ind univs decl
   type_of_elim Σ ind univs decl isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
   | exist (Some (SInductiveDecl _ d)) _ :=
     let pars := d.(sind_params) in
-    (* TWO THINGS
-       - Elim should have a sort argument.
-       - We may need to split ind_type in the end.
-         We don't want to quantifty overt the parameters again.
-         We might even have to cut it in three parts:
-         params, indices and sort.
-     *)
     (* let Pty := Prods ((Apps ~ind ~indicesAsRels) ++ sind_indices decl) (sSort s) in *)
     let Pty := sRel 0 in
     let P := (nNamed "P", Pty) in

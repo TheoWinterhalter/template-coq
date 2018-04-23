@@ -318,15 +318,15 @@ Inductive type_projections (Σ : sglobal_context) (Γ : scontext) :
 Definition arities_context (l : list sone_inductive_body) : scontext :=
   rev_map (fun ind => ind.(sind_type)) l.
 
-Definition isArity Σ pars T :=
-  (isType Σ [] T) * (∑ indices s, T = Prods (indices ++ pars)%list (sSort s)).
+Definition isArity Σ pars indices s T :=
+  (isType Σ [] T) /\ (T = Prods (indices ++ pars)%list (sSort s)).
 
 Inductive type_inddecls (Σ : sglobal_context) (pars : nctx) (Γ : scontext) :
   list sone_inductive_body -> Type :=
 | type_ind_nil : type_inddecls Σ pars Γ []
-| type_ind_cons na ty cstrs projs kelim l :
+| type_ind_cons na ty cstrs projs kelim indices s l :
     (** Arity is well-formed *)
-    isArity Σ pars ty ->
+    isArity Σ pars indices s ty ->
     (** TMP: The type can be written in ETT *)
     Xcomp ty ->
     (** Constructors are well-typed *)
@@ -336,7 +336,7 @@ Inductive type_inddecls (Σ : sglobal_context) (pars : nctx) (Γ : scontext) :
     (** The other inductives in the block are well-typed *)
     type_inddecls Σ pars Γ l ->
     (** TODO: check kelim*)
-    type_inddecls Σ pars Γ (Build_sone_inductive_body na ty kelim cstrs projs :: l).
+    type_inddecls Σ pars Γ (Build_sone_inductive_body na ty kelim cstrs projs indices s :: l).
 
 Definition type_inductive Σ pars inds :=
   wf Σ (nlctx pars) *
