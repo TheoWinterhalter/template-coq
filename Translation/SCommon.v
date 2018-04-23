@@ -302,20 +302,45 @@ Scheme even_rect' := Induction for even Sort Type.
 
 Quote Recursively Definition ter := even_rect'.
 
+Fixpoint lrel start count :=
+  match count with
+  | 0 => []
+  | S n => sRel (start + n)%nat :: lrel start n
+  end.
+
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
   type_of_elim Σ ind univs decl s isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
   | exist (Some (SInductiveDecl _ d)) _ :=
     let pars := d.(sind_params) in
-    (* let Pty := Prods ((Apps ~ind ~indicesAsRels) ++ decl.(sind_indices)) (sSort s) in *)
-    let Pty := sRel 0 in
+    let indices := decl.(sind_indices) in
+    (* Granted, the two following lines could easily mix into one. *)
+    let irels := lrel 0 #|indices| in
+    let prels := lrel #|indices| #|pars| in
+    let si := decl.(sind_sort) in
+    let indinst :=
+      (Apps (sInd ind) (indices ++ pars) (sSort si) (irels ++ prels))%list
+    in
+    let Pty := Prods ((nAnon, indinst) :: indices) (sSort s) in
     let P := (nNamed "P", Pty) in
     (* Same for constructors' types, we need to know the indices that
        the inductive type is applied to.
        This looks like fundamental changes.
      *)
     (* let fl := map (fun '(c,ty,_) => ) *)
-    Prods (P :: pars) (sRel 0) ;
+    let fl := [] in
+    let fl := map (fun ty => (nNamed "f", ty)) fl in
+    let irels := lrel 0 #|indices| in
+    let prels := lrel (1 + #|indices| + #|fl|)%nat #|pars| in
+    let indinst :=
+      (Apps (sInd ind) (indices ++ pars) (sSort si) (irels ++ prels))%list
+    in
+    let predinst :=
+      Apps (sRel (1 + #|indices| + #|fl|))%nat
+           ((nAnon, indinst) :: indices) (sSort s)
+           (lrel 0 (S #|indices|))
+    in
+    Prods ((nAnon, indinst) :: fl ++ P :: pars)%list predinst ;
   | exist decl' H := !
   }.
 Next Obligation.
