@@ -113,7 +113,7 @@ Defined.
 
 Fact typed_ind_type' :
   forall {Σ : sglobal_context} {decl'},
-    type_inductive Σ (nlctx decl'.(sind_params)) (sind_bodies decl') ->
+    type_inductive Σ decl'.(sind_params) (sind_bodies decl') ->
     forall {n decl},
       nth_error (sind_bodies decl') n = Some decl ->
       isType Σ [] (sind_type decl).
@@ -125,7 +125,7 @@ Proof.
   - intros n decl h.
     destruct n.
     + cbn in h. inversion h as [ e ]. subst. clear h.
-      cbn. unfold isArity in i.
+      cbn. destruct i as [i _].
       assumption.
     + cbn in h. eapply IHhind.
       eassumption.
@@ -333,7 +333,7 @@ Defined.
 
 Fact xcomp_ind_type' :
   forall {Σ : sglobal_context} {decl'},
-    type_inductive Σ (nlctx decl'.(sind_params)) (sind_bodies decl') ->
+    type_inductive Σ decl'.(sind_params) (sind_bodies decl') ->
     forall {n decl},
       nth_error (sind_bodies decl') n = Some decl ->
       Xcomp (sind_type decl).

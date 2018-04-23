@@ -191,9 +191,15 @@ Ltac xcomp :=
   | |- Xcomp _ => repeat econstructor
   end.
 
+Ltac tarity :=
+  split ; [
+    idtac
+  | try (eexists ; eexists ; cbn ; reflexivity)
+  ].
+
 Ltac tinddecl :=
   cbn ; constructor ; [
-    idtac
+    tarity
   | repeat constructor
   | cbn ; repeat eapply type_cnstrs_cons ; [ .. | eapply type_cnstrs_nil ]
     ; try xcomp
@@ -219,18 +225,23 @@ Fact hΣi : type_glob Σi.
   - tind.
     + magic.
     + exists 1. repeat econstr.
+    + exists []. eexists. reflexivity.
     + exists 0. repeat econstr.
     + exists 0. repeat econstr.
   (* nat *)
   - tind.
     + magic.
     + exists 1. constructor. constructor.
+    + exists []. eexists. reflexivity.
     + exists 0. magic.
     + exists (max 0 0). magic.
   (* vec *)
   - tind.
     + magic.
     + exists (max_sort 1 (max 0 1)). magic.
+    + exists [ (nAnon, sNat) ], 0. cbn.
+      (* unfold vec_type, vec_cod. *)
+      reflexivity.
     + exists (max_sort 1 0).
       econstr.
       * magic.

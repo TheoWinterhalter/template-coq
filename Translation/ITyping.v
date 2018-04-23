@@ -318,29 +318,29 @@ Inductive type_projections (Σ : sglobal_context) (Γ : scontext) :
 Definition arities_context (l : list sone_inductive_body) : scontext :=
   rev_map (fun ind => ind.(sind_type)) l.
 
-Definition isArity Σ Γ T :=
-  isType Σ Γ T (* FIXME  /\ decompose_prod_n *).
+Definition isArity Σ pars T :=
+  (isType Σ [] T) * (∑ indices s, T = Prods (indices ++ pars)%list (sSort s)).
 
-Inductive type_inddecls (Σ : sglobal_context) (pars : scontext) (Γ : scontext) :
+Inductive type_inddecls (Σ : sglobal_context) (pars : nctx) (Γ : scontext) :
   list sone_inductive_body -> Type :=
 | type_ind_nil : type_inddecls Σ pars Γ []
 | type_ind_cons na ty cstrs projs kelim l :
     (** Arity is well-formed *)
-    isArity Σ [] ty ->
+    isArity Σ pars ty ->
     (** TMP: The type can be written in ETT *)
     Xcomp ty ->
     (** Constructors are well-typed *)
     type_constructors Σ Γ cstrs ->
     (** Projections are well-typed *)
-    type_projections Σ (Γ ,,, pars ,, ty) projs ->
+    type_projections Σ (Γ ,,, (nlctx pars) ,, ty) projs ->
     (** The other inductives in the block are well-typed *)
     type_inddecls Σ pars Γ l ->
     (** TODO: check kelim*)
     type_inddecls Σ pars Γ (Build_sone_inductive_body na ty kelim cstrs projs :: l).
 
 Definition type_inductive Σ pars inds :=
-  wf Σ pars *
-  ForallT Xcomp pars *
+  wf Σ (nlctx pars) *
+  ForallT Xcomp (nlctx pars) *
   (** FIXME: should be pars ++ arities w/o params *)
   (* I don't know if it still should be fixed.
      To be honest, I believe ind_type and the types of constructors
@@ -353,7 +353,7 @@ Definition type_global_decl Σ decl : Type :=
   match decl with  (* TODO universes *)
   | SConstantDecl id d => (* type_constant_decl Σ d *) ()
   | SInductiveDecl ind inds =>
-    type_inductive Σ (nlctx inds.(sind_params)) inds.(sind_bodies)
+    type_inductive Σ inds.(sind_params) inds.(sind_bodies)
   end.
 
 Inductive fresh_global (s : string) : sglobal_declarations -> Prop :=
