@@ -301,6 +301,7 @@ Inductive type_constructors (Σ : sglobal_context) (pars : nctx) (Γ : scontext)
 | type_cnstrs_nil : type_constructors Σ pars Γ []
 | type_cnstrs_cons id t t' n l :
     isType Σ Γ t ->
+    isType Σ (Γ ,,, nlctx pars) t' ->
     Xcomp t ->
     type_constructors Σ pars Γ l ->
     t = Prods pars t' ->
