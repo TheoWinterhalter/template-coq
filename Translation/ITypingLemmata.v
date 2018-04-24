@@ -145,7 +145,7 @@ Lemma stype_of_constructor_eq :
   forall {Σ id' decl' ind i univs decl}
     {isdecl : sdeclared_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl},
     ident_eq (inductive_mind ind) id' = true ->
-    let '(id, trm, args) := decl in
+    let '(id, trm, args, _) := decl in
     stype_of_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl isdecl =
     substl (sinds (inductive_mind ind) decl'.(sind_bodies)) trm.
 Proof.
@@ -367,7 +367,7 @@ Fact type_inddecls_constr :
     type_inddecls Σ params Γ inds ->
     forall {n decl},
       nth_error inds n = Some decl ->
-      type_constructors Σ params Γ (sind_ctors decl) (sind_paramless_ctors decl).
+      type_constructors Σ params Γ (sind_ctors decl).
 Proof.
   intros Σ params inds Γ hind. induction hind.
   - intros n decl h.
@@ -384,21 +384,21 @@ Fact type_ind_type_constr :
     type_inductive Σ params inds ->
     forall {n decl},
       nth_error inds n = Some decl ->
-      type_constructors Σ params (arities_context inds) (sind_ctors decl) (sind_paramless_ctors decl).
+      type_constructors Σ params (arities_context inds) (sind_ctors decl).
 Proof.
   intros Σ params inds [hx hind] n decl h.
   eapply type_inddecls_constr ; eassumption.
 Defined.
 
 Fact typed_type_constructors :
-  forall {Σ : sglobal_context} {pars Γ l l'},
-    type_constructors Σ pars Γ l l' ->
+  forall {Σ : sglobal_context} {pars Γ l},
+    type_constructors Σ pars Γ l ->
     forall {i decl},
       nth_error l i = Some decl ->
-      let '(_, t, _) := decl in
+      let '(_, t, _, _) := decl in
       isType Σ Γ t.
 Proof.
-  intros Σ pars Γ l l' htc. induction htc ; intros m decl hm.
+  intros Σ pars Γ l htc. induction htc ; intros m decl hm.
   - destruct m ; cbn in hm ; inversion hm.
   - destruct m.
     + cbn in hm. inversion hm. subst. clear hm.
@@ -652,14 +652,14 @@ Proof.
 Defined.
 
 Fact xcomp_type_constructors :
-  forall {Σ : sglobal_context} {pars Γ l l'},
-    type_constructors Σ pars Γ l l' ->
+  forall {Σ : sglobal_context} {pars Γ l },
+    type_constructors Σ pars Γ l ->
     forall {i decl},
       nth_error l i = Some decl ->
-      let '(_, t, _) := decl in
+      let '(_, t, _, _) := decl in
       Xcomp t.
 Proof.
-  intros Σ pars Γ l l' htc. induction htc ; intros m decl hm.
+  intros Σ pars Γ l htc. induction htc ; intros m decl hm.
   - destruct m ; cbn in hm ; inversion hm.
   - destruct m.
     + cbn in hm. inversion hm. subst. clear hm.

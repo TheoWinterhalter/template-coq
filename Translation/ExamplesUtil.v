@@ -112,7 +112,12 @@ Definition lΣi := [
                               (sRel 0))
                         sNat (sSort 0)
                         sZero),
-            0) ;
+            0,
+            sApp (sApp (sRel 1)
+                       (sSort 0) vec_cod
+                       (sRel 0))
+                 sNat (sSort 0)
+                 sZero) ;
            ("vcons",
             sProd (nNamed "A") (sSort 0)
                   (sProd nAnon (sRel 0)
@@ -132,35 +137,28 @@ Definition lΣi := [
                                              (sApp sSuc
                                                    sNat sNat
                                                    (sRel 1)))))),
-            3)
+            3,
+            sProd nAnon (sRel 0)
+                  (sProd (nNamed "n") sNat
+                         (sProd nAnon
+                                (sApp (sApp (sRel 3)
+                                            (sSort 0)
+                                            vec_cod
+                                            (sRel 2))
+                                      sNat (sSort 0)
+                                      (sRel 0))
+                                (sApp (sApp (sRel 4)
+                                            (sSort 0)
+                                            vec_cod
+                                            (sRel 3))
+                                      sNat (sSort 0)
+                                      (sApp sSuc
+                                            sNat sNat
+                                            (sRel 1))))))
          ] ;
          sind_projs := [] ;
          sind_indices := [ (nAnon, sNat) ] ;
-         sind_sort := 0 ;
-         sind_paramless_ctors := [
-           sApp (sApp (sRel 1)
-                      (sSort 0) vec_cod
-                      (sRel 0))
-                sNat (sSort 0)
-                sZero ;
-           sProd nAnon (sRel 0)
-                 (sProd (nNamed "n") sNat
-                        (sProd nAnon
-                               (sApp (sApp (sRel 3)
-                                           (sSort 0)
-                                           vec_cod
-                                           (sRel 2))
-                                     sNat (sSort 0)
-                                     (sRel 0))
-                               (sApp (sApp (sRel 4)
-                                           (sSort 0)
-                                           vec_cod
-                                           (sRel 3))
-                                     sNat (sSort 0)
-                                     (sApp sSuc
-                                           sNat sNat
-                                           (sRel 1)))))
-         ]
+         sind_sort := 0
       |}
     ];
     sind_universes :=
@@ -176,16 +174,15 @@ Definition lΣi := [
          sind_type := sSort 0 ;
          sind_kelim := [InProp; InSet; InType];
          sind_ctors := [
-           ("O", sRel 0, 0) ;
-           ("S", sProd nAnon (sRel 0) (sRel 1), 1)
+           ("O", sRel 0, 0, sRel 0) ;
+           ("S",
+            sProd nAnon (sRel 0) (sRel 1),
+            1,
+            sProd nAnon (sRel 0) (sRel 1))
          ] ;
          sind_projs := [] ;
          sind_indices := [] ;
-         sind_sort := 0 ;
-         sind_paramless_ctors := [
-           sRel 0 ;
-           sProd nAnon (sRel 0) (sRel 1)
-         ]
+         sind_sort := 0
       |}
     ];
     sind_universes :=
@@ -201,13 +198,12 @@ Definition lΣi := [
          sind_type := sSort 0 ;
          sind_kelim := [InProp; InSet; InType];
          sind_ctors := [
-           ("true", sRel 0, 0) ;
-           ("false", sRel 0, 0)
+           ("true", sRel 0, 0, sRel 0) ;
+           ("false", sRel 0, 0, sRel 0)
          ] ;
          sind_projs := [] ;
          sind_indices := [] ;
-         sind_sort := 0 ;
-         sind_paramless_ctors := [ sRel 0 ; sRel 0 ]
+         sind_sort := 0
       |}
     ];
     sind_universes :=

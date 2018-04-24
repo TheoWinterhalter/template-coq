@@ -199,12 +199,11 @@ Record sone_inductive_body := {
   sind_name : ident;
   sind_type : sterm;
   sind_kelim : list sort_family; (* TC *)
-  sind_ctors : list (ident * sterm * nat);
+  sind_ctors : list (ident * sterm * nat * sterm);
   sind_projs : list (ident * sterm);
   (* I add the following, to recover info later. *)
   sind_indices : nctx;
-  sind_sort : sort;
-  sind_paramless_ctors : list sterm
+  sind_sort : sort
 }.
 
 Record smutual_inductive_body := {
@@ -246,7 +245,6 @@ Definition sdeclared_minductive Σ mind decl :=
 
 Definition sdeclared_inductive Σ ind univs decl :=
   ∑ decl',
-    (#|decl.(sind_ctors)| = #|decl.(sind_paramless_ctors)|) *
     (sdeclared_minductive Σ (inductive_mind ind) decl') *
     (univs = decl'.(sind_universes)) *
     (List.nth_error decl'.(sind_bodies) (inductive_ind ind) = Some decl).
@@ -284,25 +282,25 @@ Require Import Equations.NoConfusion.
 
 Equations stype_of_constructor (Σ : sglobal_declarations)
   (c : inductive * nat) (univs : universe_context)
-  (decl : ident * sterm * nat)
+  (decl : ident * sterm * nat * sterm)
   (H : sdeclared_constructor Σ c univs decl) : sterm :=
   stype_of_constructor Σ c univs decl H <= inspect (slookup_env Σ (inductive_mind (fst c))) => {
     | exist (Some (SInductiveDecl _ decl')) _ :=
-      let '(id, trm, args) := decl in
+      let '(id, trm, args, _) := decl in
       substl (sinds (inductive_mind (fst c)) decl'.(sind_bodies)) trm ;
     | exist decl H := !
   }.
 Next Obligation.
   subst decl.
   destruct H as [d [H H']].
-  destruct H as [decl' [[[HH H''] H''''] H''']].
+  destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''.
   noconf H''.
 Defined.
 Next Obligation.
   subst decl.
   destruct H as [d [H H']].
-  destruct H as [decl' [[[HH H''] H''''] H''']].
+  destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''. discriminate.
 Defined.
 
@@ -311,42 +309,28 @@ Defined.
  *)
 Equations paramless_type_of_constructor (Σ : sglobal_declarations)
   (c : inductive * nat) (univs : universe_context)
-  (decl : ident * sterm * nat)
+  (decl : ident * sterm * nat * sterm)
   (H : sdeclared_constructor Σ c univs decl) : sterm :=
   paramless_type_of_constructor Σ c univs decl H
   <= inspect (slookup_env Σ (inductive_mind (fst c))) => {
-  | exist (Some (SInductiveDecl _ decl')) _
-    <= inspect (nth_error (pi1 H).(sind_paramless_ctors) (snd c)) => {
-    | exist (Some t) _ :=
-      substl (sinds (inductive_mind (fst c)) decl'.(sind_bodies)) t ;
-    | exist d h := !
-    } ;
-  | exist decl h := !
+    | exist (Some (SInductiveDecl _ decl')) _ :=
+      let '(id, _, args, trm) := decl in
+      substln (sinds (inductive_mind (fst c)) decl'.(sind_bodies))
+              #|decl'.(sind_params)| trm ;
+    | exist decl H := !
   }.
 Next Obligation.
   subst decl.
   destruct H as [d [H H']].
-  destruct H as [decl' [[[H1 H2] H3] H4]].
-  unfold sdeclared_minductive in H2. rewrite <- h in H2.
-  discriminate.
-Defined.
-Next Obligation.
-  subst d.
-  destruct H as [d [H H']].
-  destruct H as [decl'' [[[H1 H2] H3] H4]].
-  destruct c as [i n]. simpl in *.
-  assert (n < #|sind_ctors d|).
-  { apply nth_error_Some. rewrite H'. discriminate. }
-  assert (#|sind_paramless_ctors d| <= n).
-  { apply nth_error_None. symmetry. assumption. }
-  omega.
+  destruct H as [decl' [[H'' H''''] H''']].
+  unfold sdeclared_minductive in H''. rewrite <- H0 in H''.
+  noconf H''.
 Defined.
 Next Obligation.
   subst decl.
   destruct H as [d [H H']].
-  destruct H as [decl' [[[H1 H2] H3] H4]].
-  unfold sdeclared_minductive in H2. rewrite <- h in H2.
-  discriminate.
+  destruct H as [decl' [[H'' H''''] H''']].
+  unfold sdeclared_minductive in H''. rewrite <- H0 in H''. discriminate.
 Defined.
 
 Inductive even (x : bool) : nat -> Type :=
@@ -409,12 +393,12 @@ Equations type_of_elim Σ ind univs decl (s : sort)
   | exist decl' H := !
   }.
 Next Obligation.
-  destruct isdecl as [? [[[? hm] ?] ?]].
+  destruct isdecl as [? [[hm ?] ?]].
   unfold sdeclared_minductive in hm.
   rewrite <- H in hm. discriminate hm.
 Defined.
 Next Obligation.
-  destruct isdecl as [? [[[? hm] ?] ?]].
+  destruct isdecl as [? [[hm ?] ?]].
   unfold sdeclared_minductive in hm.
   rewrite <- H in hm. discriminate hm.
 Defined.
@@ -426,8 +410,8 @@ Fact declared_inductive_eq :
     decl1 = decl2.
 Proof.
   intros Σ ind univs1 decl1 univs2 decl2 is1 is2.
-  destruct is1 as [d1 [[[e1 h1] i1] j1]].
-  destruct is2 as [d2 [[[e2 h2] i2] j2]].
+  destruct is1 as [d1 [[h1 i1] j1]].
+  destruct is2 as [d2 [[h2 i2] j2]].
   unfold sdeclared_minductive in h1, h2.
   rewrite h1 in h2. inversion h2. subst.
   rewrite j1 in j2. now inversion j2.
@@ -439,47 +423,36 @@ Proof.
   case_eq (slookup_env Σ (inductive_mind ind)).
   - intros d mdecl.
     destruct d as [? ? | mind d].
-    + right. intros [_ [decl [decl' [[[_ bot] _] _]]]].
+    + right. intros [_ [decl [decl' [[bot _] _]]]].
       unfold sdeclared_minductive in bot.
       rewrite bot in mdecl. inversion mdecl.
     + case_eq (nth_error (sind_bodies d) (inductive_ind ind)).
-      * intros decl h.
-        case_eq (#|sind_ctors decl| =? #|sind_paramless_ctors decl|).
-        -- intro eq.
-           left.
-           exists (sind_universes d), decl, d.
-           unfold sdeclared_minductive.
-           repeat split ; try assumption.
-           ++ apply beq_nat_true. assumption.
-           ++ clear - mdecl.
-              induction Σ.
-              ** cbn in mdecl. discriminate.
-              ** cbn.
-                 case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident a)).
-                 --- intros e. cbn in mdecl. rewrite e in mdecl.
-                     destruct a.
-                     +++ cbn in *. inversion mdecl.
-                     +++ cbn in *.
-                         case_eq (string_dec (inductive_mind ind) k).
-                         *** intros. subst. inversion mdecl. subst. reflexivity.
-                         *** intros neq eq. unfold ident_eq in e. rewrite eq in e.
-                             discriminate.
-                 --- intros e. cbn in mdecl. rewrite e in mdecl.
-                     apply IHΣ. assumption.
-        -- intro neq. right.
-           intros [univs [decl0 [decl' [[[eq mdecl'] _] hnth]]]].
-           unfold sdeclared_minductive in mdecl'.
-           rewrite mdecl' in mdecl. inversion mdecl. subst. clear mdecl.
-           rewrite h in hnth. inversion hnth. subst.
-           rewrite eq in neq. rewrite Nat.eqb_refl in neq.
-           discriminate.
+      * intros decl h. left.
+        exists (sind_universes d), decl, d.
+        unfold sdeclared_minductive.
+        repeat split ; try assumption.
+        clear - mdecl.
+        induction Σ.
+        -- cbn in mdecl. discriminate.
+        -- cbn.
+           case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident a)).
+           ++ intros e. cbn in mdecl. rewrite e in mdecl.
+              destruct a.
+              ** cbn in *. inversion mdecl.
+              ** cbn in *.
+                 case_eq (string_dec (inductive_mind ind) k).
+                 --- intros. subst. inversion mdecl. subst. reflexivity.
+                 --- intros neq eq. unfold ident_eq in e. rewrite eq in e.
+                     discriminate.
+           ++ intros e. cbn in mdecl. rewrite e in mdecl.
+              apply IHΣ. assumption.
       * intros h. right.
-        intros [univs [decl [decl' [[[_ mdecl'] _] hnth]]]].
+        intros [univs [decl [decl' [[mdecl' _] hnth]]]].
         unfold sdeclared_minductive in mdecl'.
         rewrite mdecl' in mdecl. inversion mdecl. subst.
         rewrite hnth in h. discriminate.
   - intro h.
-    right. intros [univs [decl [decl' [[[_ mdecl'] _] hnth]]]].
+    right. intros [univs [decl [decl' [[mdecl' _] hnth]]]].
     unfold sdeclared_minductive in mdecl'. rewrite mdecl' in h.
     discriminate.
 Defined.
@@ -493,14 +466,14 @@ Proof.
     + intros d hi.
       left. exists univs, d, decl. split ; assumption.
     + intros h. right.
-      intros [u [d [dd [[d' [[[e' md'] _] hd']] bot]]]].
-      destruct isdecl as [d'' [[[e'' md''] _] hd'']].
+      intros [u [d [dd [[d' [[md' _] hd']] bot]]]].
+      destruct isdecl as [d'' [[md'' _] hd'']].
       unfold sdeclared_minductive in md', md''.
       rewrite md'' in md'. clear md''. inversion md'. subst.
       rewrite hd'' in hd'. clear hd''. inversion hd'. subst.
       rewrite h in bot. discriminate.
   - intros ndecl. right.
-    intros [u [d [dd [[d' [[[? md'] ?] hd']] bot]]]].
+    intros [u [d [dd [[d' [[md' ?] hd']] bot]]]].
     apply ndecl.
     exists u, dd, d'. repeat split ; assumption.
 Defined.
@@ -526,8 +499,8 @@ Fact stype_of_constructor_eq :
 Proof.
   intros Σ ind n u1 u2 d1 d2 is1 is2.
   assert (hh : (u1 = u2) * (d1 = d2)).
-  { destruct is1 as [? [[d1' [[[? hd1'] ?] hn1']] hn1]].
-    destruct is2 as [? [[d2' [[[? hd2'] ?] hn2']] hn2]].
+  { destruct is1 as [? [[d1' [[hd1' ?] hn1']] hn1]].
+    destruct is2 as [? [[d2' [[hd2' ?] hn2']] hn2]].
     unfold sdeclared_minductive in *.
     rewrite hd1' in hd2'. inversion hd2'. subst.
     rewrite hn1' in hn2'. inversion hn2'. subst.
