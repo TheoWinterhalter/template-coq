@@ -136,7 +136,31 @@ Definition lΣi := [
          ] ;
          sind_projs := [] ;
          sind_indices := [ (nAnon, sNat) ] ;
-         sind_sort := 0
+         sind_sort := 0 ;
+         sind_paramless_ctors := [
+           sApp (sApp (sRel 1)
+                      (sSort 0) vec_cod
+                      (sRel 0))
+                sNat (sSort 0)
+                sZero ;
+           sProd nAnon (sRel 0)
+                 (sProd (nNamed "n") sNat
+                        (sProd nAnon
+                               (sApp (sApp (sRel 3)
+                                           (sSort 0)
+                                           vec_cod
+                                           (sRel 2))
+                                     sNat (sSort 0)
+                                     (sRel 0))
+                               (sApp (sApp (sRel 4)
+                                           (sSort 0)
+                                           vec_cod
+                                           (sRel 3))
+                                     sNat (sSort 0)
+                                     (sApp sSuc
+                                           sNat sNat
+                                           (sRel 1)))))
+         ]
       |}
     ];
     sind_universes :=
@@ -157,7 +181,11 @@ Definition lΣi := [
          ] ;
          sind_projs := [] ;
          sind_indices := [] ;
-         sind_sort := 0
+         sind_sort := 0 ;
+         sind_paramless_ctors := [
+           sRel 0 ;
+           sProd nAnon (sRel 0) (sRel 1)
+         ]
       |}
     ];
     sind_universes :=
@@ -178,7 +206,8 @@ Definition lΣi := [
          ] ;
          sind_projs := [] ;
          sind_indices := [] ;
-         sind_sort := 0
+         sind_sort := 0 ;
+         sind_paramless_ctors := [ sRel 0 ; sRel 0 ]
       |}
     ];
     sind_universes :=
@@ -210,8 +239,8 @@ Ltac tinddecl :=
   cbn ; constructor ; [
     tarity
   | repeat constructor
-  | cbn ; repeat eapply type_cnstrs_cons ; [ .. | eapply type_cnstrs_nil ]
-    ; try xcomp
+  | cbn ; repeat eapply type_cnstrs_cons ; try eapply type_cnstrs_nil
+    ; try xcomp ; try (cbn ; reflexivity)
   | cbn ; constructor
   | cbn ; constructor
   ].

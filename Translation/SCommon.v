@@ -197,14 +197,14 @@ Defined.
 
 Record sone_inductive_body := {
   sind_name : ident;
-  sind_type : sterm; (* In TC, it is closed, for us it will be in the context of
-                        parameters *)
+  sind_type : sterm;
   sind_kelim : list sort_family; (* TC *)
   sind_ctors : list (ident * sterm * nat);
   sind_projs : list (ident * sterm);
   (* I add the following, to recover info later. *)
   sind_indices : nctx;
-  sind_sort : sort
+  sind_sort : sort;
+  sind_paramless_ctors : list sterm
 }.
 
 Record smutual_inductive_body := {
@@ -303,6 +303,20 @@ Next Obligation.
   destruct H as [decl' [[H'' H''''] H''']].
   unfold sdeclared_minductive in H''. rewrite <- H0 in H''. discriminate.
 Defined.
+
+(* We add one version that still substitutes the inductive types but keeps the
+   parameters in the context.
+ *)
+(* Equations paramless_type_of_constructor (Σ : sglobal_declarations) *)
+(*   (c : inductive * nat) (univs : universe_context) *)
+(*   (decl : ident * sterm * nat) *)
+(*   (H : sdeclared_constructor Σ c univs decl) : sterm := *)
+(*   paramless_type_of_constructor Σ c univs decl H <= inspect (slookup_env Σ (inductive_mind (fst c))) => { *)
+(*     | exist (Some (SInductiveDecl _ decl')) _ := *)
+(*       let '(id, trm, args) := decl in *)
+(*       substl (sinds (inductive_mind (fst c)) decl'.(sind_bodies)) trm ; *)
+(*     | exist decl H := ! *)
+(*   }. *)
 
 Inductive even (x : bool) : nat -> Type :=
 | evenO : even x 0
