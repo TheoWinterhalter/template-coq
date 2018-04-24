@@ -42,6 +42,14 @@ Fixpoint Apps (u : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
          (substl l t)
   end.
 
+Fixpoint nctx_of_Prods_acc (t : sterm) (Γ : nctx) : nctx * sterm :=
+  match t with
+  | sProd nx A B => nctx_of_Prods_acc B ((nx, A) :: Γ)
+  | _ => (Γ, t)
+  end.
+
+Definition nctx_of_Prods t := nctx_of_Prods_acc t [].
+
 (* Common lemmata *)
 
 Definition max_sort := max.
@@ -62,7 +70,9 @@ Proof.
 Defined.
 
 Definition sapp_context (Γ Γ' : scontext) : scontext := (Γ' ++ Γ)%list.
-Notation " Γ  ,,, Γ' " := (sapp_context Γ Γ') (at level 25, Γ' at next level, left associativity) : s_scope.
+Notation " Γ  ,,, Γ' " :=
+  (sapp_context Γ Γ')
+  (at level 25, Γ' at next level, left associativity) : s_scope.
 
 Fact cat_nil :
   forall {Γ}, Γ ,,, [] = Γ.
@@ -257,16 +267,12 @@ Definition sdeclared_constructor Σ cstr univs decl :=
 Lemma declared_inductive_constructor :
   forall {Σ ind univs decl},
     sdeclared_inductive Σ ind univs decl ->
-    forall {n},
-      n < #|decl.(sind_ctors)| ->
-      ∑ d, sdeclared_constructor Σ (ind, n) univs d.
+    forall {n d},
+      nth_error decl.(sind_ctors) n = Some d ->
+      sdeclared_constructor Σ (ind, n) univs d.
 Proof.
-  intros Σ ind univs decl isdecl n hn.
-  case_eq (nth_error decl.(sind_ctors) n).
-  - intros d eq. exists d, decl. split ; assumption.
-  - intros eq. exfalso.
-    pose proof (proj1 (nth_error_None _ _) eq).
-    omega.
+  intros Σ ind univs decl isdecl n d h.
+  exists decl. split ; assumption.
 Defined.
 
 Definition sinds ind (l : list sone_inductive_body) :=
@@ -367,7 +373,8 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     in
     let Pty := Prods ((nAnon, indinst) :: indices) (sSort s) in
     let P := (nNamed "P", Pty) in
-    (* We need to add a param-free type of constructor.
+    (* PART OF IT DONE.
+       We need to add a param-free type of constructor.
        It will be then computed like type_of_constructor but
        but with substln _ #|pars| instead of substl.
        Once we have that, we take the number corresponding to the inductive
@@ -376,6 +383,14 @@ Equations type_of_elim Σ ind univs decl (s : sort)
        This in itself, requires to be able to read of the indices arguments of
        the inductive.
      *)
+    (* PROBLEM: declared_inductive_constructor should help me build this list
+       of types, but I need to know within the map, that I'm dealing with one
+       element of it. Maybe I need a variant of map_i with a proof inside.
+     *)
+    (* let pcs := *)
+    (*   map_i (fun i cd => paramless_type_of_constructor Σ (ind, i) univs cd _) *)
+    (*         decl.(sind_ctors) *)
+    (* in *)
     (* let fl := map (fun '(c,ty,_) => ) *)
     let fl := [] in
     let fl := map (fun ty => (nNamed "f", ty)) fl in
