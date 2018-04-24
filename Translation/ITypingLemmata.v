@@ -1566,6 +1566,130 @@ Proof.
       * assumption.
 Defined.
 
+Lemma paramless_type_of_constructor_eq :
+  forall {Σ id' decl' ind i univs decl}
+    {isdecl : sdeclared_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl},
+    ident_eq (inductive_mind ind) id' = true ->
+    let '(id, _, args, trm) := decl in
+    paramless_type_of_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl isdecl =
+    substln (sinds (inductive_mind ind) decl'.(sind_bodies))
+            #|decl'.(sind_params)| trm.
+Proof.
+  intros Σ id' decl' ind i univs decl isdecl h.
+  funelim (paramless_type_of_constructor (SInductiveDecl id' decl' :: Σ) (ind, i) univs decl isdecl)
+  ; try bang.
+  cbn. cbn in H. rewrite h in H. inversion H. subst. reflexivity.
+Defined.
+
+Lemma paramless_type_of_constructor_cons :
+  forall {Σ d ind i univs decl}
+    {isdecl : sdeclared_constructor Σ (ind, i) univs decl}
+    {isdecl' : sdeclared_constructor (d :: Σ) (ind, i) univs decl},
+    fresh_global (sglobal_decl_ident d) Σ ->
+    paramless_type_of_constructor (d :: Σ) (ind, i) univs decl isdecl' =
+    paramless_type_of_constructor Σ (ind, i) univs decl isdecl.
+Proof.
+  intros Σ d ind i univs decl isdecl isdecl' fresh.
+  assert (eq : slookup_env (d :: Σ) (inductive_mind (fst (ind, i))) = slookup_env Σ (inductive_mind ind)).
+  { cbn.
+    destruct isdecl as [decl' [[d' [[h1 h2] h3]] h4]].
+    pose proof (ident_neq_fresh h1 fresh) as neq.
+    rewrite neq. reflexivity.
+  }
+  funelim (paramless_type_of_constructor (d :: Σ) (ind, i) univs decl isdecl')
+  ; try bang.
+  funelim (paramless_type_of_constructor Σ0 (ind, i) univs decl isdecl) ; try bang.
+  rewrite <- eq in H. inversion H. subst. reflexivity.
+Defined.
+
+Fact typed_paramless_type_constructors :
+  forall {Σ : sglobal_context} {pars Γ l},
+    type_constructors Σ pars Γ l ->
+    forall {i decl},
+      nth_error l i = Some decl ->
+      let '(_, _, _, t) := decl in
+      isType Σ (Γ ,,, nlctx pars) t.
+Proof.
+  intros Σ pars Γ l htc. induction htc ; intros m decl hm.
+  - destruct m ; cbn in hm ; inversion hm.
+  - destruct m.
+    + cbn in hm. inversion hm. subst. clear hm.
+      (* Either we change type_constructors or we prove some inversion. *)
+      admit.
+    + cbn in hm. eapply IHhtc. eassumption.
+Admitted.
+
+Fact typed_paramless_type_of_constructor :
+  forall {Σ : sglobal_context},
+    type_glob Σ ->
+    forall {ind i decl univs}
+      (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
+      isType Σ (nlctx ((pi1 (fst (pi2 isdecl))).(sind_params)))
+             (paramless_type_of_constructor (fst Σ) (ind, i) univs decl isdecl).
+Proof.
+  intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
+  cbn in hg. simpl.
+  induction hg ; intros ind i decl univs isdecl.
+  - cbn. bang.
+  - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
+    + intro e.
+      destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].
+      simpl.
+      assert (eqd : d = SInductiveDecl (inductive_mind ind) mb).
+      { unfold sdeclared_minductive in d'. cbn in d'. rewrite e in d'.
+        now inversion d'.
+      }
+      subst.
+      rewrite paramless_type_of_constructor_eq by assumption.
+      cbn in t.
+      pose proof (type_ind_type_constr t hn) as tc.
+      destruct (typed_paramless_type_constructors tc hn') as [s hh].
+      exists s. erewrite <- substln_sort.
+      match type of d' with
+      | sdeclared_minductive ?cc _ _ =>
+        set (Σ' := cc) in *
+      end.
+      assert (hl : typed_list (Σ', ϕ) []
+                              (sinds (inductive_mind ind) (sind_bodies mb))
+                              (arities_context (sind_bodies mb))).
+      { eapply type_arities.
+        - econstructor ; eassumption.
+        - cbn. assumption.
+      }
+      assert (hh' :
+        (Σ', ϕ) ;;;
+        [] ,,, arities_context (sind_bodies mb) ,,, nlctx (sind_params mb)
+         |-i pi2_ decl : sSort s
+      ).
+      { rewrite nil_cat.
+        eapply weak_glob_type ; [| eassumption ].
+        exact hh.
+      }
+      assert (hg' : type_glob (Σ', ϕ)).
+      { econstructor ; eassumption. }
+      pose proof (type_substln hg' hl (Ξ := nlctx (sind_params mb)) hh') as h'.
+      simpl in h'.
+      (* We need some property saying that a closed context isn't affected by
+         substln_context.
+       *)
+      simpl in h'.
+      (* rewrite <- substl_substln0, substln_context_nil in h'. *)
+      (* apply h'. *)
+(*     + intro e. erewrite stype_of_constructor_cons by assumption. *)
+(*       eapply weak_glob_isType ; [| eassumption ]. *)
+(*       apply IHhg. *)
+(*       Unshelve. *)
+(*       destruct isdecl as [ib [[mb [[d' ?] ?]] ?]]. *)
+(*       exists ib. split. *)
+(*       * exists mb. repeat split. *)
+(*         -- unfold sdeclared_minductive in *. cbn in d'. *)
+(*            rewrite e in d'. exact d'. *)
+(*         -- assumption. *)
+(*         -- assumption. *)
+(*       * assumption. *)
+(* Defined. *)
+Abort.
+
 Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->
