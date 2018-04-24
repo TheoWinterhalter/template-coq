@@ -1619,6 +1619,32 @@ Proof.
     + cbn in hm. eapply IHhtc. eassumption.
 Admitted.
 
+Fact closed_above_substln :
+  forall {l n t},
+    closed_above n t = true ->
+    substln l n t = t.
+Proof.
+  intros l. induction l ; intros n t h.
+  - cbn. reflexivity.
+  - simpl.
+    assert (e : t{ n := a} = t).
+    { eapply closed_above_subst_id ; try eassumption. omega. }
+    rewrite e. apply IHl. assumption.
+Defined.
+
+Fact wf_substln_context :
+  forall {Σ Γ l},
+    wf Σ Γ ->
+    substln_context l Γ = Γ.
+Proof.
+  intros Σ Γ l h. revert l.
+  induction h.
+  - intro l. apply substln_context_nil.
+  - intro l. rewrite substln_context_cons. rewrite IHh.
+    f_equal. apply closed_above_substln.
+    eapply type_ctx_closed_above. eassumption.
+Defined.
+
 Fact typed_paramless_type_of_constructor :
   forall {Σ : sglobal_context},
     type_glob Σ ->
@@ -1669,14 +1695,15 @@ Proof.
       { econstructor ; eassumption. }
       pose proof (type_substln hg' hl (Ξ := nlctx (sind_params mb)) hh') as h'.
       simpl in h'.
-      (* We need some property saying that a closed context isn't affected by
-         substln_context.
+      (* We need to be able to extract the info from type_inductive. *)
+      erewrite wf_substln_context in h' by admit.
+      rewrite nil_cat in h'. rewrite map_length in h'.
+      apply h'.
+    + intro e. erewrite paramless_type_of_constructor_cons by assumption.
+      eapply weak_glob_isType ; [| eassumption ].
+      (* To make it work, we also need to destruct isdecl beforehand
+         so that sind_params isn't directly linked to it.
        *)
-      simpl in h'.
-      (* rewrite <- substl_substln0, substln_context_nil in h'. *)
-      (* apply h'. *)
-(*     + intro e. erewrite stype_of_constructor_cons by assumption. *)
-(*       eapply weak_glob_isType ; [| eassumption ]. *)
 (*       apply IHhg. *)
 (*       Unshelve. *)
 (*       destruct isdecl as [ib [[mb [[d' ?] ?]] ?]]. *)
