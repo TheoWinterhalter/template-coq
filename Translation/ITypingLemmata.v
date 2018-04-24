@@ -1695,27 +1695,34 @@ Proof.
       { econstructor ; eassumption. }
       pose proof (type_substln hg' hl (Ξ := nlctx (sind_params mb)) hh') as h'.
       simpl in h'.
-      (* We need to be able to extract the info from type_inductive. *)
-      erewrite wf_substln_context in h' by admit.
+      erewrite wf_substln_context in h' by apply t.
       rewrite nil_cat in h'. rewrite map_length in h'.
       apply h'.
-    + intro e. erewrite paramless_type_of_constructor_cons by assumption.
+    + intro e.
+      destruct isdecl as [ib [[mb [[d' ?] hn]] hn']]. simpl.
+      assert (is' : sdeclared_constructor Σ (ind, i) univs decl).
+      { exists ib. split.
+        - exists mb. repeat split.
+          + unfold sdeclared_minductive in *. cbn in d'.
+            rewrite e in d'. exact d'.
+          + assumption.
+          + assumption.
+        - assumption.
+      }
+      erewrite @paramless_type_of_constructor_cons
+        with (isdecl := is') by assumption.
       eapply weak_glob_isType ; [| eassumption ].
-      (* To make it work, we also need to destruct isdecl beforehand
-         so that sind_params isn't directly linked to it.
-       *)
-(*       apply IHhg. *)
-(*       Unshelve. *)
-(*       destruct isdecl as [ib [[mb [[d' ?] ?]] ?]]. *)
-(*       exists ib. split. *)
-(*       * exists mb. repeat split. *)
-(*         -- unfold sdeclared_minductive in *. cbn in d'. *)
-(*            rewrite e in d'. exact d'. *)
-(*         -- assumption. *)
-(*         -- assumption. *)
-(*       * assumption. *)
-(* Defined. *)
-Abort.
+      assert (lem : forall Σ Γ A Δ, isType Σ Γ A -> Γ = Δ -> isType Σ Δ A).
+      { clear. intros Σ Γ A Δ h eq. destruct eq. assumption. }
+      eapply lem.
+      * apply IHhg.
+      * destruct is' as [ib' [[mb' [[d'' ?] ?]] ?]].
+        cbn. f_equal. f_equal.
+        clear - d' d'' e.
+        unfold sdeclared_minductive in d', d''.
+        cbn in d'. rewrite e in d'. rewrite d' in d''.
+        inversion d''. subst. reflexivity.
+Defined.
 
 Lemma istype_type :
   forall {Σ Γ t T},
