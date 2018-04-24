@@ -1613,11 +1613,9 @@ Proof.
   intros Σ pars Γ l htc. induction htc ; intros m decl hm.
   - destruct m ; cbn in hm ; inversion hm.
   - destruct m.
-    + cbn in hm. inversion hm. subst. clear hm.
-      (* Either we change type_constructors or we prove some inversion. *)
-      admit.
+    + cbn in hm. inversion hm. subst. clear hm. assumption.
     + cbn in hm. eapply IHhtc. eassumption.
-Admitted.
+Defined.
 
 Fact closed_above_substln :
   forall {l n t},
