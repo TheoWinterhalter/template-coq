@@ -393,3 +393,15 @@ Inductive typed_list Σ Γ : list sterm -> scontext -> Prop :=
     typed_list Σ Γ (A :: l) (Δ ,, T).
 
 Derive Signature for typed_list.
+
+(* Alternative version: more like Σ-types
+   d for dependent
+*)
+Inductive dtyped_list Σ Γ : list sterm -> scontext -> Prop :=
+| dtyped_list_nil : dtyped_list Σ Γ [] []
+| dtyped_list_cons u l Δ A :
+    dtyped_list Σ Γ l Δ ->
+    Σ ;;; Γ |-i u : substl l A ->
+    dtyped_list Σ Γ (u :: l) (Δ ,, A).
+
+Derive Signature for dtyped_list.

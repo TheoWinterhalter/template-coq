@@ -1327,7 +1327,7 @@ Lemma type_Apps :
   forall {Σ Γ Δ f l T},
     type_glob Σ ->
     Σ ;;; Γ |-i f : Prods Δ T ->
-    typed_list Σ Γ l (nlctx Δ) ->
+    dtyped_list Σ Γ l (nlctx Δ) ->
     isType Σ (Γ,,, nlctx Δ) T ->
     Σ ;;; Γ |-i Apps f Δ T l : substl l T.
 Proof.
@@ -1335,8 +1335,8 @@ Proof.
   induction Δ as [| [nx A] Δ ih] ; intros Γ f l T hf hl hT.
   - cbn in *. dependent destruction hl. cbn. assumption.
   - dependent destruction hl. simpl in *.
-    rename l0 into l, A0 into t.
-    rewrite <- substl1_subst0.
+    rename l0 into l.
+    (* rewrite <- substl1_subst0. *)
     destruct hT as [s hT].
     pose proof (typing_wf hT) as hw.
     dependent destruction hw.
