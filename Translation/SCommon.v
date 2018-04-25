@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import util SAst SInduction SLiftSubst.
+From Translation Require Import util SAst SInduction SLiftSubst Equality.
 
 Definition scontext := list sterm.
 
@@ -50,6 +50,15 @@ Fixpoint nctx_of_Prods_acc (t : sterm) (Γ : nctx) : nctx * sterm :=
 
 Definition nctx_of_Prods t := nctx_of_Prods_acc t [].
 
+Fixpoint nctx_of_Apps_acc (t : sterm) (Γ : nctx) (T : sterm) (l : list sterm)
+  : sterm * nctx * sterm * list sterm :=
+  match t with
+  | sApp u A B v => nctx_of_Apps_acc u ((nAnon, A) :: Γ) B (v :: l)
+  | _ => (t, Γ, T, l)
+  end.
+
+Definition nctx_of_Apps t := nctx_of_Apps_acc t [] (sRel 0) [].
+
 Fact nctx_of_Prods_acc_spec :
   forall {t Γ},
     let '(Δ, u) := nctx_of_Prods_acc t Γ in
@@ -68,6 +77,17 @@ Proof.
   intros t.
   apply @nctx_of_Prods_acc_spec with (Γ := []).
 Defined.
+
+Fact nctx_of_Apps_acc_spec :
+  forall {t Γ T l},
+    let '(u, Δ, U, l') := nctx_of_Apps_acc t Γ T l in
+    nl (Apps t Γ T l) = nl (Apps u Δ U l').
+Proof.
+  intro t. induction t ; intros Γ T l.
+  all: try (cbn ; reflexivity).
+  cbn. rewrite <- IHt1.
+  cbn.
+Abort.
 
 
 (* Common lemmata *)
