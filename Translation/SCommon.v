@@ -50,6 +50,26 @@ Fixpoint nctx_of_Prods_acc (t : sterm) (Γ : nctx) : nctx * sterm :=
 
 Definition nctx_of_Prods t := nctx_of_Prods_acc t [].
 
+Fact nctx_of_Prods_acc_spec :
+  forall {t Γ},
+    let '(Δ, u) := nctx_of_Prods_acc t Γ in
+    Prods Γ t = Prods Δ u.
+Proof.
+  intros t. induction t ; intros Γ.
+  all: try (cbn ; reflexivity).
+  cbn. rewrite <- IHt2. cbn. reflexivity.
+Defined.
+
+Fact nctx_of_Prods_spec :
+  forall {t},
+    let '(Γ, u) := nctx_of_Prods t in
+    t = Prods Γ u.
+Proof.
+  intros t.
+  apply @nctx_of_Prods_acc_spec with (Γ := []).
+Defined.
+
+
 (* Common lemmata *)
 
 Definition max_sort := max.
