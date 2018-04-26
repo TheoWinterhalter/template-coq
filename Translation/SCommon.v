@@ -37,7 +37,9 @@ Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
 Fixpoint Apps (f : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
   match Γ, l with
   | (nx,A) :: Γ, u :: l =>
-    Apps (sApp f A (Prods Γ T) u) (map (on_snd (subst u 0)) Γ) (T{1 := u}) l
+    Apps (sApp f A (Prods Γ T) u)
+         (map_i (fun i '(nx, A) => (nx, A{ i := u })) Γ)
+         (T{ #|Γ| := u }) l
   | _,_ => f
   end.
 
