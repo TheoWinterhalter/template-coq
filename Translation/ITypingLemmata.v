@@ -1323,6 +1323,15 @@ Proof.
     reflexivity.
 Defined.
 
+Inductive dtyped_list Σ Γ : list sterm -> scontext -> Prop :=
+| dtyped_list_nil : dtyped_list Σ Γ [] []
+| dtyped_list_cons u l Δ A :
+    dtyped_list Σ Γ l Δ ->
+    Σ ;;; Γ |-i u : substl l A ->
+    dtyped_list Σ Γ (u :: l) (Δ ,, A).
+
+Derive Signature for dtyped_list.
+
 Lemma type_Apps :
   forall {Σ Γ Δ f l T},
     type_glob Σ ->
@@ -1336,30 +1345,38 @@ Proof.
   - cbn in *. dependent destruction hl. cbn. assumption.
   - dependent destruction hl. simpl in *.
     rename l0 into l.
-    eapply meta_conv.
-    + eapply type_App.
-      * erewrite <- substl_sort.
-        eapply type_substl ; try eassumption.
-
-
-    rewrite <- substl1_subst0.
     destruct hT as [s hT].
     pose proof (typing_wf hT) as hw.
     dependent destruction hw.
     rename A0 into A, s0 into s'.
-    eapply type_App.
-    + erewrite <- substl_sort.
-      eapply type_substl ; eassumption.
-    + erewrite <- substln_sort.
-      pose proof (type_substln hg hl (Ξ := [ A ]) hT) as hh.
-      simpl in hh. rewrite substln_context_cons in hh. simpl in hh.
-      rewrite <- substl_substln0, substln_context_nil in hh.
-      apply hh.
-    + rewrite <- substl_Prod.
-      eapply ih ; try eassumption.
-      eexists. econstructor ; eassumption.
-    + eapply type_substl ; eassumption.
-Defined.
+    eapply meta_conv.
+    + eapply type_App.
+      * erewrite <- substl_sort.
+        (* eapply type_substl ; try eassumption. *)
+        admit.
+      * admit.
+      * rewrite <- substl_Prod.
+        eapply ih ; try eassumption.
+        eexists. econstructor ; eassumption.
+      * assumption.
+    + give_up.
+
+
+(*     rewrite <- substl1_subst0. *)
+(*     eapply type_App. *)
+(*     + erewrite <- substl_sort. *)
+(*       eapply type_substl ; eassumption. *)
+(*     + erewrite <- substln_sort. *)
+(*       pose proof (type_substln hg hl (Ξ := [ A ]) hT) as hh. *)
+(*       simpl in hh. rewrite substln_context_cons in hh. simpl in hh. *)
+(*       rewrite <- substl_substln0, substln_context_nil in hh. *)
+(*       apply hh. *)
+(*     + rewrite <- substl_Prod. *)
+(*       eapply ih ; try eassumption. *)
+(*       eexists. econstructor ; eassumption. *)
+(*     + eapply type_substl ; eassumption. *)
+(* Defined. *)
+Abort.
 
 Fact ind_bodies_declared :
   forall {Σ ind mb},
