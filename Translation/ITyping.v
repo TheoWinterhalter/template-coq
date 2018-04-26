@@ -420,7 +420,8 @@ Inductive type_spine Σ Γ : nctx -> sterm -> list sterm -> sterm -> Prop :=
 | type_spine_nil A : type_spine Σ Γ [] A [] A
 | type_spine_cons u nx A Δ T l T' :
     Σ ;;; Γ |-i u : A ->
-    type_spine Σ Γ (map (on_snd (subst u 0)) Δ) (T{ 1 := u }) l T' ->
+    type_spine Σ Γ (map_i (fun i '(nx, A) => (nx, A{ i := u })) Δ)
+               (T{ #|Δ| := u }) l T' ->
     type_spine Σ Γ ((nx, A) :: Δ) T (u :: l) T'.
 
 Derive Signature for type_spine.
