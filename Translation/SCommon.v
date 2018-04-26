@@ -396,14 +396,17 @@ Fixpoint lrel start count :=
   end.
 
 (* TODO MOVE *)
-Fixpoint map_i_forallT_aux {A P B} (f : nat -> forall x, P x -> B)
-  (m : nat) (l : list A) (h : ForallT P l) {struct h} : list B :=
-  match h with
-  | ForallT_nil _ => []
-  | ForallT_cons _ a l ha hl => f m a ha :: map_i_forallT_aux f (S m) l hl
-  end.
-
-Definition map_i_forallT {A P B} f l h := @map_i_forallT_aux A P B f 0 l h.
+Definition forall_list {A B} l :
+  (forall (x : A) n, nth_error l n = Some x -> B) ->
+  list B.
+Proof.
+  intros f. induction l.
+  - exact [].
+  - refine (_ :: _).
+    + apply (f a 0). cbn. reflexivity.
+    + apply IHl. intros x n h.
+      apply (f x (S n)). cbn. assumption.
+Defined.
 
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
@@ -431,14 +434,12 @@ Equations type_of_elim Σ ind univs decl (s : sort)
        This in itself, requires to be able to read of the indices arguments of
        the inductive.
      *)
-    (* PROBLEM: declared_inductive_constructor should help me build this list
-       of types, but I need to know within the map, that I'm dealing with one
-       element of it. Maybe I need a variant of map_i with a proof inside.
-     *)
-    (* let pcs := *)
-    (*   map_i (fun i cd => paramless_type_of_constructor Σ (ind, i) univs cd _) *)
-    (*         decl.(sind_ctors) *)
-    (* in *)
+    (* The list of paramless constructor types. *)
+    let pcs :=
+      forall_list
+        decl.(sind_ctors)
+        (fun cd i h => paramless_type_of_constructor Σ (ind, i) univs cd _)
+    in
     (* let fl := map (fun '(c,ty,_) => ) *)
     let fl := [] in
     let fl := map (fun ty => (nNamed "f", ty)) fl in
@@ -459,6 +460,9 @@ Next Obligation.
   destruct isdecl as [? [[hm ?] ?]].
   unfold sdeclared_minductive in hm.
   rewrite <- H in hm. discriminate hm.
+Defined.
+Next Obligation.
+  eapply declared_inductive_constructor ; eassumption.
 Defined.
 Next Obligation.
   destruct isdecl as [? [[hm ?] ?]].
