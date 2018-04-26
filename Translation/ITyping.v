@@ -394,14 +394,22 @@ Inductive typed_list Σ Γ : list sterm -> scontext -> Prop :=
 
 Derive Signature for typed_list.
 
-(* Alternative version: more like Σ-types
-   d for dependent
-*)
-Inductive dtyped_list Σ Γ : list sterm -> scontext -> Prop :=
-| dtyped_list_nil : dtyped_list Σ Γ [] []
-| dtyped_list_cons u l Δ A :
-    dtyped_list Σ Γ l Δ ->
-    Σ ;;; Γ |-i u : substl l A ->
-    dtyped_list Σ Γ (u :: l) (Δ ,, A).
 
-Derive Signature for dtyped_list.
+
+Inductive type_spine Σ Γ : sterm -> list sterm -> sterm -> Prop :=
+| type_spine_nil A : type_spine Σ Γ A [] A
+| type_spine_cons u A B l T nx :
+    Σ ;;; Γ |-i u : A ->
+    type_spine Σ Γ (B{ 0 := u }) l T ->
+    type_spine Σ Γ (sProd nx A B) (u :: l) T.
+
+Derive Signature for type_spine.
+
+(* Alternate version, doesn't work because Prods is written in a different
+   order. *)
+(* Inductive type_spine Σ Γ : nctx -> sterm -> list sterm -> sterm -> Prop := *)
+(* | type_spine_nil A : type_spine Σ Γ [] A [] A *)
+(* | type_spine_cons : *)
+(*     Σ ;;; Γ |-i u : A -> *)
+(*     type_spine Σ Γ ? ? l ? -> *)
+(*     type_spine Σ Γ Δ T (u :: l) T. *)

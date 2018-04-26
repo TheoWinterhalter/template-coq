@@ -31,13 +31,12 @@ Fixpoint Lams (Γ : nctx) (T t : sterm) : sterm :=
   | (nx,A) :: Γ => Lams Γ (sProd nx A T) (sLambda nx A T t)
   end.
 
-(* If ⊢ u : Prods Γ T and ⊢ l : Γ then ⊢ Apps u Γ T l : T[l] *)
-Fixpoint Apps (u : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
+(* If ⊢ f : Prods Γ T and ⊢ l : Γ then ⊢ Apps f Γ T l : T[l] *)
+Fixpoint Apps (f : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
   match Γ, l with
-  | [], _ => u
-  | _, [] => u
-  | (nx,A) :: Γ, t :: l =>
-    sApp (Apps u Γ (sProd nx A T) l) A T t
+  | (nx,A) :: Γ, u :: l =>
+    sApp (Apps f Γ (sProd nx A T) l) (substl l A) (substln l 1 T) u
+  | _,_ => f
   end.
 
 Fixpoint nctx_of_Prods_acc (t : sterm) (Γ : nctx) : nctx * sterm :=

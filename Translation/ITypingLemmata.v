@@ -1336,7 +1336,13 @@ Proof.
   - cbn in *. dependent destruction hl. cbn. assumption.
   - dependent destruction hl. simpl in *.
     rename l0 into l.
-    (* rewrite <- substl1_subst0. *)
+    eapply meta_conv.
+    + eapply type_App.
+      * erewrite <- substl_sort.
+        eapply type_substl ; try eassumption.
+
+
+    rewrite <- substl1_subst0.
     destruct hT as [s hT].
     pose proof (typing_wf hT) as hw.
     dependent destruction hw.
