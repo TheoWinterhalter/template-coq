@@ -395,9 +395,20 @@ Fixpoint lrel start count :=
   | S n => sRel (start + n)%nat :: lrel start n
   end.
 
+(* TODO MOVE *)
+Fixpoint map_i_forallT_aux {A P B} (f : nat -> forall x, P x -> B)
+  (m : nat) (l : list A) (h : ForallT P l) {struct h} : list B :=
+  match h with
+  | ForallT_nil _ => []
+  | ForallT_cons _ a l ha hl => f m a ha :: map_i_forallT_aux f (S m) l hl
+  end.
+
+Definition map_i_forallT {A P B} f l h := @map_i_forallT_aux A P B f 0 l h.
+
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
-  type_of_elim Σ ind univs decl s isdecl <= inspect (slookup_env Σ (inductive_mind ind)) => {
+  type_of_elim Σ ind univs decl s isdecl
+  <= inspect (slookup_env Σ (inductive_mind ind)) => {
   | exist (Some (SInductiveDecl _ d)) _ :=
     let pars := d.(sind_params) in
     let indices := decl.(sind_indices) in
