@@ -1317,14 +1317,41 @@ Proof.
     reflexivity.
 Defined.
 
+Fact map_i_aux_S :
+  forall {A B} {f : nat -> A -> B} {n l},
+    map_i_aux f (S n) l = map_i_aux (fun i a => f (S i) a) n l.
+Proof.
+  intros A B f n l. revert n.
+  induction l ; intro n.
+  - cbn. reflexivity.
+  - simpl. f_equal. apply IHl.
+Defined.
+
+Fact map_i_eqf :
+  forall {A B} {f g : nat -> A -> B} {l n},
+    (forall i a, f i a = g i a) ->
+    map_i_aux f n l = map_i_aux g n l.
+Proof.
+  intros A B f g l n h. revert n.
+  induction l ; intros n.
+  - reflexivity.
+  - cbn. f_equal ; auto.
+Defined.
+
 Fact subst_Prods :
   forall {Δ T u n},
-    (Prods Δ T){ n := u } = Prods (map (on_snd (subst u n)) Δ) (T{ (#|Δ| + n) := u }).
+    (Prods Δ T){ n := u } =
+    Prods (map_i (fun i '(nx, A) => (nx, A{ i + n := u })) Δ) (T{ #|Δ| + n := u }).
 Proof.
   intro Δ. induction Δ as [| [nx A] Δ ih] ; intros T u n.
   - cbn. reflexivity.
   - simpl. f_equal. rewrite ih. f_equal.
-Abort.
+    + rewrite map_i_aux_S. apply map_i_eqf. clear.
+      intros i a.
+      replace (i + S n)%nat with (S i + n)%nat by omega.
+      reflexivity.
+    + f_equal. omega.
+Defined.
 
 Lemma type_Apps :
   forall {Σ Γ Δ f l T T'},
