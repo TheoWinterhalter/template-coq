@@ -41,40 +41,34 @@ Defined.
 
 Lemma type_Prods :
   forall {Σ Γ Δ T},
-    isType Σ (Γ,,, nlctx Δ) T ->
+    istype_nctx Σ Γ Δ T ->
     isType Σ Γ (Prods Δ T).
 Proof.
-  intros Σ Γ Δ T h. revert Γ T h.
-  induction Δ as [| [nx A] Δ ih ] ; intros Γ T h.
-  - cbn in *. assumption.
-  - simpl in *. eapply ih.
-    destruct h as [s h].
-    pose proof (typing_wf h) as hw.
-    dependent destruction hw.
-    eexists. eapply type_Prod.
-    + eassumption.
-    + eassumption.
+  intros Σ Γ Δ T h. induction h.
+  - cbn. eexists. eassumption.
+  - cbn. destruct IHh as [s' ih].
+    eexists. eapply type_Prod ; eassumption.
 Defined.
 
-Lemma type_Lams :
-  forall {Σ Γ Δ t T},
-    Σ ;;; Γ,,, nlctx Δ |-i t : T ->
-    isType Σ (Γ,,, nlctx Δ) T ->
-    Σ ;;; Γ |-i Lams Δ T t : Prods Δ T.
-Proof.
-  intros Σ Γ Δ t T h1 h2. revert Γ t T h1 h2.
-  induction Δ as [| [nx A] Δ ih] ; intros Γ t T h1 h2.
-  - cbn in *. assumption.
-  - simpl in *. eapply ih.
-    + pose proof (typing_wf h1) as hw.
-      dependent destruction hw.
-      destruct h2 as [s' h2].
-      eapply type_Lambda ; eassumption.
-    + pose proof (typing_wf h1) as hw.
-      dependent destruction hw.
-      destruct h2 as [s' h2].
-      eexists. econstructor ; eassumption.
-Defined.
+(* Lemma type_Lams : *)
+(*   forall {Σ Γ Δ t T}, *)
+(*     Σ ;;; Γ,,, nlctx Δ |-i t : T -> *)
+(*     isType Σ (Γ,,, nlctx Δ) T -> *)
+(*     Σ ;;; Γ |-i Lams Δ T t : Prods Δ T. *)
+(* Proof. *)
+(*   intros Σ Γ Δ t T h1 h2. revert Γ t T h1 h2. *)
+(*   induction Δ as [| [nx A] Δ ih] ; intros Γ t T h1 h2. *)
+(*   - cbn in *. assumption. *)
+(*   - simpl in *. eapply ih. *)
+(*     + pose proof (typing_wf h1) as hw. *)
+(*       dependent destruction hw. *)
+(*       destruct h2 as [s' h2]. *)
+(*       eapply type_Lambda ; eassumption. *)
+(*     + pose proof (typing_wf h1) as hw. *)
+(*       dependent destruction hw. *)
+(*       destruct h2 as [s' h2]. *)
+(*       eexists. econstructor ; eassumption. *)
+(* Defined. *)
 
 Fact type_ctx_closed_above :
   forall {Σ Γ t T},
@@ -1323,59 +1317,30 @@ Proof.
     reflexivity.
 Defined.
 
-Inductive dtyped_list Σ Γ : list sterm -> scontext -> Prop :=
-| dtyped_list_nil : dtyped_list Σ Γ [] []
-| dtyped_list_cons u l Δ A :
-    dtyped_list Σ Γ l Δ ->
-    Σ ;;; Γ |-i u : substl l A ->
-    dtyped_list Σ Γ (u :: l) (Δ ,, A).
-
-Derive Signature for dtyped_list.
+Fact subst_Prods :
+  forall {Δ T u n},
+    (Prods Δ T){ n := u } = Prods (map (on_snd (subst u n)) Δ) (T{ (#|Δ| + n) := u }).
+Proof.
+  intro Δ. induction Δ as [| [nx A] Δ ih] ; intros T u n.
+  - cbn. reflexivity.
+  - simpl. f_equal. rewrite ih. f_equal.
+Abort.
 
 Lemma type_Apps :
-  forall {Σ Γ Δ f l T},
+  forall {Σ Γ Δ f l T T'},
     type_glob Σ ->
     Σ ;;; Γ |-i f : Prods Δ T ->
-    dtyped_list Σ Γ l (nlctx Δ) ->
-    isType Σ (Γ,,, nlctx Δ) T ->
-    Σ ;;; Γ |-i Apps f Δ T l : substl l T.
+    type_spine Σ Γ Δ T l T' ->
+    Σ ;;; Γ |-i Apps f Δ T l : T'.
 Proof.
-  intros Σ Γ Δ f l T hg. revert Γ f l T .
-  induction Δ as [| [nx A] Δ ih] ; intros Γ f l T hf hl hT.
-  - cbn in *. dependent destruction hl. cbn. assumption.
-  - dependent destruction hl. simpl in *.
-    rename l0 into l.
-    destruct hT as [s hT].
-    pose proof (typing_wf hT) as hw.
-    dependent destruction hw.
-    rename A0 into A, s0 into s'.
+  intros Σ Γ Δ f l T T' hg hf hl.
+  revert f hf.
+  induction hl ; intros f hf.
+  - cbn in *. assumption.
+  - cbn in *. eapply IHhl.
     eapply meta_conv.
-    + eapply type_App.
-      * erewrite <- substl_sort.
-        (* eapply type_substl ; try eassumption. *)
-        admit.
-      * admit.
-      * rewrite <- substl_Prod.
-        eapply ih ; try eassumption.
-        eexists. econstructor ; eassumption.
-      * assumption.
-    + give_up.
-
-
-(*     rewrite <- substl1_subst0. *)
-(*     eapply type_App. *)
-(*     + erewrite <- substl_sort. *)
-(*       eapply type_substl ; eassumption. *)
-(*     + erewrite <- substln_sort. *)
-(*       pose proof (type_substln hg hl (Ξ := [ A ]) hT) as hh. *)
-(*       simpl in hh. rewrite substln_context_cons in hh. simpl in hh. *)
-(*       rewrite <- substl_substln0, substln_context_nil in hh. *)
-(*       apply hh. *)
-(*     + rewrite <- substl_Prod. *)
-(*       eapply ih ; try eassumption. *)
-(*       eexists. econstructor ; eassumption. *)
-(*     + eapply type_substl ; eassumption. *)
-(* Defined. *)
+    + eapply type_App ; try eassumption. all: admit.
+    + cbn. give_up.
 Abort.
 
 Fact ind_bodies_declared :

@@ -394,22 +394,33 @@ Inductive typed_list Σ Γ : list sterm -> scontext -> Prop :=
 
 Derive Signature for typed_list.
 
+Inductive istype_nctx Σ : scontext -> nctx -> sterm -> Prop :=
+| istype_nctx_nil Γ T s :
+    Σ ;;; Γ |-i T : sSort s ->
+    istype_nctx Σ Γ [] T
+| istype_nctx_cons Γ nx A L s T :
+    istype_nctx Σ (Γ ,, A) L T ->
+    Σ ;;; Γ |-i A : sSort s ->
+    istype_nctx Σ Γ ((nx, A) :: L) T.
+
+Derive Signature for istype_nctx.
 
 
-Inductive type_spine Σ Γ : sterm -> list sterm -> sterm -> Prop :=
-| type_spine_nil A : type_spine Σ Γ A [] A
-| type_spine_cons u A B l T nx :
+(* Inductive type_spine Σ Γ : sterm -> list sterm -> sterm -> Prop := *)
+(* | type_spine_nil A : type_spine Σ Γ A [] A *)
+(* | type_spine_cons u A B l T nx : *)
+(*     Σ ;;; Γ |-i u : A -> *)
+(*     type_spine Σ Γ (B{ 0 := u }) l T -> *)
+(*     type_spine Σ Γ (sProd nx A B) (u :: l) T. *)
+
+(* Derive Signature for type_spine. *)
+
+(* Alternate version. *)
+Inductive type_spine Σ Γ : nctx -> sterm -> list sterm -> sterm -> Prop :=
+| type_spine_nil A : type_spine Σ Γ [] A [] A
+| type_spine_cons u nx A Δ T l T' :
     Σ ;;; Γ |-i u : A ->
-    type_spine Σ Γ (B{ 0 := u }) l T ->
-    type_spine Σ Γ (sProd nx A B) (u :: l) T.
+    type_spine Σ Γ (map (on_snd (subst u 0)) Δ) (T{ 1 := u }) l T' ->
+    type_spine Σ Γ ((nx, A) :: Δ) T (u :: l) T'.
 
 Derive Signature for type_spine.
-
-(* Alternate version, doesn't work because Prods is written in a different
-   order. *)
-(* Inductive type_spine Σ Γ : nctx -> sterm -> list sterm -> sterm -> Prop := *)
-(* | type_spine_nil A : type_spine Σ Γ [] A [] A *)
-(* | type_spine_cons : *)
-(*     Σ ;;; Γ |-i u : A -> *)
-(*     type_spine Σ Γ ? ? l ? -> *)
-(*     type_spine Σ Γ Δ T (u :: l) T. *)
