@@ -68,63 +68,11 @@ Proof.
 Defined.
 
 (* Deciding whether a term is a given inductive, applied to some arguments *)
-Inductive subapp : sterm -> sterm -> Prop :=
+Inductive subapp : sterm -> sterm -> Type :=
 | subapp_refl t : subapp t t
 | subapp_app t u A B v :
     subapp t u ->
     subapp t (sApp u A B v).
-
-Fact subapp_Apps' :
-  forall {f g Γ T l},
-    subapp f g ->
-    subapp f (Apps g Γ T l).
-Proof.
-  intros f g Γ T l h.
-  revert f g Γ T h.
-  induction l, Γ ; intros T h.
-  all: try (cbn ; assumption).
-  eapply IHl. econstructor. assumption.
-Defined.
-
-Fact subapp_Apps :
-  forall {f Γ T l}, subapp f (Apps f Γ T l).
-Proof.
-  intros f Γ T l.
-  apply subapp_Apps'. constructor.
-Defined.
-
-Ltac dec_isInd_discr ind :=
-  right ; intros [Γ [T [l h]]] ;
-  match type of h with
-  | ?t = _ =>
-    assert (bot : subapp (sInd ind) t) ; [
-      rewrite h ; apply subapp_Apps
-    | inversion bot
-    ] ; fail
-  end.
-
-Lemma dec_isInd :
-  forall ind t, dec (∑ Γ T l, t = Apps (sInd ind) Γ T l).
-Proof.
-  intros ind t.
-  induction t.
-  all: try (dec_isInd_discr ind).
-  - clear - IHt1. destruct IHt1 as [[Γ [T [l h]]] | np].
-    + left. subst.
-      (* That might not be exactly true... *)
-      admit.
-    + right. intros [Γ [T [l h]]]. apply np.
-      destruct Γ, l.
-      all: try (cbn in h ; discriminate h).
-      cbn in h. admit.
-  - destruct (inductive_dec ind ind0).
-    + subst. left. exists [], (sRel 0), []. cbn. reflexivity.
-    + right. intros [Γ [T [l h]]].
-      assert (bot : subapp (sInd ind) (sInd ind0)).
-      { rewrite h. apply subapp_Apps. }
-      apply n.
-      inversion bot. reflexivity.
-Abort.
 
 (* This version becomes interesting if we put subapp in Type *)
 Lemma dec_isInd :
@@ -141,6 +89,34 @@ Proof.
     + right. intro bot. inversion bot.
       apply n. auto.
 Defined.
+
+(* Alternative
+   More precise, isapp u f l means that
+   u is actually f applied to the list of arguments l
+   in the reverse order.
+*)
+Inductive isapp : sterm -> sterm -> list sterm -> Type :=
+| isapp_refl t : isapp t t []
+| isapp_app u f l A B v :
+    isapp u f l ->
+    isapp (sApp u A B v) f (v :: l).
+
+Lemma dec_ind :
+  forall ind t, dec (∑ l, isapp t (sInd ind) l).
+Proof.
+  intros ind t.
+  induction t.
+  all: try (right ; intros [l bot] ; inversion bot ; fail).
+  - destruct IHt1 as [[l h] | h].
+    + left. exists (t4 :: l). constructor. assumption.
+    + right. intros [l bot]. inversion bot. subst.
+      apply h. eexists. eassumption.
+  - destruct (inductive_dec ind0 ind).
+    + subst. left. exists []. constructor.
+    + right. intros [l bot]. inversion bot.
+      apply n. auto.
+Defined.
+
 
 (* Common lemmata *)
 
