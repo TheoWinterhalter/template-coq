@@ -12,7 +12,9 @@ Delimit Scope s_scope with s.
 
 Record squash (A : Set) : Prop := { _ : A }.
 
-(* Named contexts *)
+(* Named list of terms
+   (to be used in the *reverse* order when compared to contexts)
+ *)
 Definition nctx := list (name * sterm).
 
 Definition nlctx : nctx -> scontext := map snd.
@@ -20,51 +22,57 @@ Definition nlctx : nctx -> scontext := map snd.
 (* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
 Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
   match Γ with
+  | (nx,A) :: Γ => sProd nx A (Prods Γ T)
   | [] => T
-  | (nx,A) :: Γ => Prods Γ (sProd nx A T)
   end.
 
 (* If Γ ⊢ t : T then ⊢ Lams Γ T t : Prods Γ T *)
-Fixpoint Lams (Γ : nctx) (T t : sterm) : sterm :=
-  match Γ with
-  | [] => t
-  | (nx,A) :: Γ => Lams Γ (sProd nx A T) (sLambda nx A T t)
-  end.
+(* Fixpoint Lams (Γ : nctx) (T t : sterm) : sterm := *)
+(*   match Γ with *)
+(*   | (nx,A) :: Γ => sLambda nx A (Prods Γ T) (Lams Γ T t) *)
+(*   | [] => t *)
+(*   end. *)
+
+Definition subst_nctx u (L : nctx) :=
+  map_i (fun i '(nx, A) => (nx, A{ i := u })) L.
+
+Definition substn_nctx u n (L : nctx) :=
+  map_i_aux (fun i '(nx, A) => (nx, A{ i := u })) n L.
 
 (* If ⊢ f : Prods Γ T and ⊢ l : Γ then ⊢ Apps f Γ T l : T[l] *)
 Fixpoint Apps (f : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
   match Γ, l with
   | (nx,A) :: Γ, u :: l =>
-    sApp (Apps f Γ (sProd nx A T) l) (substl l A) (substln l 1 T) u
+    Apps (sApp f A (Prods Γ T) u) (subst_nctx u Γ) (T{ #|Γ| := u }) l
   | _,_ => f
   end.
 
-Fixpoint nctx_of_Prods_acc (t : sterm) (Γ : nctx) : nctx * sterm :=
-  match t with
-  | sProd nx A B => nctx_of_Prods_acc B ((nx, A) :: Γ)
-  | _ => (Γ, t)
-  end.
+(* Fixpoint nctx_of_Prods_acc (t : sterm) (Γ : nctx) : nctx * sterm := *)
+(*   match t with *)
+(*   | sProd nx A B => nctx_of_Prods_acc B ((nx, A) :: Γ) *)
+(*   | _ => (Γ, t) *)
+(*   end. *)
 
-Definition nctx_of_Prods t := nctx_of_Prods_acc t [].
+(* Definition nctx_of_Prods t := nctx_of_Prods_acc t []. *)
 
-Fact nctx_of_Prods_acc_spec :
-  forall {t Γ},
-    let '(Δ, u) := nctx_of_Prods_acc t Γ in
-    Prods Γ t = Prods Δ u.
-Proof.
-  intros t. induction t ; intros Γ.
-  all: try (cbn ; reflexivity).
-  cbn. rewrite <- IHt2. cbn. reflexivity.
-Defined.
+(* Fact nctx_of_Prods_acc_spec : *)
+(*   forall {t Γ}, *)
+(*     let '(Δ, u) := nctx_of_Prods_acc t Γ in *)
+(*     Prods Γ t = Prods Δ u. *)
+(* Proof. *)
+(*   intros t. induction t ; intros Γ. *)
+(*   all: try (cbn ; reflexivity). *)
+(*   cbn. rewrite <- IHt2. cbn. reflexivity. *)
+(* Defined. *)
 
-Fact nctx_of_Prods_spec :
-  forall {t},
-    let '(Γ, u) := nctx_of_Prods t in
-    t = Prods Γ u.
-Proof.
-  intros t.
-  apply @nctx_of_Prods_acc_spec with (Γ := []).
-Defined.
+(* Fact nctx_of_Prods_spec : *)
+(*   forall {t}, *)
+(*     let '(Γ, u) := nctx_of_Prods t in *)
+(*     t = Prods Γ u. *)
+(* Proof. *)
+(*   intros t. *)
+(*   apply @nctx_of_Prods_acc_spec with (Γ := []). *)
+(* Defined. *)
 
 (* Fixpoint nctx_of_Apps_acc (t : sterm) (Γ : nctx) (T : sterm) (l : list sterm) *)
 (*   : sterm * nctx * sterm * list sterm := *)
@@ -389,11 +397,19 @@ Scheme even_rect' := Induction for even Sort Type.
 
 Quote Recursively Definition ter := even_rect'.
 
+(* [ sRel (start + count) ; ... ; sRel start ] *)
 Fixpoint lrel start count :=
   match count with
   | 0 => []
   | S n => sRel (start + n)%nat :: lrel start n
   end.
+
+(* [ sRel start ; ... ; sRel (start + count) ] *)
+(* Fixpoint lrel start count := *)
+(*   match count with *)
+(*   | 0 => [] *)
+(*   | S n => sRel start :: lrel (S start) n *)
+(*   end. *)
 
 (* TODO MOVE *)
 Definition forall_list {A B} l :
@@ -420,9 +436,9 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let prels := lrel #|indices| #|pars| in
     let si := decl.(sind_sort) in
     let indinst :=
-      (Apps (sInd ind) (indices ++ pars) (sSort si) (irels ++ prels))%list
+      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list
     in
-    let Pty := Prods ((nAnon, indinst) :: indices) (sSort s) in
+    let Pty := Prods (indices ++ [ (nAnon, indinst) ])%list (sSort s) in
     let P := (nNamed "P", Pty) in
     (* PART OF IT DONE.
        We need to add a param-free type of constructor.
@@ -446,14 +462,14 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let irels := lrel 0 #|indices| in
     let prels := lrel (1 + #|indices| + #|fl|)%nat #|pars| in
     let indinst :=
-      (Apps (sInd ind) (indices ++ pars) (sSort si) (irels ++ prels))%list
+      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list
     in
     let predinst :=
       Apps (sRel (1 + #|indices| + #|fl|))%nat
-           ((nAnon, indinst) :: indices) (sSort s)
+           (indices ++ [ (nAnon, indinst) ])%list (sSort s)
            (lrel 0 (S #|indices|))
     in
-    Prods ((nAnon, indinst) :: fl ++ P :: pars)%list predinst ;
+    Prods (pars ++ P :: fl ++ indices ++ [ (nAnon, indinst) ])%list predinst ;
   | exist decl' H := !
   }.
 Next Obligation.

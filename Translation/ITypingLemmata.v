@@ -41,40 +41,34 @@ Defined.
 
 Lemma type_Prods :
   forall {Σ Γ Δ T},
-    isType Σ (Γ,,, nlctx Δ) T ->
+    istype_nctx Σ Γ Δ T ->
     isType Σ Γ (Prods Δ T).
 Proof.
-  intros Σ Γ Δ T h. revert Γ T h.
-  induction Δ as [| [nx A] Δ ih ] ; intros Γ T h.
-  - cbn in *. assumption.
-  - simpl in *. eapply ih.
-    destruct h as [s h].
-    pose proof (typing_wf h) as hw.
-    dependent destruction hw.
-    eexists. eapply type_Prod.
-    + eassumption.
-    + eassumption.
+  intros Σ Γ Δ T h. induction h.
+  - cbn. eexists. eassumption.
+  - cbn. destruct IHh as [s' ih].
+    eexists. eapply type_Prod ; eassumption.
 Defined.
 
-Lemma type_Lams :
-  forall {Σ Γ Δ t T},
-    Σ ;;; Γ,,, nlctx Δ |-i t : T ->
-    isType Σ (Γ,,, nlctx Δ) T ->
-    Σ ;;; Γ |-i Lams Δ T t : Prods Δ T.
-Proof.
-  intros Σ Γ Δ t T h1 h2. revert Γ t T h1 h2.
-  induction Δ as [| [nx A] Δ ih] ; intros Γ t T h1 h2.
-  - cbn in *. assumption.
-  - simpl in *. eapply ih.
-    + pose proof (typing_wf h1) as hw.
-      dependent destruction hw.
-      destruct h2 as [s' h2].
-      eapply type_Lambda ; eassumption.
-    + pose proof (typing_wf h1) as hw.
-      dependent destruction hw.
-      destruct h2 as [s' h2].
-      eexists. econstructor ; eassumption.
-Defined.
+(* Lemma type_Lams : *)
+(*   forall {Σ Γ Δ t T}, *)
+(*     Σ ;;; Γ,,, nlctx Δ |-i t : T -> *)
+(*     isType Σ (Γ,,, nlctx Δ) T -> *)
+(*     Σ ;;; Γ |-i Lams Δ T t : Prods Δ T. *)
+(* Proof. *)
+(*   intros Σ Γ Δ t T h1 h2. revert Γ t T h1 h2. *)
+(*   induction Δ as [| [nx A] Δ ih] ; intros Γ t T h1 h2. *)
+(*   - cbn in *. assumption. *)
+(*   - simpl in *. eapply ih. *)
+(*     + pose proof (typing_wf h1) as hw. *)
+(*       dependent destruction hw. *)
+(*       destruct h2 as [s' h2]. *)
+(*       eapply type_Lambda ; eassumption. *)
+(*     + pose proof (typing_wf h1) as hw. *)
+(*       dependent destruction hw. *)
+(*       destruct h2 as [s' h2]. *)
+(*       eexists. econstructor ; eassumption. *)
+(* Defined. *)
 
 Fact type_ctx_closed_above :
   forall {Σ Γ t T},
@@ -1323,60 +1317,138 @@ Proof.
     reflexivity.
 Defined.
 
-Inductive dtyped_list Σ Γ : list sterm -> scontext -> Prop :=
-| dtyped_list_nil : dtyped_list Σ Γ [] []
-| dtyped_list_cons u l Δ A :
-    dtyped_list Σ Γ l Δ ->
-    Σ ;;; Γ |-i u : substl l A ->
-    dtyped_list Σ Γ (u :: l) (Δ ,, A).
+Fact map_i_aux_S :
+  forall {A B} {f : nat -> A -> B} {n l},
+    map_i_aux f (S n) l = map_i_aux (fun i a => f (S i) a) n l.
+Proof.
+  intros A B f n l. revert n.
+  induction l ; intro n.
+  - cbn. reflexivity.
+  - simpl. f_equal. apply IHl.
+Defined.
 
-Derive Signature for dtyped_list.
+Fact map_i_eqf :
+  forall {A B} {f g : nat -> A -> B} {l n},
+    (forall i a, f i a = g i a) ->
+    map_i_aux f n l = map_i_aux g n l.
+Proof.
+  intros A B f g l n h. revert n.
+  induction l ; intros n.
+  - reflexivity.
+  - cbn. f_equal ; auto.
+Defined.
+
+Fact subst_Prods :
+  forall {Δ T u n},
+    (Prods Δ T){ n := u } =
+    Prods (map_i (fun i '(nx, A) => (nx, A{ i + n := u })) Δ) (T{ #|Δ| + n := u }).
+Proof.
+  intro Δ. induction Δ as [| [nx A] Δ ih] ; intros T u n.
+  - cbn. reflexivity.
+  - simpl. f_equal. rewrite ih. f_equal.
+    + rewrite map_i_aux_S. apply map_i_eqf. clear.
+      intros i a.
+      replace (i + S n)%nat with (S i + n)%nat by omega.
+      reflexivity.
+    + f_equal. omega.
+Defined.
+
+Corollary subst0_Prods :
+  forall {Δ T u},
+    (Prods Δ T){ 0 := u } =
+    Prods (subst_nctx u Δ) (T{ #|Δ| := u }).
+Proof.
+  intros Δ T u.
+  unfold subst_nctx.
+  pose proof (@subst_Prods Δ T u 0) as h. unfold map_i in *.
+  erewrite map_i_eqf.
+  - replace #|Δ| with (#|Δ| + 0)%nat by omega.
+    apply h.
+  - clear. intros i a. cbn.
+    replace (i + 0)%nat with i by omega.
+    reflexivity.
+Defined.
+
+Fact substn_nctx_cons :
+  forall {L u n nx A},
+    substn_nctx u n ((nx,A) :: L) = (nx, A{ n := u }) :: substn_nctx u (S n) L.
+Proof.
+  reflexivity.
+Defined.
+
+Lemma istype_nctx_substn :
+  forall {Σ Γ Δ L T s A u z},
+    type_glob Σ ->
+    istype_nctx Σ (Γ,, A ,,, Δ) L T ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ,, A ,,, Δ |-i Prods L T : sSort z ->
+    istype_nctx Σ (Γ ,,, subst_context u Δ)
+                (substn_nctx u #|Δ| L) (T{ #|L| + #|Δ| := u }).
+Proof.
+  intros Σ Γ Δ L T s A u z hg hL hA hu hP.
+  revert u s hA hu z hP. dependent induction hL ; intros u z hA hu z' hP.
+  - rename Γ0 into Γ. cbn.
+    econstructor.
+    match goal with
+    | |- _ ;;; _ |-i _ : ?S =>
+      change S with (S{#|Δ| := u})
+    end.
+    cbn in hP.
+    eapply type_subst ; eassumption.
+  - rename Γ0 into Γ, A0 into B.
+    simpl. rewrite substn_nctx_cons.
+    econstructor.
+    + specialize (IHhL Γ (Δ ,, A) L T B hg eq_refl).
+      replace (S (#|L| + #|Δ|))%nat with (#|L| + S #|Δ|)%nat by omega.
+      cbn in hP. ttinv hP.
+      eapply IHhL ; eassumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ : ?S =>
+        change S with (S{#|Δ| := u})
+      end.
+      eapply type_subst ; eassumption.
+Defined.
+
+Corollary istype_nctx_subst0 :
+  forall {Σ Γ L T s A u z},
+    type_glob Σ ->
+    istype_nctx Σ (Γ,, A) L T ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ,, A |-i Prods L T : sSort z ->
+    istype_nctx Σ Γ (subst_nctx u L) (T {#|L| := u}).
+Proof.
+  intros Σ Γ L T s A u z hg hL hA hu hP.
+  pose proof (@istype_nctx_substn Σ Γ [] L T s A u z hg) as h.
+  cbn in h.
+  replace (substn_nctx u 0) with (subst_nctx u) in h by reflexivity.
+  replace (#|L| + 0)%nat with #|L| in h by omega.
+  apply h ; assumption.
+Defined.
 
 Lemma type_Apps :
-  forall {Σ Γ Δ f l T},
+  forall {Σ Γ Δ f l T T'},
     type_glob Σ ->
     Σ ;;; Γ |-i f : Prods Δ T ->
-    dtyped_list Σ Γ l (nlctx Δ) ->
-    isType Σ (Γ,,, nlctx Δ) T ->
-    Σ ;;; Γ |-i Apps f Δ T l : substl l T.
+    istype_nctx Σ Γ Δ T ->
+    type_spine Σ Γ Δ T l T' ->
+    Σ ;;; Γ |-i Apps f Δ T l : T'.
 Proof.
-  intros Σ Γ Δ f l T hg. revert Γ f l T .
-  induction Δ as [| [nx A] Δ ih] ; intros Γ f l T hf hl hT.
-  - cbn in *. dependent destruction hl. cbn. assumption.
-  - dependent destruction hl. simpl in *.
-    rename l0 into l.
-    destruct hT as [s hT].
-    pose proof (typing_wf hT) as hw.
-    dependent destruction hw.
-    rename A0 into A, s0 into s'.
-    eapply meta_conv.
-    + eapply type_App.
-      * erewrite <- substl_sort.
-        (* eapply type_substl ; try eassumption. *)
-        admit.
-      * admit.
-      * rewrite <- substl_Prod.
-        eapply ih ; try eassumption.
-        eexists. econstructor ; eassumption.
-      * assumption.
-    + give_up.
-
-
-(*     rewrite <- substl1_subst0. *)
-(*     eapply type_App. *)
-(*     + erewrite <- substl_sort. *)
-(*       eapply type_substl ; eassumption. *)
-(*     + erewrite <- substln_sort. *)
-(*       pose proof (type_substln hg hl (Ξ := [ A ]) hT) as hh. *)
-(*       simpl in hh. rewrite substln_context_cons in hh. simpl in hh. *)
-(*       rewrite <- substl_substln0, substln_context_nil in hh. *)
-(*       apply hh. *)
-(*     + rewrite <- substl_Prod. *)
-(*       eapply ih ; try eassumption. *)
-(*       eexists. econstructor ; eassumption. *)
-(*     + eapply type_substl ; eassumption. *)
-(* Defined. *)
-Abort.
+  intros Σ Γ Δ f l T T' hg hf ht hl.
+  revert f hf.
+  induction hl ; intros f hf.
+  - cbn in *. assumption.
+  - cbn in *.
+    dependent destruction ht.
+    rename Γ0 into Γ, A0 into A, T0 into T, nx0 into nx.
+    destruct (type_Prods ht) as [z hp].
+    eapply IHhl.
+    + eapply istype_nctx_subst0 ; eassumption.
+    + eapply meta_conv.
+      * eapply type_App ; eassumption.
+      * apply subst0_Prods.
+Defined.
 
 Fact ind_bodies_declared :
   forall {Σ ind mb},
