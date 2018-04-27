@@ -67,33 +67,40 @@ Proof.
   cbn. rewrite <- IHt2. reflexivity.
 Defined.
 
-(* Decomposing a term by removing applications in head *)
-Fixpoint decompose_Apps_aux (t : sterm) (Γ : nctx) (T : sterm) (l : list sterm)
-  : sterm * nctx * sterm * list sterm :=
+(* Decomposing a term by removing applications in head
+   For now, we only get the function and the terms it is
+   applied to, assuming this is the only thing we're interested in.
+*)
+Fixpoint decompose_Apps_aux (t : sterm) (l : list sterm) : sterm * list sterm :=
   match t with
-  | sApp u A B v => decompose_Apps_aux u ((nAnon, A) :: Γ) B (v :: l)
-  | _ => (t, Γ, T, l)
+  | sApp u A B v => decompose_Apps_aux u (v :: l)
+  | _ => (t, l)
   end.
 
-(* Fixpoint decompose_Apps (t : sterm) : sterm * nctx * sterm * list sterm := *)
-(*   match t with *)
-(*   | sApp u A B v => *)
-(*     let '(f, Γ, T, l) := decompose_Apps u in *)
-(*     (f, Γ++A, B, l++v) *)
-
-Definition decompose_Apps t := decompose_Apps_aux t [] (sRel 0) [].
+Definition decompose_Apps t := decompose_Apps_aux t [].
 
 Fact decompose_Apps_aux_spec :
-  forall {t Γ T l},
-    let '(f, Δ, U, args) := decompose_Apps_aux t Γ T l in
-    nl (Apps t Γ T l) = nl (Apps f Δ U args).
+  forall {t l},
+    let '(f, args) := decompose_Apps_aux t l in
+    ∑ Γ T Δ U,
+      (Apps t Γ T l = Apps f Δ U args) *
+      (#|Γ| = #|l|) *
+      (#|Δ| = #|args|).
 Proof.
-  intros t. induction t ; intros Γ T l.
-  all: try (cbn ; reflexivity).
-  cbn. rewrite <- IHt1. clear.
-  cbn. (* f_equal. f_equal ; try f_equal. *)
+  intros t. induction t ; intros l.
+  all: try (
+    cbn ;
+    exists (map (fun t => (nAnon, t)) l), (sRel 0) ;
+    exists (map (fun t => (nAnon, t)) l), (sRel 0) ;
+    repeat split ;
+    apply map_length
+  ).
+  clear - IHt1. cbn.
+  destruct (IHt1 (t4 :: l)) as ([| A Γ] & T & Δ & args & [[h1 h2] h3]).
+  - cbn in h2. discriminate h2.
+  - do 4 eexists. repeat split.
+    + rewrite <- h1. cbn. Fail reflexivity.
 Abort.
-
 
 (* Common lemmata *)
 
