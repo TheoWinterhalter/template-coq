@@ -48,17 +48,17 @@ Fixpoint Apps (f : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
   end.
 
 (* Decomposing a term by removing Products in head *)
-Fixpoint nctx_of_Prods (t : sterm) : nctx * sterm :=
+Fixpoint decompose_Prods (t : sterm) : nctx * sterm :=
   match t with
   | sProd nx A B =>
-    let '(Γ, T) := nctx_of_Prods B in
+    let '(Γ, T) := decompose_Prods B in
     ((nx, A) :: Γ, T)
   | _ => ([], t)
   end.
 
-Fact nctx_of_Prods_spec :
+Fact decompose_Prods_spec :
   forall {t},
-    let '(Γ, u) := nctx_of_Prods t in
+    let '(Γ, u) := decompose_Prods t in
     t = Prods Γ u.
 Proof.
   intros t.
@@ -67,25 +67,32 @@ Proof.
   cbn. rewrite <- IHt2. reflexivity.
 Defined.
 
-(* Fixpoint nctx_of_Apps_acc (t : sterm) (Γ : nctx) (T : sterm) (l : list sterm) *)
-(*   : sterm * nctx * sterm * list sterm := *)
+(* Decomposing a term by removing applications in head *)
+Fixpoint decompose_Apps_aux (t : sterm) (Γ : nctx) (T : sterm) (l : list sterm)
+  : sterm * nctx * sterm * list sterm :=
+  match t with
+  | sApp u A B v => decompose_Apps_aux u ((nAnon, A) :: Γ) B (v :: l)
+  | _ => (t, Γ, T, l)
+  end.
+
+(* Fixpoint decompose_Apps (t : sterm) : sterm * nctx * sterm * list sterm := *)
 (*   match t with *)
-(*   | sApp u A B v => nctx_of_Apps_acc u ((nAnon, A) :: Γ) B (v :: l) *)
-(*   | _ => (t, Γ, T, l) *)
-(*   end. *)
+(*   | sApp u A B v => *)
+(*     let '(f, Γ, T, l) := decompose_Apps u in *)
+(*     (f, Γ++A, B, l++v) *)
 
-(* Definition nctx_of_Apps t := nctx_of_Apps_acc t [] (sRel 0) []. *)
+Definition decompose_Apps t := decompose_Apps_aux t [] (sRel 0) [].
 
-(* Fact nctx_of_Apps_acc_spec : *)
-(*   forall {t Γ T l}, *)
-(*     let '(u, Δ, U, l') := nctx_of_Apps_acc t Γ T l in *)
-(*     nl (Apps t Γ T l) = nl (Apps u Δ U l'). *)
-(* Proof. *)
-(*   intro t. induction t ; intros Γ T l. *)
-(*   all: try (cbn ; reflexivity). *)
-(*   cbn. rewrite <- IHt1. *)
-(*   cbn. *)
-(* Abort. *)
+Fact decompose_Apps_aux_spec :
+  forall {t Γ T l},
+    let '(f, Δ, U, args) := decompose_Apps_aux t Γ T l in
+    nl (Apps t Γ T l) = nl (Apps f Δ U args).
+Proof.
+  intros t. induction t ; intros Γ T l.
+  all: try (cbn ; reflexivity).
+  cbn. rewrite <- IHt1. clear.
+  cbn. (* f_equal. f_equal ; try f_equal. *)
+Abort.
 
 
 (* Common lemmata *)
