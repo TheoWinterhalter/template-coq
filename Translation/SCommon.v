@@ -71,6 +71,34 @@ Defined.
    For now, we only get the function and the terms it is
    applied to, assuming this is the only thing we're interested in.
 *)
+(* Fixpoint decompose_Apps (t : sterm) : option (sterm * nctx * sterm * list sterm) *)
+(*   := match t with *)
+(*      | sApp u A B v => *)
+(*        match decompose_Apps u with *)
+(*        | Some (f, Γ, sProd nx C D, l) => *)
+(*          Some (f, Γ ++ [ (nx, C) ], D, l ++ [ v ])%list *)
+(*        | None => Some (u, [ (nAnon, A) ], B, [ v ]) *)
+(*        | _ => None *)
+(*        end *)
+(*      | _ => None *)
+(*      end. *)
+
+(* Fact decompose_Apps_spec : *)
+(*   forall {t f Γ T l}, *)
+(*     decompose_Apps t = Some (f, Γ, T, l) -> *)
+(*     t = Apps f Γ T l. *)
+(* Proof. *)
+(*   intros t. induction t ; intros f Γ T l h. *)
+(*   all: try (cbn in h ; discriminate h). *)
+(*   case_eq (decompose_Apps t1). *)
+(*   - intros [[[g Δ] U] r] e. *)
+(*     destruct U. *)
+(*     all: try (cbn in h ; rewrite e in h ; discriminate h). *)
+(*     cbn in h. rewrite e in h. inversion h. subst. clear h. *)
+(*     rewrite (IHt1 _ _ _ _ e). *)
+(* Abort. *)
+
+
 Fixpoint decompose_Apps_aux (t : sterm) (l : list sterm) : sterm * list sterm :=
   match t with
   | sApp u A B v => decompose_Apps_aux u (v :: l)
