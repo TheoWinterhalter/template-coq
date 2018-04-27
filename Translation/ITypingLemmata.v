@@ -1353,18 +1353,39 @@ Proof.
     + f_equal. omega.
 Defined.
 
+Corollary subst0_Prods :
+  forall {Δ T u},
+    (Prods Δ T){ 0 := u } =
+    Prods (subst_nctx u Δ) (T{ #|Δ| := u }).
+Proof.
+  intros Δ T u.
+  unfold subst_nctx.
+  pose proof (@subst_Prods Δ T u 0) as h. unfold map_i in *.
+  erewrite map_i_eqf.
+  - replace #|Δ| with (#|Δ| + 0)%nat by omega.
+    apply h.
+  - clear. intros i a. cbn.
+    replace (i + 0)%nat with i by omega.
+    reflexivity.
+Defined.
+
 Lemma type_Apps :
   forall {Σ Γ Δ f l T T'},
     type_glob Σ ->
     Σ ;;; Γ |-i f : Prods Δ T ->
+    istype_nctx Σ Γ Δ T ->
     type_spine Σ Γ Δ T l T' ->
     Σ ;;; Γ |-i Apps f Δ T l : T'.
 Proof.
-  intros Σ Γ Δ f l T T' hg hf hl.
+  intros Σ Γ Δ f l T T' hg hf ht hl.
   revert f hf.
   induction hl ; intros f hf.
   - cbn in *. assumption.
   - cbn in *. eapply IHhl.
+    + dependent destruction ht.
+      rename Γ0 into Γ, A0 into A, T0 into T, nx0 into nx.
+
+
     eapply meta_conv.
     + eapply type_App ; try eassumption. all: admit.
     + rewrite subst_Prods. f_equal.
