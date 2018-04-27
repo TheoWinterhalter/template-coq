@@ -114,7 +114,9 @@ Proof.
       (* That might not be exactly true... *)
       admit.
     + right. intros [Γ [T [l h]]]. apply np.
-      admit.
+      destruct Γ, l.
+      all: try (cbn in h ; discriminate h).
+      cbn in h. admit.
   - destruct (inductive_dec ind ind0).
     + subst. left. exists [], (sRel 0), []. cbn. reflexivity.
     + right. intros [Γ [T [l h]]].
@@ -123,6 +125,22 @@ Proof.
       apply n.
       inversion bot. reflexivity.
 Abort.
+
+(* This version becomes interesting if we put subapp in Type *)
+Lemma dec_isInd :
+  forall ind t, dec (subapp (sInd ind) t).
+Proof.
+  intros ind t.
+  induction t.
+  all: try (right ; intro bot ; inversion bot ; fail).
+  - destruct IHt1.
+    + left. constructor. assumption.
+    + right. intro bot. inversion bot. subst. apply f. assumption.
+  - destruct (inductive_dec ind0 ind).
+    + subst. left. constructor.
+    + right. intro bot. inversion bot.
+      apply n. auto.
+Defined.
 
 (* Common lemmata *)
 
