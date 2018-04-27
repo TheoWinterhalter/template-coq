@@ -67,33 +67,8 @@ Proof.
   cbn. rewrite <- IHt2. reflexivity.
 Defined.
 
-(* Deciding whether a term is a given inductive, applied to some arguments *)
-Inductive subapp : sterm -> sterm -> Type :=
-| subapp_refl t : subapp t t
-| subapp_app t u A B v :
-    subapp t u ->
-    subapp t (sApp u A B v).
-
-(* This version becomes interesting if we put subapp in Type *)
-Lemma dec_isInd :
-  forall ind t, dec (subapp (sInd ind) t).
-Proof.
-  intros ind t.
-  induction t.
-  all: try (right ; intro bot ; inversion bot ; fail).
-  - destruct IHt1.
-    + left. constructor. assumption.
-    + right. intro bot. inversion bot. subst. apply f. assumption.
-  - destruct (inductive_dec ind0 ind).
-    + subst. left. constructor.
-    + right. intro bot. inversion bot.
-      apply n. auto.
-Defined.
-
-(* Alternative
-   More precise, isapp u f l means that
-   u is actually f applied to the list of arguments l
-   in the reverse order.
+(* isapp u f l means that u is actually f applied to
+   the list of arguments l (in the reverse order).
 *)
 Inductive isapp : sterm -> sterm -> list sterm -> Type :=
 | isapp_refl t : isapp t t []
@@ -479,8 +454,28 @@ Equations type_of_elim Σ ind univs decl (s : sort)
         decl.(sind_ctors)
         (fun cd i h => paramless_type_of_constructor Σ (ind, i) univs cd _)
     in
-    (* let fl := map (fun '(c,ty,_) => ) *)
-    let fl := [] in
+    (* The list of arguments of the eliminator *)
+    let fl :=
+      map_i (fun i ty =>
+        let '(l, T) := decompose_Prods ty in
+        let '(l',off) :=
+          fold_left
+            (fun '(acc, off) '(nx, ty) =>
+               (* Have an operation for this. *)
+               match dec_ind ind ty with
+               | inleft {| pi1 := l ; pi2 := h |} =>
+                 (* TODO Here do something special. *)
+                 ((nx, lift0 off ty) :: acc, off)
+               | inright _ =>
+                 ((nx, lift0 off ty) :: acc, off)
+               end
+            ) l ([], 0)
+        in
+        (* Do the same operation on T *)
+        let T' := T in
+        lift0 i (Prods (rev l') (lift0 off T'))
+      ) pcs
+    in
     let fl := map (fun ty => (nNamed "f", ty)) fl in
     let irels := lrel 0 #|indices| in
     let prels := lrel (1 + #|indices| + #|fl|)%nat #|pars| in
