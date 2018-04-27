@@ -397,11 +397,19 @@ Scheme even_rect' := Induction for even Sort Type.
 
 Quote Recursively Definition ter := even_rect'.
 
+(* [ sRel (start + count) ; ... ; sRel start ] *)
 Fixpoint lrel start count :=
   match count with
   | 0 => []
   | S n => sRel (start + n)%nat :: lrel start n
   end.
+
+(* [ sRel start ; ... ; sRel (start + count) ] *)
+(* Fixpoint lrel start count := *)
+(*   match count with *)
+(*   | 0 => [] *)
+(*   | S n => sRel start :: lrel (S start) n *)
+(*   end. *)
 
 (* TODO MOVE *)
 Definition forall_list {A B} l :
@@ -428,9 +436,9 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let prels := lrel #|indices| #|pars| in
     let si := decl.(sind_sort) in
     let indinst :=
-      (Apps (sInd ind) (indices ++ pars) (sSort si) (irels ++ prels))%list
+      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list
     in
-    let Pty := Prods ((nAnon, indinst) :: indices) (sSort s) in
+    let Pty := Prods (indices ++ [ (nAnon, indinst) ])%list (sSort s) in
     let P := (nNamed "P", Pty) in
     (* PART OF IT DONE.
        We need to add a param-free type of constructor.
@@ -454,14 +462,14 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let irels := lrel 0 #|indices| in
     let prels := lrel (1 + #|indices| + #|fl|)%nat #|pars| in
     let indinst :=
-      (Apps (sInd ind) (indices ++ pars) (sSort si) (irels ++ prels))%list
+      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list
     in
     let predinst :=
       Apps (sRel (1 + #|indices| + #|fl|))%nat
-           ((nAnon, indinst) :: indices) (sSort s)
+           (indices ++ [ (nAnon, indinst) ])%list (sSort s)
            (lrel 0 (S #|indices|))
     in
-    Prods ((nAnon, indinst) :: fl ++ P :: pars)%list predinst ;
+    Prods (pars ++ P :: fl ++ indices ++ [ (nAnon, indinst) ])%list predinst ;
   | exist decl' H := !
   }.
 Next Obligation.
