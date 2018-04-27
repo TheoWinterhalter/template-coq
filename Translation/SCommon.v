@@ -67,67 +67,61 @@ Proof.
   cbn. rewrite <- IHt2. reflexivity.
 Defined.
 
-(* Decomposing a term by removing applications in head
-   For now, we only get the function and the terms it is
-   applied to, assuming this is the only thing we're interested in.
-*)
-(* Fixpoint decompose_Apps (t : sterm) : option (sterm * nctx * sterm * list sterm) *)
-(*   := match t with *)
-(*      | sApp u A B v => *)
-(*        match decompose_Apps u with *)
-(*        | Some (f, Γ, sProd nx C D, l) => *)
-(*          Some (f, Γ ++ [ (nx, C) ], D, l ++ [ v ])%list *)
-(*        | None => Some (u, [ (nAnon, A) ], B, [ v ]) *)
-(*        | _ => None *)
-(*        end *)
-(*      | _ => None *)
-(*      end. *)
+(* Deciding whether a term is a given inductive, applied to some arguments *)
+Inductive subapp : sterm -> sterm -> Prop :=
+| subapp_refl t : subapp t t
+| subapp_app t u A B v :
+    subapp t u ->
+    subapp t (sApp u A B v).
 
-(* Fact decompose_Apps_spec : *)
-(*   forall {t f Γ T l}, *)
-(*     decompose_Apps t = Some (f, Γ, T, l) -> *)
-(*     t = Apps f Γ T l. *)
-(* Proof. *)
-(*   intros t. induction t ; intros f Γ T l h. *)
-(*   all: try (cbn in h ; discriminate h). *)
-(*   case_eq (decompose_Apps t1). *)
-(*   - intros [[[g Δ] U] r] e. *)
-(*     destruct U. *)
-(*     all: try (cbn in h ; rewrite e in h ; discriminate h). *)
-(*     cbn in h. rewrite e in h. inversion h. subst. clear h. *)
-(*     rewrite (IHt1 _ _ _ _ e). *)
-(* Abort. *)
+Fact subapp_Apps' :
+  forall {f g Γ T l},
+    subapp f g ->
+    subapp f (Apps g Γ T l).
+Proof.
+  intros f g Γ T l h.
+  revert f g Γ T h.
+  induction l, Γ ; intros T h.
+  all: try (cbn ; assumption).
+  eapply IHl. econstructor. assumption.
+Defined.
 
+Fact subapp_Apps :
+  forall {f Γ T l}, subapp f (Apps f Γ T l).
+Proof.
+  intros f Γ T l.
+  apply subapp_Apps'. constructor.
+Defined.
 
-Fixpoint decompose_Apps_aux (t : sterm) (l : list sterm) : sterm * list sterm :=
-  match t with
-  | sApp u A B v => decompose_Apps_aux u (v :: l)
-  | _ => (t, l)
+Ltac dec_isInd_discr ind :=
+  right ; intros [Γ [T [l h]]] ;
+  match type of h with
+  | ?t = _ =>
+    assert (bot : subapp (sInd ind) t) ; [
+      rewrite h ; apply subapp_Apps
+    | inversion bot
+    ] ; fail
   end.
 
-Definition decompose_Apps t := decompose_Apps_aux t [].
-
-Fact decompose_Apps_aux_spec :
-  forall {t l},
-    let '(f, args) := decompose_Apps_aux t l in
-    ∑ Γ T Δ U,
-      (Apps t Γ T l = Apps f Δ U args) *
-      (#|Γ| = #|l|) *
-      (#|Δ| = #|args|).
+Lemma dec_isInd :
+  forall ind t, dec (∑ Γ T l, t = Apps (sInd ind) Γ T l).
 Proof.
-  intros t. induction t ; intros l.
-  all: try (
-    cbn ;
-    exists (map (fun t => (nAnon, t)) l), (sRel 0) ;
-    exists (map (fun t => (nAnon, t)) l), (sRel 0) ;
-    repeat split ;
-    apply map_length
-  ).
-  clear - IHt1. cbn.
-  destruct (IHt1 (t4 :: l)) as ([| A Γ] & T & Δ & args & [[h1 h2] h3]).
-  - cbn in h2. discriminate h2.
-  - do 4 eexists. repeat split.
-    + rewrite <- h1. cbn. Fail reflexivity.
+  intros ind t.
+  induction t.
+  all: try (dec_isInd_discr ind).
+  - clear - IHt1. destruct IHt1 as [[Γ [T [l h]]] | np].
+    + left. subst.
+      (* That might not be exactly true... *)
+      admit.
+    + right. intros [Γ [T [l h]]]. apply np.
+      admit.
+  - destruct (inductive_dec ind ind0).
+    + subst. left. exists [], (sRel 0), []. cbn. reflexivity.
+    + right. intros [Γ [T [l h]]].
+      assert (bot : subapp (sInd ind) (sInd ind0)).
+      { rewrite h. apply subapp_Apps. }
+      apply n.
+      inversion bot. reflexivity.
 Abort.
 
 (* Common lemmata *)
