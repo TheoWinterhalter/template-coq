@@ -1367,8 +1367,12 @@ Proof.
   - cbn in *. eapply IHhl.
     eapply meta_conv.
     + eapply type_App ; try eassumption. all: admit.
-    + cbn. give_up.
-Abort.
+    + rewrite subst_Prods. f_equal.
+      * apply map_i_eqf. clear. intros i a.
+        replace (i+0)%nat with i by omega.
+        reflexivity.
+      * f_equal. omega.
+Admitted.
 
 Fact ind_bodies_declared :
   forall {Σ ind mb},
