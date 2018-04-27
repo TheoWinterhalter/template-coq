@@ -36,6 +36,9 @@ Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
 Definition subst_nctx u (L : nctx) :=
   map_i (fun i '(nx, A) => (nx, A{ i := u })) L.
 
+Definition substn_nctx u n (L : nctx) :=
+  map_i_aux (fun i '(nx, A) => (nx, A{ i := u })) n L.
+
 (* If ⊢ f : Prods Γ T and ⊢ l : Γ then ⊢ Apps f Γ T l : T[l] *)
 Fixpoint Apps (f : sterm) (Γ : nctx) (T : sterm) (l : list sterm) : sterm :=
   match Γ, l with

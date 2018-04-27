@@ -1369,6 +1369,64 @@ Proof.
     reflexivity.
 Defined.
 
+Fact substn_nctx_cons :
+  forall {L u n nx A},
+    substn_nctx u n ((nx,A) :: L) = (nx, A{ n := u }) :: substn_nctx u (S n) L.
+Proof.
+  reflexivity.
+Defined.
+
+Lemma istype_nctx_substn :
+  forall {Σ Γ Δ L T s A u z},
+    type_glob Σ ->
+    istype_nctx Σ (Γ,, A ,,, Δ) L T ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ,, A ,,, Δ |-i Prods L T : sSort z ->
+    istype_nctx Σ (Γ ,,, subst_context u Δ)
+                (substn_nctx u #|Δ| L) (T{ #|L| + #|Δ| := u }).
+Proof.
+  intros Σ Γ Δ L T s A u z hg hL hA hu hP.
+  revert u s hA hu z hP. dependent induction hL ; intros u z hA hu z' hP.
+  - rename Γ0 into Γ. cbn.
+    econstructor.
+    match goal with
+    | |- _ ;;; _ |-i _ : ?S =>
+      change S with (S{#|Δ| := u})
+    end.
+    cbn in hP.
+    eapply type_subst ; eassumption.
+  - rename Γ0 into Γ, A0 into B.
+    simpl. rewrite substn_nctx_cons.
+    econstructor.
+    + specialize (IHhL Γ (Δ ,, A) L T B hg eq_refl).
+      replace (S (#|L| + #|Δ|))%nat with (#|L| + S #|Δ|)%nat by omega.
+      cbn in hP. ttinv hP.
+      eapply IHhL ; eassumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ : ?S =>
+        change S with (S{#|Δ| := u})
+      end.
+      eapply type_subst ; eassumption.
+Defined.
+
+Corollary istype_nctx_subst0 :
+  forall {Σ Γ L T s A u z},
+    type_glob Σ ->
+    istype_nctx Σ (Γ,, A) L T ->
+    Σ;;; Γ |-i A : sSort s ->
+    Σ;;; Γ |-i u : A ->
+    Σ;;; Γ,, A |-i Prods L T : sSort z ->
+    istype_nctx Σ Γ (subst_nctx u L) (T {#|L| := u}).
+Proof.
+  intros Σ Γ L T s A u z hg hL hA hu hP.
+  pose proof (@istype_nctx_substn Σ Γ [] L T s A u z hg) as h.
+  cbn in h.
+  replace (substn_nctx u 0) with (subst_nctx u) in h by reflexivity.
+  replace (#|L| + 0)%nat with #|L| in h by omega.
+  apply h ; assumption.
+Defined.
+
 Lemma type_Apps :
   forall {Σ Γ Δ f l T T'},
     type_glob Σ ->
@@ -1381,19 +1439,16 @@ Proof.
   revert f hf.
   induction hl ; intros f hf.
   - cbn in *. assumption.
-  - cbn in *. eapply IHhl.
-    + dependent destruction ht.
-      rename Γ0 into Γ, A0 into A, T0 into T, nx0 into nx.
-
-
-    eapply meta_conv.
-    + eapply type_App ; try eassumption. all: admit.
-    + rewrite subst_Prods. f_equal.
-      * apply map_i_eqf. clear. intros i a.
-        replace (i+0)%nat with i by omega.
-        reflexivity.
-      * f_equal. omega.
-Admitted.
+  - cbn in *.
+    dependent destruction ht.
+    rename Γ0 into Γ, A0 into A, T0 into T, nx0 into nx.
+    destruct (type_Prods ht) as [z hp].
+    eapply IHhl.
+    + eapply istype_nctx_subst0 ; eassumption.
+    + eapply meta_conv.
+      * eapply type_App ; eassumption.
+      * apply subst0_Prods.
+Defined.
 
 Fact ind_bodies_declared :
   forall {Σ ind mb},
