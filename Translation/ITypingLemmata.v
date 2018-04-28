@@ -1817,6 +1817,18 @@ Proof.
         inversion d''. subst. reflexivity.
 Defined.
 
+Lemma type_indInst :
+  forall {Σ ind si pars indices},
+    Σ ;;; [] |-i indInst ind si pars indices : sSort si.
+Proof.
+Abort.
+
+Lemma type_elimPty :
+  forall {Σ ind si s pars indices},
+    Σ ;;; nlctx pars |-i elimPty ind si s pars indices : sSort (succ_sort s).
+Proof.
+Abort.
+
 Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->

@@ -422,6 +422,18 @@ Proof.
       apply (f x (S n)). cbn. assumption.
 Defined.
 
+(* Instance of an inductive *)
+Definition indInst ind si pars indices :=
+  (* Granted, the two following lines could easily mix into one. *)
+  let irels := lrel 0 #|indices| in
+  let prels := lrel #|indices| #|pars| in
+  (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list.
+
+(* Type of the predicate of the eliminator *)
+Definition elimPty ind si s pars indices :=
+  let indinst := indInst ind si pars indices in
+  Prods (indices ++ [ (nAnon, indinst) ])%list (sSort s).
+
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
   type_of_elim Σ ind univs decl s isdecl
