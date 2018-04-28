@@ -1817,6 +1817,41 @@ Proof.
         inversion d''. subst. reflexivity.
 Defined.
 
+Lemma istype_nctx_wf :
+  forall {Σ Γ L T},
+    istype_nctx Σ Γ L T ->
+    wf Σ Γ.
+Proof.
+  intros Σ Γ L T h.
+  induction h.
+  - eapply typing_wf. eassumption.
+  - dependent destruction IHh.
+    assumption.
+Defined.
+
+(* Maybe it really amounts to saying that
+   istype_nctx Σ Γ L T <-> Σ ;;; Γ ,,, nlctx L1 |-i T : ?sSort s
+ *)
+Lemma istype_nctx_cat :
+  forall {Σ Γ L1 L2 T},
+    istype_nctx Σ (Γ ,,, nlctx L1) L2 T ->
+    istype_nctx Σ Γ (L1 ++ L2)%list T.
+Proof.
+  intros Σ Γ L1 L2 T h. revert Γ L2 T h.
+  induction L1 as [| [nx A] L1 ih] ; intros Γ L2 T h.
+  - cbn in *. assumption.
+  - cbn.
+    assert (hn : istype_nctx Σ (Γ,, A) (L1 ++ L2)%list T).
+    { eapply ih. unfold nlctx in *. rewrite rev_map_cons in h.
+      simpl in h. unfold sapp_context, ssnoc in *.
+      rewrite <- app_assoc in h. simpl in h.
+      apply h.
+    }
+    pose proof (istype_nctx_wf hn) as hw.
+    dependent destruction hw.
+    econstructor ; eassumption.
+Defined.
+
 Lemma type_indInst :
   forall {Σ ind si pars indices},
     Σ ;;; [] |-i indInst ind si pars indices : sSort si.
