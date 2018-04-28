@@ -1789,7 +1789,7 @@ Proof.
       pose proof (type_substln hg' hl (Ξ := nlctx (sind_params mb)) hh') as h'.
       simpl in h'.
       erewrite wf_substln_context in h' by apply t.
-      rewrite nil_cat in h'. rewrite map_length in h'.
+      rewrite nil_cat in h'. rewrite rev_map_length in h'.
       apply h'.
     + intro e.
       destruct isdecl as [ib [[mb [[d' ?] hn]] hn']]. simpl.

@@ -17,7 +17,7 @@ Record squash (A : Set) : Prop := { _ : A }.
  *)
 Definition nctx := list (name * sterm).
 
-Definition nlctx : nctx -> scontext := map snd.
+Definition nlctx : nctx -> scontext := rev_map snd.
 
 (* The idea is if Γ ⊢ T then ⊢ Prods Γ T *)
 Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
