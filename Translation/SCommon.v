@@ -438,16 +438,6 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     in
     let Pty := Prods (indices ++ [ (nAnon, indinst) ])%list (sSort s) in
     let P := (nNamed "P", Pty) in
-    (* PART OF IT DONE.
-       We need to add a param-free type of constructor.
-       It will be then computed like type_of_constructor but
-       but with substln _ #|pars| instead of substl.
-       Once we have that, we take the number corresponding to the inductive
-       (in the mib) as a parameter to go through the obtained type,
-       placing instances of P whenever we encounter the right inductive.
-       This in itself, requires to be able to read of the indices arguments of
-       the inductive.
-     *)
     (* The list of paramless constructor types. *)
     let pcs :=
       forall_list
@@ -461,18 +451,39 @@ Equations type_of_elim Σ ind univs decl (s : sort)
         let '(l',off) :=
           fold_left
             (fun '(acc, off) '(nx, ty) =>
-               (* Have an operation for this. *)
                match dec_ind ind ty with
                | inleft {| pi1 := l ; pi2 := h |} =>
-                 (* TODO Here do something special. *)
-                 ((nx, lift0 off ty) :: acc, off)
+                 (* Have an operation for this. *)
+                 (* First we need to decompose the list in two. *)
+                 let l := rev l in
+                 let ipars := firstn #|pars| l in
+                 let iindices := skipn #|pars| l in
+                 let apP :=
+                   Apps (sRel off)
+                        (indices ++ [ (nAnon, indinst) ])%list
+                        (sSort s)
+                        iindices
+                        (* We need to get the constructor itself
+                           an apply it to the right things.
+                         *)
+                        (* (iindices ++ [ ?? ]) *)
+                 in
+                 let apP := (nAnon, lift0 off apP) in
+                 let t := (nx, lift0 off ty) in
+                 (apP :: t :: acc, S off)
                | inright _ =>
                  ((nx, lift0 off ty) :: acc, off)
                end
-            ) l ([], 0)
+            ) l ([], 0) (* Maybe it should be one to account for P? *)
         in
         (* Do the same operation on T *)
-        let T' := T in
+        let T' :=
+          match dec_ind ind T with
+          | inleft {| pi1 := l ; pi2 := h |} =>
+            T
+          | inright _ => T
+          end
+        in
         lift0 i (Prods (rev l') (lift0 off T'))
       ) pcs
     in
