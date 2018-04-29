@@ -1852,10 +1852,38 @@ Proof.
     econstructor ; eassumption.
 Defined.
 
+Lemma type_spine_cat :
+  forall {Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2},
+    type_spine Σ Γ Δ1 (Prods Δ2 T) l1 (Prods Ξ T'') ->
+    type_spine Σ Γ Ξ T'' l2 T' ->
+    (type_spine Σ Γ (Δ1 ++ Δ2) T (l1 ++ l2) T')%list.
+Proof.
+  intros Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2 h1 h2.
+  revert T' l2 h2. dependent induction h1 ; intros B l2 h2.
+  - cbn.
+    (* This lemma is wrong. *)
+Abort.
+
 Lemma type_indInst :
   forall {Σ ind si pars indices},
+    type_glob Σ ->
     Σ ;;; [] |-i indInst ind si pars indices : sSort si.
 Proof.
+  intros Σ ind si pars indices hg.
+  unfold indInst. eapply type_Apps.
+  - assumption.
+  - (* It would be better to take isdecl instead of the decomposed
+       arguments.
+     *)
+    give_up.
+  - (* Here it would be better to have the lemma that says we only
+       need to prove Σ ;;; nlcx (pars ++ indices) |-i sSort si
+       and then have a different definition of isArity.
+       This would be more primitive.
+     *)
+    give_up.
+  -
+
 Abort.
 
 Lemma type_elimPty :
