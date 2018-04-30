@@ -302,7 +302,7 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       c' <- tsl_rec fuel Σ Γ c ;;
       brs' <- brs_repack (map (on_snd (tsl_rec fuel Σ Γ)) brs) ;;
       ret (tCase (pair ind n) p' c' brs')
-    | sElim ind s => ret (tConst ((inductive_mind ind) ++ "_rect") [])
+    | sElim ind s => ret (tConst ((inductive_mind ind) ++ "_rect")%string [])
     end
   end.
 
