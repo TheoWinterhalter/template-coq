@@ -50,6 +50,60 @@ Proof.
     eexists. eapply type_Prod ; eassumption.
 Defined.
 
+Lemma istype_nctx_wf :
+  forall {Σ Γ L T},
+    istype_nctx Σ Γ L T ->
+    wf Σ Γ.
+Proof.
+  intros Σ Γ L T h.
+  induction h.
+  - eapply typing_wf. eassumption.
+  - dependent destruction IHh.
+    assumption.
+Defined.
+
+(* TODO MOVE *)
+Fact nlctx_cons :
+  forall {nx A L},
+    nlctx ((nx, A) :: L) = [ A ] ,,, nlctx L.
+Proof.
+  intros nx A L.
+  unfold nlctx.
+  rewrite rev_map_cons. unfold sapp_context, ssnoc.
+  simpl. reflexivity.
+Defined.
+
+(* TODO MOVE *)
+Fact cat_cons :
+  forall {Γ A Δ},
+    Γ ,,, ([ A ] ,,, Δ) = Γ ,, A ,,, Δ.
+Proof.
+  intros Γ A Δ.
+  unfold ssnoc, sapp_context.
+  rewrite <- app_assoc. reflexivity.
+Defined.
+
+Lemma istype_nctx_spec :
+  forall {Σ Γ L T},
+    istype_nctx Σ Γ L T <-> isType Σ (Γ ,,, nlctx L) T.
+Proof.
+  intros Σ Γ L T. split.
+  - intro h. induction h.
+    + cbn. eexists. eassumption.
+    + rewrite nlctx_cons, cat_cons. assumption.
+  - intro h. revert Γ T h.
+    induction L as [| [nx A] L ih] ; intros Γ T h.
+    + cbn in h. destruct h.
+      econstructor. eassumption.
+    + assert (hh : istype_nctx Σ (Γ,, A) L T).
+      { eapply ih. rewrite nlctx_cons, cat_cons in h.
+        assumption.
+      }
+      pose proof (istype_nctx_wf hh) as hw.
+      dependent destruction hw.
+      econstructor ; eassumption.
+Defined.
+
 (* Lemma type_Lams : *)
 (*   forall {Σ Γ Δ t T}, *)
 (*     Σ ;;; Γ,,, nlctx Δ |-i t : T -> *)
@@ -105,8 +159,9 @@ Proof.
   - intros n decl h.
     destruct n.
     + cbn in h. inversion h as [ e ]. subst. clear h.
-      cbn. destruct i as [i _].
-      assumption.
+      cbn. destruct i as [i eq]. subst.
+      eapply type_Prods. eapply istype_nctx_spec.
+      eexists. econstructor. rewrite nil_cat. assumption.
     + cbn in h. eapply IHhind.
       eassumption.
 Defined.
@@ -382,60 +437,6 @@ Fact type_ind_type_constr :
 Proof.
   intros Σ params inds [hx hind] n decl h.
   eapply type_inddecls_constr ; eassumption.
-Defined.
-
-Lemma istype_nctx_wf :
-  forall {Σ Γ L T},
-    istype_nctx Σ Γ L T ->
-    wf Σ Γ.
-Proof.
-  intros Σ Γ L T h.
-  induction h.
-  - eapply typing_wf. eassumption.
-  - dependent destruction IHh.
-    assumption.
-Defined.
-
-(* TODO MOVE *)
-Fact nlctx_cons :
-  forall {nx A L},
-    nlctx ((nx, A) :: L) = [ A ] ,,, nlctx L.
-Proof.
-  intros nx A L.
-  unfold nlctx.
-  rewrite rev_map_cons. unfold sapp_context, ssnoc.
-  simpl. reflexivity.
-Defined.
-
-(* TODO MOVE *)
-Fact cat_cons :
-  forall {Γ A Δ},
-    Γ ,,, ([ A ] ,,, Δ) = Γ ,, A ,,, Δ.
-Proof.
-  intros Γ A Δ.
-  unfold ssnoc, sapp_context.
-  rewrite <- app_assoc. reflexivity.
-Defined.
-
-Lemma istype_nctx_spec :
-  forall {Σ Γ L T},
-    istype_nctx Σ Γ L T <-> isType Σ (Γ ,,, nlctx L) T.
-Proof.
-  intros Σ Γ L T. split.
-  - intro h. induction h.
-    + cbn. eexists. eassumption.
-    + rewrite nlctx_cons, cat_cons. assumption.
-  - intro h. revert Γ T h.
-    induction L as [| [nx A] L ih] ; intros Γ T h.
-    + cbn in h. destruct h.
-      econstructor. eassumption.
-    + assert (hh : istype_nctx Σ (Γ,, A) L T).
-      { eapply ih. rewrite nlctx_cons, cat_cons in h.
-        assumption.
-      }
-      pose proof (istype_nctx_wf hh) as hw.
-      dependent destruction hw.
-      econstructor ; eassumption.
 Defined.
 
 Fact typed_type_constructors :

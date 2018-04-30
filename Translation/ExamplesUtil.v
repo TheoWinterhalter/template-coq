@@ -263,19 +263,19 @@ Fact hΣi : type_glob Σi.
   (* bool *)
   - tind.
     + magic.
-    + exists 1. repeat econstr.
+    + repeat econstr.
     + exists 0. repeat econstr.
     + exists 0. repeat econstr.
   (* nat *)
   - tind.
     + magic.
-    + exists 1. constructor. constructor.
+    + constructor.
     + exists 0. magic.
     + exists (max 0 0). magic.
   (* vec *)
   - tind.
     + magic.
-    + exists (max_sort 1 (max 0 1)). magic.
+    + magic.
     + simpl. exists 0.
       econstr.
       * magic.
