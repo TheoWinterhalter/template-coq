@@ -1797,8 +1797,8 @@ Defined.
 
 Fact substn_nctx_cat :
   forall u n L1 L2,
-    substn_nctx u n (L1 ++ L2)%list =
-    (substn_nctx u n L1 ++ substn_nctx u (n + #|L1|) L2)%list.
+    substn_nctx u n (L1 ++ L2) =
+    (substn_nctx u n L1 ++ substn_nctx u (n + #|L1|) L2).
 Proof.
   intros u n L1 L2. revert u n L2.
   induction L1 as [| [nx A] L1 ih ] ; intros u n L2.
@@ -1811,8 +1811,8 @@ Defined.
 
 Corollary subst_nctx_cat :
   forall u L1 L2,
-    subst_nctx u (L1 ++ L2)%list =
-    (subst_nctx u L1 ++ substn_nctx u #|L1| L2)%list.
+    subst_nctx u (L1 ++ L2) =
+    (subst_nctx u L1 ++ substn_nctx u #|L1| L2).
 Proof.
   intros u L1 L2.
   refine (substn_nctx_cat _ _ _ _).
@@ -1832,7 +1832,7 @@ Lemma type_spine_cat :
     type_spine Σ Γ Δ1 (Prods Δ2 T) l1 (Prods Ξ T'') ->
     type_spine Σ Γ Ξ T'' l2 T' ->
     #|Ξ| = #|Δ2| ->
-    (type_spine Σ Γ (Δ1 ++ Δ2) T (l1 ++ l2) T')%list.
+    (type_spine Σ Γ (Δ1 ++ Δ2) T (l1 ++ l2) T').
 Proof.
   intros Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2 h1 h2 e.
   revert T' l2 h2 e. dependent induction h1 ; intros B l2 h2 e.
@@ -1850,7 +1850,7 @@ Defined.
 Lemma type_indInst :
   forall {Σ ind si pars indices},
     type_glob Σ ->
-    Σ ;;; nlctx (pars ++ indices)%list |-i indInst ind si pars indices : sSort si.
+    Σ ;;; nlctx (pars ++ indices) |-i indInst ind si pars indices : sSort si.
 Proof.
   intros Σ ind si pars indices hg.
   unfold indInst. eapply type_Apps.

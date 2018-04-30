@@ -399,7 +399,7 @@ Section nlred.
       exists n m t1 t2,
         (Σ |-i t1 ▷ t2) *
         (nth_error b1 n = Some (m, t1)) *
-        (b2 = firstn n b1 ++ ((m, t2) :: skipn (S n) b1))%list.
+        (b2 = firstn n b1 ++ ((m, t2) :: skipn (S n) b1)).
   Proof.
     intros Σ b1 b2 h.
     induction h.
@@ -413,7 +413,7 @@ Section nlred.
     forall {Σ b n m t1 t2},
       Σ |-i t1 ▷ t2 ->
       nth_error b n = Some (m, t1) ->
-      redbrs1 Σ b (firstn n b ++ ((m, t2) :: skipn (S n) b))%list.
+      redbrs1 Σ b (firstn n b ++ ((m, t2) :: skipn (S n) b)).
   Proof.
     intros Σ b.
     induction b ; intros n m t1 t2 hr hn.
@@ -1017,7 +1017,7 @@ Section conv_substs.
   Proof.
     intros Σ indn p c b1 b2 hb.
     pose (P := fun m =>
-                 let bb := ((firstn m b1) ++ (skipn m b2))%list in
+                 let bb := ((firstn m b1) ++ (skipn m b2)) in
                  Σ |-i sCase indn p c bb = sCase indn p c b2).
     pose proof (convbrs_length hb) as eql.
     assert (aux : P #|b1|).
@@ -1064,8 +1064,8 @@ Section conv_substs.
         eapply conv_trans ; try eassumption.
         erewrite @skipn_reconstruct
           with (a := v) in ih by (eapply nth_error_safe_nth).
-        replace ((firstn n b1 ++ [v]) ++ skipn (S n) b2)%list
-          with (firstn n b1 ++ v :: skipn (S n) b2)%list
+        replace ((firstn n b1 ++ [v]) ++ skipn (S n) b2)
+          with (firstn n b1 ++ v :: skipn (S n) b2)
           by (rewrite app_assoc_reverse ; reflexivity).
         assumption.
     }

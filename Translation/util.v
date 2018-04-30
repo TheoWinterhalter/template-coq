@@ -253,7 +253,7 @@ Defined.
 Fact firstn_reconstruct :
   forall {A} {l : list A} {n a},
     nth_error l n = Some a ->
-    firstn (S n) l = (firstn n l ++ [a]).
+    firstn (S n) l = firstn n l ++ [a].
 Proof.
   intros A l.
   induction l ; intros n x hn.

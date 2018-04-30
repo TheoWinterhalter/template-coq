@@ -128,7 +128,7 @@ Proof.
   auto with arith.
 Defined.
 
-Definition sapp_context (Γ Γ' : scontext) : scontext := (Γ' ++ Γ)%list.
+Definition sapp_context (Γ Γ' : scontext) : scontext := (Γ' ++ Γ).
 Notation " Γ  ,,, Γ' " :=
   (sapp_context Γ Γ')
   (at level 25, Γ' at next level, left associativity) : s_scope.
@@ -443,12 +443,12 @@ Definition indInst ind si pars indices :=
   (* Granted, the two following lines could easily mix into one. *)
   let irels := lrel 0 #|indices| in
   let prels := lrel #|indices| #|pars| in
-  (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list.
+  (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels)).
 
 (* Type of the predicate of the eliminator *)
 Definition elimPty ind si s pars indices :=
   let indinst := indInst ind si pars indices in
-  Prods (indices ++ [ (nAnon, indinst) ])%list (sSort s).
+  Prods (indices ++ [ (nAnon, indinst) ]) (sSort s).
 
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
@@ -462,9 +462,9 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let prels := lrel #|indices| #|pars| in
     let si := decl.(sind_sort) in
     let indinst :=
-      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list
+      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))
     in
-    let Pty := Prods (indices ++ [ (nAnon, indinst) ])%list (sSort s) in
+    let Pty := Prods (indices ++ [ (nAnon, indinst) ]) (sSort s) in
     let P := (nNamed "P", Pty) in
     (* The list of paramless constructor types. *)
     let pcs :=
@@ -488,7 +488,7 @@ Equations type_of_elim Σ ind univs decl (s : sort)
                  let iindices := skipn #|pars| l in
                  let apP :=
                    Apps (sRel off)
-                        (indices ++ [ (nAnon, indinst) ])%list
+                        (indices ++ [ (nAnon, indinst) ])
                         (sSort s)
                         iindices
                         (* We need to get the constructor itself
@@ -519,14 +519,14 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let irels := lrel 0 #|indices| in
     let prels := lrel (1 + #|indices| + #|fl|)%nat #|pars| in
     let indinst :=
-      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))%list
+      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))
     in
     let predinst :=
       Apps (sRel (1 + #|indices| + #|fl|))%nat
-           (indices ++ [ (nAnon, indinst) ])%list (sSort s)
+           (indices ++ [ (nAnon, indinst) ]) (sSort s)
            (lrel 0 (S #|indices|))
     in
-    Prods (pars ++ P :: fl ++ indices ++ [ (nAnon, indinst) ])%list predinst ;
+    Prods (pars ++ P :: fl ++ indices ++ [ (nAnon, indinst) ]) predinst ;
   | exist decl' H := !
   }.
 Next Obligation.

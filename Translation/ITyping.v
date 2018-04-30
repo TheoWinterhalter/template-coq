@@ -322,9 +322,9 @@ Definition arities_context (l : list sone_inductive_body) : scontext :=
   rev_map (fun ind => ind.(sind_type)) l.
 
 Definition isArity Σ pars indices s T :=
-  (* (isType Σ [] T) /\ (T = Prods (pars ++ indices)%list (sSort s)). *)
-  (wf Σ (nlctx (pars ++ indices)))%list /\
-  (T = Prods (pars ++ indices)%list (sSort s)).
+  (* (isType Σ [] T) /\ (T = Prods (pars ++ indices) (sSort s)). *)
+  (wf Σ (nlctx (pars ++ indices))) /\
+  (T = Prods (pars ++ indices) (sSort s)).
 
 Inductive type_inddecls (Σ : sglobal_context) (pars : nctx) (Γ : scontext) :
   list sone_inductive_body -> Type :=
