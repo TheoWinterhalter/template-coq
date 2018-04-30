@@ -140,6 +140,80 @@ Definition rev_map {A B} (f : A -> B) (l : list A) : list B :=
     end
   in aux l [].
 
+Fact rev_cons :
+  forall {A} {l} {a : A},
+    rev (a :: l) = (rev l ++ [a])%list.
+Proof.
+  intro A.
+  unfold rev.
+  match goal with
+  | |- forall l a, ?faux _ _ = _ => set (aux := faux)
+  end.
+  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)%list).
+  { intro l. induction l ; intro acc.
+    - cbn. reflexivity.
+    - cbn. rewrite (IHl [a]). rewrite IHl.
+      change (a :: acc) with ([a] ++ acc)%list.
+      auto with datatypes.
+  }
+  intros l a.
+  apply h.
+Defined.
+
+Fact rev_map_cons :
+  forall {A B} {f : A -> B} {l} {a : A},
+    rev_map f (a :: l) = (rev_map f l ++ [f a])%list.
+Proof.
+  intros A B f.
+  unfold rev_map.
+  match goal with
+  | |- forall l a, ?faux _ _ = _ => set (aux := faux)
+  end.
+  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)%list).
+  { intro l. induction l ; intro acc.
+    - cbn. reflexivity.
+    - cbn. rewrite (IHl [f a]). rewrite IHl.
+      change (f a :: acc) with ([f a] ++ acc)%list.
+      auto with datatypes.
+  }
+  intros l a.
+  apply h.
+Defined.
+
+Fact rev_length :
+  forall {A} {l : list A},
+    #|rev l| = #|l|.
+Proof.
+  intro A.
+  unfold rev.
+  match goal with
+  | |- context [ #|?faux _ _| ] => set (aux := faux)
+  end.
+  assert (h : forall l acc, #|aux l acc| = (#|acc| + #|l|)%nat).
+  { intro l. induction l ; intro acc.
+    - cbn. omega.
+    - cbn. rewrite IHl. cbn. omega.
+  }
+  intro l. apply h.
+Defined.
+
+Fact rev_map_length :
+  forall {A B} {f : A -> B} {l : list A},
+    #|rev_map f l| = #|l|.
+Proof.
+  intros A B f.
+  unfold rev_map.
+  match goal with
+  | |- context [ #|?faux _ _| ] => set (aux := faux)
+  end.
+  assert (h : forall l acc, #|aux l acc| = (#|acc| + #|l|)%nat).
+  { intro l. induction l ; intro acc.
+    - cbn. omega.
+    - cbn. rewrite IHl. cbn. omega.
+  }
+  intro l. apply h.
+Defined.
+
 
 
 Fact skipn_all :

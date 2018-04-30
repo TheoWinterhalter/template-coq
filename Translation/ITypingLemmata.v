@@ -384,6 +384,60 @@ Proof.
   eapply type_inddecls_constr ; eassumption.
 Defined.
 
+Lemma istype_nctx_wf :
+  forall {Σ Γ L T},
+    istype_nctx Σ Γ L T ->
+    wf Σ Γ.
+Proof.
+  intros Σ Γ L T h.
+  induction h.
+  - eapply typing_wf. eassumption.
+  - dependent destruction IHh.
+    assumption.
+Defined.
+
+(* TODO MOVE *)
+Fact nlctx_cons :
+  forall {nx A L},
+    nlctx ((nx, A) :: L) = [ A ] ,,, nlctx L.
+Proof.
+  intros nx A L.
+  unfold nlctx.
+  rewrite rev_map_cons. unfold sapp_context, ssnoc.
+  simpl. reflexivity.
+Defined.
+
+(* TODO MOVE *)
+Fact cat_cons :
+  forall {Γ A Δ},
+    Γ ,,, ([ A ] ,,, Δ) = Γ ,, A ,,, Δ.
+Proof.
+  intros Γ A Δ.
+  unfold ssnoc, sapp_context.
+  rewrite <- app_assoc. reflexivity.
+Defined.
+
+Lemma istype_nctx_spec :
+  forall {Σ Γ L T},
+    istype_nctx Σ Γ L T <-> isType Σ (Γ ,,, nlctx L) T.
+Proof.
+  intros Σ Γ L T. split.
+  - intro h. induction h.
+    + cbn. eexists. eassumption.
+    + rewrite nlctx_cons, cat_cons. assumption.
+  - intro h. revert Γ T h.
+    induction L as [| [nx A] L ih] ; intros Γ T h.
+    + cbn in h. destruct h.
+      econstructor. eassumption.
+    + assert (hh : istype_nctx Σ (Γ,, A) L T).
+      { eapply ih. rewrite nlctx_cons, cat_cons in h.
+        assumption.
+      }
+      pose proof (istype_nctx_wf hh) as hw.
+      dependent destruction hw.
+      econstructor ; eassumption.
+Defined.
+
 Fact typed_type_constructors :
   forall {Σ : sglobal_context} {pars Γ l},
     type_constructors Σ pars Γ l ->
@@ -396,7 +450,7 @@ Proof.
   - destruct m ; cbn in hm ; inversion hm.
   - destruct m.
     + cbn in hm. inversion hm. subst. clear hm.
-      assumption.
+      eapply type_Prods. apply istype_nctx_spec. assumption.
     + cbn in hm. eapply IHhtc. eassumption.
 Defined.
 
@@ -436,80 +490,6 @@ Fact sinds_cons :
   forall {ind a l}, sinds ind (a :: l) = sInd (mkInd ind #|l|) :: sinds ind l.
 Proof.
   intros ind a l. reflexivity.
-Defined.
-
-Fact rev_cons :
-  forall {A} {l} {a : A},
-    rev (a :: l) = (rev l ++ [a])%list.
-Proof.
-  intro A.
-  unfold rev.
-  match goal with
-  | |- forall l a, ?faux _ _ = _ => set (aux := faux)
-  end.
-  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)%list).
-  { intro l. induction l ; intro acc.
-    - cbn. reflexivity.
-    - cbn. rewrite (IHl [a]). rewrite IHl.
-      change (a :: acc) with ([a] ++ acc)%list.
-      auto with datatypes.
-  }
-  intros l a.
-  apply h.
-Defined.
-
-Fact rev_map_cons :
-  forall {A B} {f : A -> B} {l} {a : A},
-    rev_map f (a :: l) = (rev_map f l ++ [f a])%list.
-Proof.
-  intros A B f.
-  unfold rev_map.
-  match goal with
-  | |- forall l a, ?faux _ _ = _ => set (aux := faux)
-  end.
-  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)%list).
-  { intro l. induction l ; intro acc.
-    - cbn. reflexivity.
-    - cbn. rewrite (IHl [f a]). rewrite IHl.
-      change (f a :: acc) with ([f a] ++ acc)%list.
-      auto with datatypes.
-  }
-  intros l a.
-  apply h.
-Defined.
-
-Fact rev_length :
-  forall {A} {l : list A},
-    #|rev l| = #|l|.
-Proof.
-  intro A.
-  unfold rev.
-  match goal with
-  | |- context [ #|?faux _ _| ] => set (aux := faux)
-  end.
-  assert (h : forall l acc, #|aux l acc| = (#|acc| + #|l|)%nat).
-  { intro l. induction l ; intro acc.
-    - cbn. omega.
-    - cbn. rewrite IHl. cbn. omega.
-  }
-  intro l. apply h.
-Defined.
-
-Fact rev_map_length :
-  forall {A B} {f : A -> B} {l : list A},
-    #|rev_map f l| = #|l|.
-Proof.
-  intros A B f.
-  unfold rev_map.
-  match goal with
-  | |- context [ #|?faux _ _| ] => set (aux := faux)
-  end.
-  assert (h : forall l acc, #|aux l acc| = (#|acc| + #|l|)%nat).
-  { intro l. induction l ; intro acc.
-    - cbn. omega.
-    - cbn. rewrite IHl. cbn. omega.
-  }
-  intro l. apply h.
 Defined.
 
 Fact arities_context_cons :
@@ -1815,83 +1795,6 @@ Proof.
         unfold sdeclared_minductive in d', d''.
         cbn in d'. rewrite e in d'. rewrite d' in d''.
         inversion d''. subst. reflexivity.
-Defined.
-
-Lemma istype_nctx_wf :
-  forall {Σ Γ L T},
-    istype_nctx Σ Γ L T ->
-    wf Σ Γ.
-Proof.
-  intros Σ Γ L T h.
-  induction h.
-  - eapply typing_wf. eassumption.
-  - dependent destruction IHh.
-    assumption.
-Defined.
-
-(* Maybe it really amounts to saying that
-   istype_nctx Σ Γ L T <-> Σ ;;; Γ ,,, nlctx L1 |-i T : ?sSort s
- *)
-Lemma istype_nctx_cat :
-  forall {Σ Γ L1 L2 T},
-    istype_nctx Σ (Γ ,,, nlctx L1) L2 T ->
-    istype_nctx Σ Γ (L1 ++ L2)%list T.
-Proof.
-  intros Σ Γ L1 L2 T h. revert Γ L2 T h.
-  induction L1 as [| [nx A] L1 ih] ; intros Γ L2 T h.
-  - cbn in *. assumption.
-  - cbn.
-    assert (hn : istype_nctx Σ (Γ,, A) (L1 ++ L2)%list T).
-    { eapply ih. unfold nlctx in *. rewrite rev_map_cons in h.
-      simpl in h. unfold sapp_context, ssnoc in *.
-      rewrite <- app_assoc in h. simpl in h.
-      apply h.
-    }
-    pose proof (istype_nctx_wf hn) as hw.
-    dependent destruction hw.
-    econstructor ; eassumption.
-Defined.
-
-(* TODO MOVE *)
-Fact nlctx_cons :
-  forall {nx A L},
-    nlctx ((nx, A) :: L) = [ A ] ,,, nlctx L.
-Proof.
-  intros nx A L.
-  unfold nlctx.
-  rewrite rev_map_cons. unfold sapp_context, ssnoc.
-  simpl. reflexivity.
-Defined.
-
-(* TODO MOVE *)
-Fact cat_cons :
-  forall {Γ A Δ},
-    Γ ,,, ([ A ] ,,, Δ) = Γ ,, A ,,, Δ.
-Proof.
-  intros Γ A Δ.
-  unfold ssnoc, sapp_context.
-  rewrite <- app_assoc. reflexivity.
-Defined.
-
-Lemma istype_nctx_spec :
-  forall {Σ Γ L T},
-    istype_nctx Σ Γ L T <-> isType Σ (Γ ,,, nlctx L) T.
-Proof.
-  intros Σ Γ L T. split.
-  - intro h. induction h.
-    + cbn. eexists. eassumption.
-    + rewrite nlctx_cons, cat_cons. assumption.
-  - intro h. revert Γ T h.
-    induction L as [| [nx A] L ih] ; intros Γ T h.
-    + cbn in h. destruct h.
-      econstructor. eassumption.
-    + assert (hh : istype_nctx Σ (Γ,, A) L T).
-      { eapply ih. rewrite nlctx_cons, cat_cons in h.
-        assumption.
-      }
-      pose proof (istype_nctx_wf hh) as hw.
-      dependent destruction hw.
-      econstructor ; eassumption.
 Defined.
 
 Lemma type_spine_cat :

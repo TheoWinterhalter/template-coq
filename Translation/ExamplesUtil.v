@@ -266,63 +266,22 @@ Fact hΣi : type_glob Σi.
     + exists 1. repeat econstr.
     + exists 0. repeat econstr.
     + exists 0. repeat econstr.
-    + exists 0. repeat econstr.
-    + exists 0. repeat econstr.
   (* nat *)
   - tind.
     + magic.
     + exists 1. constructor. constructor.
     + exists 0. magic.
-    + exists 0. magic.
-    + exists (max 0 0). magic.
     + exists (max 0 0). magic.
   (* vec *)
   - tind.
     + magic.
     + exists (max_sort 1 (max 0 1)). magic.
-    + exists (max_sort 1 0).
-      econstr.
-      * magic.
-      * econstr.
-        -- magic.
-        -- magic.
-        -- magic.
-        -- econstr.
-           ++ magic.
-           ++ magic.
-           ++ magic.
     + simpl. exists 0.
       econstr.
       * magic.
       * magic.
       * magic.
       * magic.
-    + exists (max 1 (max 0 (max 0 (max 0 0)))).
-      match goal with
-      | |- ?Σ' ;;; _ |-i _ : _ => set (Σ := Σ')
-      end.
-      set (Γ1 := [vec_type]).
-      set (Γ2 := Γ1,,(sSort 0)).
-      set (Γ3 := Γ2,, (sRel 0)).
-      set (Γ4 := Γ3,, sNat).
-      set (Γ5 := Γ4,, sNat).
-      set (Γ5' := Γ4,, (sSort 0)).
-      set (Γ6' := Γ5',, sNat).
-      set (Γ5'' := Γ4,,
-                     (sApp
-                          (sApp (sRel 3)
-                                (sSort 0)
-                                vec_cod (sRel 2))
-                          sNat (sSort 0) (sRel 0))).
-      assert (IT.wf Σ Γ1) by magic.
-      assert (IT.wf Σ Γ2) by magic.
-      assert (IT.wf Σ Γ3) by magic.
-      assert (IT.wf Σ Γ4) by magic.
-      assert (IT.wf Σ Γ5) by magic.
-      assert (IT.wf Σ Γ5') by magic.
-      assert (IT.wf Σ Γ6') by magic.
-      assert (IT.wf Σ Γ5'') by magic.
-      magic.
     + exists (max 0 (max 0 (max 0 0))).
       match goal with
       | |- ?Σ' ;;; _ |-i _ : _ => set (Σ := Σ')
