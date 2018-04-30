@@ -1852,6 +1852,48 @@ Proof.
     econstructor ; eassumption.
 Defined.
 
+(* TODO MOVE *)
+Fact nlctx_cons :
+  forall {nx A L},
+    nlctx ((nx, A) :: L) = [ A ] ,,, nlctx L.
+Proof.
+  intros nx A L.
+  unfold nlctx.
+  rewrite rev_map_cons. unfold sapp_context, ssnoc.
+  simpl. reflexivity.
+Defined.
+
+(* TODO MOVE *)
+Fact cat_cons :
+  forall {Γ A Δ},
+    Γ ,,, ([ A ] ,,, Δ) = Γ ,, A ,,, Δ.
+Proof.
+  intros Γ A Δ.
+  unfold ssnoc, sapp_context.
+  rewrite <- app_assoc. reflexivity.
+Defined.
+
+Lemma istype_nctx_spec :
+  forall {Σ Γ L T},
+    istype_nctx Σ Γ L T <-> isType Σ (Γ ,,, nlctx L) T.
+Proof.
+  intros Σ Γ L T. split.
+  - intro h. induction h.
+    + cbn. eexists. eassumption.
+    + rewrite nlctx_cons, cat_cons. assumption.
+  - intro h. revert Γ T h.
+    induction L as [| [nx A] L ih] ; intros Γ T h.
+    + cbn in h. destruct h.
+      econstructor. eassumption.
+    + assert (hh : istype_nctx Σ (Γ,, A) L T).
+      { eapply ih. rewrite nlctx_cons, cat_cons in h.
+        assumption.
+      }
+      pose proof (istype_nctx_wf hh) as hw.
+      dependent destruction hw.
+      econstructor ; eassumption.
+Defined.
+
 Lemma type_spine_cat :
   forall {Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2},
     type_spine Σ Γ Δ1 (Prods Δ2 T) l1 (Prods Ξ T'') ->
@@ -1876,14 +1918,14 @@ Proof.
        arguments.
      *)
     give_up.
-  - (* Here it would be better to have the lemma that says we only
-       need to prove Σ ;;; nlcx (pars ++ indices) |-i sSort si
-       and then have a different definition of isArity.
-       This would be more primitive.
+  - apply istype_nctx_spec.
+    eexists. econstructor.
+    rewrite nil_cat.
+    (* We would need a different isArity to have this property.
+       Or we could inversion type_Prods.
      *)
     give_up.
   -
-
 Abort.
 
 Lemma type_elimPty :
