@@ -1319,19 +1319,23 @@ Proof.
   - cbn. f_equal ; auto.
 Defined.
 
+Fact substn_nctx_cons :
+  forall {L u n nx A},
+    substn_nctx u n ((nx,A) :: L) = (nx, A{ n := u }) :: substn_nctx u (S n) L.
+Proof.
+  reflexivity.
+Defined.
+
 Fact subst_Prods :
   forall {Δ T u n},
     (Prods Δ T){ n := u } =
-    Prods (map_i (fun i '(nx, A) => (nx, A{ i + n := u })) Δ) (T{ #|Δ| + n := u }).
+    Prods (substn_nctx u n Δ) (T{ #|Δ| + n := u }).
 Proof.
   intro Δ. induction Δ as [| [nx A] Δ ih] ; intros T u n.
   - cbn. reflexivity.
-  - simpl. f_equal. rewrite ih. f_equal.
-    + rewrite map_i_aux_S. apply map_i_eqf. clear.
-      intros i a.
-      replace (i + S n)%nat with (S i + n)%nat by omega.
-      reflexivity.
-    + f_equal. omega.
+  - rewrite substn_nctx_cons.
+    simpl. f_equal. rewrite ih. f_equal. f_equal.
+    omega.
 Defined.
 
 Corollary subst0_Prods :
@@ -1348,13 +1352,6 @@ Proof.
   - clear. intros i a. cbn.
     replace (i + 0)%nat with i by omega.
     reflexivity.
-Defined.
-
-Fact substn_nctx_cons :
-  forall {L u n nx A},
-    substn_nctx u n ((nx,A) :: L) = (nx, A{ n := u }) :: substn_nctx u (S n) L.
-Proof.
-  reflexivity.
 Defined.
 
 Lemma istype_nctx_substn :
@@ -1798,17 +1795,57 @@ Proof.
         inversion d''. subst. reflexivity.
 Defined.
 
+Fact substn_nctx_cat :
+  forall u n L1 L2,
+    substn_nctx u n (L1 ++ L2)%list =
+    (substn_nctx u n L1 ++ substn_nctx u (n + #|L1|) L2)%list.
+Proof.
+  intros u n L1 L2. revert u n L2.
+  induction L1 as [| [nx A] L1 ih ] ; intros u n L2.
+  - simpl. f_equal. omega.
+  - rewrite substn_nctx_cons.
+    simpl. rewrite substn_nctx_cons.
+    f_equal. replace (n + S #|L1|)%nat with (S n + #|L1|)%nat by omega.
+    apply ih.
+Defined.
+
+Corollary subst_nctx_cat :
+  forall u L1 L2,
+    subst_nctx u (L1 ++ L2)%list =
+    (subst_nctx u L1 ++ substn_nctx u #|L1| L2)%list.
+Proof.
+  intros u L1 L2.
+  refine (substn_nctx_cat _ _ _ _).
+Defined.
+
+Fact substn_nctx_length :
+  forall {u n L}, #|substn_nctx u n L| = #|L|.
+Proof.
+  intros u n L. revert u n.
+  induction L as [| [nx A] L ih ] ; intros u n.
+  - cbn. reflexivity.
+  - rewrite substn_nctx_cons. simpl. f_equal. apply ih.
+Defined.
+
 Lemma type_spine_cat :
   forall {Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2},
     type_spine Σ Γ Δ1 (Prods Δ2 T) l1 (Prods Ξ T'') ->
     type_spine Σ Γ Ξ T'' l2 T' ->
+    #|Ξ| = #|Δ2| ->
     (type_spine Σ Γ (Δ1 ++ Δ2) T (l1 ++ l2) T')%list.
 Proof.
-  intros Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2 h1 h2.
-  revert T' l2 h2. dependent induction h1 ; intros B l2 h2.
-  - cbn.
-    (* This lemma is wrong. *)
-Abort.
+  intros Σ Γ Δ1 Δ2 Ξ T T' T'' l1 l2 h1 h2 e.
+  revert T' l2 h2 e. dependent induction h1 ; intros B l2 h2 e.
+  - cbn. destruct (Prods_inj H e). subst. assumption.
+  - cbn. econstructor.
+    + assumption.
+    + rewrite subst_nctx_cat.
+      eapply IHh1.
+      * f_equal. rewrite subst_Prods, app_length. f_equal.
+        f_equal. f_equal. omega.
+      * assumption.
+      * rewrite substn_nctx_length. assumption.
+Defined.
 
 Lemma type_indInst :
   forall {Σ ind si pars indices},
@@ -1825,9 +1862,6 @@ Proof.
   - apply istype_nctx_spec.
     eexists. econstructor.
     rewrite nil_cat.
-    (* We would need a different isArity to have this property.
-       Or we could inversion type_Prods.
-     *)
     give_up.
   -
 Abort.

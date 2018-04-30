@@ -67,6 +67,22 @@ Proof.
   cbn. rewrite <- IHt2. reflexivity.
 Defined.
 
+Fact Prods_inj :
+  forall {Γ A Δ B},
+    Prods Γ A = Prods Δ B ->
+    #|Γ| = #|Δ| ->
+    (Γ = Δ) * (A = B).
+Proof.
+  intros Γ. induction Γ as [| [nx T'] Γ ih ] ; intros A Δ B eq hl.
+  - destruct Δ ; cbn in hl ; try discriminate hl.
+    cbn in eq. split ; auto.
+  - destruct Δ as [| [ny T] Δ] ; cbn in hl ; try discriminate hl.
+    inversion hl as [ hl' ].
+    cbn in eq. inversion eq. subst.
+    destruct ih with (1 := H2) (2 := hl'). subst.
+    split ; auto.
+Defined.
+
 (* isapp u f l means that u is actually f applied to
    the list of arguments l (in the reverse order).
 *)
