@@ -6,6 +6,7 @@ From Template Require Import utils Typing.
 
 Set Primitive Projections.
 Open Scope type_scope.
+Open Scope list_scope.
 
 Record pp_sigT {A : Type} (P : A -> Type) : Type :=
   {
@@ -142,18 +143,18 @@ Definition rev_map {A B} (f : A -> B) (l : list A) : list B :=
 
 Fact rev_cons :
   forall {A} {l} {a : A},
-    rev (a :: l) = (rev l ++ [a])%list.
+    rev (a :: l) = (rev l ++ [a]).
 Proof.
   intro A.
   unfold rev.
   match goal with
   | |- forall l a, ?faux _ _ = _ => set (aux := faux)
   end.
-  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)%list).
+  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)).
   { intro l. induction l ; intro acc.
     - cbn. reflexivity.
     - cbn. rewrite (IHl [a]). rewrite IHl.
-      change (a :: acc) with ([a] ++ acc)%list.
+      change (a :: acc) with ([a] ++ acc).
       auto with datatypes.
   }
   intros l a.
@@ -162,18 +163,18 @@ Defined.
 
 Fact rev_map_cons :
   forall {A B} {f : A -> B} {l} {a : A},
-    rev_map f (a :: l) = (rev_map f l ++ [f a])%list.
+    rev_map f (a :: l) = (rev_map f l ++ [f a]).
 Proof.
   intros A B f.
   unfold rev_map.
   match goal with
   | |- forall l a, ?faux _ _ = _ => set (aux := faux)
   end.
-  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)%list).
+  assert (h : forall l acc, aux l acc = (aux l [] ++ acc)).
   { intro l. induction l ; intro acc.
     - cbn. reflexivity.
     - cbn. rewrite (IHl [f a]). rewrite IHl.
-      change (f a :: acc) with ([f a] ++ acc)%list.
+      change (f a :: acc) with ([f a] ++ acc).
       auto with datatypes.
   }
   intros l a.
@@ -252,7 +253,7 @@ Defined.
 Fact firstn_reconstruct :
   forall {A} {l : list A} {n a},
     nth_error l n = Some a ->
-    firstn (S n) l = (firstn n l ++ [a])%list.
+    firstn (S n) l = (firstn n l ++ [a]).
 Proof.
   intros A l.
   induction l ; intros n x hn.

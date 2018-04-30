@@ -1850,7 +1850,7 @@ Defined.
 Lemma type_indInst :
   forall {Σ ind si pars indices},
     type_glob Σ ->
-    Σ ;;; [] |-i indInst ind si pars indices : sSort si.
+    Σ ;;; nlctx (pars ++ indices)%list |-i indInst ind si pars indices : sSort si.
 Proof.
   intros Σ ind si pars indices hg.
   unfold indInst. eapply type_Apps.
@@ -1861,9 +1861,9 @@ Proof.
     give_up.
   - apply istype_nctx_spec.
     eexists. econstructor.
-    rewrite nil_cat.
     give_up.
-  -
+  - eapply type_spine_cat.
+    +
 Abort.
 
 Lemma type_elimPty :
