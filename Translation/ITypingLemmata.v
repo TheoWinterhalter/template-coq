@@ -1848,12 +1848,17 @@ Proof.
 Defined.
 
 Lemma type_indInst :
-  forall {Σ ind si pars indices},
+  forall {Σ ind univs decl isdecl},
     type_glob Σ ->
-    Σ ;;; nlctx (pars ++ indices) |-i indInst ind si pars indices : sSort si.
+    let si := decl.(sind_sort) in
+    let pars := @indpars (fst Σ) ind univs decl isdecl in
+    let indices := decl.(sind_indices) in
+    Σ ;;; nlctx (pars ++ indices) |-i indInst isdecl : sSort si.
 Proof.
-  intros Σ ind si pars indices hg.
-  unfold indInst. eapply type_Apps.
+  intros Σ ind univs decl isdecl hg si pars indices.
+  unfold indInst.
+  relet.
+  eapply type_Apps.
   - assumption.
   - (* It would be better to take isdecl instead of the decomposed
        arguments.
@@ -1867,8 +1872,10 @@ Proof.
 Abort.
 
 Lemma type_elimPty :
-  forall {Σ ind si s pars indices},
-    Σ ;;; nlctx pars |-i elimPty ind si s pars indices : sSort (succ_sort s).
+  forall {Σ ind univs decl isdecl s},
+    let pars := @indpars (fst Σ) ind univs decl isdecl in
+    let indices := decl.(sind_indices) in
+    Σ ;;; nlctx pars |-i elimPty isdecl s : sSort (succ_sort s).
 Proof.
 Abort.
 

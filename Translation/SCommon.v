@@ -438,16 +438,42 @@ Proof.
       apply (f x (S n)). cbn. assumption.
 Defined.
 
-(* Instance of an inductive *)
-Definition indInst ind si pars indices :=
+Equations indpars Σ ind univs decl
+          (isdecl : sdeclared_inductive Σ ind univs decl)
+  : nctx :=
+  indpars Σ ind univs decl isdecl
+  <= inspect (slookup_env Σ (inductive_mind ind)) => {
+  | exist (Some (SInductiveDecl _ d)) _ := d.(sind_params) ;
+  | exist d' H := !
+  }.
+Next Obligation.
+  destruct isdecl as [? [[hm ?] ?]].
+  unfold sdeclared_minductive in hm.
+  rewrite <- H in hm. discriminate hm.
+Defined.
+Next Obligation.
+  destruct isdecl as [? [[hm ?] ?]].
+  unfold sdeclared_minductive in hm.
+  rewrite <- H in hm. discriminate hm.
+Defined.
+
+Arguments indpars {Σ ind univs decl} isdecl.
+
+(* Instance of an inductive in context nlctx (pars ++ indices) *)
+Definition indInst {Σ ind univs decl} isdecl :=
+  let si := decl.(sind_sort) in
+  let pars := @indpars Σ ind univs decl isdecl in
+  let indices := decl.(sind_indices) in
   (* Granted, the two following lines could easily mix into one. *)
   let irels := lrel 0 #|indices| in
   let prels := lrel #|indices| #|pars| in
   (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels)).
 
-(* Type of the predicate of the eliminator *)
-Definition elimPty ind si s pars indices :=
-  let indinst := indInst ind si pars indices in
+(* Type of the predicate of the eliminator (sElim ind s) *)
+Definition elimPty {Σ ind univs decl} isdecl s :=
+  let si := decl.(sind_sort) in
+  let indices := decl.(sind_indices) in
+  let indinst := @indInst Σ ind univs decl isdecl in
   Prods (indices ++ [ (nAnon, indinst) ]) (sSort s).
 
 Equations type_of_elim Σ ind univs decl (s : sort)

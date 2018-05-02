@@ -8,6 +8,11 @@ Set Primitive Projections.
 Open Scope type_scope.
 Open Scope list_scope.
 
+Ltac relet :=
+  repeat match goal with
+         | t := ?T |- _ => subst t ; set (t := T) in *
+         end.
+
 Record pp_sigT {A : Type} (P : A -> Type) : Type :=
   {
     pi1 : A;
