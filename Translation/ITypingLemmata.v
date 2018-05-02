@@ -145,12 +145,13 @@ Proof.
   unfold closed. eapply @type_ctx_closed_above with (Γ := []). eassumption.
 Defined.
 
-Fact typed_ind_type' :
+Fact isArity_ind_type' :
   forall {Σ : sglobal_context} {decl'},
     type_inductive Σ decl'.(sind_params) (sind_bodies decl') ->
     forall {n decl},
       nth_error (sind_bodies decl') n = Some decl ->
-      isType Σ [] (sind_type decl).
+      isArity Σ decl'.(sind_params) decl.(sind_indices)
+              decl.(sind_sort) (sind_type decl).
 Proof.
   intros Σ decl' [hx hind].
   induction hind.
@@ -159,12 +160,31 @@ Proof.
   - intros n decl h.
     destruct n.
     + cbn in h. inversion h as [ e ]. subst. clear h.
-      cbn. destruct i as [i eq]. subst.
-      eapply type_Prods. eapply istype_nctx_spec.
-      eexists. econstructor. rewrite nil_cat. assumption.
+      cbn. assumption.
     + cbn in h. eapply IHhind.
       eassumption.
 Defined.
+
+(* Fact typed_ind_type' : *)
+(*   forall {Σ : sglobal_context} {decl'}, *)
+(*     type_inductive Σ decl'.(sind_params) (sind_bodies decl') -> *)
+(*     forall {n decl}, *)
+(*       nth_error (sind_bodies decl') n = Some decl -> *)
+(*       isType Σ [] (sind_type decl). *)
+(* Proof. *)
+(*   intros Σ decl' [hx hind]. *)
+(*   induction hind. *)
+(*   - intros n decl h. *)
+(*     destruct n ; cbn in h ; inversion h. *)
+(*   - intros n decl h. *)
+(*     destruct n. *)
+(*     + cbn in h. inversion h as [ e ]. subst. clear h. *)
+(*       cbn. destruct i as [i eq]. subst. *)
+(*       eapply type_Prods. eapply istype_nctx_spec. *)
+(*       eexists. econstructor. rewrite nil_cat. assumption. *)
+(*     + cbn in h. eapply IHhind. *)
+(*       eassumption. *)
+(* Defined. *)
 
 Fact ident_neq_fresh :
   forall {Σ ind decl' d},
@@ -323,12 +343,14 @@ Proof.
   exists s. eapply weak_glob_type ; eassumption.
 Defined.
 
-Fact typed_ind_type :
+Fact isArity_ind_type :
   forall {Σ : sglobal_context},
     type_glob Σ ->
     forall {ind decl univs},
       sdeclared_inductive (fst Σ) ind univs decl ->
-      isType Σ [] (sind_type decl).
+      ∑ decl',
+        isArity Σ (sind_params decl') (sind_indices decl)
+                (sind_sort decl) (sind_type decl).
 Proof.
   intros Σ hg. destruct Σ as [Σ ϕ].
   dependent induction hg.
@@ -343,12 +365,28 @@ Proof.
     + intro e. rewrite e in h1.
       inversion h1 as [ h1' ]. subst.
       cbn in t. clear e.
-      destruct (typed_ind_type' t h3) as [s h].
-      exists s. eapply weak_glob_type ; assumption.
+      destruct (isArity_ind_type' t h3) as [? ?].
+      exists decl'. split ; try assumption.
+      eapply weak_glob_wf ; assumption.
     + intro e. rewrite e in h1.
-      destruct (IHhg ind decl univs) as [s h].
+      destruct (IHhg ind decl univs) as [d' [? ?]].
       * exists decl'. repeat split ; eassumption.
-      * exists s. eapply weak_glob_type ; assumption.
+      * exists d'. split ; try assumption.
+        eapply weak_glob_wf ; assumption.
+Defined.
+
+Fact typed_ind_type :
+  forall {Σ : sglobal_context},
+    type_glob Σ ->
+    forall {ind decl univs},
+      sdeclared_inductive (fst Σ) ind univs decl ->
+      isType Σ [] (sind_type decl).
+Proof.
+  intros Σ hg ind decl univs isdecl.
+  destruct (isArity_ind_type hg isdecl) as [d' [h1 h2]].
+  rewrite h2.
+  eapply type_Prods. eapply istype_nctx_spec.
+  eexists. econstructor. rewrite nil_cat. assumption.
 Defined.
 
 Fact lift_ind_type :
@@ -1888,7 +1926,9 @@ Proof.
   unfold indInst.
   relet.
   assert (hw : wf Σ (nlctx (pars ++ indices))).
-  { (* Extract it, more primitvely than istype... *)
+  { destruct (isArity_ind_type hg isdecl) as [d' [? ?]].
+    relet.
+    (* Almost there. We should remove the exists and use indpars instead. *)
     admit.
   }
   eapply type_Apps.
