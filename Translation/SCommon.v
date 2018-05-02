@@ -459,6 +459,19 @@ Defined.
 
 Arguments indpars {Σ ind univs decl} isdecl.
 
+Fact indpars_def :
+  forall {Σ ind univs decl d}
+    (h1 : sdeclared_minductive Σ (inductive_mind ind) d)
+    (h2 : univs = sind_universes d)
+    (h3 : nth_error (sind_bodies d) (inductive_ind ind) = Some decl),
+    indpars {| pi1 := d; pi2 := (h1, h2, h3) |} = d.(sind_params).
+Proof.
+  intros Σ ind univs decl d h1 h2 h3.
+  funelim (indpars {| pi1 := d; pi2 := (h1, h2, h3) |}) ; try bang.
+  unfold sdeclared_minductive in h1. rewrite <- H in h1.
+  inversion h1. subst. reflexivity.
+Defined.
+
 (* Instance of an inductive in context nlctx (pars ++ indices) *)
 Definition indInst {Σ ind univs decl} isdecl :=
   let si := decl.(sind_sort) in
