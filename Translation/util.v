@@ -10,8 +10,8 @@ Open Scope list_scope.
 
 Ltac relet :=
   repeat match goal with
-         | t := ?T |- _ => subst t ; set (t := T) in *
-         end.
+  | t := ?T |- _ => progress (fold t)
+  end.
 
 Record pp_sigT {A : Type} (P : A -> Type) : Type :=
   {

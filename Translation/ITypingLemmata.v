@@ -1847,6 +1847,35 @@ Proof.
       * rewrite substn_nctx_length. assumption.
 Defined.
 
+Lemma closed_context_lift :
+  forall {Σ Δ k},
+    wf Σ Δ ->
+    lift_context k Δ = Δ.
+Proof.
+  intros Σ Δ k hw. revert k.
+  induction hw ; intro k.
+  - cbn. reflexivity.
+  - cbn. rewrite IHhw. unfold ssnoc. f_equal.
+    eapply closed_above_lift_id.
+    + eapply type_ctx_closed_above. eassumption.
+    + auto.
+Defined.
+
+Lemma wf_cat :
+  forall {Σ Γ Δ},
+    type_glob Σ ->
+    wf Σ Γ ->
+    wf Σ Δ ->
+    wf Σ (Γ ,,, Δ).
+Proof.
+  intros Σ Γ Δ hg h1 h2.
+  pose (lem := @wf_lift).
+  specialize lem with (Γ := []) (Δ := Γ) (Ξ := Δ).
+  rewrite !nil_cat in lem.
+  specialize (lem _ h2 hg h1).
+  erewrite closed_context_lift in lem ; eassumption.
+Defined.
+
 Lemma type_indInst :
   forall {Σ ind univs decl isdecl},
     type_glob Σ ->
@@ -1858,15 +1887,19 @@ Proof.
   intros Σ ind univs decl isdecl hg si pars indices.
   unfold indInst.
   relet.
+  assert (hw : wf Σ (nlctx (pars ++ indices))).
+  { (* Extract it, more primitvely than istype... *)
+    admit.
+  }
   eapply type_Apps.
   - assumption.
-  - (* It would be better to take isdecl instead of the decomposed
-       arguments.
-     *)
-    give_up.
+  - eapply meta_conv.
+    + eapply type_Ind ; eassumption.
+    + (* Same idea *)
+      admit.
   - apply istype_nctx_spec.
     eexists. econstructor.
-    give_up.
+    eapply wf_cat ; eassumption.
   - eapply type_spine_cat.
     +
 Abort.
