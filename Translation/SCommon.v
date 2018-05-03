@@ -508,10 +508,8 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let irels := lrel 0 #|indices| in
     let prels := lrel #|indices| #|pars| in
     let si := decl.(sind_sort) in
-    let indinst :=
-      (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels))
-    in
-    let Pty := Prods (indices ++ [ (nAnon, indinst) ]) (sSort s) in
+    let indinst := indInst isdecl in
+    let Pty := elimPty isdecl s in
     let P := (nNamed "P", Pty) in
     (* The list of paramless constructor types. *)
     let pcs :=
