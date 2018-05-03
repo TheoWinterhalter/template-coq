@@ -505,6 +505,27 @@ Definition pl_ctors_ty {Σ ind univs decl} isdecl :=
       (declared_inductive_constructor isdecl h)
    ).
 
+(* Deduce the applied predicate corresponding to an inductive instance.
+   If [ty] is a type in context [pars,, elimPty ,, Γ]
+   with #|Γ| = off and isapp ty (sInd ind) l
+   then the result is a type in this context extended by [ty].
+ *)
+Definition elimPapp {Σ ind univs decl} isdecl s l off :=
+  let pars := @indpars Σ ind univs decl isdecl in
+  let indices := decl.(sind_indices) in
+  let l := rev l in
+  let ipars := firstn #|pars| l in
+  let iindices := skipn #|pars| l in
+  Apps (sRel off)
+       (* We need to lift this by S off *)
+       (indices ++ [ (nAnon, indInst isdecl) ])
+       (sSort s)
+       (* We need to get the constructor itself
+          and apply it to the right things.
+        *)
+       (* (iindices ++ [ ?? ]) *)
+       iindices.
+
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
   type_of_elim Σ ind univs decl s isdecl
