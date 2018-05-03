@@ -1960,6 +1960,65 @@ Proof.
     eapply type_indInst. assumption.
 Defined.
 
+(* TODO MOVE *)
+Lemma ForallT_forall_nth :
+  forall {A} {P : A -> Type} {l},
+    (forall n x, nth_error l n = Some x -> P x) ->
+    ForallT P l.
+Proof.
+  intros A P l h.
+  induction l.
+  - constructor.
+  - econstructor.
+    + apply (h 0). reflexivity.
+    + apply IHl. intros n x e.
+      apply (h (S n)). cbn. assumption.
+Defined.
+
+(* TODO MOVE *)
+Lemma forall_list_nth :
+  forall {A B} {l : list A} {f : forall x n, nth_error l n = Some x -> B} {n x},
+    nth_error l n = Some x ->
+    ∑ e, nth_error (forall_list l f) n = Some (f x n e).
+Proof.
+  intros A B l. revert B.
+  induction l ; intros B f n x e.
+  - destruct n ; cbn in e ; discriminate e.
+  - destruct n.
+    + cbn in e. inversion e. subst.
+      cbn. exists eq_refl. reflexivity.
+    + specialize IHl with (1 := e) (f := fun x n => f x (S n)).
+      destruct IHl as [eq ih].
+      simpl. exists eq. apply ih.
+Defined.
+
+(* TODO MOVE *)
+Lemma meta_isType_conv :
+  forall {Σ Γ Δ A},
+    isType Σ Γ A ->
+    Γ = Δ ->
+    isType Σ Δ A.
+Proof.
+  intros Σ Γ Δ A ? ?.
+  subst. assumption.
+Defined.
+
+Lemma type_pl_ctors_ty :
+  forall {Σ ind univs decl isdecl},
+    type_glob Σ ->
+    let pars := @indpars (fst Σ) ind univs decl isdecl in
+    ForallT (isType Σ (nlctx pars)) (pl_ctors_ty isdecl).
+Proof.
+  intros Σ ind univs decl isdecl hg pars.
+  apply ForallT_forall_nth. intros n ty e.
+  erewrite (pi2 (forall_list_nth _)) in e.
+  symmetry in e. inversion e.
+  eapply meta_isType_conv.
+  - eapply typed_paramless_type_of_constructor.
+    assumption.
+  -
+Abort.
+
 Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->

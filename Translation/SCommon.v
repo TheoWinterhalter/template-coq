@@ -497,6 +497,14 @@ Definition elimPty {Σ ind univs decl} isdecl s :=
   let indinst := @indInst Σ ind univs decl isdecl in
   Prods (indices ++ [ (nAnon, indinst) ]) (sSort s).
 
+(* List of types of paramless constructors, each in context [pars] *)
+Definition pl_ctors_ty {Σ ind univs decl} isdecl :=
+  forall_list decl.(sind_ctors) (fun cd i h =>
+    paramless_type_of_constructor
+      Σ (ind, i) univs cd
+      (declared_inductive_constructor isdecl h)
+   ).
+
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
   type_of_elim Σ ind univs decl s isdecl
@@ -512,11 +520,7 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let Pty := elimPty isdecl s in
     let P := (nNamed "P", Pty) in
     (* The list of paramless constructor types. *)
-    let pcs :=
-      forall_list
-        decl.(sind_ctors)
-        (fun cd i h => paramless_type_of_constructor Σ (ind, i) univs cd _)
-    in
+    let pcs := pl_ctors_ty isdecl in
     (* The list of arguments of the eliminator *)
     let fl :=
       map_i (fun i ty =>
@@ -578,9 +582,6 @@ Next Obligation.
   destruct isdecl as [? [[hm ?] ?]].
   unfold sdeclared_minductive in hm.
   rewrite <- H in hm. discriminate hm.
-Defined.
-Next Obligation.
-  eapply declared_inductive_constructor ; eassumption.
 Defined.
 Next Obligation.
   destruct isdecl as [? [[hm ?] ?]].
