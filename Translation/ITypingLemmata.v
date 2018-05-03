@@ -1894,27 +1894,6 @@ Proof.
   erewrite closed_context_lift in lem ; eassumption.
 Defined.
 
-(* TODO MOVE *)
-Fact rev_map_app :
-  forall {A B} {f : A -> B} {l1 l2},
-    rev_map f (l1 ++ l2) = rev_map f l2 ++ rev_map f l1.
-Proof.
-  intros A B f l1 l2. revert B f l2.
-  induction l1 ; intros B f l2.
-  - simpl. cbn. rewrite app_nil_r. reflexivity.
-  - simpl. rewrite !rev_map_cons. rewrite IHl1.
-    rewrite app_assoc. reflexivity.
-Defined.
-
-(* TODO MOVE *)
-Fact nlctx_cat :
-  forall {L1 L2},
-    nlctx (L1 ++ L2) = nlctx L1 ,,, nlctx L2.
-Proof.
-  intros L1 L2. unfold nlctx, sapp_context.
-  apply rev_map_app.
-Defined.
-
 Lemma type_spine_lrel :
   forall {Σ L1 L2 L3 T},
     type_spine Σ (nlctx (L1 ++ L2 ++ L3))

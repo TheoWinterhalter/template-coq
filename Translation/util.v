@@ -221,6 +221,17 @@ Proof.
   intro l. apply h.
 Defined.
 
+Fact rev_map_app :
+  forall {A B} {f : A -> B} {l1 l2},
+    rev_map f (l1 ++ l2) = rev_map f l2 ++ rev_map f l1.
+Proof.
+  intros A B f l1 l2. revert B f l2.
+  induction l1 ; intros B f l2.
+  - simpl. cbn. rewrite app_nil_r. reflexivity.
+  - simpl. rewrite !rev_map_cons. rewrite IHl1.
+    rewrite app_assoc. reflexivity.
+Defined.
+
 
 
 Fact skipn_all :

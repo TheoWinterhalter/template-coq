@@ -146,6 +146,14 @@ Proof.
   cbn. f_equal. assumption.
 Defined.
 
+Fact nlctx_cat :
+  forall {L1 L2},
+    nlctx (L1 ++ L2) = nlctx L1 ,,, nlctx L2.
+Proof.
+  intros L1 L2. unfold nlctx, sapp_context.
+  apply rev_map_app.
+Defined.
+
 Fact length_cat :
   forall {A} {Γ Δ : list A}, #|Γ ++ Δ| = (#|Γ| + #|Δ|)%nat.
 Proof.
