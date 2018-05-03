@@ -2003,6 +2003,20 @@ Proof.
   subst. assumption.
 Defined.
 
+(* TODO MOVE *)
+Lemma ForallT_forall_list :
+  forall {A B} {l : list A} {f : forall x n, nth_error l n = Some x -> B} {P : B -> Type},
+    (forall n x (e : nth_error l n = Some x), P (f x n e)) ->
+    ForallT P (forall_list l f).
+Proof.
+  intros A B l f P h. revert B f P h.
+  induction l ; intros B f P h.
+  - cbn. constructor.
+  - simpl. econstructor.
+    + apply h.
+    + eapply IHl. intros n x e. apply h.
+Defined.
+
 Lemma type_pl_ctors_ty :
   forall {Σ ind univs decl isdecl},
     type_glob Σ ->
@@ -2010,14 +2024,15 @@ Lemma type_pl_ctors_ty :
     ForallT (isType Σ (nlctx pars)) (pl_ctors_ty isdecl).
 Proof.
   intros Σ ind univs decl isdecl hg pars.
-  apply ForallT_forall_nth. intros n ty e.
-  erewrite (pi2 (forall_list_nth _)) in e.
-  symmetry in e. inversion e.
+  eapply ForallT_forall_list.
+  intros n d e.
   eapply meta_isType_conv.
   - eapply typed_paramless_type_of_constructor.
     assumption.
-  -
-Abort.
+  - destruct isdecl as [m [[h1 h2] h3]].
+    revert pars. rewrite indpars_def. subst. cbn.
+    reflexivity.
+Defined.
 
 Lemma istype_type :
   forall {Σ Γ t T},
