@@ -1940,15 +1940,25 @@ Proof.
     eapply wf_cat ; eassumption.
   - eapply type_spine_cat.
     +
-Abort.
+Admitted.
 
 Lemma type_elimPty :
   forall {Σ ind univs decl isdecl s},
+    type_glob Σ ->
     let pars := @indpars (fst Σ) ind univs decl isdecl in
     let indices := decl.(sind_indices) in
-    Σ ;;; nlctx pars |-i elimPty isdecl s : sSort (succ_sort s).
+    isType Σ (nlctx pars) (elimPty isdecl s).
 Proof.
-Abort.
+  intros Σ ind univs decl isdecl s hg pars indices.
+  unfold elimPty. relet.
+  eapply type_Prods. eapply istype_nctx_spec.
+  eexists. econstructor. rewrite nlctx_cat.
+  simpl. econstructor.
+  - destruct (isArity_ind_type hg isdecl) as [hw ?]. relet.
+    rewrite nlctx_cat in hw. assumption.
+  - rewrite <- nlctx_cat.
+    eapply type_indInst. assumption.
+Defined.
 
 Lemma istype_type :
   forall {Σ Γ t T},
