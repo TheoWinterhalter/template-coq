@@ -1337,6 +1337,26 @@ Proof.
   - cbn. f_equal ; auto.
 Defined.
 
+(* TODO MOVE *)
+Fact lift_nctx_cons :
+  forall {L nx A n k},
+    lift_nctx n k ((nx, A) :: L) =
+    (nx, lift n k A) :: lift_nctx n (S k) L.
+Proof.
+  reflexivity.
+Defined.
+
+Fact lift_Prods :
+  forall {Δ T n k},
+    lift n k (Prods Δ T) =
+    Prods (lift_nctx n k Δ) (lift n (#|Δ| + k) T).
+Proof.
+  intro Δ. induction Δ as [| [nx A] Δ ih] ; intros T n k.
+  - cbn. reflexivity.
+  - rewrite lift_nctx_cons. simpl. f_equal.
+    rewrite ih. f_equal. f_equal. omega.
+Defined.
+
 Fact substn_nctx_cons :
   forall {L u n nx A},
     substn_nctx u n ((nx,A) :: L) = (nx, A{ n := u }) :: substn_nctx u (S n) L.

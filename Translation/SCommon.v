@@ -33,11 +33,11 @@ Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
 (*   | [] => t *)
 (*   end. *)
 
-Definition lift_nctx n k (L : nctx) :=
-  map_i (fun i '(nx,A) => (nx, lift n (k+i) A)) L.
+(* Definition lift_nctx n k (L : nctx) := *)
+(*   map_i (fun i '(nx,A) => (nx, lift n (k+i) A)) L. *)
 
-Definition lift_nnctx n k m (L : nctx) :=
-  map_i_aux (fun i '(nx,A) => (nx, lift n (k+i) A)) m L.
+Definition lift_nctx n k (L : nctx) :=
+  map_i_aux (fun i '(nx,A) => (nx, lift n i A)) k L.
 
 Definition subst_nctx u (L : nctx) :=
   map_i (fun i '(nx, A) => (nx, A{ i := u })) L.
