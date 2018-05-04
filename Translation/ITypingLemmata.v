@@ -2054,6 +2054,35 @@ Proof.
     reflexivity.
 Defined.
 
+(* TODO MOVE *)
+Fact lift_nctx_cat :
+  forall n k L1 L2,
+    lift_nctx n k (L1 ++ L2) =
+    lift_nctx n k L1 ++ lift_nctx n (k + #|L1|) L2.
+Proof.
+  intros n k L1 L2. revert n k L2.
+  induction L1 as [| [nx A] L1 ih ] ; intros n k L2.
+  - simpl. f_equal. omega.
+  - rewrite lift_nctx_cons. simpl. rewrite lift_nctx_cons.
+    f_equal. rewrite ih. f_equal. f_equal. omega.
+Defined.
+
+(* TODO MOVE *)
+Fact lift_nctx_length :
+  forall {L n k}, #|lift_nctx n k L| = #|L|.
+Proof.
+  intro L. induction L as [| [nx A] L ih ] ; intros n k.
+  - cbn. reflexivity.
+  - rewrite lift_nctx_cons. simpl. f_equal. apply ih.
+Defined.
+
+(* TODO MOVE *)
+Fact lift_nctx_nil :
+  forall {n k}, lift_nctx n k [] = [].
+Proof.
+  intros n k. reflexivity.
+Defined.
+
 Lemma type_elimPapp :
   forall {Σ Γ ind univs decl isdecl s l ty},
     type_glob Σ ->
@@ -2077,10 +2106,15 @@ Proof.
       revert is2.
       replace (S #|Γ| - #|Γ,, ty|) with 0 by (cbn ; omega).
       intro is2.
-      simpl. unfold elimPty.
-      (* We need a lift_Prods like subst_Prods *)
+      simpl. unfold elimPty. rewrite lift_Prods, lift_nctx_cat. simpl. f_equal.
+      f_equal. rewrite lift_nctx_cons, lift_nctx_nil, lift_nctx_length. reflexivity.
+  - eapply istype_nctx_spec. eexists. econstructor.
+    rewrite nlctx_cat.
+    (* I don't know how to go about that. *)
+    admit.
+  - (* Even worse. *)
+    admit.
 Abort.
-
 
 Lemma istype_type :
   forall {Σ Γ t T},
