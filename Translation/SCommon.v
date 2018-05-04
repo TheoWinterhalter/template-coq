@@ -525,7 +525,7 @@ Definition elimPapp {Σ ind univs decl} isdecl s l off :=
   let ipars := firstn #|pars| l in
   let iindices := skipn #|pars| l in
   let iindices := map (lift 1 0) iindices in
-  Apps (sRel off)
+  Apps (sRel (S off))
        (indices ++ [ (nAnon, indinst) ])
        (sSort s)
        (iindices ++ [ sRel 0 ]).

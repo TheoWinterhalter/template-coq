@@ -2034,6 +2034,34 @@ Proof.
     reflexivity.
 Defined.
 
+Lemma type_elimPapp :
+  forall {Σ Γ ind univs decl isdecl s l ty},
+    type_glob Σ ->
+    let pars := @indpars (fst Σ) ind univs decl isdecl in
+    isapp ty (sInd ind) l ->
+    wf Σ (nlctx (pars) ,, elimPty isdecl s ,,, Γ ,, ty) ->
+    isType Σ (nlctx (pars) ,, elimPty isdecl s ,,, Γ ,, ty)
+           (elimPapp isdecl s l #|Γ|).
+Proof.
+  intros Σ Γ ind univs decl isdecl s l ty hg pars happ h.
+  unfold elimPapp. relet.
+  eexists. eapply type_Apps.
+  - assumption.
+  - assert (is1 : S #|Γ| < #|nlctx pars,, elimPty isdecl s ,,, Γ,, ty|).
+    { simpl. rewrite length_cat. simpl. omega. }
+    eapply meta_conv.
+    + unshelve econstructor ; assumption.
+    + assert (is2 : S #|Γ| - #|Γ,, ty| < #|nlctx pars,, elimPty isdecl s|).
+      { simpl. omega. }
+      erewrite @safe_nth_ge with (isdecl' := is2) by (cbn ; omega).
+      revert is2.
+      replace (S #|Γ| - #|Γ,, ty|) with 0 by (cbn ; omega).
+      intro is2.
+      simpl. unfold elimPty.
+      (* We need a lift_Prods like subst_Prods *)
+Abort.
+
+
 Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->
