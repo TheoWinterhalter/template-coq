@@ -33,6 +33,12 @@ Fixpoint Prods (Γ : nctx) (T : sterm) : sterm :=
 (*   | [] => t *)
 (*   end. *)
 
+Definition lift_nctx n k (L : nctx) :=
+  map_i (fun i '(nx,A) => (nx, lift n (k+i) A)) L.
+
+Definition lift_nnctx n k m (L : nctx) :=
+  map_i_aux (fun i '(nx,A) => (nx, lift n (k+i) A)) m L.
+
 Definition subst_nctx u (L : nctx) :=
   map_i (fun i '(nx, A) => (nx, A{ i := u })) L.
 
@@ -513,18 +519,16 @@ Definition pl_ctors_ty {Σ ind univs decl} isdecl :=
 Definition elimPapp {Σ ind univs decl} isdecl s l off :=
   let pars := @indpars Σ ind univs decl isdecl in
   let indices := decl.(sind_indices) in
+  let indices := lift_nctx (S off) 0 indices in
+  let indinst := lift0 (S off) (indInst isdecl) in
   let l := rev l in
   let ipars := firstn #|pars| l in
   let iindices := skipn #|pars| l in
+  let iindices := map (lift 1 0) iindices in
   Apps (sRel off)
-       (* We need to lift this by S off *)
-       (indices ++ [ (nAnon, indInst isdecl) ])
+       (indices ++ [ (nAnon, indinst) ])
        (sSort s)
-       (* We need to get the constructor itself
-          and apply it to the right things.
-        *)
-       (* (iindices ++ [ ?? ]) *)
-       iindices.
+       (iindices ++ [ sRel 0 ]).
 
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
