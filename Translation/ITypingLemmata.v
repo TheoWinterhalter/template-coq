@@ -2083,6 +2083,17 @@ Proof.
   intros n k. reflexivity.
 Defined.
 
+(* TODO MOVE *)
+Fact nlctx_nil : nlctx [] = [].
+Proof. reflexivity. Defined.
+
+(* TODO MOVE *)
+Fact cat_one :
+  forall {Γ A}, Γ ,,, [ A ] = Γ ,, A.
+Proof.
+  reflexivity.
+Defined.
+
 Lemma type_elimPapp :
   forall {Σ Γ ind univs decl isdecl s l ty},
     type_glob Σ ->
@@ -2109,10 +2120,13 @@ Proof.
       simpl. unfold elimPty. rewrite lift_Prods, lift_nctx_cat. simpl. f_equal.
       f_equal. rewrite lift_nctx_cons, lift_nctx_nil, lift_nctx_length. reflexivity.
   - eapply istype_nctx_spec. eexists. econstructor.
-    rewrite nlctx_cat.
-    (* I don't know how to go about that. *)
-    admit.
-  - (* Even worse. *)
+    rewrite nlctx_cat, nlctx_cons, nlctx_nil, cat_nil, cat_one.
+    simpl. econstructor.
+    + (* Prove something about nlctx of lift_nctx and use wf_lift *)
+      admit.
+    + (* eapply type_lift. *) (* Use the right arguments. *)
+      admit.
+  - (* I still don't know how to tackle type spines. *)
     admit.
 Abort.
 
