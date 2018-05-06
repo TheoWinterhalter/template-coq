@@ -2094,6 +2094,57 @@ Proof.
   reflexivity.
 Defined.
 
+(* TODO MOVE *)
+Fixpoint liftn_context n k Γ :=
+  match Γ with
+  | [] => []
+  | A :: Γ => lift n (#|Γ| + k) A :: liftn_context n k Γ
+  end.
+
+(* TODO MOVE *)
+Fact liftn_context_cat :
+  forall {Γ Δ n k},
+    liftn_context n k (Γ ,,, Δ) =
+    liftn_context n k Γ ,,, liftn_context n (#|Γ| + k) Δ.
+Proof.
+  intros Γ Δ. revert Γ. induction Δ ; intros Γ n k.
+  - cbn. reflexivity.
+  - cbn. rewrite app_length. f_equal.
+    + f_equal. omega.
+    + apply IHΔ.
+Defined.
+
+(* TODO MOVE *)
+Fact liftn_context_O :
+  forall {Γ n}, liftn_context n 0 Γ = lift_context n Γ.
+Proof.
+  intros Γ. induction Γ ; intro n.
+  - cbn. reflexivity.
+  - cbn. f_equal.
+    + f_equal. omega.
+    + apply IHΓ.
+Defined.
+
+(* TODO MOVE *)
+Fact nlctx_lift_nctx :
+  forall {L n k},
+    nlctx (lift_nctx n k L) = liftn_context n k (nlctx L).
+Proof.
+  intro L. induction L as [| [nx A] L ih] ; intros n k.
+  - cbn. reflexivity.
+  - rewrite nlctx_cons, lift_nctx_cons, nlctx_cons.
+    rewrite liftn_context_cat. cbn. rewrite ih. reflexivity.
+Defined.
+
+Fact nlctx_lift_nctx0 :
+  forall {L n},
+    nlctx (lift_nctx n 0 L) = lift_context n (nlctx L).
+Proof.
+  intros L n.
+  rewrite <- liftn_context_O.
+  apply nlctx_lift_nctx.
+Defined.
+
 Lemma type_elimPapp :
   forall {Σ Γ ind univs decl isdecl s l ty},
     type_glob Σ ->
@@ -2118,14 +2169,46 @@ Proof.
       replace (S #|Γ| - #|Γ,, ty|) with 0 by (cbn ; omega).
       intro is2.
       simpl. unfold elimPty. rewrite lift_Prods, lift_nctx_cat. simpl. f_equal.
-      f_equal. rewrite lift_nctx_cons, lift_nctx_nil, lift_nctx_length. reflexivity.
+      f_equal. rewrite lift_nctx_cons, lift_nctx_nil, lift_nctx_length.
+      reflexivity.
   - eapply istype_nctx_spec. eexists. econstructor.
     rewrite nlctx_cat, nlctx_cons, nlctx_nil, cat_nil, cat_one.
     simpl. econstructor.
-    + (* Prove something about nlctx of lift_nctx and use wf_lift *)
-      admit.
-    + (* eapply type_lift. *) (* Use the right arguments. *)
-      admit.
+    + rewrite nlctx_lift_nctx0.
+      pose (hh := @wf_lift).
+      specialize hh with (Γ := nlctx pars)
+                         (Δ := [] ,, elimPty isdecl s ,,, Γ,, ty)
+                         (Ξ := nlctx (sind_indices decl)).
+      unfold sapp_context, ssnoc in *. simpl in hh.
+      rewrite app_length in hh. simpl in hh.
+      replace (#|Γ| + 1)%nat with (S #|Γ|) in hh by omega.
+      rewrite <- app_assoc in hh. simpl in hh.
+      apply hh ; clear hh.
+      * destruct (isArity_ind_type hg isdecl) as [hh _].
+        rewrite nlctx_cat in hh. apply hh.
+      * assumption.
+      * assumption.
+    + rewrite nlctx_lift_nctx0.
+      pose (hh := @type_lift).
+      specialize hh with (Γ := nlctx pars)
+                         (Δ := [] ,, elimPty isdecl s ,,, Γ,, ty)
+                         (Ξ := nlctx (sind_indices decl)).
+      unfold sapp_context, ssnoc in *. simpl in hh.
+      rewrite app_length in hh. simpl in hh.
+      replace (#|Γ| + 1)%nat with (S #|Γ|) in hh by omega.
+      rewrite <- app_assoc in hh. simpl in hh.
+      rewrite lift_nctx_length. rewrite rev_map_length in hh.
+      match goal with
+      | |- _ ;;; _ |-i lift ?n ?k _ : ?S =>
+        change S with (lift n k S)
+      end.
+      eapply hh ; clear hh.
+      * pose proof @type_indInst as hh. simpl in hh.
+        specialize hh with (isdecl := isdecl). relet.
+        rewrite nlctx_cat in hh. apply hh.
+        assumption.
+      * assumption.
+      * assumption.
   - (* I still don't know how to tackle type spines. *)
     admit.
 Abort.
