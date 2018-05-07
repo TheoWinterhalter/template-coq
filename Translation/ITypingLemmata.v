@@ -1935,6 +1935,77 @@ Proof.
       admit.
 Abort.
 
+(* TODO MOVE *)
+Lemma cat_assoc :
+  forall {Γ Δ Ξ}, Γ ,,, (Δ ,,, Ξ) = Γ ,,, Δ ,,, Ξ.
+Proof.
+  intros Γ Δ Ξ.
+  unfold sapp_context. symmetry. apply app_assoc.
+Defined.
+
+(* TODO MOVE *)
+Fact cat_one :
+  forall {Γ A}, Γ ,,, [ A ] = Γ ,, A.
+Proof.
+  reflexivity.
+Defined.
+
+Fact substn_lift_nctx :
+  forall {L k},
+    substn_nctx (sRel #|L|) k (lift_nctx (S #|L|) (S k) L) = lift_nctx #|L| k L.
+Proof.
+  intro L. induction L as [| [nx A] L ih] ; intro k.
+  - cbn. reflexivity.
+  - simpl. rewrite !lift_nctx_cons, substn_nctx_cons. f_equal.
+    + f_equal. give_up.
+    +
+Abort.
+
+Fact subst_lift_nctx :
+  forall {L},
+    subst_nctx (sRel #|L|) (lift_nctx (S #|L|) 1 L) = lift_nctx #|L| 0 L.
+Proof.
+  intro L. induction L as [| [nx A] L ih].
+  - cbn. reflexivity.
+  - simpl.
+    replace (subst_nctx (sRel (S #|L|))) with (substn_nctx (sRel (S #|L|)) 0)
+    by reflexivity.
+    rewrite !lift_nctx_cons, substn_nctx_cons.
+    f_equal.
+    + f_equal. (* rewrite <- substP1. *) give_up.
+    +
+Abort.
+
+(* Very particular case. *)
+Lemma type_spine_lrel :
+  forall {Σ Γ L s},
+    type_spine Σ (Γ ,,, nlctx L) (lift_nctx #|L| 0 L) (sSort s) (lrel 0 #|L|) (sSort s).
+Proof.
+  intros Σ Γ L s. revert Γ s.
+  induction L as [| [nx A] L ih] ; intros Γ s.
+  - cbn. constructor.
+  - simpl. rewrite lift_nctx_cons. econstructor.
+    + assert (is1 : #|L| <  #|Γ ,,, [A] ,,, nlctx L|).
+      { rewrite length_cat, rev_map_length. simpl. omega. }
+      rewrite nlctx_cons, cat_assoc.
+      eapply meta_conv.
+      * refine (type_Rel _ _ _ _ is1).
+        admit.
+      * revert is1.
+        replace #|L| with #|nlctx L| by (apply rev_map_length).
+        intro is1.
+        assert (is2 : #|nlctx L| - #|nlctx L| < #|Γ ,,, [A]|).
+        { cbn. omega. }
+        rewrite @safe_nth_ge with (isdecl' := is2) by omega.
+        revert is2.
+        replace (#|nlctx L| - #|nlctx L|) with 0 by omega.
+        intro s2.
+        cbn. reflexivity.
+    + simpl. rewrite nlctx_cons, cat_assoc, cat_one.
+      specialize ih with (Γ := Γ ,, A) (s := s).
+      (* Is that even true? *)
+Abort.
+
 Lemma type_indInst :
   forall {Σ ind univs decl isdecl},
     type_glob Σ ->
@@ -1958,7 +2029,10 @@ Proof.
   - apply istype_nctx_spec.
     eexists. econstructor.
     eapply wf_cat ; eassumption.
-  - eapply type_spine_cat.
+  -
+
+ eapply type_spine_cat.
+    + admit.
     +
 Admitted.
 
@@ -2086,13 +2160,6 @@ Defined.
 (* TODO MOVE *)
 Fact nlctx_nil : nlctx [] = [].
 Proof. reflexivity. Defined.
-
-(* TODO MOVE *)
-Fact cat_one :
-  forall {Γ A}, Γ ,,, [ A ] = Γ ,, A.
-Proof.
-  reflexivity.
-Defined.
 
 (* TODO MOVE *)
 Fixpoint liftn_context n k Γ :=

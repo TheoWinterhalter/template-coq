@@ -492,9 +492,10 @@ Definition indInst {Σ ind univs decl} isdecl :=
   let pars := @indpars Σ ind univs decl isdecl in
   let indices := decl.(sind_indices) in
   (* Granted, the two following lines could easily mix into one. *)
-  let irels := lrel 0 #|indices| in
-  let prels := lrel #|indices| #|pars| in
-  (Apps (sInd ind) (pars ++ indices) (sSort si) (prels ++ irels)).
+  (* let irels := lrel 0 #|indices| in *)
+  (* let prels := lrel #|indices| #|pars| in *)
+  let rels := lrel 0 (#|pars| + #|indices|) in
+  (Apps (sInd ind) (pars ++ indices) (sSort si) (rels)).
 
 (* Type of the predicate of the eliminator (sElim ind s) *)
 Definition elimPty {Σ ind univs decl} isdecl s :=
