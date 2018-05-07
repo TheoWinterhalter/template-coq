@@ -2145,6 +2145,13 @@ Proof.
   apply nlctx_lift_nctx.
 Defined.
 
+(* TODO MOVE *)
+Fact subst_nctx_nil :
+  forall {u}, subst_nctx u [] = [].
+Proof.
+  intros u. reflexivity.
+Defined.
+
 Lemma type_elimPapp :
   forall {Σ Γ ind univs decl isdecl s l ty},
     type_glob Σ ->
@@ -2209,8 +2216,19 @@ Proof.
         assumption.
       * assumption.
       * assumption.
-  - (* I still don't know how to tackle type spines. *)
-    admit.
+  - eapply type_spine_cat.
+    + (* I still don't know how to tackle type spines. *)
+      admit.
+    + econstructor.
+      * eapply type_Rel. assumption.
+      * match goal with
+        | |- type_spine _ _ _ _ _ ?S =>
+          instantiate (2 := S)
+        end. simpl.
+        instantiate (3 := []).
+        rewrite subst_nctx_nil. constructor.
+    + cbn. reflexivity.
+  Unshelve. all: auto. 1: exact nAnon. cbn ; omega.
 Abort.
 
 Lemma istype_type :
