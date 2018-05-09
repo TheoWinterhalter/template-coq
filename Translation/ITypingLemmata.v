@@ -1977,6 +1977,9 @@ Proof.
 Abort.
 
 (* Very particular case. *)
+(* It's not clear we want to have the lift_nctx, in a way, it should be kind of
+   closed.
+ *)
 Lemma type_spine_lrel :
   forall {Σ Γ L s},
     type_spine Σ (Γ ,,, nlctx L) (lift_nctx #|L| 0 L) (sSort s) (lrel 0 #|L|) (sSort s).

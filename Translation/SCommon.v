@@ -531,6 +531,9 @@ Definition elimPapp {Σ ind univs decl} isdecl s l off :=
        (sSort s)
        (iindices ++ [ sRel 0 ]).
 
+(* Similar but more complicated. *)
+(* Definition elimPctor {Σ ind univs decl} isdecl s l off := *)
+
 Equations type_of_elim Σ ind univs decl (s : sort)
   (isdecl : sdeclared_inductive Σ ind univs decl) : sterm :=
   type_of_elim Σ ind univs decl s isdecl
@@ -539,8 +542,8 @@ Equations type_of_elim Σ ind univs decl (s : sort)
     let pars := d.(sind_params) in
     let indices := decl.(sind_indices) in
     (* Granted, the two following lines could easily mix into one. *)
-    let irels := lrel 0 #|indices| in
-    let prels := lrel #|indices| #|pars| in
+    (* let irels := lrel 0 #|indices| in *)
+    (* let prels := lrel #|indices| #|pars| in *)
     let si := decl.(sind_sort) in
     let indinst := indInst isdecl in
     let Pty := elimPty isdecl s in
