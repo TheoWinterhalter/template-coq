@@ -2030,10 +2030,6 @@ Proof.
     eexists. econstructor.
     eapply wf_cat ; eassumption.
   -
-
- eapply type_spine_cat.
-    + admit.
-    +
 Admitted.
 
 Lemma type_elimPty :
