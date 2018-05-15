@@ -38,6 +38,11 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i u : A ->
     Σ ;;; Γ |-i (sApp t A B u) : B{ 0 := u }
 
+| type_Sum Γ n t b s1 s2 :
+    Σ ;;; Γ |-i t : sSort s1 ->
+    Σ ;;; Γ ,, t |-i b : sSort s2 ->
+    Σ ;;; Γ |-i (sSum n t b) : sSort (max_sort s1 s2)
+
 | type_Eq Γ s A u v :
     Σ ;;; Γ |-i A : sSort s ->
     Σ ;;; Γ |-i u : A ->

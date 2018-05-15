@@ -64,6 +64,15 @@ Inductive red1 (Σ : sglobal_context) : sterm -> sterm -> Prop :=
     red1 Σ B B' ->
     red1 Σ (sProd na A B) (sProd na' A B')
 
+(** Sum *)
+| sum_red_l na na' A A' B :
+    red1 Σ A A' ->
+    red1 Σ (sSum na A B) (sSum na' A' B)
+
+| sum_red_r na na' A B B' :
+    red1 Σ B B' ->
+    red1 Σ (sSum na A B) (sSum na' A B')
+
 (** Eq *)
 | eq_red_ty A A' u v :
     red1 Σ A A' ->
@@ -645,6 +654,17 @@ Lemma cong_App :
 Proof.
   intros Σ u A B v u' A' B' v' hA hB hu hv.
   conv rewrite hB, hu, hv, hA.
+  apply conv_eq. cbn. reflexivity.
+Defined.
+
+Lemma cong_Sum :
+  forall {Σ nx A B nx' A' B'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i sSum nx A B = sSum nx' A' B'.
+Proof.
+  intros Σ nx A B nx' A' B' hA hB.
+  conv rewrite hB, hA.
   apply conv_eq. cbn. reflexivity.
 Defined.
 

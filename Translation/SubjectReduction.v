@@ -163,6 +163,15 @@ Section subjred.
           apply ctxconv_refl.
       + econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        eapply type_ctxconv ; try eassumption.
+        * econstructor ;  try eassumption.
+          eapply typing_wf. eassumption.
+        * econstructor ; try eassumption.
+          apply ctxconv_refl.
+      + econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.

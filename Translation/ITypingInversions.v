@@ -83,6 +83,22 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionSum :
+  forall {Σ Γ n A B T},
+    Σ ;;; Γ |-i sSum n A B : T ->
+    exists s1 s2,
+      (Σ ;;; Γ |-i A : sSort s1) *
+      (Σ ;;; Γ ,, A |-i B : sSort s2) *
+      (Σ |-i sSort (max_sort s1 s2) = T).
+Proof.
+  intros Σ Γ n A B T h.
+  dependent induction h.
+  - exists s1, s2. split ; [ split | ..] ; try assumption. apply conv_refl.
+  - destruct IHh1 as [s1 [s2 [[? ?] ?]]].
+    exists s1, s2. split ; [ split | ..] ; try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 Lemma inversionEq :
   forall {Σ Γ A u v T},
     Σ ;;; Γ |-i sEq A u v : T ->
@@ -552,6 +568,7 @@ Ltac ttinv h :=
                         splits_one hh
     | sApp _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & na & hh) ;
                        splits_one hh
+    | sSum _ _ _ => destruct (inversionSum h) as (s1 & s2 & hh) ; splits_one hh
     | sEq _ _ _ => destruct (inversionEq h) as (s & hh) ; splits_one hh
     | sRefl _ _ => destruct (inversionRefl h) as (s & hh) ; splits_one hh
     | sJ _ _ _ _ _ _ => destruct (inversionJ h) as (s1 & s2 & hh) ;

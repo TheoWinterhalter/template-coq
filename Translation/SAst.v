@@ -11,6 +11,8 @@ Inductive sterm : Type :=
 | sProd (nx : name) (A B : sterm)
 | sLambda (nx : name) (A B t : sterm)
 | sApp (u A B v : sterm)
+(* Σ-types *)
+| sSum (nx : name) (A B : sterm)
 (* Homogenous equality *)
 | sEq (A u v : sterm)
 | sRefl (A u : sterm)

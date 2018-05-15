@@ -272,6 +272,7 @@ Proof.
           with (lift #|Δ| (0 + #|Ξ|) (B { 0 := u })).
         rewrite substP1.
         eapply type_App ; eih.
+      - cbn. eapply type_Sum ; eih.
       - cbn. apply type_Eq ; eih.
       - cbn. eapply type_Refl ; eih.
       - change (#|Ξ|) with (0 + #|Ξ|)%nat.
@@ -517,6 +518,7 @@ Proof.
           with ((B0 {0 := u0}) {0 + #|Δ| := u}).
         rewrite substP4. cbn.
         eapply type_App ; esh.
+      - cbn. eapply type_Sum ; esh.
       - cbn. eapply type_Eq ; esh.
       - cbn. eapply type_Refl ; esh.
       - cbn.
@@ -742,6 +744,7 @@ Proof.
   - exists (max_sort s1 s2). apply type_Prod ; assumption.
   - exists s2. change (sSort s2) with ((sSort s2){ 0 := u }).
     eapply typing_subst ; eassumption.
+  - eexists. econstructor. eapply typing_wf. eassumption.
   - exists (succ_sort s). apply type_Sort. apply (typing_wf H).
   - exists s. now apply type_Eq.
   - exists s2.

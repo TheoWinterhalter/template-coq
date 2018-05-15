@@ -1211,6 +1211,12 @@ Definition typing_all : forall (Σ : sglobal_context)
         P Γ u A t3 ->
         P Γ (sApp t A B u) (B {0 := u})
           (XTyping.type_App Σ Γ n s1 s2 t A B u t0 t1 t2 t3)) ->
+       (forall (Γ : scontext) (n : name) (t b : sterm) (s1 s2 : sort) (t0 : Σ;;; Γ |-x t : sSort s1),
+           P Γ t (sSort s1) t0 ->
+           forall t1 : Σ;;; Γ,, t |-x b : sSort s2,
+             P (Γ,, t) b (sSort s2) t1 ->
+             P Γ (sSum n t b) (sSort (max_sort s1 s2))
+               (XTyping.type_Sum Σ Γ n t b s1 s2 t0 t1)) ->
        (forall (Γ : scontext) (s : sort) (A u v : sterm)
           (t : Σ;;; Γ |-x A : sSort s),
         P Γ A (sSort s) t ->
@@ -1314,6 +1320,16 @@ Definition typing_all : forall (Σ : sglobal_context)
           (B1 {0 := u1})
           (XTyping.cong_App Σ Γ n1 n2 s1 s2 t1 t2 A1 A2 B1 B2 u1 u2 e e0 e1 e2
              t t0 t3 t4 t5 t6)) ->
+       (forall (Γ : scontext) (n1 n2 : name) (A1 A2 B1 B2 : sterm) (s1 s2 : sort) (e : Σ;;; Γ |-x A1 = A2 : sSort s1),
+        P1 Γ A1 A2 (sSort s1) e ->
+        forall e0 : Σ;;; Γ,, A1 |-x B1 = B2 : sSort s2,
+        P1 (Γ,, A1) B1 B2 (sSort s2) e0 ->
+        forall t : Σ;;; Γ,, A1 |-x B1 : sSort s2,
+        P (Γ,, A1) B1 (sSort s2) t ->
+        forall t0 : Σ;;; Γ,, A2 |-x B2 : sSort s2,
+        P (Γ,, A2) B2 (sSort s2) t0 ->
+        P1 Γ (sSum n1 A1 B1) (sSum n2 A2 B2) (sSort (max_sort s1 s2))
+           (XTyping.cong_Sum Σ Γ n1 n2 A1 A2 B1 B2 s1 s2 e e0 t t0)) ->
        (forall (Γ : scontext) (s : sort) (A1 A2 u1 u2 v1 v2 : sterm)
           (e : Σ;;; Γ |-x A1 = A2 : sSort s),
         P1 Γ A1 A2 (sSort s) e ->
@@ -1364,7 +1380,7 @@ Proof.
                     {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
   ∑ A' A'' u' v' p',
     eqtrans Σ Γ A u v Γ' A' A'' u' v' p')
-                     _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros.
+                    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros.
   (** context_translation **)
 
     (* wf_nil *)
@@ -1488,6 +1504,9 @@ Proof.
       * now apply inrel_subst.
       * now constructor.
       * eapply type_App ; eassumption.
+
+    (* type_Sum *)
+    + fail "todo".
 
     (* type_Eq *)
     + (* The type *)
