@@ -35,8 +35,4 @@ Inductive sterm : Type :=
 | sProjT1 (p : sterm)
 | sProjT2 (p : sterm)
 | sProjTe (p : sterm)
-(* Inductives *)
-| sInd (ind : inductive)
-| sConstruct (ind : inductive) (n : nat)
-| sCase (indn : inductive * nat) (p c : sterm) (brs : list (nat * sterm))
 .

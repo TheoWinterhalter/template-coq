@@ -5,7 +5,6 @@
 
 util.v
 SAst.v
-SInduction.v
 Equality.v
 SLiftSubst.v
 SCommon.v

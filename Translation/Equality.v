@@ -1,7 +1,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
-From Translation Require Import util SAst SInduction SLiftSubst.
+From Translation Require Import util SAst SLiftSubst.
 
 (*! Equality between terms *)
 (* This goes through the definition of a nameless syntax *)
@@ -36,10 +36,6 @@ Inductive nlterm : Type :=
 | nlProjT1 (p : nlterm)
 | nlProjT2 (p : nlterm)
 | nlProjTe (p : nlterm)
-(* Inductives *)
-| nlInd (ind : inductive)
-| nlConstruct (ind : inductive) (n : nat)
-| nlCase (indn : inductive * nat) (p c : nlterm) (brs : list (nat * nlterm))
 .
 
 Fixpoint nl (t : sterm) : nlterm :=
@@ -72,9 +68,6 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sProjT1 p => nlProjT1 (nl p)
   | sProjT2 p => nlProjT2 (nl p)
   | sProjTe p => nlProjTe (nl p)
-  | sInd ind => nlInd ind
-  | sConstruct ind n => nlConstruct ind n
-  | sCase indn p c brs => nlCase indn (nl p) (nl c) (map (on_snd nl) brs)
   end.
 
 Fact inductive_dec : forall (i i' : inductive), { i = i'} + { i <> i' }.
@@ -114,11 +107,7 @@ Section nldec.
   Fixpoint nl_dec (t u : nlterm) : { t = u } + { t <> u }.
   Proof.
     destruct t ; destruct u ; try (right ; discriminate).
-    all: try (nl_dec_tac nl_dec).
-    destruct indn as [i' n'], indn0 as [i n]. nl_dec_tac nl_dec.
-    assert (dec : forall (x y : nat * nlterm), { x = y } + { x <> y }).
-    { intros [? ?] [? ?]. nl_dec_tac nl_dec. }
-    fcase (list_eq_dec dec brs brs0).
+    all: nl_dec_tac nl_dec.
   Defined.
 
 End nldec.
@@ -179,22 +168,11 @@ Proof.
   case (nl_dec (nl t) (nl u)).
   - intros e _.
     revert u e n k.
-    induction t using sterm_rect_list ;
+    induction t ;
     intros u e m k ; destruct u ; cbn in e ; try discriminate e.
     all:
       try (cbn ; inversion e ;
            repeat (erewrite_assumption by eassumption) ; reflexivity).
-    cbn. inversion e.
-    repeat erewrite_assumption by eassumption.
-    f_equal. rewrite !map_map_compose, !compose_on_snd.
-    clear - X H3. revert brs0 H3.
-    induction X.
-    + cbn. intros [|? ?] h ; cbn in h ; try discriminate h. reflexivity.
-    + cbn. intros [| [n b] brs'] h ; cbn in h ; try discriminate h.
-      cbn. f_equal.
-      * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
-        inversion h. subst. f_equal. unfold compose. apply p. cbn. assumption.
-      * apply IHX. now inversion h.
   - intros h e. exfalso. apply h. apply e.
 Defined.
 
@@ -215,27 +193,17 @@ Lemma nl_subst :
     nl (t{n := u}) = nl (t'{n := u'}).
 Proof.
   intros t t' u u' n ht hu. revert t' ht u u' hu n.
-  induction t using sterm_rect_list ;
+  induction t ;
   intros t' ht.
   all: destruct t' ; cbn in ht ; try discriminate ht.
   all: intros u u' hu m.
   all: try (cbn ; inversion ht ;
             repeat (erewrite_assumption by eassumption) ; reflexivity).
-  - symmetry in ht. inversion ht. subst. clear ht. cbn.
-    case_eq (m ?= n) ; intro e ; bprop e.
-    + subst. eapply nl_lift. assumption.
-    + reflexivity.
-    + reflexivity.
-  - cbn. inversion ht.
-    repeat (erewrite_assumption by eassumption).
-    f_equal. rewrite !map_map_compose, !compose_on_snd.
-    clear - X H3 hu. revert brs0 H3. induction X.
-    + cbn. intros [| ? ?] h ; cbn in h ; try discriminate h. reflexivity.
-    + cbn. intros [| [n b] brs'] h ; cbn in h ; try discriminate h.
-      cbn. f_equal.
-      * destruct x as [x xs]. unfold on_snd in h. unfold on_snd.
-        inversion h. subst. f_equal. unfold compose. apply p ; assumption.
-      * apply IHX. now inversion h.
+  symmetry in ht. inversion ht. subst. clear ht. cbn.
+  case_eq (m ?= n) ; intro e ; bprop e.
+  + subst. eapply nl_lift. assumption.
+  + reflexivity.
+  + reflexivity.
 Defined.
 
 Corollary eq_term_subst :

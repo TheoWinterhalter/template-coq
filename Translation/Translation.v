@@ -60,12 +60,6 @@ Inductive trel : sterm -> sterm -> Type :=
     u1 ∼ u2 ->
     sRefl A1 u1 ∼ sRefl A2 u2
 
-| trel_Ind ind :
-    sInd ind ∼ sInd ind
-
-| trel_Construct ind i :
-    sConstruct ind i ∼ sConstruct ind i
-
 where " t1 ∼ t2 " := (trel t1 t2).
 
 Derive Signature for trel.
@@ -117,12 +111,6 @@ Inductive inrel : sterm -> sterm -> Type :=
     A ⊏ A' ->
     u ⊏ u' ->
     sRefl A u ⊏ sRefl A' u'
-
-| inrel_Ind ind :
-    sInd ind ⊏ sInd ind
-
-| inrel_Construct ind i :
-    sConstruct ind i ⊏ sConstruct ind i
 
 where " t ⊏ t' " := (inrel t t').
 
@@ -692,95 +680,6 @@ Proof.
         end.
         apply rlift_conv. assumption.
 
-  (* Ind *)
-  - case (declared_inductive_dec (fst Σ) ind).
-    + (* The inductive is declared. *)
-      intros [univs [decl isdecl]].
-      exists (sHeqRefl decl.(sind_type) (sInd ind)).
-      intros Γm U1 U2 hm h1 h2.
-      assert (h1' : Σ ;;; Γ ,,, Γm |-i sInd ind : llift0 #|Γm| U1).
-      { change (sInd ind) with (llift0 #|Γm| (sInd ind)).
-        eapply type_llift0 ; eassumption.
-      }
-      assert (h2' : Σ ;;; Γ ,,, Γm |-i sInd ind : rlift0 #|Γm| U2).
-      { change (sInd ind) with (rlift0 #|Γm| (sInd ind)).
-        eapply type_rlift0 ; eassumption.
-      }
-      pose proof (uniqueness hg h1' h2').
-      destruct (istype_type hg h1).
-      destruct (istype_type hg h2).
-      eapply type_conv.
-      * eapply type_HeqRefl' ; try assumption.
-        econstructor ; try eassumption.
-        eapply typing_wf. eassumption.
-      * eapply type_Heq.
-        -- lift_sort. eapply type_llift0 ; eassumption.
-        -- lift_sort. eapply type_conv.
-           ++ eapply type_rlift0 ; eassumption.
-           ++ cbn. econstructor. eapply typing_wf. eassumption.
-           ++ apply conv_sym. eapply subj_conv ; try eassumption.
-              ** cbn. lift_sort.
-                 eapply type_llift0 ; eassumption.
-              ** eapply type_rlift0 ; eassumption.
-        -- eapply type_llift0 ; eassumption.
-        -- eapply type_rlift0 ; eassumption.
-      * ttinv h1'. ttinv h2'.
-        destruct isdecl as [d1 [[hd1 ?] hn1]].
-        destruct isdecl0 as [d2 [[hd2 ?] hn2]].
-        destruct isdecl1 as [d3 [[hd3 ?] hn3]].
-        unfold sdeclared_minductive in *.
-        rewrite hd1 in hd2, hd3. inversion hd2. inversion hd3. subst.
-        rewrite hn1 in hn2, hn3. inversion hn2. inversion hn3. subst.
-        eapply cong_Heq.
-        all: try (apply conv_refl). all: assumption.
-    + (* The inductive isn't declared. We return garbage. *)
-      intros neq.
-      exists (sRel 0).
-      intros Γm U1 U2 hm h1 h2.
-      exfalso. ttinv h1.
-      apply neq. exists univs, decl. assumption.
-
-  (* Construct *)
-  - case (declared_constructor_dec (fst Σ) ind i).
-    + (* The constructor is declared. *)
-      intros [univs [decl isdecl]].
-      exists (sHeqRefl (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl) (sConstruct ind i)).
-      intros Γm U1 U2 hm h1 h2.
-      assert (h1' : Σ ;;; Γ ,,, Γm |-i sConstruct ind i : llift0 #|Γm| U1).
-      { change (sConstruct ind i) with (llift0 #|Γm| (sConstruct ind i)).
-        eapply type_llift0 ; eassumption.
-      }
-      assert (h2' : Σ ;;; Γ ,,, Γm |-i sConstruct ind i : rlift0 #|Γm| U2).
-      { change (sConstruct ind i) with (rlift0 #|Γm| (sConstruct ind i)).
-        eapply type_rlift0 ; eassumption.
-      }
-      pose proof (uniqueness hg h1' h2').
-      destruct (istype_type hg h1).
-      destruct (istype_type hg h2).
-      eapply type_conv.
-      * eapply type_HeqRefl' ; try assumption.
-        econstructor. eapply typing_wf. eassumption.
-      * eapply type_Heq.
-        -- lift_sort. eapply type_llift0 ; eassumption.
-        -- lift_sort. eapply type_conv.
-           ++ eapply type_rlift0 ; eassumption.
-           ++ cbn. econstructor. eapply typing_wf. eassumption.
-           ++ apply conv_sym. eapply subj_conv ; try eassumption.
-              ** cbn. lift_sort.
-                 eapply type_llift0 ; eassumption.
-              ** eapply type_rlift0 ; eassumption.
-        -- eapply type_llift0 ; eassumption.
-        -- eapply type_rlift0 ; eassumption.
-      * ttinv h1'. ttinv h2'.
-        eapply cong_Heq.
-        all: try (apply conv_refl).
-        all: erewrite SCommon.stype_of_constructor_eq ; eassumption.
-    + (* The constructor isn't declared. We return garbage. *)
-      intros neq. exists (sRel 0).
-      intros Γm U1 U2 hm h1 h2.
-      exfalso. ttinv h1.
-      apply neq. exists univs, decl. assumption.
-
   Unshelve.
   all: cbn ; try rewrite !length_cat ; omega.
 Defined.
@@ -1326,16 +1225,6 @@ Definition typing_all : forall (Σ : sglobal_context)
         forall t0 : Σ;;; Γ |-x u : A,
         P Γ u A t0 ->
         P Γ (sRefl A u) (sEq A u u) (XTyping.type_Refl Σ Γ s A u t t0)) ->
-       (forall (Γ : scontext) (ind : inductive) (w : XTyping.wf Σ Γ),
-        P0 Γ w ->
-        forall univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-        P Γ (sInd ind) (decl.(sind_type)) (XTyping.type_Ind Σ Γ ind w univs decl isdecl)) ->
-       (forall (Γ : scontext) (ind : inductive) (i : nat) (w : XTyping.wf Σ Γ),
-        P0 Γ w ->
-        forall univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-        P Γ (sConstruct ind i)
-          (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl)
-          (XTyping.type_Construct Σ Γ ind i w univs decl isdecl)) ->
        (forall (Γ : scontext) (t A B : sterm) (s : sort)
           (t0 : Σ;;; Γ |-x t : A),
         P Γ t A t0 ->
@@ -1475,7 +1364,7 @@ Proof.
                     {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
   ∑ A' A'' u' v' p',
     eqtrans Σ Γ A u v Γ' A' A'' u' v' p')
-                     _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros.
+                     _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros.
   (** context_translation **)
 
     (* wf_nil *)
@@ -1629,27 +1518,6 @@ Proof.
       * constructor ; assumption.
       * destruct (istype_type hg hu').
         eapply type_Refl ; eassumption.
-
-    (* type_Ind *)
-    + exists (sind_type decl), (sInd ind).
-      repeat split.
-      * now destruct hΓ.
-      * apply inrel_refl.
-        eapply xcomp_ind_type ; eassumption.
-      * constructor.
-      * eapply type_Ind ; try eassumption.
-        now destruct hΓ.
-
-    (* type_Construct *)
-    + exists (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl).
-      exists (sConstruct ind i).
-      repeat split.
-      * now destruct hΓ.
-      * apply inrel_refl.
-        eapply xcomp_type_of_constructor ; eassumption.
-      * constructor.
-      * eapply type_Construct ; try eassumption.
-        now destruct hΓ.
 
     (* type_conv *)
     + (* Translating the conversion *)

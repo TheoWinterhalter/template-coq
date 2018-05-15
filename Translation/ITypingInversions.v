@@ -30,42 +30,6 @@ Proof.
   - eapply conv_trans ; eassumption.
 Defined.
 
-Lemma inversionInd :
-  forall {Σ Γ ind T},
-    Σ ;;; Γ |-i sInd ind : T ->
-    exists univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-      Σ |-i decl.(sind_type) = T.
-Proof.
-  intros Σ Γ ind T h.
-  dependent induction h.
-  - exists univs, decl, isdecl. apply conv_refl.
-  - destruct IHh1 as (univs & decl & isdecl & ?).
-    exists univs, decl, isdecl. eapply conv_trans ; eassumption.
-Defined.
-
-Lemma inversionConstruct :
-  forall {Σ Γ ind i T},
-    Σ ;;; Γ |-i sConstruct ind i : T ->
-    exists univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-      Σ |-i stype_of_constructor (fst Σ) (ind, i) univs decl isdecl = T.
-Proof.
-  intros Σ Γ ind i T h.
-  dependent induction h.
-  - exists univs, decl, isdecl. apply conv_refl.
-  - destruct IHh1 as (univs & decl & isdecl & ?).
-    exists univs, decl, isdecl. eapply conv_trans ; eassumption.
-Defined.
-
-(* TMP *)
-Lemma inversionCase :
-  forall {Σ Γ ind npar p c brs T},
-    Σ ;;; Γ |-i sCase (ind, npar) p c brs : T ->
-    False.
-Proof.
-  intros Σ Γ ind npar p c brs T h.
-  dependent induction h. assumption.
-Defined.
-
 Lemma inversionProd :
   forall {Σ Γ n A B T},
     Σ ;;; Γ |-i sProd n A B : T ->
@@ -636,11 +600,5 @@ Ltac ttinv h :=
       destruct (inversionProjT2 h) as (s & A1 & A2 & hh) ; splits_one hh
     | sProjTe _ =>
       destruct (inversionProjTe h) as (s & A1 & A2 & hh) ; splits_one hh
-    | sInd _ =>
-      destruct (inversionInd h) as (univs & decl & isdecl & hh) ; splits_one hh
-    | sConstruct _ _ =>
-      destruct (inversionConstruct h) as (univs & decl & isdecl & hh) ;
-      splits_one hh
-    | sCase _ _ _ _ => destruct (inversionCase h)
     end
   end.

@@ -5,7 +5,7 @@ From Equations Require Import Equations DepElimDec.
 From Template
 Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
 From Translation
-Require Import util SAst SInduction SLiftSubst SCommon ITyping Quotes.
+Require Import util SAst SLiftSubst SCommon ITyping Quotes.
 
 Import MonadNotation.
 
@@ -292,16 +292,6 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "ProjTe" p p' T)
       | TypeError t => raise (TypingError t)
       end
-    | sInd ind =>
-      ret (tInd ind [])
-    | sConstruct ind i =>
-      ret (tConstruct ind i [])
-    | sCase (ind, n) p c brs =>
-      (* TODO Check the contexts here! *)
-      p' <- tsl_rec fuel Σ Γ p ;;
-      c' <- tsl_rec fuel Σ Γ c ;;
-      brs' <- brs_repack (map (on_snd (tsl_rec fuel Σ Γ)) brs) ;;
-      ret (tCase (pair ind n) p' c' brs')
     end
   end.
 

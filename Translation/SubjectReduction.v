@@ -63,7 +63,7 @@ Section subjred.
   Theorem subj_red :
     forall {Σ Γ t u T},
       type_glob Σ ->
-      fst Σ |-i t ▷ u ->
+      Σ |-i t ▷ u ->
       Σ ;;; Γ |-i t : T ->
       Σ ;;; Γ |-i u : T.
   Proof.
@@ -123,12 +123,6 @@ Section subjred.
           try (apply conv_refl) ;
           try assumption ;
           try (apply conv_sym ; assumption).
-    - intros Γ ? ht.
-      ttinv ht.
-    - intros Γ ? ht.
-      ttinv ht.
-    - intros Γ ? ht.
-      ttinv ht.
     - canvas.
       econstructor ; try eassumption.
       + eapply type_ctxconv ; try eassumption.
@@ -1513,8 +1507,6 @@ Proof.
     + go. symmetry. cbn. f_equal ; try assumption.
       * f_equal. assumption.
       * f_equal. assumption.
-  - go. subst. eassumption.
-  - subst. go.
   - go.
   Unshelve. all: auto.
   cbn. omega.

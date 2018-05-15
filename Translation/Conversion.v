@@ -2,27 +2,18 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
-Require Import util SAst SInduction Equality SLiftSubst SCommon.
+Require Import util SAst Equality SLiftSubst SCommon.
 
 Open Scope s_scope.
 
 (*! Reduction. *)
 
-(* TODO in branch case with Apps *)
-(* Definition iota_red npar c args brs := *)
-(*   (mkApps (snd (List.nth c brs (0, tRel 0))) (List.skipn npar args)). *)
-
-Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
+Inductive red1 (Σ : sglobal_context) : sterm -> sterm -> Prop :=
 (*! Computation *)
 
 (** β *)
 | red_beta n A B A' B' t u :
     red1 Σ (sApp (sLambda n A B t) A' B' u) (t{ 0 := u })
-
-(** Case TODO *)
-(* | red_iota ind pars c args p brs : *)
-(*     red1 Σ Γ (sCase (ind, pars) p (Apps (sConstruct ind c) _ _ args) brs) *)
-(*          (iota_red pars c args brs) *)
 
 (** J-Refl *)
 | red_JRefl A u P w v A' u' :
@@ -46,19 +37,6 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
 | abs_red_body na A B t t' :
     red1 Σ t t' ->
     red1 Σ (sLambda na A B t) (sLambda na A B t')
-
-(** Case *)
-| case_red_pred ind p p' c brs :
-    red1 Σ p p' ->
-    red1 Σ (sCase ind p c brs) (sCase ind p' c brs)
-
-| case_red_discr ind p c c' brs :
-    red1 Σ c c' ->
-    red1 Σ (sCase ind p c brs) (sCase ind p c' brs)
-
-| case_red_brs ind p c brs brs' :
-    redbrs1 Σ brs brs' ->
-    red1 Σ (sCase ind p c brs) (sCase ind p c brs')
 
 (** App *)
 | app_red_fun u u' A B v :
@@ -351,15 +329,6 @@ Inductive red1 (Σ : sglobal_declarations) : sterm -> sterm -> Prop :=
 | projte_red p p' :
     red1 Σ p p' ->
     red1 Σ (sProjTe p) (sProjTe p')
-
-with redbrs1 (Σ : sglobal_declarations) :
-       list (nat * sterm) -> list (nat * sterm) -> Prop :=
-| redbrs1_hd n hd hd' tl :
-    red1 Σ hd hd' ->
-    redbrs1 Σ ((n, hd) :: tl) ((n, hd') :: tl)
-| redbrs1_tl hd tl tl' :
-    redbrs1 Σ tl tl' ->
-    redbrs1 Σ (hd :: tl) (hd :: tl')
 .
 
 Derive Signature for red1.
@@ -393,40 +362,6 @@ Section nlred.
       ]
     end.
 
-  Fact redbrs1_one :
-    forall {Σ b1 b2},
-      redbrs1 Σ b1 b2 ->
-      exists n m t1 t2,
-        (Σ |-i t1 ▷ t2) *
-        (nth_error b1 n = Some (m, t1)) *
-        (b2 = firstn n b1 ++ ((m, t2) :: skipn (S n) b1))%list.
-  Proof.
-    intros Σ b1 b2 h.
-    induction h.
-    - exists 0, n, hd, hd'. repeat split. assumption.
-    - destruct IHh as (n & m & t1 & t2 & hh). destruct hh as [[? ?] ?].
-      exists (S n), m, t1, t2. repeat split ; try assumption.
-      rewrite pi2_0. reflexivity.
-  Defined.
-
-  Fact one_redbrs1 :
-    forall {Σ b n m t1 t2},
-      Σ |-i t1 ▷ t2 ->
-      nth_error b n = Some (m, t1) ->
-      redbrs1 Σ b (firstn n b ++ ((m, t2) :: skipn (S n) b))%list.
-  Proof.
-    intros Σ b.
-    induction b ; intros n m t1 t2 hr hn.
-    - destruct n ; cbn in hn ; discriminate hn.
-    - destruct n.
-      + cbn in hn. inversion hn. subst. clear hn.
-        econstructor. assumption.
-      + cbn in hn.
-        change (firstn (S n) (a :: b)) with (a :: firstn n b).
-        rewrite <- app_comm_cons.
-        econstructor 2. eapply IHb ; eassumption.
-  Defined.
-
   Lemma nl_red1 :
     forall {Σ t t' u},
       Σ |-i t ▷ u ->
@@ -434,7 +369,7 @@ Section nlred.
       exists u', (Σ |-i t' ▷ u') /\ (nleq u u').
   Proof.
     intros Σ t t' u h. revert u h t'.
-    induction t using sterm_rect_list.
+    induction t.
     all: intros u h ; dependent destruction h ;
          intros tt eq ;
          destruct tt ; unfold nleq in eq ; simpl in eq ; try discriminate eq ;
@@ -454,43 +389,6 @@ Section nlred.
       eexists. split.
       + eapply red_TransportRefl.
       + assumption.
-    - clear eq H1 ind IHt1 IHt2.
-      destruct (redbrs1_one H) as [n [m [t1 [t2 [[rt hn] ?]]]]].
-      subst. clear H.
-      assert (hn' : exists t1', (nth_error brs n = Some (m, t1')) /\ (nl t1 = nl t1')).
-      { clear - H4 hn. revert n brs0 H4 hn.
-        induction brs ; intros n brs0 h hn.
-        - destruct brs0 ; cbn in h ; try discriminate h.
-          destruct n ; cbn in hn ; inversion hn.
-        - destruct brs0 ; cbn in h ; try discriminate h.
-          destruct n.
-          + cbn in hn. inversion hn. subst. clear hn.
-            destruct a as [m' t1'].
-            inversion h. subst.
-            exists t1'. split.
-            * cbn. reflexivity.
-            * assumption.
-          + cbn in hn. inversion h.
-            destruct (IHbrs _ _ H2 hn) as [t1' [? ?]].
-            exists t1'. split.
-            * cbn. assumption.
-            * assumption.
-      }
-      destruct hn' as [t1' [hn' hnl]].
-      destruct (sCaseBrsT_nth X hn _ rt _ hnl) as [t2' [hr2 hnl2]].
-      eexists. split.
-      + eapply case_red_brs. eapply one_redbrs1 ; eassumption.
-      + unfold nleq. cbn. f_equal ; try assumption.
-        rewrite !map_app. cbn. f_equal.
-        * eapply map_firstn. assumption.
-        * f_equal.
-          -- unfold on_snd. cbn. f_equal. assumption.
-          -- match goal with
-             | |- map ?f ?l1 = map ?f ?l2 =>
-               change (map f l1 = map f l2)
-                 with (map f (skipn (S n) brs0) = map f (skipn (S n) brs))
-             end.
-             apply map_skipn. assumption.
     Unshelve. all: exact nAnon.
   Defined.
 
@@ -502,8 +400,8 @@ Reserved Notation " Σ '|-i' t = u " (at level 50, t, u at next level).
 
 Inductive conv (Σ : sglobal_context) : sterm -> sterm -> Prop :=
 | conv_eq t u : nl t = nl u -> Σ |-i t = u
-| conv_red_l t u v : red1 (fst Σ) t v -> Σ |-i v = u -> Σ |-i t = u
-| conv_red_r t u v : Σ |-i t = v -> red1 (fst Σ) u v -> Σ |-i t = u
+| conv_red_l t u v : red1 Σ t v -> Σ |-i v = u -> Σ |-i t = u
+| conv_red_r t u v : Σ |-i t = v -> red1 Σ u v -> Σ |-i t = u
 
 where " Σ '|-i' t = u " := (@conv Σ t u) : i_scope.
 
@@ -784,33 +682,21 @@ Proof.
 Defined.
 
 Fixpoint lift_red1 {Σ n k t1 t2} (h : Σ |-i t1 ▷ t2) :
-  Σ |-i lift n k t1 ▷ lift n k t2
-
-with lift_redbrs1 {Σ n k b1 b2} (h : redbrs1 Σ b1 b2) :
-  redbrs1 Σ
-          (map (on_snd (lift n k)) b1) (map (on_snd (lift n k)) b2).
+  Σ |-i lift n k t1 ▷ lift n k t2.
 Proof.
-  - { destruct h ; cbn ;
-      try match goal with
-          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
-            match tt with
-            | context [t] =>
-              econstructor ;
+  destruct h ; cbn ;
+    try match goal with
+        | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
+          match tt with
+          | context [t] =>
+            econstructor ;
               eapply lift_red1 ; [ exact h | .. ]
-            end
-          end.
-      - eapply meta_red_eq ; [ econstructor |].
-        rewrite <- substP1. cbn. reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor | reflexivity ].
-        eapply lift_redbrs1. assumption.
-    }
-
-  - { destruct h.
-      - econstructor. eapply lift_red1. assumption.
-      - cbn. econstructor. eapply lift_redbrs1. assumption.
-    }
+          end
+        end.
+  - eapply meta_red_eq ; [ econstructor |].
+    rewrite <- substP1. cbn. reflexivity.
+  - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+  - eapply meta_red_eq ; [ econstructor |]. reflexivity.
 Defined.
 
 Lemma lift_conv :
@@ -842,34 +728,21 @@ Defined.
 
 Fixpoint subst_red1 {Σ n t1 t2 u}
   (h : Σ |-i t1 ▷ t2) :
-  Σ |-i t1{ n := u } ▷ t2{ n := u }
-
-with subst_redbrs1 {Σ n b1 b2 u}
-  (h : redbrs1 Σ b1 b2) :
-  redbrs1 Σ
-          (map (on_snd (subst u n)) b1) (map (on_snd (subst u n)) b2).
+  Σ |-i t1{ n := u } ▷ t2{ n := u }.
 Proof.
-  - { destruct h ; cbn ;
-      try match goal with
-          | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
-            match tt with
-            | context [t] =>
-              econstructor ;
+  destruct h ; cbn ;
+    try match goal with
+        | h : _ |-i ?t ▷ _ |- _ |-i ?tt ▷ _ =>
+          match tt with
+          | context [t] =>
+            econstructor ;
               eapply subst_red1 ; [ exact h | .. ]
-            end
-          end.
-      - eapply meta_red_eq ; [ econstructor |].
-        rewrite <- substP4. cbn. reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor |]. reflexivity.
-      - eapply meta_red_eq ; [ econstructor | reflexivity ].
-        eapply subst_redbrs1. eassumption.
-    }
-
-  - { destruct h.
-      - econstructor. eapply subst_red1. eassumption.
-      - cbn. econstructor. eapply subst_redbrs1. eassumption.
-    }
+          end
+        end.
+  - eapply meta_red_eq ; [ econstructor |].
+    rewrite <- substP4. cbn. reflexivity.
+  - eapply meta_red_eq ; [ econstructor |]. reflexivity.
+  - eapply meta_red_eq ; [ econstructor |]. reflexivity.
 Defined.
 
 Lemma subst_conv :
@@ -1010,94 +883,19 @@ Section conv_substs.
         apply IHh.
   Defined.
 
-  Lemma cong_Case_brs :
-    forall {Σ indn p c b1 b2},
-      Σ |-i b1 == b2 ->
-      Σ |-i sCase indn p c b1 = sCase indn p c b2.
-  Proof.
-    intros Σ indn p c b1 b2 hb.
-    pose (P := fun m =>
-                 let bb := ((firstn m b1) ++ (skipn m b2))%list in
-                 Σ |-i sCase indn p c bb = sCase indn p c b2).
-    pose proof (convbrs_length hb) as eql.
-    assert (aux : P #|b1|).
-    { eapply fin_indT_last ; subst P ; cbn beta.
-      - cbn. apply conv_refl.
-      - intros n hn ih _. cbn in ih.
-        pose (u := safe_nth b1 (exist _ n hn)).
-        assert (hn' : n < #|b2|) by omega.
-        pose (v := safe_nth b2 (exist _ n hn')).
-        erewrite @firstn_reconstruct
-          with (a := u) by (eapply nth_error_safe_nth).
-        assert (eq : (fst u = fst v) * (Σ |-i snd u = snd v)).
-        { eapply convbrs_nth. assumption.
-        }
-        destruct eq as [eq h].
-        assert (hh :
-          Σ |-i sCase indn p c ((firstn n b1 ++ [u]) ++ skipn (S n) b2)
-             = sCase indn p c ((firstn n b1 ++ [v]) ++ skipn (S n) b2)).
-        { clearbody u. clearbody v.
-          destruct u as [m' u], v as [m v]. cbn in eq. subst. cbn in h.
-          clear - h. dependent induction h.
-          - apply conv_eq. simpl.
-            f_equal. rewrite !map_app. f_equal. f_equal.
-            cbn. f_equal. unfold on_snd. f_equal ; assumption.
-          - eapply conv_red_l ; [
-              eapply case_red_brs
-            | eassumption
-            ].
-            set (l1 := firstn n b1). clearbody l1.
-            set (l2 := skipn (S n) b2). clearbody l2.
-            clear - H. revert l2. induction l1.
-            + intro l2. cbn. econstructor. assumption.
-            + intro l2. cbn. econstructor. apply IHl1.
-          - eapply conv_red_r ; [
-              eassumption
-            | eapply case_red_brs
-            ].
-            set (l1 := firstn n b1). clearbody l1.
-            set (l2 := skipn (S n) b2). clearbody l2.
-            clear - H. revert l2. induction l1.
-            + intro l2. cbn. econstructor. assumption.
-            + intro l2. cbn. econstructor. apply IHl1.
-        }
-        eapply conv_trans ; try eassumption.
-        erewrite @skipn_reconstruct
-          with (a := v) in ih by (eapply nth_error_safe_nth).
-        replace ((firstn n b1 ++ [v]) ++ skipn (S n) b2)%list
-          with (firstn n b1 ++ v :: skipn (S n) b2)%list
-          by (rewrite app_assoc_reverse ; reflexivity).
-        assumption.
-    }
-    subst P. cbn in aux.
-    rewrite firstn_all, eql, skipn_all, app_nil_r in aux.
-    assumption.
-  Defined.
-
   Lemma substs_red1 {Σ} (t : sterm) :
     forall n {u1 u2},
-      fst Σ |-i u1 ▷ u2 ->
+      Σ |-i u1 ▷ u2 ->
       Σ |-i t{ n := u1 } = t{ n := u2 }.
   Proof.
-    induction t using sterm_rect_list ; intros m u1 u2 h.
+    induction t ; intros m u1 u2 h.
     all: cbn ; spall ; conv_rewrite_assumptions.
     all: try (apply conv_refl).
-    - case_eq (m ?= n) ; intro e ; bprop e.
-      + eapply lift_conv.
-        eapply conv_red_l ; try eassumption. apply conv_refl.
-      + apply conv_refl.
-      + apply conv_refl.
-    - assert (h' : Σ |-i map (on_snd (subst u1 m)) brs
-                     == map (on_snd (subst u2 m)) brs).
-      { clear - h X. revert u1 u2 h. induction X.
-        - cbn. constructor.
-        - intros u1 u2 h. cbn.
-          destruct x as [n x].
-          econstructor.
-          + eapply p. assumption.
-          + eapply IHX. assumption.
-      }
-      apply cong_Case_brs. assumption.
+    case_eq (m ?= n) ; intro e ; bprop e.
+    + eapply lift_conv.
+      eapply conv_red_l ; try eassumption. apply conv_refl.
+    + apply conv_refl.
+    + apply conv_refl.
   Defined.
 
 End conv_substs.

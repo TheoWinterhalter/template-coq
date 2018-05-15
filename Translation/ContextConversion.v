@@ -221,10 +221,6 @@ Section ctxconv.
         apply conv_refl.
     - eapply type_ProjT2 with (A1 := A1) ; ih.
     - econstructor.
-      + assumption.
-      + eassumption.
-    - econstructor. assumption.
-    - econstructor.
       + ih.
       + ih.
       + assumption.
