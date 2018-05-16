@@ -28,6 +28,7 @@ Inductive sterm : Type :=
 | sCongProd (B1 B2 pA pB : sterm)
 | sCongLambda (B1 B2 t1 t2 pA pB pt : sterm)
 | sCongApp (B1 B2 pu pA pB pv : sterm)
+| sCongSum (B1 B2 pA pB : sterm)
 | sCongEq (pA pu pv : sterm)
 | sCongRefl (pA pu : sterm)
 | sEqToHeq (p : sterm)

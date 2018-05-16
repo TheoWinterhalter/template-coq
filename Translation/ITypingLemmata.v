@@ -342,6 +342,14 @@ Proof.
         + rewrite <- liftP2 by omega.
           change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
           rewrite substP1. cbn. reflexivity.
+      - cbn. eapply type_CongSum ; try eih.
+        cbn. f_equal.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
       - cbn. eapply type_CongEq ; eih.
       - cbn. eapply type_CongRefl ; eih.
       - cbn. eapply type_EqToHeq ; eih.
@@ -586,6 +594,14 @@ Proof.
         + rewrite <- substP2 by omega.
           change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
           rewrite substP4. cbn. reflexivity.
+      - cbn. eapply type_CongSum ; esh.
+        cbn. f_equal.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
       - cbn. eapply type_CongEq ; esh.
       - cbn. eapply type_CongRefl ; esh.
       - cbn. eapply type_EqToHeq ; esh.
@@ -781,6 +797,12 @@ Proof.
       eapply typing_subst ; eassumption.
     + eapply type_App ; eassumption.
     + eapply type_App ; eassumption.
+  - exists (succ_sort (max_sort s z)).
+    apply type_Heq.
+    + eapply type_Sort. apply (typing_wf H).
+    + eapply type_Sort. apply (typing_wf H).
+    + apply type_Sum ; assumption.
+    + apply type_Sum ; assumption.
   - exists (succ_sort s). apply type_Heq.
     + apply type_Sort ; apply (typing_wf H).
     + apply type_Sort ; apply (typing_wf H).

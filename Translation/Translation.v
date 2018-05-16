@@ -33,6 +33,11 @@ Inductive trel : sterm -> sterm -> Type :=
     B1 ∼ B2 ->
     sProd n1 A1 B1 ∼ sProd n2 A2 B2
 
+| trel_Sum n1 n2 A1 A2 B1 B2 :
+    A1 ∼ A2 ->
+    B1 ∼ B2 ->
+    sSum n1 A1 B1 ∼ sSum n2 A2 B2
+
 | trel_Eq A1 A2 u1 u2 v1 v2 :
     A1 ∼ A2 ->
     u1 ∼ u2 ->
@@ -84,6 +89,11 @@ Inductive inrel : sterm -> sterm -> Type :=
     A ⊏ A' ->
     B ⊏ B' ->
     sProd n A B ⊏ sProd n' A' B'
+
+| inrel_Sum n n' A A' B B' :
+    A ⊏ A' ->
+    B ⊏ B' ->
+    sSum n A B ⊏ sSum n' A' B'
 
 | inrel_Eq A A' u u' v v' :
     A ⊏ A' ->
@@ -378,6 +388,66 @@ Proof.
     destruct (istype_type hg h2).
     eapply type_conv.
     + eapply type_CongProd' ; try assumption.
+      * eassumption.
+      * rewrite llift_substProj, rlift_substProj.
+        apply hpB.
+      * lift_sort.
+        eapply type_llift1 ; eassumption.
+      * lift_sort.
+        eapply type_rlift1 ; eassumption.
+    + instantiate (1 := succ_sort (max_sort s0 s2)).
+      eapply type_Heq.
+      * lift_sort. eapply type_llift0 ; try eassumption.
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           try eassumption.
+           econstructor. eapply typing_wf. eassumption.
+      * lift_sort. eapply type_rlift0 ; try eassumption.
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           try eassumption.
+           econstructor. eapply typing_wf. eassumption.
+      * eapply type_llift0 ; eassumption.
+      * eapply type_rlift0 ; eassumption.
+    + cbn. apply cong_Heq.
+      all: try (apply conv_refl).
+      * lift_sort. apply llift_conv. assumption.
+      * lift_sort. apply rlift_conv. assumption.
+
+  (* Sum *)
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    exists (sCongSum (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pA pB).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h h0).
+    destruct (istype_type hg hpA) as [s iA].
+    ttinv iA. pose proof (sort_conv_inv h9). subst. clear h9.
+    assert (s1 = s0).
+    { cbn in h12, h5. eapply sorts_in_sort ; eassumption. }
+    subst.
+    assert (hm' :
+              ismix Σ Γ
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+    ).
+    { econstructor ; eassumption. }
+    specialize (hpB _ _ _ hm' h4 h7).
+    destruct (istype_type hg hpB) as [? iB]. ttinv iB.
+    pose proof (sort_conv_inv h13) as hh. symmetry in hh. subst. clear h13.
+    assert (s3 = s2).
+    { cbn in h16, h8. eapply sorts_in_sort ; eassumption. }
+    subst.
+    destruct (istype_type hg h1).
+    destruct (istype_type hg h2).
+    eapply type_conv.
+    + eapply type_CongSum' ; try assumption.
       * eassumption.
       * rewrite llift_substProj, rlift_substProj.
         apply hpB.
@@ -1113,6 +1183,23 @@ Proof.
   - now eapply type_Prod.
 Defined.
 
+Definition trans_Sum {Σ Γ n A B s1 s2 Γ' A' B'} :
+  Σ |--i Γ' # ⟦ Γ ⟧ ->
+  Σ ;;;; Γ' |--- [A'] : sSort s1 # ⟦ Γ |--- [A] : sSort s1 ⟧ ->
+  Σ ;;;; Γ' ,, A' |--- [B'] : sSort s2
+  # ⟦ Γ ,, A |--- [B]: sSort s2 ⟧ ->
+  Σ ;;;; Γ' |--- [sSum n A' B']: sSort (max_sort s1 s2)
+  # ⟦ Γ |--- [ sSum n A B]: sSort (max_sort s1 s2) ⟧.
+Proof.
+  intros hΓ hA hB.
+  destruct hΓ. destruct hA as [[? ?] ?]. destruct hB as [[? ?] ?].
+  repeat split.
+  - assumption.
+  - constructor.
+  - now constructor.
+  - now eapply type_Sum.
+Defined.
+
 Definition trans_Eq {Σ Γ A u v s Γ' A' u' v'} :
   Σ |--i Γ' # ⟦ Γ ⟧ ->
   Σ ;;;; Γ' |--- [A'] : sSort s # ⟦ Γ |--- [A] : sSort s ⟧ ->
@@ -1506,7 +1593,23 @@ Proof.
       * eapply type_App ; eassumption.
 
     (* type_Sum *)
-    + fail "todo".
+    + (* Translation of the domain *)
+      destruct (H _ hΓ) as [S' [t' ht']].
+      assert (th : type_head (head (sSort s1))) by constructor.
+      destruct (choose_type hg th ht') as [T' [[t'' ht''] hh]].
+      clear ht' t' S'.
+      destruct T' ; inversion hh.
+      subst. clear hh th.
+      (* Translation of the codomain *)
+      destruct (H0 _ (trans_snoc hΓ ht''))
+        as [S' [b' hb']].
+      assert (th : type_head (head (sSort s2))) by constructor.
+      destruct (choose_type hg th hb') as [T' [[b'' hb''] hh]].
+      clear hb' b' S'.
+      destruct T' ; inversion hh. subst. clear hh th.
+      (* Now we conclude *)
+      exists (sSort (max_sort s1 s2)), (sSum n t'' b'').
+      now apply trans_Sum.
 
     (* type_Eq *)
     + (* The type *)
@@ -2531,6 +2634,167 @@ Proof.
                 change S with (S {0 := tu2})
               end.
               eapply typing_subst ; eassumption.
+
+    (* cong_Sum *)
+    + (* The domains *)
+      destruct (H _ hΓ)
+        as [T1 [T2 [A1'' [A2'' [pA h1']]]]].
+      destruct (eqtrans_trans hg h1') as [hA1'' hA2''].
+      destruct h1' as [[[[[? ?] ?] ?] ?] hpA''].
+      assert (th : type_head (head (sSort s1))) by constructor.
+      destruct (choose_type hg th hA1'') as [T' [[A1' hA1'] hh]].
+      destruct T' ; inversion hh. subst.
+      clear hh.
+      destruct (choose_type hg th hA2'') as [T' [[A2' hA2'] hh]].
+      destruct T' ; inversion hh. subst.
+      clear hh th.
+      (* Now the codomains *)
+      destruct (H0 _ (trans_snoc hΓ hA1'))
+        as [S1 [S2 [B1'' [B2'' [pB h2']]]]].
+      destruct (eqtrans_trans hg h2') as [hB1'' hB2''].
+      assert (th : type_head (head (sSort s2))) by constructor.
+      destruct (choose_type hg th hB1'') as [T' [[B1' hB1'] hh]].
+      destruct T' ; inversion hh. subst.
+      clear hh.
+      destruct (choose_type hg th hB2'') as [T' [[B2' hB2'] hh]].
+      destruct T' ; inversion hh. subst.
+      clear hh th.
+      destruct h2' as [[[[[? ?] ?] ?] ?] hpB''].
+      (* Now we connect the paths for the domains *)
+      assert (hp1 : ∑ p1, Σ ;;; Γ' |-i p1 : sHeq (sSort s1) A1' (sSort s1) A2').
+      { destruct hA1' as [[_ eA1'] hA1'].
+        destruct hA1'' as [_ hA1''].
+        destruct hA2' as [[_ eA2'] hA2'].
+        destruct hA2'' as [_ hA2''].
+        assert (hr : A1' ∼ A1'').
+        { eapply trel_trans.
+          - eapply trel_sym. eapply inrel_trel. eassumption.
+          - eapply inrel_trel. eassumption.
+        }
+        destruct (trel_to_heq Γ' hg hr) as [pl hpl].
+        assert (hr' : A2'' ∼ A2').
+        { eapply trel_trans.
+          - eapply trel_sym. eapply inrel_trel. eassumption.
+          - eapply inrel_trel. eassumption.
+        }
+        destruct (trel_to_heq Γ' hg hr') as [pr hpr].
+        exists (sHeqTrans (sHeqTrans pl pA) pr).
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
+        eapply type_HeqTrans' ; try assumption.
+        - eapply type_HeqTrans' ; eassumption.
+        - eassumption.
+      }
+      destruct hp1 as [p1 hp1].
+      (* And then the paths for the codomains *)
+      pose (Γ1 := nil ,, A1').
+      pose (Γ2 := nil ,, A2').
+      pose (Γm := [ (sPack A1' A2') ]).
+      assert (hm : ismix Σ Γ' Γ1 Γ2 Γm).
+      { revert Γm.
+        replace A1' with (llift0 #|@nil sterm| A1')
+          by (cbn ; now rewrite llift00).
+        replace A2' with (rlift0 #|@nil sterm| A2')
+          by (cbn ; now rewrite rlift00).
+        intros.
+        destruct hA1' as [[? ?] ?].
+        destruct hA2' as [[? ?] ?].
+        econstructor.
+        - constructor.
+        - eassumption.
+        - assumption.
+      }
+      pose (Δ := Γ' ,,, Γm).
+      assert (hp2 : ∑ p2, Σ ;;; Γ' ,,, Γ1 |-i p2 : sHeq (sSort s2) B1'
+                                                       (sSort s2) B2').
+      { destruct hB1' as [[_ eB1'] hB1'].
+        destruct hB1'' as [_ hB1''].
+        destruct hB2' as [[_ eB2'] hB2'].
+        destruct hB2'' as [_ hB2''].
+        assert (hr : B1' ∼ B1'').
+        { eapply trel_trans.
+          - eapply trel_sym. eapply inrel_trel. eassumption.
+          - eapply inrel_trel. eassumption.
+        }
+        destruct (trel_to_heq (Γ',, A1') hg hr) as [pl hpl].
+        specialize (hpl _ _ ltac:(eassumption) ltac:(eassumption)).
+        assert (hr' : B2'' ∼ B2').
+        { eapply trel_trans.
+          - eapply trel_sym. eapply inrel_trel. eassumption.
+          - eapply inrel_trel. eassumption.
+        }
+        destruct (trel_to_heq (Γ',, A1') hg hr') as [pr hpr].
+        specialize (hpr _ _ ltac:(eassumption) ltac:(eassumption)).
+        exists (sHeqTrans (sHeqTrans pl pB) pr).
+        eapply type_HeqTrans' ; try assumption.
+        - eapply type_HeqTrans' ; eassumption.
+        - eassumption.
+      }
+      destruct hp2 as [p2 hp2].
+      assert (hp3 : ∑ p3, Σ ;;; Δ |-i p3 : sHeq (sSort s2)
+                                               (llift0 #|Γm| B1')
+                                               (sSort s2)
+                                               (llift0 #|Γm| B2')
+             ).
+      { exists (llift0 #|Γm| p2).
+        match goal with
+        | |- _ ;;; _ |-i _ : ?T =>
+          change T with (llift0 #|Γm| (sHeq (sSort s2) B1' (sSort s2) B2'))
+        end.
+        eapply type_llift0 ; try easy.
+      }
+      destruct hp3 as [p3 hp3].
+      (* Also translating the typing hypothesis for B2 *)
+      destruct (H2 _ (trans_snoc hΓ hA2'))
+        as [S' [B2''' hB2''']].
+      assert (th : type_head (head (sSort s2))) by constructor.
+      destruct (choose_type hg th hB2''') as [T' [[tB2 htB2] hh]].
+      clear hB2''' B2''' S'.
+      destruct T' ; inversion hh. subst. clear hh th.
+      (* Now we can use the strong version of the lemma to build a path between
+         B2' and tB2 !
+       *)
+      assert (hp4 : ∑ p4, Σ ;;; Δ |-i p4 : sHeq (sSort s2) (llift0 #|Γm| B2')
+                                               (sSort s2) (rlift0 #|Γm| tB2)
+             ).
+      { change (sSort s2) with (llift0 #|Γm| (sSort s2)) at 1.
+        change (sSort s2) with (rlift0 #|Γm| (sSort s2)) at 2.
+        assert (hr : B2' ∼ tB2).
+        { destruct htB2 as [[? ?] ?].
+          destruct hB2' as [[? ?] ?].
+          eapply trel_trans.
+          - eapply trel_sym. eapply inrel_trel. eassumption.
+          - apply inrel_trel. assumption.
+        }
+        edestruct (trel_to_heq' hg hr) as [p4 hp4].
+        exists p4. apply hp4.
+        - eassumption.
+        - destruct hB2' as [[? ?] ?]. assumption.
+        - destruct htB2 as [[? ?] ?]. assumption.
+      }
+      destruct hp4 as [p4 hp4].
+      (* This gives us a better path *)
+      assert (hp5 : ∑ p5, Σ ;;; Δ |-i p5 : sHeq (sSort s2) (llift0 #|Γm| B1')
+                                               (sSort s2) (rlift0 #|Γm| tB2)
+             ).
+      { exists (sHeqTrans p3 p4).
+        eapply type_HeqTrans' ; eassumption.
+      }
+      destruct hp5 as [p5 hp5].
+      (* We can finally conclude! *)
+      exists (sSort (max_sort s1 s2)), (sSort (max_sort s1 s2)).
+      exists (sSum n1 A1' B1'), (sSum n2 A2' tB2).
+      exists (sCongSum B1' tB2 p1 p5).
+      destruct hA1' as [[[? ?] ?] ?].
+      destruct hB1' as [[[? ?] ?] ?].
+      destruct hA2' as [[[? ?] ?] ?].
+      destruct htB2 as [[[? ?] ?] ?].
+      repeat split ; [ try constructor .. |].
+      all: try assumption.
+      eapply type_CongSum' ; try assumption.
+      cbn in hp5. rewrite <- llift_substProj, <- rlift_substProj in hp5.
+      rewrite !llift00, !rlift00 in hp5.
+      apply hp5.
 
     (* cong_Eq *)
     + destruct (H _ hΓ)

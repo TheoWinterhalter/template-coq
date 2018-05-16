@@ -285,6 +285,45 @@ Proof.
   eapply type_CongApp'' ; eassumption.
 Defined.
 
+Lemma type_CongSum'' :
+  forall {Σ Γ s z nx ny A1 A2 B1 B2 pA pB},
+    type_glob Σ ->
+    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ ,, (sPack A1 A2)
+    |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
+    Σ ;;; Γ |-i sCongSum B1 B2 pA pB :
+    sHeq (sSort (max_sort s z)) (sSum nx A1 B1)
+         (sSort (max_sort s z)) (sSum ny A2 B2).
+Proof.
+  intros Σ Γ s z nx ny A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
+  destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
+  destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+  eapply type_CongSum.
+  all: eassumption.
+Defined.
+
+Lemma type_CongSum' :
+  forall {Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 pA pB},
+    type_glob Σ ->
+    Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
+    Σ ;;; Γ ,, (sPack A1 A2)
+    |-i pB : sHeq (sSort z1) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                (sSort z2) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z1 ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z2 ->
+    Σ ;;; Γ |-i sCongSum B1 B2 pA pB :
+    sHeq (sSort (max_sort s1 z1)) (sSum nx A1 B1)
+         (sSort (max_sort s2 z2)) (sSum ny A2 B2).
+Proof.
+  intros Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 pA pB hg hpA hpB hB1 hB2.
+  destruct (prod_sorts hg hpA hpB) as [e1 e2].
+  subst. rename z2 into z, s2 into s.
+  eapply type_CongSum'' ; eassumption.
+Defined.
+
 Lemma type_CongEq'' :
   forall {Σ Γ s A1 A2 u1 u2 v1 v2 pA pu pv},
     type_glob Σ ->

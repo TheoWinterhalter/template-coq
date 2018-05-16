@@ -275,6 +275,23 @@ Inductive red1 (Σ : sglobal_context) : sterm -> sterm -> Prop :=
     red1 Σ (sCongApp B1 B2 pu pA pB pv)
              (sCongApp B1 B2 pu pA pB pv')
 
+(** CongSum *)
+| congsum_red_ty_l B1 B1' B2 pA pB :
+    red1 Σ B1 B1' ->
+    red1 Σ (sCongSum B1 B2 pA pB) (sCongSum B1' B2 pA pB)
+
+| congsum_red_ty_r B1 B2 B2' pA pB :
+    red1 Σ B2 B2' ->
+    red1 Σ (sCongSum B1 B2 pA pB) (sCongSum B1 B2' pA pB)
+
+| congsum_red_tm_l B1 B2 pA pA' pB :
+    red1 Σ pA pA' ->
+    red1 Σ (sCongSum B1 B2 pA pB) (sCongSum B1 B2 pA' pB)
+
+| congsum_red_tm_r B1 B2 pA pB pB' :
+    red1 Σ pB pB' ->
+    red1 Σ (sCongSum B1 B2 pA pB) (sCongSum B1 B2 pA pB')
+
 (** CongEq *)
 | congeq_red_eq_ty pA pu pv pA' :
     red1 Σ pA pA' ->

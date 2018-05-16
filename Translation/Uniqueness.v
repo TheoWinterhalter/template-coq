@@ -107,6 +107,26 @@ Proof.
     + apply cong_App ; try assumption. apply conv_refl.
     + apply substs_conv. assumption.
     + apply cong_App ; try assumption. apply conv_refl.
+  - specialize (IHu3 _ _ _ h h0).
+    pose proof (heq_conv_inv IHu3) as e3. split_hyps.
+    pose proof (sort_conv_inv pi1_). subst.
+    assert (hh : Σ ;;; Γ,, A1 |-i u1 : sSort z0).
+    { eapply type_ctxconv ; try eassumption.
+      - econstructor ; try eassumption.
+        eapply typing_wf. eassumption.
+      - constructor.
+        + apply ctxconv_refl.
+        + apply conv_sym. assumption.
+    }
+    specialize (IHu1 _ _ _ h5 hh).
+    pose proof (sort_conv_inv IHu1). subst.
+    eapply conv_trans ; [| exact h10 ].
+    apply cong_Heq.
+    + apply conv_refl.
+    + apply cong_Sum ; try assumption.
+      apply conv_refl.
+    + apply conv_refl.
+    + apply cong_Sum ; try assumption. apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h12).
     specialize (IHu2 _ _ _ h11 h21).
     specialize (IHu3 _ _ _ h10 h20).

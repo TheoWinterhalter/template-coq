@@ -167,6 +167,19 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
                sHeq (B1{0 := v1}) (sApp u1 A1 B1 v1)
                     (B2{0 := v2}) (sApp u2 A2 B2 v2)
 
+| type_CongSum Γ s z nx ny A1 A2 B1 B2 pA pB :
+    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ ,, (sPack A1 A2)
+    |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                 (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
+    Σ ;;; Γ |-i A1 : sSort s ->
+    Σ ;;; Γ |-i A2 : sSort s ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
+    Σ ;;; Γ |-i sCongSum B1 B2 pA pB :
+    sHeq (sSort (max_sort s z)) (sSum nx A1 B1)
+         (sSort (max_sort s z)) (sSum ny A2 B2)
+
 | type_CongEq Γ s A1 A2 u1 u2 v1 v2 pA pu pv :
     Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
     Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2 ->

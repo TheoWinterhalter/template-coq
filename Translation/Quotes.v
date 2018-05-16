@@ -3,7 +3,20 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
-(* From Translation Require Import SAst SLiftSubst SCommon ITyping. *)
+From Translation Require Import util.
+
+Quote Definition tSum := @pp_sigT.
+Quote Definition tPi1 := @pi1.
+Quote Definition tPi2 := @pi2.
+
+Definition mkSum (A B : term) : term :=
+  tApp tSum [ A ;  B ].
+
+Definition mkPi1 (A B p : term) : term :=
+  tApp tPi1 [ A ; B ; p ].
+
+Definition mkPi2 (A B p : term) : term :=
+  tApp tPi2 [ A ; B ; p ].
 
 (* Proof of concept: It is possible for heq to live in the same universe has its
    arguments. Meaning we can lower the universe in our definition.
@@ -189,6 +202,71 @@ Proof.
   now apply heq_refl.
 Defined.
 
+Lemma cong_sum :
+  forall (A1 A2 : Type) (B1 : A1 -> Type) (B2 : A2 -> Type),
+    A1 ≅ A2 ->
+    (forall (p : Pack A1 A2), B1 (ProjT1 p) ≅ B2 (ProjT2 p)) ->
+    (∑ x, B1 x) ≅ (∑ y, B2 y).
+Proof.
+  intros A1 A2 B1 B2 hA hB.
+  exists eq_refl. simpl.
+  destruct hA as [pT pA]. rewrite (K pT) in pA.
+  simpl in pA. clear pT. destruct pA. rename A1 into A.
+  assert (pB : B1 = B2).
+  { apply funext. intro x.
+    destruct (hB (pack x x (heq_refl x))) as [pT pB]. cbn in pB.
+    rewrite (K pT) in pB. simpl in pB. clear pT.
+    exact pB.
+  }
+  now destruct pB.
+Defined.
+
+Lemma cong_pi1 :
+  forall (A1 A2 : Type) (B1 : A1 -> Type) (B2 : A2 -> Type)
+    (p1 : ∑ x, B1 x) (p2 : ∑ x, B2 x),
+    A1 ≅ A2 ->
+    (forall (p : Pack A1 A2), B1 (ProjT1 p) ≅ B2 (ProjT2 p)) ->
+    p1 ≅ p2 ->
+    pi1 p1 ≅ pi1 p2.
+Proof.
+  intros A1 A2 B1 B2 p1 p2 hA hB hp.
+  destruct hA as [pT pA]. rewrite (K pT) in pA. simpl in pA. clear pT.
+  destruct pA. rename A1 into A.
+  assert (pB : B1 = B2).
+  { apply funext. intro x.
+    destruct (hB (pack x x (heq_refl x))) as [pT pB].
+    rewrite (K pT) in pB. simpl in pB. clear pT.
+    exact pB.
+  }
+  destruct pB. rename B1 into B. clear hB.
+  destruct hp as [pT pp]. rewrite (K pT) in pp. simpl in pp. clear pT.
+  destruct pp. rename p1 into p.
+  apply heq_refl.
+Defined.
+
+Lemma cong_pi2 :
+  forall (A1 A2 : Type) (B1 : A1 -> Type) (B2 : A2 -> Type)
+    (p1 : ∑ x, B1 x) (p2 : ∑ x, B2 x),
+    A1 ≅ A2 ->
+    (forall (p : Pack A1 A2), B1 (ProjT1 p) ≅ B2 (ProjT2 p)) ->
+    p1 ≅ p2 ->
+    pi2 p1 ≅ pi2 p2.
+Proof.
+  intros A1 A2 B1 B2 p1 p2 hA hB hp.
+  destruct hA as [pT pA]. rewrite (K pT) in pA. simpl in pA. clear pT.
+  destruct pA. rename A1 into A.
+  assert (pB : B1 = B2).
+  { apply funext. intro x.
+    destruct (hB (pack x x (heq_refl x))) as [pT pB].
+    rewrite (K pT) in pB. simpl in pB. clear pT.
+    exact pB.
+  }
+  destruct pB. rename B1 into B. clear hB.
+  destruct hp as [pT pp]. rewrite (K pT) in pp. simpl in pp. clear pT.
+  destruct pp. rename p1 into p.
+  apply heq_refl.
+Defined.
+
 Lemma cong_eq :
   forall (A1 A2 : Type) (u1 v1 : A1) (u2 v2 : A2),
     A1 ≅ A2 -> u1 ≅ u2 -> v1 ≅ v2 -> (u1 = v1) ≅ (u2 = v2).
@@ -251,6 +329,7 @@ Quote Definition tProjTe := @ProjTe.
 Quote Definition tCongProd := @cong_prod.
 Quote Definition tCongLambda := @cong_lambda.
 Quote Definition tCongApp := @cong_app.
+Quote Definition tCongSum := @cong_sum.
 Quote Definition tCongEq := @cong_eq.
 Quote Definition tCongRefl := @cong_refl.
 Quote Definition tEqToHeq := @eq_to_heq.
@@ -323,6 +402,16 @@ Definition mkCongApp (A1 A2 B1 B2 t1 t2 u1 u2 pA pB pt pu : term) :=
     (tLambda nAnon (mkPack A1 A2) pB) ;
     pt ;
     pu
+  ].
+
+Definition mkCongSum (A1 A2 B1 B2 pA pB : term) :=
+  tApp tCongSum [
+    A1 ;
+    A2 ;
+    (tLambda nAnon A1 B1) ;
+    (tLambda nAnon A2 B2) ;
+    pA ;
+    (tLambda nAnon (mkPack A1 A2) pB)
   ].
 
 Definition mkCongEq (A1 A2 u1 v1 u2 v2 pA pu pv : term) : term :=
