@@ -355,6 +355,25 @@ Proof.
         + rewrite <- liftP2 by omega.
           change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
           rewrite substP1. cbn. reflexivity.
+      - cbn. eapply type_CongPi1 ; eih.
+        cbn. f_equal.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+      - cbn.
+        change #|Ξ| with (0 + #|Ξ|)%nat.
+        rewrite 2!substP1.
+        eapply type_CongPi2 ; eih.
+        cbn. f_equal.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
       - cbn. eapply type_CongEq ; eih.
       - cbn. eapply type_CongRefl ; eih.
       - cbn. eapply type_EqToHeq ; eih.
@@ -612,6 +631,25 @@ Proof.
         + rewrite <- substP2 by omega.
           change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
           rewrite substP4. cbn. reflexivity.
+      - cbn. eapply type_CongPi1 ; esh.
+        cbn. f_equal.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+      - cbn.
+        change #|Δ| with (0 + #|Δ|)%nat.
+        rewrite 2!substP4. cbn.
+        eapply type_CongPi2 ; esh.
+        cbn. f_equal.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
       - cbn. eapply type_CongEq ; esh.
       - cbn. eapply type_CongRefl ; esh.
       - cbn. eapply type_EqToHeq ; esh.
@@ -817,6 +855,24 @@ Proof.
     + eapply type_Sort. apply (typing_wf H).
     + apply type_Sum ; assumption.
     + apply type_Sum ; assumption.
+  - eexists. econstructor ; try eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+  - eexists. econstructor ; try eassumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ { 0 := ?t } : ?S =>
+        change S with (S{ 0 := t })
+      end.
+      eapply typing_subst ; try eassumption.
+      econstructor ; eassumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ { 0 := ?t } : ?S =>
+        change S with (S{ 0 := t })
+      end.
+      eapply typing_subst ; try eassumption.
+      econstructor ; eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
   - exists (succ_sort s). apply type_Heq.
     + apply type_Sort ; apply (typing_wf H).
     + apply type_Sort ; apply (typing_wf H).

@@ -127,6 +127,28 @@ Proof.
       apply conv_refl.
     + apply conv_refl.
     + apply cong_Sum ; try assumption. apply conv_refl.
+  - specialize IHu3 with (1 := h0) (2 := h12).
+    specialize IHu5 with (1 := h10) (2 := h20).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu5).
+    split_hyps.
+    eapply conv_trans ; [| exact h13 ].
+    apply cong_Heq ; try assumption.
+    + apply cong_Pi1 ; try assumption. apply conv_refl.
+    + apply cong_Pi1 ; try assumption. apply conv_refl.
+  - specialize IHu3 with (1 := h0) (2 := h12).
+    specialize IHu5 with (1 := h10) (2 := h20).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu5).
+    split_hyps.
+    eapply conv_trans ; [| exact h13 ].
+    apply cong_Heq ; try assumption.
+    + apply substs_conv.
+      apply cong_Pi1 ; try assumption. apply conv_refl.
+    + apply cong_Pi2 ; try assumption. apply conv_refl.
+    + apply substs_conv.
+      apply cong_Pi1 ; try assumption. apply conv_refl.
+    + apply cong_Pi2 ; try assumption. apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h12).
     specialize (IHu2 _ _ _ h11 h21).
     specialize (IHu3 _ _ _ h10 h20).

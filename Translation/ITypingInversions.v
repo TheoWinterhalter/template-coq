@@ -452,6 +452,62 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionCongPi1 :
+  forall {Σ Γ B1 B2 pA pB pp T},
+    Σ ;;; Γ |-i sCongPi1 B1 B2 pA pB pp : T ->
+    exists s z nx ny A1 A2 p1 p2,
+      (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
+      (Σ ;;; Γ ,, (sPack A1 A2)
+       |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                    (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
+      (Σ ;;; Γ |-i pp : sHeq (sSum nx A1 B1) p1 (sSum ny A2 B2) p2) *
+      (Σ ;;; Γ |-i A1 : sSort s) *
+      (Σ ;;; Γ |-i A2 : sSort s) *
+      (Σ ;;; Γ ,, A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ |-i p1 : sSum nx A1 B1) *
+      (Σ ;;; Γ |-i p2 : sSum ny A2 B2) *
+      (Σ |-i sHeq A1 (sPi1 A1 B1 p1) A2 (sPi1 A2 B2 p2) = T).
+Proof.
+  intros Σ Γ B1 B2 pA pB pp T h.
+  dependent induction h.
+  - exists s, z, nx, ny, A1, A2, p1, p2. repeat split. all: try assumption.
+    apply conv_refl.
+  - destruct IHh1 as (s' & z & nx & ny & A1 & A2 & p1 & p2 & ?).
+    split_hyps.
+    exists s', z, nx, ny, A1, A2, p1, p2. repeat split. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
+Lemma inversionCongPi2 :
+  forall {Σ Γ B1 B2 pA pB pp T},
+    Σ ;;; Γ |-i sCongPi2 B1 B2 pA pB pp : T ->
+    exists s z nx ny A1 A2 p1 p2,
+      (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
+      (Σ ;;; Γ ,, (sPack A1 A2)
+       |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                    (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
+      (Σ ;;; Γ |-i pp : sHeq (sSum nx A1 B1) p1 (sSum ny A2 B2) p2) *
+      (Σ ;;; Γ |-i A1 : sSort s) *
+      (Σ ;;; Γ |-i A2 : sSort s) *
+      (Σ ;;; Γ ,, A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ |-i p1 : sSum nx A1 B1) *
+      (Σ ;;; Γ |-i p2 : sSum ny A2 B2) *
+      (Σ |-i sHeq (B1{ 0 := sPi1 A1 B1 p1}) (sPi2 A1 B1 p1)
+                  (B2{ 0 := sPi1 A2 B2 p2}) (sPi2 A2 B2 p2)
+          = T).
+Proof.
+  intros Σ Γ B1 B2 pA pB pp T h.
+  dependent induction h.
+  - exists s, z, nx, ny, A1, A2, p1, p2. repeat split. all: try assumption.
+    apply conv_refl.
+  - destruct IHh1 as (s' & z & nx & ny & A1 & A2 & p1 & p2 & ?).
+    split_hyps.
+    exists s', z, nx, ny, A1, A2, p1, p2. repeat split. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 Lemma inversionCongEq :
   forall {Σ Γ pA pu pv T},
     Σ ;;; Γ |-i sCongEq pA pu pv : T ->
@@ -610,6 +666,8 @@ Ltac ttinv h :=
   let u2 := fresh "u2" in
   let v1 := fresh "v1" in
   let v2 := fresh "v2" in
+  let p1 := fresh "p1" in
+  let p2 := fresh "p2" in
   let a := fresh "a" in
   let b := fresh "b" in
   let c := fresh "c" in
@@ -664,6 +722,14 @@ Ltac ttinv h :=
       splits_one hh
     | sCongSum _ _ _ _ =>
       destruct (inversionCongSum h) as (s & z & nx & ny & A1 & A2 & hh) ;
+      splits_one hh
+    | sCongPi1 _ _ _ _ _ =>
+      destruct (inversionCongPi1 h)
+        as (s & z & nx & ny & A1 & A2 & p1 & p2 & hh) ;
+      splits_one hh
+    | sCongPi2 _ _ _ _ _ =>
+      destruct (inversionCongPi2 h)
+        as (s & z & nx & ny & A1 & A2 & p1 & p2 & hh) ;
       splits_one hh
     | sCongEq _ _ _ =>
       destruct (inversionCongEq h) as (s & A1 & A2 & u1 & u2 & v1 & v2 & hh) ;

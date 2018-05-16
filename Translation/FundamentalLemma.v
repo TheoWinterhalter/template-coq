@@ -58,6 +58,18 @@ Inductive trel : sterm -> sterm -> Type :=
     v1 ∼ v2 ->
     sApp u1 A1 B1 v1 ∼ sApp u2 A2 B2 v2
 
+| trel_Pi1 A1 A2 B1 B2 p1 p2 :
+    A1 ∼ A2 ->
+    B1 ∼ B2 ->
+    p1 ∼ p2 ->
+    sPi1 A1 B1 p1 ∼ sPi1 A2 B2 p2
+
+| trel_Pi2 A1 A2 B1 B2 p1 p2 :
+    A1 ∼ A2 ->
+    B1 ∼ B2 ->
+    p1 ∼ p2 ->
+    sPi2 A1 B1 p1 ∼ sPi2 A2 B2 p2
+
 | trel_Refl A1 A2 u1 u2 :
     A1 ∼ A2 ->
     u1 ∼ u2 ->
@@ -114,6 +126,18 @@ Inductive inrel : sterm -> sterm -> Type :=
     B ⊏ B' ->
     v ⊏ v' ->
     sApp u A B v ⊏ sApp u' A' B' v'
+
+| inrel_Pi1 A A' B B' p p' :
+    A ⊏ A' ->
+    B ⊏ B' ->
+    p ⊏ p' ->
+    sPi1 A B p ⊏ sPi1 A' B' p'
+
+| inrel_Pi2 A A' B B' p p' :
+    A ⊏ A' ->
+    B ⊏ B' ->
+    p ⊏ p' ->
+    sPi2 A B p ⊏ sPi2 A' B' p'
 
 | inrel_Refl A A' u u' :
     A ⊏ A' ->

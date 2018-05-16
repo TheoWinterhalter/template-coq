@@ -128,6 +128,8 @@ Proof.
   eapply type_HeqTransport ; eassumption.
 Defined.
 
+Lemma type_Pi1'
+
 Lemma type_CongProd'' :
   forall {Σ Γ s z nx ny A1 A2 B1 B2 pA pB},
     type_glob Σ ->
@@ -323,6 +325,8 @@ Proof.
   subst. rename z2 into z, s2 into s.
   eapply type_CongSum'' ; eassumption.
 Defined.
+
+Lemma type_CongPi1''
 
 Lemma type_CongEq'' :
   forall {Σ Γ s A1 A2 u1 u2 v1 v2 pA pu pv},

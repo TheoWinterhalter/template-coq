@@ -47,7 +47,13 @@ Fixpoint lift n k t : sterm :=
              (lift n k pu) (lift n k pA) (lift n (S k) pB) (lift n k pv)
   | sCongSum B1 B2 pA pB =>
     sCongSum (lift n (S k) B1) (lift n (S k) B2)
-              (lift n k pA) (lift n (S k) pB)
+             (lift n k pA) (lift n (S k) pB)
+  | sCongPi1 B1 B2 pA pB pp =>
+    sCongPi1 (lift n (S k) B1) (lift n (S k) B2)
+             (lift n k pA) (lift n (S k) pB) (lift n k pp)
+  | sCongPi2 B1 B2 pA pB pp =>
+    sCongPi2 (lift n (S k) B1) (lift n (S k) B2)
+             (lift n k pA) (lift n (S k) pB) (lift n k pp)
   | sCongEq pA pu pv => sCongEq (lift n k pA) (lift n k pu) (lift n k pv)
   | sCongRefl pA pu => sCongRefl (lift n k pA) (lift n k pu)
   | sEqToHeq p => sEqToHeq (lift n k p)
@@ -107,7 +113,13 @@ Fixpoint subst t k u :=
              (subst t k pu) (subst t k pA) (subst t (S k) pB) (subst t k pv)
   | sCongSum B1 B2 pA pB =>
     sCongSum (subst t (S k) B1) (subst t (S k) B2)
-              (subst t k pA) (subst t (S k) pB)
+             (subst t k pA) (subst t (S k) pB)
+  | sCongPi1 B1 B2 pA pB pp =>
+    sCongPi1 (subst t (S k) B1) (subst t (S k) B2)
+             (subst t k pA) (subst t (S k) pB) (subst t k pp)
+  | sCongPi2 B1 B2 pA pB pp =>
+    sCongPi2 (subst t (S k) B1) (subst t (S k) B2)
+             (subst t k pA) (subst t (S k) pB) (subst t k pp)
   | sCongEq pA pu pv => sCongEq (subst t k pA) (subst t k pu) (subst t k pv)
   | sCongRefl pA pu => sCongRefl (subst t k pA) (subst t k pu)
   | sEqToHeq p => sEqToHeq (subst t k p)
@@ -182,6 +194,12 @@ Fixpoint closed_above k t :=
   | sCongSum B1 B2 pA pB =>
     closed_above (S k) B1 && closed_above (S k) B2 &&
     closed_above k pA && closed_above (S k) pB
+  | sCongPi1 B1 B2 pA pB pp =>
+    closed_above (S k) B1 && closed_above (S k) B2 &&
+    closed_above k pA && closed_above (S k) pB && closed_above k pp
+  | sCongPi2 B1 B2 pA pB pp =>
+    closed_above (S k) B1 && closed_above (S k) B2 &&
+    closed_above k pA && closed_above (S k) pB && closed_above k pp
   | sCongEq pA pu pv =>
     closed_above k pA && closed_above k pu && closed_above k pv
   | sCongRefl pA pu => closed_above k pA && closed_above k pu

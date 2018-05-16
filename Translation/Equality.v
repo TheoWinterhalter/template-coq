@@ -32,6 +32,8 @@ Inductive nlterm : Type :=
 | nlCongLambda (B1 B2 t1 t2 pA pB pt : nlterm)
 | nlCongApp (B1 B2 pu pA pB pv : nlterm)
 | nlCongSum (B1 B2 pA pB : nlterm)
+| nlCongPi1 (B1 B2 pA pB pp : nlterm)
+| nlCongPi2 (B1 B2 pA pB pp : nlterm)
 | nlCongEq (pA pu pv : nlterm)
 | nlCongRefl (pA pu : nlterm)
 | nlEqToHeq (p : nlterm)
@@ -69,6 +71,8 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sCongApp B1 B2 pu pA pB pv =>
     nlCongApp (nl B1) (nl B2) (nl pu) (nl pA) (nl pB) (nl pv)
   | sCongSum B1 B2 pA pB => nlCongSum (nl B1) (nl B2) (nl pA) (nl pB)
+  | sCongPi1 B1 B2 pA pB pp => nlCongPi1 (nl B1) (nl B2) (nl pA) (nl pB) (nl pp)
+  | sCongPi2 B1 B2 pA pB pp => nlCongPi2 (nl B1) (nl B2) (nl pA) (nl pB) (nl pp)
   | sCongEq pA pu pv => nlCongEq (nl pA) (nl pu) (nl pv)
   | sCongRefl pA pu => nlCongRefl (nl pA) (nl pu)
   | sEqToHeq p => nlEqToHeq (nl p)
