@@ -73,6 +73,32 @@ Inductive red1 (Σ : sglobal_context) : sterm -> sterm -> Prop :=
     red1 Σ B B' ->
     red1 Σ (sSum na A B) (sSum na' A B')
 
+(** Pi1 *)
+| pi1_red_dom A B p A' :
+    red1 Σ A A' ->
+    red1 Σ (sPi1 A B p) (sPi1 A' B p)
+
+| pi1_red_cod A B p B' :
+    red1 Σ B B' ->
+    red1 Σ (sPi1 A B p) (sPi1 A B' p)
+
+| pi1_red_tm A B p p' :
+    red1 Σ p p' ->
+    red1 Σ (sPi1 A B p) (sPi1 A B p')
+
+(** Pi2 *)
+| pi2_red_dom A B p A' :
+    red1 Σ A A' ->
+    red1 Σ (sPi2 A B p) (sPi2 A' B p)
+
+| pi2_red_cod A B p B' :
+    red1 Σ B B' ->
+    red1 Σ (sPi2 A B p) (sPi2 A B' p)
+
+| pi2_red_tm A B p p' :
+    red1 Σ p p' ->
+    red1 Σ (sPi2 A B p) (sPi2 A B p')
+
 (** Eq *)
 | eq_red_ty A A' u v :
     red1 Σ A A' ->
@@ -683,6 +709,30 @@ Proof.
   intros Σ nx A B nx' A' B' hA hB.
   conv rewrite hB, hA.
   apply conv_eq. cbn. reflexivity.
+Defined.
+
+Lemma cong_Pi1 :
+  forall {Σ A B p A' B' p'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i p = p' ->
+    Σ |-i sPi1 A B p = sPi1 A' B' p'.
+Proof.
+  intros Σ A B p A' B' p' hA hB hp.
+  conv rewrite hp, hB, hA.
+  apply conv_refl.
+Defined.
+
+Lemma cong_Pi2 :
+  forall {Σ A B p A' B' p'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i p = p' ->
+    Σ |-i sPi2 A B p = sPi2 A' B' p'.
+Proof.
+  intros Σ A B p A' B' p' hA hB hp.
+  conv rewrite hp, hB, hA.
+  apply conv_refl.
 Defined.
 
 Lemma cong_Refl :

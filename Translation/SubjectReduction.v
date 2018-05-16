@@ -172,6 +172,90 @@ Section subjred.
           apply ctxconv_refl.
       + econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                eapply type_ctxconv ; try eassumption.
+                ** econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+                ** econstructor ; try eassumption.
+                   apply ctxconv_refl.
+             ++ eapply cong_Sum ; try eassumption.
+                apply conv_refl.
+          -- eapply type_ctxconv ; try eassumption.
+             ++ econstructor ; try eassumption.
+                eapply typing_wf. eassumption.
+             ++ econstructor ; try eassumption. apply ctxconv_refl.
+        * apply conv_sym. assumption.
+      + eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * eapply cong_Sum ; try eassumption.
+          apply conv_refl.
+      + eassumption.
+    - canvas. eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                eapply type_ctxconv ; try eassumption.
+                ** econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+                ** econstructor ; try eassumption.
+                   apply ctxconv_refl.
+             ++ apply cong_Sum ; try eassumption. apply conv_refl.
+          -- eapply type_ctxconv ; try eassumption.
+             ++ econstructor ; try eassumption.
+                eapply typing_wf. eassumption.
+             ++ econstructor ; try eassumption. apply ctxconv_refl.
+        * match goal with
+          | |- _ ;;; _ |-i _ : ?S =>
+            change S with (S{ 0 := sPi1 A B p })
+          end.
+          eapply typing_subst ; try eassumption.
+          econstructor ; try eassumption.
+        * apply substs_conv.
+          apply conv_sym. eapply cong_Pi1 ; try apply conv_refl. assumption.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{ 0 := sPi1 A B p })
+        end.
+        eapply typing_subst ; try eassumption.
+        econstructor ; try eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- apply cong_Sum ; try eassumption. apply conv_refl.
+        * match goal with
+          | |- _ ;;; _ |-i _ : ?S =>
+            change S with (S{ 0 := sPi1 A B p })
+          end.
+          eapply typing_subst ; try eassumption.
+          econstructor ; try eassumption.
+        * apply conv_sym. eapply cong_subst ; try eassumption.
+          apply cong_Pi1 ; try apply conv_refl. assumption.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{ 0 := sPi1 A B p })
+        end.
+        eapply typing_subst ; try eassumption.
+        econstructor ; try eassumption.
+    - canvas.
+      + match goal with
+        | |- _ ;;; _ |-i _ : ?S =>
+          change S with (S{ 0 := sPi1 A B p })
+        end.
+        eapply typing_subst ; try eassumption.
+        econstructor ; try eassumption.
+      + apply substs_conv. apply conv_sym.
+        apply cong_Pi1 ; try apply conv_refl. assumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
@@ -1135,7 +1219,7 @@ Section subjred.
         * econstructor ; try eassumption.
         * eapply type_ProjT2 with (A1 := A1) ; try eassumption.
 
-    Unshelve. auto.
+    Unshelve. all: auto.
   Qed.
 
 End subjred.
@@ -1221,6 +1305,24 @@ Proof.
     + apply cong_subst.
       * apply conv_eq. symmetry. assumption.
       * apply conv_eq. symmetry. assumption.
+  - go.
+    + go. go.
+      * go.
+      * go. cbn. f_equal ; eassumption.
+    + go. auto.
+  - go.
+    + go. go.
+      * go.
+      * go. cbn. f_equal ; assumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ { 0 := ?t } : ?S =>
+        change S with (S{ 0 := t })
+      end.
+      eapply typing_subst ; try eassumption.
+      go.
+    + go. symmetry. apply nl_subst.
+      * assumption.
+      * cbn. f_equal ; assumption.
   - econstructor ; try resolve2.
     + eapply type_conv.
       * resolve2.

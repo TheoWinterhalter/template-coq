@@ -99,6 +99,40 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionPi1 :
+  forall {Σ Γ A B p T},
+    Σ ;;; Γ |-i sPi1 A B p : T ->
+    exists n s1 s2,
+      (Σ ;;; Γ |-i p : sSum n A B) *
+      (Σ ;;; Γ |-i A : sSort s1) *
+      (Σ ;;; Γ ,, A |-i B : sSort s2) *
+      (Σ |-i A = T).
+Proof.
+  intros Σ Γ A B p T h.
+  dependent induction h.
+  - exists n, s1, s2. splits 4 ; try assumption. apply conv_refl.
+  - destruct IHh1 as [n [s1 [s2 [[[? ?] ?] ?]]]].
+    exists n, s1, s2. splits 4 ; try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
+Lemma inversionPi2 :
+  forall {Σ Γ A B p T},
+    Σ ;;; Γ |-i sPi2 A B p : T ->
+    exists n s1 s2,
+      (Σ ;;; Γ |-i p : sSum n A B) *
+      (Σ ;;; Γ |-i A : sSort s1) *
+      (Σ ;;; Γ ,, A |-i B : sSort s2) *
+      (Σ |-i B{ 0 := sPi1 A B p } = T).
+Proof.
+  intros Σ Γ A B p T h.
+  dependent induction h.
+  - exists n, s1, s2. splits 4 ; try assumption. apply conv_refl.
+  - destruct IHh1 as [n [s1 [s2 [[[? ?] ?] ?]]]].
+    exists n, s1, s2. splits 4 ; try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 Lemma inversionEq :
   forall {Σ Γ A u v T},
     Σ ;;; Γ |-i sEq A u v : T ->
@@ -595,6 +629,10 @@ Ltac ttinv h :=
     | sApp _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & na & hh) ;
                        splits_one hh
     | sSum _ _ _ => destruct (inversionSum h) as (s1 & s2 & hh) ; splits_one hh
+    | sPi1 _ _ _ =>
+      destruct (inversionPi1 h) as (nx & s1 & s2 & hh) ; splits_one hh
+    | sPi2 _ _ _ =>
+      destruct (inversionPi2 h) as (nx & s1 & s2 & hh) ; splits_one hh
     | sEq _ _ _ => destruct (inversionEq h) as (s & hh) ; splits_one hh
     | sRefl _ _ => destruct (inversionRefl h) as (s & hh) ; splits_one hh
     | sJ _ _ _ _ _ _ => destruct (inversionJ h) as (s1 & s2 & hh) ;

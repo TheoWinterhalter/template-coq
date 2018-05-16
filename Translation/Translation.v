@@ -1298,12 +1298,30 @@ Definition typing_all : forall (Σ : sglobal_context)
         P Γ u A t3 ->
         P Γ (sApp t A B u) (B {0 := u})
           (XTyping.type_App Σ Γ n s1 s2 t A B u t0 t1 t2 t3)) ->
-       (forall (Γ : scontext) (n : name) (t b : sterm) (s1 s2 : sort) (t0 : Σ;;; Γ |-x t : sSort s1),
+       (forall (Γ : scontext) (n : name) (t b : sterm) (s1 s2 : sort)
+          (t0 : Σ;;; Γ |-x t : sSort s1),
            P Γ t (sSort s1) t0 ->
            forall t1 : Σ;;; Γ,, t |-x b : sSort s2,
              P (Γ,, t) b (sSort s2) t1 ->
              P Γ (sSum n t b) (sSort (max_sort s1 s2))
                (XTyping.type_Sum Σ Γ n t b s1 s2 t0 t1)) ->
+       (forall (Γ : scontext) (n : name) (A B : sterm) (s1 s2 : sort) (p : sterm)
+          (t : Σ;;; Γ |-x p : sSum n A B),
+           P Γ p (sSum n A B) t ->
+           forall t0 : Σ;;; Γ |-x A : sSort s1,
+             P Γ A (sSort s1) t0 ->
+             forall t1 : Σ;;; Γ,, A |-x B : sSort s2,
+               P (Γ,, A) B (sSort s2) t1 ->
+               P Γ (sPi1 A B p) A (XTyping.type_Pi1 Σ Γ n A B s1 s2 p t t0 t1)) ->
+       (forall (Γ : scontext) (n : name) (A B : sterm) (s1 s2 : sort) (p : sterm)
+          (t : Σ;;; Γ |-x p : sSum n A B),
+           P Γ p (sSum n A B) t ->
+           forall t0 : Σ;;; Γ |-x A : sSort s1,
+             P Γ A (sSort s1) t0 ->
+             forall t1 : Σ;;; Γ,, A |-x B : sSort s2,
+               P (Γ,, A) B (sSort s2) t1 ->
+               P Γ (sPi2 A B p) (B {0 := sPi1 A B p})
+                 (XTyping.type_Pi2 Σ Γ n A B s1 s2 p t t0 t1)) ->
        (forall (Γ : scontext) (s : sort) (A u v : sterm)
           (t : Σ;;; Γ |-x A : sSort s),
         P Γ A (sSort s) t ->
@@ -1417,6 +1435,26 @@ Definition typing_all : forall (Σ : sglobal_context)
         P (Γ,, A2) B2 (sSort s2) t0 ->
         P1 Γ (sSum n1 A1 B1) (sSum n2 A2 B2) (sSort (max_sort s1 s2))
            (XTyping.cong_Sum Σ Γ n1 n2 A1 A2 B1 B2 s1 s2 e e0 t t0)) ->
+       (forall (Γ : scontext) (n : name) (A1 A2 B1 B2 : sterm) (s1 s2 : sort)
+          (p1 p2 : sterm)
+          (e : Σ;;; Γ |-x p1 = p2 : sSum n A1 B1),
+           P1 Γ p1 p2 (sSum n A1 B1) e ->
+           forall e0 : Σ;;; Γ |-x A1 = A2 : sSort s1,
+             P1 Γ A1 A2 (sSort s1) e0 ->
+             forall e1 : Σ;;; Γ,, A1 |-x B1 = B2 : sSort s2,
+               P1 (Γ,, A1) B1 B2 (sSort s2) e1 ->
+               P1 Γ (sPi1 A1 B1 p1) (sPi1 A2 B2 p2) A1
+                  (XTyping.cong_Pi1 Σ Γ n A1 A2 B1 B2 s1 s2 p1 p2 e e0 e1)) ->
+       (forall (Γ : scontext) (n : name) (A1 A2 B1 B2 : sterm) (s1 s2 : sort)
+          (p1 p2 : sterm)
+          (e : Σ;;; Γ |-x p1 = p2 : sSum n A1 B1),
+           P1 Γ p1 p2 (sSum n A1 B1) e ->
+           forall e0 : Σ;;; Γ |-x A1 = A2 : sSort s1,
+             P1 Γ A1 A2 (sSort s1) e0 ->
+             forall e1 : Σ;;; Γ,, A1 |-x B1 = B2 : sSort s2,
+               P1 (Γ,, A1) B1 B2 (sSort s2) e1 ->
+               P1 Γ (sPi2 A1 B1 p1) (sPi2 A2 B2 p2) (B1 {0 := sPi1 A1 B1 p1})
+                  (XTyping.cong_Pi2 Σ Γ n A1 A2 B1 B2 s1 s2 p1 p2 e e0 e1)) ->
        (forall (Γ : scontext) (s : sort) (A1 A2 u1 u2 v1 v2 : sterm)
           (e : Σ;;; Γ |-x A1 = A2 : sSort s),
         P1 Γ A1 A2 (sSort s) e ->
@@ -1457,17 +1495,20 @@ Definition complete_translation {Σ} :
         eqtrans Σ Γ A u v Γ' A' A'' u' v' p').
 Proof.
   intro hg.
-  unshelve refine (typing_all Σ
-                     (fun Γ (h : XTyping.wf Σ Γ) =>
-                        ∑ Γ', Σ |--i Γ' # ⟦ Γ ⟧ )
-                     (fun { Γ t A} (h : Σ ;;; Γ |-x t : A) => forall
-                          {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
-                          ∑ A' t', Σ ;;;; Γ' |--- [t'] : A' # ⟦ Γ |--- [t] : A ⟧)
-                     (fun { Γ u v A} (h : Σ ;;; Γ |-x u = v : A) => forall
-                    {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
-  ∑ A' A'' u' v' p',
-    eqtrans Σ Γ A u v Γ' A' A'' u' v' p')
-                    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros.
+  unshelve refine (
+    typing_all
+      Σ
+      (fun Γ (h : XTyping.wf Σ Γ) =>
+         ∑ Γ', Σ |--i Γ' # ⟦ Γ ⟧ )
+      (fun { Γ t A} (h : Σ ;;; Γ |-x t : A) => forall
+           {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
+           ∑ A' t', Σ ;;;; Γ' |--- [t'] : A' # ⟦ Γ |--- [t] : A ⟧)
+      (fun { Γ u v A} (h : Σ ;;; Γ |-x u = v : A) => forall
+           {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
+           ∑ A' A'' u' v' p',
+         eqtrans Σ Γ A u v Γ' A' A'' u' v' p')
+      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+   ) ; intros.
   (** context_translation **)
 
     (* wf_nil *)
@@ -1610,6 +1651,9 @@ Proof.
       (* Now we conclude *)
       exists (sSort (max_sort s1 s2)), (sSum n t'' b'').
       now apply trans_Sum.
+
+    (* type_Pi1 *)
+    + fail "todo".
 
     (* type_Eq *)
     + (* The type *)
