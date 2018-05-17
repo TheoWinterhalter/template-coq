@@ -128,6 +128,19 @@ Proof.
   eapply type_HeqTransport ; eassumption.
 Defined.
 
+Lemma type_Pair' :
+  forall {Σ Γ A B u v n s},
+    type_glob Σ ->
+    Σ ;;; Γ |-i u : A ->
+    Σ ;;; Γ |-i v : B{ 0 := u } ->
+    Σ ;;; Γ ,, A |-i B : sSort s ->
+    Σ ;;; Γ |-i sPair A B u v : sSum n A B.
+Proof.
+  intros Σ Γ A B u v n s hg hu hv hB.
+  destruct (istype_type hg hu) as [? iu].
+  eapply type_Pair ; eassumption.
+Defined.
+
 Lemma type_Pi1' :
   forall {Σ Γ p n A B},
     type_glob Σ ->

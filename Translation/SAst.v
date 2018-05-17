@@ -13,6 +13,7 @@ Inductive sterm : Type :=
 | sApp (u A B v : sterm)
 (* Σ-types *)
 | sSum (nx : name) (A B : sterm)
+| sPair (A B u v : sterm)
 | sPi1 (A B p : sterm)
 | sPi2 (A B p : sterm)
 (* Homogenous equality *)

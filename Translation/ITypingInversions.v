@@ -99,6 +99,24 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionPair :
+  forall {Σ Γ A B u v T},
+    Σ ;;; Γ |-i sPair A B u v : T ->
+    exists n s1 s2,
+      (Σ ;;; Γ |-i A : sSort s1) *
+      (Σ ;;; Γ ,, A |-i B : sSort s2) *
+      (Σ ;;; Γ |-i u : A) *
+      (Σ ;;; Γ |-i v : B{ 0 := u }) *
+      (Σ |-i sSum n A B = T).
+Proof.
+  intros Σ Γ A B u v T h.
+  dependent induction h.
+  - exists n, s1, s2. repeat split ; try assumption. apply conv_refl.
+  - destruct IHh1 as (n & s1 & s2 & hh). split_hyps.
+    exists n, s1, s2. repeat split ; try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 Lemma inversionPi1 :
   forall {Σ Γ A B p T},
     Σ ;;; Γ |-i sPi1 A B p : T ->
@@ -687,6 +705,8 @@ Ltac ttinv h :=
     | sApp _ _ _ _ => destruct (inversionApp h) as (s1 & s2 & na & hh) ;
                        splits_one hh
     | sSum _ _ _ => destruct (inversionSum h) as (s1 & s2 & hh) ; splits_one hh
+    | sPair _ _ _ _ =>
+      destruct (inversionPair h) as (nx & s1 & s2 & hh) ; splits_one hh
     | sPi1 _ _ _ =>
       destruct (inversionPi1 h) as (nx & s1 & s2 & hh) ; splits_one hh
     | sPi2 _ _ _ =>

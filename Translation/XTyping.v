@@ -41,6 +41,13 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ ,, t |-x b : sSort s2 ->
     Σ ;;; Γ |-x (sSum n t b) : sSort (max_sort s1 s2)
 
+| type_Pair Γ n A B u v s1 s2 :
+    Σ ;;; Γ |-x A : sSort s1 ->
+    Σ ;;; Γ ,, A |-x B : sSort s2 ->
+    Σ ;;; Γ |-x u : A ->
+    Σ ;;; Γ |-x v : B{ 0 := u } ->
+    Σ ;;; Γ |-x sPair A B u v : sSum n A B
+
 | type_Pi1 Γ n A B s1 s2 p :
     Σ ;;; Γ |-x p : sSum n A B ->
     Σ ;;; Γ |-x A : sSort s1 ->
@@ -143,6 +150,13 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
     Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
     Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
     Σ ;;; Γ |-x (sSum n1 A1 B1) = (sSum n2 A2 B2) : sSort (max_sort s1 s2)
+
+| cong_Pair Γ n A1 A2 B1 B2 u1 u2 v1 v2 s1 s2 :
+    Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ |-x u1 = u2 : A1 ->
+    Σ ;;; Γ |-x v1 = v2 : B1{ 0 := u1 } ->
+    Σ ;;; Γ |-x sPair A1 B1 u1 v1 = sPair A2 B2 u2 v2 : sSum n A1 B1
 
 | cong_Pi1 Γ nx ny A1 A2 B1 B2 s1 s2 p1 p2 :
     Σ ;;; Γ |-x p1 = p2 : sSum nx A1 B1 ->

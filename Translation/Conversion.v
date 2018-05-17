@@ -73,6 +73,23 @@ Inductive red1 (Σ : sglobal_context) : sterm -> sterm -> Prop :=
     red1 Σ B B' ->
     red1 Σ (sSum na A B) (sSum na' A B')
 
+(** Pair *)
+| pair_red_dom A B u v A' :
+    red1 Σ A A' ->
+    red1 Σ (sPair A B u v) (sPair A' B u v)
+
+| pair_red_cod A B u v B' :
+    red1 Σ B B' ->
+    red1 Σ (sPair A B u v) (sPair A B' u v)
+
+| pair_red_tm_l A B u v u' :
+    red1 Σ u u' ->
+    red1 Σ (sPair A B u v) (sPair A B u' v)
+
+| pair_red_tm_r A B u v v' :
+    red1 Σ v v' ->
+    red1 Σ (sPair A B u v) (sPair A B u v')
+
 (** Pi1 *)
 | pi1_red_dom A B p A' :
     red1 Σ A A' ->
@@ -751,6 +768,19 @@ Proof.
   intros Σ nx A B nx' A' B' hA hB.
   conv rewrite hB, hA.
   apply conv_eq. cbn. reflexivity.
+Defined.
+
+Lemma cong_Pair :
+  forall {Σ A B u v A' B' u' v'},
+    Σ |-i A = A' ->
+    Σ |-i B = B' ->
+    Σ |-i u = u' ->
+    Σ |-i v = v' ->
+    Σ |-i sPair A B u v = sPair A' B' u' v'.
+Proof.
+  intros Σ A B u v A' B' u' v' hA hB hu hv.
+  conv rewrite hv, hu, hB, hA.
+  apply conv_refl.
 Defined.
 
 Lemma cong_Pi1 :

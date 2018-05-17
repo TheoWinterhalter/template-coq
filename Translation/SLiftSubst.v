@@ -15,6 +15,8 @@ Fixpoint lift n k t : sterm :=
     sApp (lift n k u) (lift n k A) (lift n (S k) B) (lift n k v)
   | sProd na A B => sProd na (lift n k A) (lift n (S k) B)
   | sSum na A B => sSum na (lift n k A) (lift n (S k) B)
+  | sPair A B u v =>
+    sPair (lift n k A) (lift n (S k) B) (lift n k u) (lift n k v)
   | sPi1 A B p => sPi1 (lift n k A) (lift n (S k) B) (lift n k p)
   | sPi2 A B p => sPi2 (lift n k A) (lift n (S k) B) (lift n k p)
   | sEq A u v => sEq (lift n k A) (lift n k u) (lift n k v)
@@ -81,6 +83,8 @@ Fixpoint subst t k u :=
     sApp (subst t k u) (subst t k A) (subst t (S k) B) (subst t k v)
   | sProd na A B => sProd na (subst t k A) (subst t (S k) B)
   | sSum na A B => sSum na (subst t k A) (subst t (S k) B)
+  | sPair A B u v =>
+    sPair (subst t k A) (subst t (S k) B) (subst t k u) (subst t k v)
   | sPi1 A B p => sPi1 (subst t k A) (subst t (S k) B) (subst t k p)
   | sPi2 A B p => sPi2 (subst t k A) (subst t (S k) B) (subst t k p)
   | sEq A u v => sEq (subst t k A) (subst t k u) (subst t k v)
@@ -152,6 +156,9 @@ Fixpoint closed_above k t :=
     closed_above (S k) B &&
     closed_above k v
   | sSum _ A B => closed_above k A && closed_above (S k) B
+  | sPair A B u v =>
+    closed_above k A && closed_above (S k) B &&
+    closed_above k u && closed_above k v
   | sPi1 A B p => closed_above k A && closed_above (S k) B && closed_above k p
   | sPi2 A B p => closed_above k A && closed_above (S k) B && closed_above k p
   | sEq A u v =>

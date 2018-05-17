@@ -172,6 +172,21 @@ Section subjred.
           apply ctxconv_refl.
       + econstructor. eapply typing_wf. eassumption.
     - canvas. econstructor. eapply typing_wf. eassumption.
+    - canvas. econstructor ; try eassumption.
+      + eapply type_ctxconv ; try eassumption.
+        * econstructor ; try eassumption.
+          eapply typing_wf. eassumption.
+        * econstructor ; try eassumption.
+          apply ctxconv_refl.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      econstructor ; try eassumption.
+      + lift_sort. eapply typing_subst ; try eassumption.
+      + apply subst_conv. assumption.
+    - canvas. econstructor ; try eassumption.
+      econstructor ; try eassumption.
+      + lift_sort. eapply typing_subst ; try eassumption.
+      + apply substs_conv. assumption.
     - canvas.
       + econstructor ; try eassumption.
         * econstructor ; try eassumption.
@@ -1581,6 +1596,20 @@ Proof.
     + apply cong_subst.
       * apply conv_eq. symmetry. assumption.
       * apply conv_eq. symmetry. assumption.
+  - go.
+    + go.
+      * go. go.
+      * go.
+        -- lift_sort. eapply typing_subst ; try eassumption.
+           ++ eapply IHht2. assumption.
+           ++ go. apply conv_refl.
+        -- apply cong_subst.
+           ++ go.
+           ++ go.
+    + go.
+    + apply conv_sym. apply cong_Sum.
+      * go.
+      * go.
   - go.
     + go. go.
       * go.

@@ -39,6 +39,8 @@ Proof.
     pose proof (sort_conv_inv IHu1) as e1.
     pose proof (sort_conv_inv IHu2) as e2.
     subst. apply conv_refl.
+  - eapply conv_trans ; [| exact h8 ].
+    apply cong_Sum ; apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h6).
     pose proof (sort_conv_inv IHu1) as e. subst. assumption.
   - specialize (IHu1 _ _ _ h h0).

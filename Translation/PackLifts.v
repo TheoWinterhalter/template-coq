@@ -33,6 +33,8 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
     sApp (llift γ δ u) (llift γ δ A) (llift γ (S δ) B) (llift γ δ v)
   | sProd na A B => sProd na (llift γ δ A) (llift γ (S δ) B)
   | sSum na A B => sSum na (llift γ δ A) (llift γ (S δ) B)
+  | sPair A B u v =>
+    sPair (llift γ δ A) (llift γ (S δ) B) (llift γ δ u) (llift γ δ v)
   | sPi1 A B p => sPi1 (llift γ δ A) (llift γ (S δ) B) (llift γ δ p)
   | sPi2 A B p => sPi2 (llift γ δ A) (llift γ (S δ) B) (llift γ δ p)
   | sEq A u v => sEq (llift γ δ A) (llift γ δ u) (llift γ δ v)
@@ -99,6 +101,8 @@ Fixpoint rlift γ δ t : sterm :=
     sApp (rlift γ δ u) (rlift γ δ A) (rlift γ (S δ) B) (rlift γ δ v)
   | sProd na A B => sProd na (rlift γ δ A) (rlift γ (S δ) B)
   | sSum na A B => sSum na (rlift γ δ A) (rlift γ (S δ) B)
+  | sPair A B u v =>
+    sPair (rlift γ δ A) (rlift γ (S δ) B) (rlift γ δ u) (rlift γ δ v)
   | sPi1 A B p => sPi1 (rlift γ δ A) (rlift γ (S δ) B) (rlift γ δ p)
   | sPi2 A B p => sPi2 (rlift γ δ A) (rlift γ (S δ) B) (rlift γ δ p)
   | sEq A u v => sEq (rlift γ δ A) (rlift γ δ u) (rlift γ δ v)
@@ -1047,6 +1051,11 @@ Proof.
         replace (#|Δ| + 0)%nat with #|Δ| by omega.
         eapply type_App ; emh.
       - cbn. eapply type_Sum ; emh.
+      - cbn. eapply type_Pair ; emh.
+        replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite llift_subst.
+        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        reflexivity.
       - cbn. eapply type_Pi1 ; emh.
       - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
         rewrite llift_subst.
@@ -1202,6 +1211,11 @@ Proof.
         replace (#|Δ| + 0)%nat with #|Δ| by omega.
         eapply type_App ; emh.
       - cbn. eapply type_Sum ; emh.
+      - cbn. eapply type_Pair ; emh.
+        replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite rlift_subst.
+        cbn. replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        reflexivity.
       - cbn. eapply type_Pi1 ; emh.
       - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
         rewrite rlift_subst.

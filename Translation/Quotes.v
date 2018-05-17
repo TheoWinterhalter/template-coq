@@ -5,7 +5,11 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import util.
 
+Definition epair {A} {B : A -> Type} u v : ∑ x, B x :=
+  {| pi1 := u ; pi2 := v |}.
+
 Quote Definition tSum := @pp_sigT.
+Quote Definition tPair := @epair.
 Quote Definition tPi1 := @pi1.
 Quote Definition tPi2 := @pi2.
 
@@ -221,6 +225,32 @@ Proof.
   now destruct pB.
 Defined.
 
+Lemma cong_pair :
+  forall (A1 A2 : Type) (B1 : A1 -> Type) (B2 : A2 -> Type)
+    (u1 : A1) (u2 : A2) (v1 : B1 u1) (v2 : B2 u2),
+    A1 ≅ A2 ->
+    (forall (p : Pack A1 A2), B1 (ProjT1 p) ≅ B2 (ProjT2 p)) ->
+    u1 ≅ u2 ->
+    v1 ≅ v2 ->
+    epair u1 v1 ≅ epair u2 v2.
+Proof.
+  intros A1 A2 B1 B2 u1 u2 v1 v2 hA hB hu hv.
+  destruct hA as [pT pA]. rewrite (K pT) in pA. simpl in pA. clear pT.
+  destruct pA. rename A1 into A.
+  assert (pB : B1 = B2).
+  { apply funext. intro x.
+    destruct (hB (pack x x (heq_refl x))) as [pT pB].
+    rewrite (K pT) in pB. simpl in pB. clear pT.
+    exact pB.
+  }
+  destruct pB. rename B1 into B. clear hB.
+  destruct hu as [pT pu]. rewrite (K pT) in pu. simpl in pu. clear pT.
+  destruct pu. rename u1 into u.
+  destruct hv as [pT pv]. rewrite (K pT) in pv. simpl in pv. clear pT.
+  destruct pv. rename v1 into v.
+  apply heq_refl.
+Defined.
+
 Lemma cong_pi1 :
   forall (A1 A2 : Type) (B1 : A1 -> Type) (B2 : A2 -> Type)
     (p1 : ∑ x, B1 x) (p2 : ∑ x, B2 x),
@@ -243,7 +273,6 @@ Proof.
   destruct pp. rename p1 into p.
   apply heq_refl.
 Defined.
-
 Lemma cong_pi2 :
   forall (A1 A2 : Type) (B1 : A1 -> Type) (B2 : A2 -> Type)
     (p1 : ∑ x, B1 x) (p2 : ∑ x, B2 x),
@@ -330,6 +359,7 @@ Quote Definition tCongProd := @cong_prod.
 Quote Definition tCongLambda := @cong_lambda.
 Quote Definition tCongApp := @cong_app.
 Quote Definition tCongSum := @cong_sum.
+Quote Definition tCongPair := @cong_pair.
 Quote Definition tCongPi1 := @cong_pi1.
 Quote Definition tCongPi2 := @cong_pi2.
 Quote Definition tCongEq := @cong_eq.
@@ -414,6 +444,22 @@ Definition mkCongSum (A1 A2 B1 B2 pA pB : term) :=
     (tLambda nAnon A2 B2) ;
     pA ;
     (tLambda nAnon (mkPack A1 A2) pB)
+  ].
+
+Definition mkCongPair (A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv : term) :=
+  tApp tCongPair [
+    A1 ;
+    A2 ;
+    (tLambda nAnon A1 B1) ;
+    (tLambda nAnon A2 B2) ;
+    u1 ;
+    u2 ;
+    v1 ;
+    v2 ;
+    pA ;
+    (tLambda nAnon (mkPack A1 A2) pB) ;
+    pu ;
+    pv
   ].
 
 Definition mkCongPi1 (A1 A2 B1 B2 p1 p2 pA pB pp : term) :=

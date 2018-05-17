@@ -273,6 +273,9 @@ Proof.
         rewrite substP1.
         eapply type_App ; eih.
       - cbn. eapply type_Sum ; eih.
+      - cbn. eapply type_Pair ; eih.
+        change (#|Ξ|) with (0 + #|Ξ|)%nat.
+        rewrite substP1. reflexivity.
       - cbn. eapply type_Pi1 ; eih.
       - cbn.
         change (#|Ξ|) with (0 + #|Ξ|)%nat.
@@ -551,6 +554,9 @@ Proof.
         rewrite substP4. cbn.
         eapply type_App ; esh.
       - cbn. eapply type_Sum ; esh.
+      - cbn. eapply type_Pair ; esh.
+        change (#|Δ|) with (0 + #|Δ|)%nat.
+        rewrite substP4. reflexivity.
       - cbn. eapply type_Pi1 ; esh.
       - cbn.
         change (#|Δ|) with (0 + #|Δ|)%nat.
@@ -809,6 +815,7 @@ Proof.
   - exists s2. change (sSort s2) with ((sSort s2){ 0 := u }).
     eapply typing_subst ; eassumption.
   - eexists. econstructor. eapply typing_wf. eassumption.
+  - eexists. econstructor ; eassumption.
   - eexists. eassumption.
   - exists s2. change (sSort s2) with ((sSort s2){ 0 := sPi1 A B p }).
     eapply typing_subst ; try eassumption.
