@@ -725,6 +725,146 @@ Proof.
       * rewrite <- rlift_subst. cbn.
         apply rlift_conv. assumption.
 
+  (* Pi1 *)
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    destruct (IHsim3 Γ Γ1 Γ2) as [pp hpp].
+    exists (sCongPi1 (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pA pB pp).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h5 h9).
+    destruct (istype_type hg hpA) as [? iA].
+    ttinv iA. pose proof (sort_conv_inv h11) as hh. symmetry in hh. subst.
+    clear h11.
+    assert (s1 = s0).
+    { eapply sorts_in_sort ; eassumption. }
+    subst.
+    assert (hm' :
+              ismix Σ Γ
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+    ).
+    { econstructor ; eassumption. }
+    specialize (hpB _ _ _ hm' h4 h8).
+    assert (s3 = s2).
+    { destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+      apply conv_sym in h15. pose proof (sort_conv_inv h15). subst. clear h15.
+      eapply sorts_in_sort ; eassumption.
+    } subst.
+    specialize (hpp _ _ _ hm h0 h6).
+    eapply type_conv.
+    + eapply type_CongPi1' ; try assumption.
+      * apply hpA.
+      * rewrite llift_substProj, rlift_substProj.
+        apply hpB.
+      * apply hpp.
+      * lift_sort. eapply type_llift1 ; eassumption.
+      * lift_sort. eapply type_rlift1 ; eassumption.
+    + instantiate (1 := s0).
+      apply type_Heq.
+      * lift_sort. eapply type_llift0 ; try eassumption.
+        destruct (istype_type hg h1).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           eassumption.
+      * lift_sort. eapply type_rlift0 ; try eassumption.
+        destruct (istype_type hg h2).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           eassumption.
+      * eapply type_llift0 ; eassumption.
+      * eapply type_rlift0 ; eassumption.
+    + cbn. apply cong_Heq.
+      all: try apply conv_refl.
+      * apply llift_conv. assumption.
+      * apply rlift_conv. assumption.
+
+  (* Pi2 *)
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    destruct (IHsim3 Γ Γ1 Γ2) as [pp hpp].
+    exists (sCongPi2 (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pA pB pp).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h5 h9).
+    destruct (istype_type hg hpA) as [? iA].
+    ttinv iA. pose proof (sort_conv_inv h11) as hh. symmetry in hh. subst.
+    clear h11.
+    assert (s1 = s0).
+    { eapply sorts_in_sort ; eassumption. }
+    subst.
+    assert (hm' :
+              ismix Σ Γ
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+    ).
+    { econstructor ; eassumption. }
+    specialize (hpB _ _ _ hm' h4 h8).
+    assert (s3 = s2).
+    { destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+      apply conv_sym in h15. pose proof (sort_conv_inv h15). subst. clear h15.
+      eapply sorts_in_sort ; eassumption.
+    } subst.
+    specialize (hpp _ _ _ hm h0 h6).
+    eapply type_conv.
+    + eapply type_CongPi2' ; try assumption.
+      * apply hpA.
+      * rewrite llift_substProj, rlift_substProj.
+        apply hpB.
+      * apply hpp.
+      * lift_sort. eapply type_llift1 ; eassumption.
+      * lift_sort. eapply type_rlift1 ; eassumption.
+    + instantiate (1 := s2).
+      apply type_Heq.
+      * lift_sort. eapply type_llift0 ; try eassumption.
+        destruct (istype_type hg h1).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           try eassumption.
+           lift_sort. eapply typing_subst ; try eassumption.
+           eapply type_Pi1' ; eassumption.
+      * lift_sort. eapply type_rlift0 ; try eassumption.
+        destruct (istype_type hg h2).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           try eassumption.
+           lift_sort. eapply typing_subst ; try eassumption.
+           eapply type_Pi1' ; eassumption.
+      * eapply type_llift0 ; eassumption.
+      * eapply type_rlift0 ; eassumption.
+    + cbn. apply cong_Heq.
+      all: try apply conv_refl.
+      * match goal with
+        | |- _ |-i _ { 0 := ?t } = _ =>
+          match t with
+          | sPi1 (llift ?n ?k ?A) (llift _ _ ?B) (llift _ _ ?p) =>
+            change t with (llift n k (sPi1 A B p))
+          end
+        end.
+        rewrite <- llift_subst. cbn.
+        apply llift_conv. assumption.
+      * match goal with
+        | |- _ |-i _ { 0 := ?t } = _ =>
+          match t with
+          | sPi1 (rlift ?n ?k ?A) (rlift _ _ ?B) (rlift _ _ ?p) =>
+            change t with (rlift n k (sPi1 A B p))
+          end
+        end.
+        rewrite <- rlift_subst. cbn.
+        apply rlift_conv. assumption.
+
   (* Refl *)
   - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
     destruct (IHsim2 Γ Γ1 Γ2) as [pu hpu].
@@ -936,6 +1076,9 @@ Inductive head_kind :=
 | headProd
 | headLambda
 | headApp
+| headSum
+| headPi1
+| headPi2
 | headEq
 | headRefl
 | headJ
@@ -951,6 +1094,9 @@ Definition head (t : sterm) : head_kind :=
   | sProd n A B => headProd
   | sLambda n A B t => headLambda
   | sApp u A B v => headApp
+  | sSum _ _ _ => headSum
+  | sPi1 _ _ _ => headPi1
+  | sPi2 _ _ _ => headPi2
   | sEq A u v => headEq
   | sRefl A u => headRefl
   | sJ A u P w v p => headJ
@@ -996,6 +1142,7 @@ Defined.
 Inductive type_head : head_kind -> Type :=
 | type_headSort s : type_head (headSort s)
 | type_headProd : type_head headProd
+| type_headSum : type_head headSum
 | type_headEq : type_head headEq
 .
 
@@ -1021,6 +1168,14 @@ Proof.
     + ttinv ht.
       exists (max_sort s1 s2). split.
       * now apply type_Prod.
+      * destruct (istype_type hg ht).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym. eapply subj_conv ; try eassumption.
+           econstructor. eapply typing_wf. eassumption.
+    + ttinv ht.
+      exists (max_sort s1 s2). split.
+      * now apply type_Sum.
       * destruct (istype_type hg ht).
         eapply type_conv ; try eassumption.
         -- econstructor. eapply typing_wf. eassumption.

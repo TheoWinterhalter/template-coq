@@ -65,7 +65,13 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
              (llift γ δ pu) (llift γ δ pA) (llift γ (S δ) pB) (llift γ δ pv)
   | sCongSum B1 B2 p q =>
     sCongSum (llift γ (S δ) B1) (llift γ (S δ) B2)
-              (llift γ δ p) (llift γ (S δ) q)
+             (llift γ δ p) (llift γ (S δ) q)
+  | sCongPi1 B1 B2 pA pB pp =>
+    sCongPi1 (llift γ (S δ) B1) (llift γ (S δ) B2)
+             (llift γ δ pA) (llift γ (S δ) pB) (llift γ δ pp)
+  | sCongPi2 B1 B2 pA pB pp =>
+    sCongPi2 (llift γ (S δ) B1) (llift γ (S δ) B2)
+             (llift γ δ pA) (llift γ (S δ) pB) (llift γ δ pp)
   | sCongEq pA pu pv => sCongEq (llift γ δ pA) (llift γ δ pu) (llift γ δ pv)
   | sCongRefl pA pu => sCongRefl (llift γ δ pA) (llift γ δ pu)
   | sEqToHeq p => sEqToHeq (llift γ δ p)
@@ -123,6 +129,12 @@ Fixpoint rlift γ δ t : sterm :=
   | sCongSum B1 B2 p q =>
     sCongSum (rlift γ (S δ) B1) (rlift γ (S δ) B2)
               (rlift γ δ p) (rlift γ (S δ) q)
+  | sCongPi1 B1 B2 pA pB pp =>
+    sCongPi1 (rlift γ (S δ) B1) (rlift γ (S δ) B2)
+             (rlift γ δ pA) (rlift γ (S δ) pB) (rlift γ δ pp)
+  | sCongPi2 B1 B2 pA pB pp =>
+    sCongPi2 (rlift γ (S δ) B1) (rlift γ (S δ) B2)
+             (rlift γ δ pA) (rlift γ (S δ) pB) (rlift γ δ pp)
   | sCongApp B1 B2 pu pA pB pv =>
     sCongApp (rlift γ (S δ) B1) (rlift γ (S δ) B2)
              (rlift γ δ pu) (rlift γ δ pA) (rlift γ (S δ) pB) (rlift γ δ pv)
@@ -1117,6 +1129,25 @@ Proof.
         + rewrite lift_llift3 by omega.
           replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
           rewrite llift_subst. cbn. reflexivity.
+      - cbn. eapply type_CongPi1 ; emh.
+        cbn. f_equal.
+        + rewrite lift_llift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite llift_subst. cbn. reflexivity.
+        + rewrite lift_llift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite llift_subst. cbn. reflexivity.
+      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite 2!llift_subst. cbn.
+        replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        eapply type_CongPi2 ; emh.
+        cbn. f_equal.
+        + rewrite lift_llift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite llift_subst. cbn. reflexivity.
+        + rewrite lift_llift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite llift_subst. cbn. reflexivity.
       - cbn. eapply type_CongEq ; emh.
       - cbn. eapply type_CongRefl ; emh.
       - cbn. eapply type_EqToHeq ; emh.
@@ -1246,6 +1277,25 @@ Proof.
           replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
           rewrite rlift_subst. cbn. reflexivity.
       - cbn. eapply type_CongSum ; emh.
+        cbn. f_equal.
+        + rewrite lift_rlift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite rlift_subst. cbn. reflexivity.
+        + rewrite lift_rlift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite rlift_subst. cbn. reflexivity.
+      - cbn. eapply type_CongPi1 ; emh.
+        cbn. f_equal.
+        + rewrite lift_rlift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite rlift_subst. cbn. reflexivity.
+        + rewrite lift_rlift3 by omega.
+          replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.
+          rewrite rlift_subst. cbn. reflexivity.
+      - cbn. replace #|Δ| with (#|Δ| + 0)%nat by omega.
+        rewrite 2!rlift_subst. cbn.
+        replace (#|Δ| + 0)%nat with #|Δ| by omega.
+        eapply type_CongPi2 ; emh.
         cbn. f_equal.
         + rewrite lift_rlift3 by omega.
           replace (S #|Δ|) with ((S #|Δ|) + 0)%nat by omega.

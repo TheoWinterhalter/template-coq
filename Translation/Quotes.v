@@ -330,6 +330,8 @@ Quote Definition tCongProd := @cong_prod.
 Quote Definition tCongLambda := @cong_lambda.
 Quote Definition tCongApp := @cong_app.
 Quote Definition tCongSum := @cong_sum.
+Quote Definition tCongPi1 := @cong_pi1.
+Quote Definition tCongPi2 := @cong_pi2.
 Quote Definition tCongEq := @cong_eq.
 Quote Definition tCongRefl := @cong_refl.
 Quote Definition tEqToHeq := @eq_to_heq.
@@ -412,6 +414,32 @@ Definition mkCongSum (A1 A2 B1 B2 pA pB : term) :=
     (tLambda nAnon A2 B2) ;
     pA ;
     (tLambda nAnon (mkPack A1 A2) pB)
+  ].
+
+Definition mkCongPi1 (A1 A2 B1 B2 p1 p2 pA pB pp : term) :=
+  tApp tCongPi1 [
+    A1 ;
+    A2 ;
+    (tLambda nAnon A1 B1) ;
+    (tLambda nAnon A2 B2) ;
+    p1 ;
+    p2 ;
+    pA ;
+    (tLambda nAnon (mkPack A1 A2) pB) ;
+    pp
+  ].
+
+Definition mkCongPi2 (A1 A2 B1 B2 p1 p2 pA pB pp : term) :=
+  tApp tCongPi2 [
+    A1 ;
+    A2 ;
+    (tLambda nAnon A1 B1) ;
+    (tLambda nAnon A2 B2) ;
+    p1 ;
+    p2 ;
+    pA ;
+    (tLambda nAnon (mkPack A1 A2) pB) ;
+    pp
   ].
 
 Definition mkCongEq (A1 A2 u1 v1 u2 v2 pA pu pv : term) : term :=

@@ -5,7 +5,8 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import util SAst SLiftSubst SCommon ITyping
                                 ITypingLemmata ITypingAdmissible XTyping
-                                Translation Reduction FinalTranslation.
+                                FundamentalLemma Translation Reduction
+                                FinalTranslation.
 
 Open Scope string_scope.
 

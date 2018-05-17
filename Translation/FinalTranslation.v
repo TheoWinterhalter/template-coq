@@ -106,6 +106,16 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       A' <- tsl_rec fuel Σ Γ A ;;
       B' <- tsl_rec fuel Σ (Γ ,, vass n A') B ;;
       ret (mkSum A' B')
+    | sPi1 A B p =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ (Γ ,, vass nAnon A') B ;;
+      p' <- tsl_rec fuel Σ Γ p ;;
+      myret Σ Γ (mkPi1 A' B' p')
+    | sPi2 A B p =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ (Γ ,, vass nAnon A') B ;;
+      p' <- tsl_rec fuel Σ Γ p ;;
+      myret Σ Γ (mkPi2 A' B' p')
     | sEq A u v =>
       A' <- tsl_rec fuel Σ Γ A ;;
       u' <- tsl_rec fuel Σ Γ u ;;
@@ -235,6 +245,40 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
         B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
         myret Σ Γ (mkCongSum A1' A2' B1' B2' pA' pB')
       | Checked T => raise (UnexpectedTranslation "CongSum" pA pA' T)
+      | TypeError t => raise (TypingError t)
+      end
+    | sCongPi1 B1 B2 pA pB pp =>
+      pA' <- tsl_rec fuel Σ Γ pA ;;
+      match infer_hnf fuel Σ Γ pA' with
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; A1' ; _ ; A2' ]) =>
+        pB' <- tsl_rec fuel Σ (Γ ,, vass nAnon (mkPack A1' A2')) pB ;;
+        B1' <- tsl_rec fuel Σ (Γ ,, vass nAnon A1') B1 ;;
+        B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
+        pp' <- tsl_rec fuel Σ Γ pp ;;
+        match infer_hnf fuel Σ Γ pA' with
+        | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; p1' ; _ ; p2' ]) =>
+          myret Σ Γ (mkCongPi1 A1' A2' B1' B2' p1' p2' pA' pB' pp')
+        | Checked T => raise (UnexpectedTranslation "CongPi1" pp pp' T)
+        | TypeError t => raise (TypingError t)
+        end
+      | Checked T => raise (UnexpectedTranslation "CongPi1" pA pA' T)
+      | TypeError t => raise (TypingError t)
+      end
+    | sCongPi2 B1 B2 pA pB pp =>
+      pA' <- tsl_rec fuel Σ Γ pA ;;
+      match infer_hnf fuel Σ Γ pA' with
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; A1' ; _ ; A2' ]) =>
+        pB' <- tsl_rec fuel Σ (Γ ,, vass nAnon (mkPack A1' A2')) pB ;;
+        B1' <- tsl_rec fuel Σ (Γ ,, vass nAnon A1') B1 ;;
+        B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
+        pp' <- tsl_rec fuel Σ Γ pp ;;
+        match infer_hnf fuel Σ Γ pA' with
+        | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; p1' ; _ ; p2' ]) =>
+          myret Σ Γ (mkCongPi2 A1' A2' B1' B2' p1' p2' pA' pB' pp')
+        | Checked T => raise (UnexpectedTranslation "CongPi2" pp pp' T)
+        | TypeError t => raise (TypingError t)
+        end
+      | Checked T => raise (UnexpectedTranslation "CongPi2" pA pA' T)
       | TypeError t => raise (TypingError t)
       end
     | sCongEq pA pu pv =>
