@@ -260,6 +260,9 @@ Section ctxconv.
       + econstructor ; try assumption.
         apply conv_refl.
     - eapply type_ProjT2 with (A1 := A1) ; ih.
+    - eapply type_Ax.
+      + assumption.
+      + assumption.
     - econstructor.
       + ih.
       + ih.

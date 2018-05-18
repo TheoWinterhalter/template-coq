@@ -250,6 +250,9 @@ Definition typing_all : forall (Σ : sglobal_context)
         forall t0 : Σ;;; Γ |-x u : A,
         P Γ u A t0 ->
         P Γ (sRefl A u) (sEq A u u) (XTyping.type_Refl Σ Γ s A u t t0)) ->
+       (forall (Γ : scontext) (id : ident) (ty : sterm) (w : XTyping.wf Σ Γ),
+        P0 Γ w -> forall e : lookup_glob Σ id = Some ty,
+        P Γ (sAx id) ty (XTyping.type_Ax Σ Γ id ty w e)) ->
        (forall (Γ : scontext) (t A B : sterm) (s : sort)
           (t0 : Σ;;; Γ |-x t : A),
         P Γ t A t0 ->
@@ -458,7 +461,7 @@ Proof.
            {Γ'} (hΓ : Σ |--i Γ' # ⟦ Γ ⟧),
            ∑ A' A'' u' v' p',
          eqtrans Σ Γ A u v Γ' A' A'' u' v' p')
-      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
    ) ; intros.
   (** context_translation **)
 
@@ -739,6 +742,16 @@ Proof.
       * constructor ; assumption.
       * destruct (istype_type hg hu').
         eapply type_Refl ; eassumption.
+
+    (* type_Ax *)
+    + exists ty, (sAx id).
+      repeat split.
+      * now destruct hΓ.
+      * apply inrel_refl.
+        eapply xcomp_ax_type ; eassumption.
+      * constructor.
+      * eapply type_Ax ; try eassumption.
+        now destruct hΓ.
 
     (* type_conv *)
     + (* Translating the conversion *)

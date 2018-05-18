@@ -45,6 +45,8 @@ Inductive nlterm : Type :=
 | nlProjT1 (p : nlterm)
 | nlProjT2 (p : nlterm)
 | nlProjTe (p : nlterm)
+(* External axioms *)
+| nlAx (id : ident)
 .
 
 Fixpoint nl (t : sterm) : nlterm :=
@@ -86,19 +88,8 @@ Fixpoint nl (t : sterm) : nlterm :=
   | sProjT1 p => nlProjT1 (nl p)
   | sProjT2 p => nlProjT2 (nl p)
   | sProjTe p => nlProjTe (nl p)
+  | sAx id => nlAx id
   end.
-
-Fact inductive_dec : forall (i i' : inductive), { i = i'} + { i <> i' }.
-Proof.
-  intros i i'.
-  destruct i as [s i], i' as [s' i'].
-  case (string_dec s' s) ; intro e.
-  - subst. case (Nat.eq_dec i' i) ; intro e.
-    + subst. left. reflexivity.
-    + right. intro h. apply e. now inversion h.
-  - right. intro h. apply e. now inversion h.
-Defined.
-
 
 Section nldec.
 
@@ -119,7 +110,7 @@ Section nldec.
            | t : nlterm, u : nlterm |- _ => fcase (nl_dec t u)
            | s : sort, z : sort |- _ => fcase (Nat.eq_dec s z)
            | n : nat, m : nat |- _ => fcase (Nat.eq_dec n m)
-           | i : inductive, i' : inductive |- _ => fcase (inductive_dec i i')
+           | i : ident, i' : ident |- _ => fcase (string_dec i i')
            end.
 
   Fixpoint nl_dec (t u : nlterm) : { t = u } + { t <> u }.

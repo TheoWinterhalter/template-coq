@@ -692,6 +692,21 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionAx :
+  forall {Σ Γ id T},
+    Σ ;;; Γ |-i sAx id : T ->
+    exists ty,
+      (lookup_glob Σ id = Some ty) *
+      (Σ |-i ty = T).
+Proof.
+  intros Σ Γ id T h.
+  dependent induction h.
+  - exists ty. split ; try assumption. apply conv_refl.
+  - destruct IHh1 as [ty ?]. split_hyps.
+    exists ty. split ; try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 (* Tactic to apply inversion automatically *)
 
 Ltac ttinv h :=
@@ -724,6 +739,7 @@ Ltac ttinv h :=
   let b := fresh "b" in
   let c := fresh "c" in
   let t := fresh "t" in
+  let ty := fresh "ty" in
   let univs := fresh "univs" in
   let decl := fresh "decl" in
   let isdecl := fresh "isdecl" in
@@ -808,5 +824,6 @@ Ltac ttinv h :=
       destruct (inversionProjT2 h) as (s & A1 & A2 & hh) ; splits_one hh
     | sProjTe _ =>
       destruct (inversionProjTe h) as (s & A1 & A2 & hh) ; splits_one hh
+    | sAx _ => destruct (inversionAx h) as [ty hh] ; splits_one hh
     end
   end.
