@@ -2,7 +2,7 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils Typing.
 From Translation
-Require Import util SAst SInduction SLiftSubst SCommon Conversion
+Require Import util SAst SLiftSubst SCommon Conversion
                ITyping ITypingInversions.
 
 (* Lemmata about typing *)
@@ -60,316 +60,6 @@ Proof.
   unfold closed. eapply @type_ctx_closed_above with (Γ := []). eassumption.
 Defined.
 
-Fact typed_ind_type' :
-  forall {Σ : sglobal_context} {decl'},
-    type_inductive Σ (sind_bodies decl') ->
-    forall {n decl},
-      nth_error (sind_bodies decl') n = Some decl ->
-      isType Σ [] (sind_type decl).
-Proof.
-  intros Σ decl' hind. unfold type_inductive in hind.
-  induction hind.
-  - intros n decl h.
-    destruct n ; cbn in h ; inversion h.
-  - intros n decl h.
-    destruct n.
-    + cbn in h. inversion h as [ e ]. subst. clear h.
-      cbn. unfold isArity in i.
-      assumption.
-    + cbn in h. eapply IHhind.
-      eassumption.
-Defined.
-
-Fact ident_neq_fresh :
-  forall {Σ ind decl' d},
-    slookup_env Σ (inductive_mind ind) =
-    Some (SInductiveDecl (inductive_mind ind) decl') ->
-    fresh_global (sglobal_decl_ident d) Σ ->
-    ident_eq (inductive_mind ind) (sglobal_decl_ident d) = false.
-Proof.
-  intro Σ. induction Σ.
-  - intros ind decl' d h1 h2.
-    cbn in h1. inversion h1.
-  - intros ind decl' d h1 h2.
-    cbn in h1.
-    set (id1 := inductive_mind ind) in *.
-    set (id2 := sglobal_decl_ident d) in *.
-    set (id3 := sglobal_decl_ident a) in *.
-    dependent destruction h2.
-    case_eq (ident_eq id1 id3) ;
-      intro e ; rewrite e in h1.
-    + inversion h1 as [ h1' ]. subst. clear h1 e.
-      cbn in *.
-      destruct (ident_eq_spec id1 id2) ; easy.
-    + eapply IHΣ ; eassumption.
-Defined.
-
-Lemma stype_of_constructor_eq :
-  forall {Σ id' decl' ind i univs decl}
-    {isdecl : sdeclared_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl},
-    ident_eq (inductive_mind ind) id' = true ->
-    let '(id, trm, args) := decl in
-    stype_of_constructor ((SInductiveDecl id' decl') :: Σ) (ind, i) univs decl isdecl =
-    substl (sinds (inductive_mind ind) decl'.(sind_bodies)) trm.
-Proof.
-  intros Σ id' decl' ind i univs decl isdecl h.
-  funelim (stype_of_constructor (SInductiveDecl id' decl' :: Σ) (ind, i) univs decl isdecl)
-  ; try bang.
-  cbn. cbn in H. rewrite h in H. inversion H. subst. reflexivity.
-Defined.
-
-Lemma stype_of_constructor_cons :
-  forall {Σ d ind i univs decl}
-    {isdecl : sdeclared_constructor Σ (ind, i) univs decl}
-    {isdecl' : sdeclared_constructor (d :: Σ) (ind, i) univs decl},
-    fresh_global (sglobal_decl_ident d) Σ ->
-    stype_of_constructor (d :: Σ) (ind, i) univs decl isdecl' =
-    stype_of_constructor Σ (ind, i) univs decl isdecl.
-Proof.
-  intros Σ d ind i univs decl isdecl isdecl' fresh.
-  assert (eq : slookup_env (d :: Σ) (inductive_mind (fst (ind, i))) = slookup_env Σ (inductive_mind ind)).
-  { cbn.
-    destruct isdecl as [decl' [[d' [[h1 h2] h3]] h4]].
-    pose proof (ident_neq_fresh h1 fresh) as neq.
-    rewrite neq. reflexivity.
-  }
-  funelim (stype_of_constructor (d :: Σ) (ind, i) univs decl isdecl')
-  ; try bang.
-  funelim (stype_of_constructor Σ0 (ind, i) univs decl isdecl) ; try bang.
-  rewrite <- eq in H. inversion H. subst. reflexivity.
-Defined.
-
-Fixpoint weak_glob_red1 {Σ d t1 t2} (h : Σ |-i t1 ▷ t2) :
-  (d::Σ) |-i t1 ▷ t2
-
-with weak_glob_redbrs1 {Σ d b1 b2} (h : redbrs1 Σ b1 b2) :
-  redbrs1 (d::Σ) b1 b2.
-Proof.
-  - induction h ; try (econstructor ; eassumption).
-    econstructor. eapply weak_glob_redbrs1. assumption.
-  - destruct h.
-    + econstructor. eapply weak_glob_red1. assumption.
-    + econstructor. eapply weak_glob_redbrs1. assumption.
-Defined.
-
-Lemma weak_glob_conv :
-  forall {Σ ϕ d t1 t2},
-    (Σ, ϕ) |-i t1 = t2 ->
-    (d::Σ, ϕ) |-i t1 = t2.
-Proof.
-  intros Σ ϕ d t1 t2 h. induction h.
-  all: try (econstructor ; eassumption).
-  - cbn in *. eapply conv_red_l ; try eassumption.
-    cbn. eapply weak_glob_red1. assumption.
-  - cbn in *. eapply conv_red_r ; try eassumption.
-    cbn. eapply weak_glob_red1. assumption.
-Defined.
-
-Fixpoint weak_glob_type {Σ ϕ Γ t A} (h : (Σ,ϕ) ;;; Γ |-i t : A) :
-  forall {d},
-    fresh_global (sglobal_decl_ident d) Σ ->
-    (d::Σ, ϕ) ;;; Γ |-i t : A
-
-with weak_glob_wf {Σ ϕ Γ} (h : wf (Σ,ϕ) Γ) :
-  forall {d},
-    fresh_global (sglobal_decl_ident d) Σ ->
-    wf (d::Σ, ϕ) Γ.
-Proof.
-  (* weak_glob_type *)
-  - { dependent destruction h ; intros d fd.
-      all: try (econstructor ; try apply weak_glob_wf ;
-                try apply weak_glob_type ;
-                try apply weak_glob_conv ;
-                eassumption
-               ).
-      - eapply type_HeqTrans with (B := B) (b := b).
-        all: apply weak_glob_type ; eassumption.
-      - eapply type_ProjT2 with (A1 := A1).
-        all: apply weak_glob_type ; eassumption.
-      - eapply type_Ind with (univs := univs).
-        + apply weak_glob_wf ; assumption.
-        + destruct isdecl as [decl' [[h1 h2] h3]].
-          exists decl'. repeat split.
-          * cbn in *. unfold sdeclared_minductive in *.
-            cbn. erewrite ident_neq_fresh by eassumption.
-            assumption.
-          * assumption.
-          * assumption.
-      - cbn in *.
-        destruct isdecl as [decl' [[d' [[h1 h2] h3]] h4]] eqn:eq.
-        rewrite <- eq.
-        assert (isdecl' : sdeclared_constructor (d :: Σ) (ind, i) univs decl).
-        { exists decl'. split.
-          - exists d'. repeat split.
-            + unfold sdeclared_minductive in *.
-              cbn. erewrite ident_neq_fresh by eassumption.
-              assumption.
-            + assumption.
-            + assumption.
-          - assumption.
-        }
-        eapply meta_conv.
-        + eapply type_Construct.
-          apply weak_glob_wf ; assumption.
-        + instantiate (3 := univs).
-          instantiate (2 := decl).
-          instantiate (1 := isdecl').
-          cbn in *.
-          eapply stype_of_constructor_cons. assumption.
-    }
-
-  (* weak_glob_wf *)
-  - { dependent destruction h ; intros fd.
-      - constructor.
-      - econstructor.
-        + apply weak_glob_wf ; assumption.
-        + apply weak_glob_type ; eassumption.
-    }
-Defined.
-
-Corollary weak_glob_isType :
-  forall {Σ ϕ Γ A} (h : isType (Σ,ϕ) Γ A) {d},
-    fresh_global (sglobal_decl_ident d) Σ ->
-    isType (d::Σ, ϕ) Γ A.
-Proof.
-  intros Σ ϕ Γ A h d hf.
-  destruct h as [s h].
-  exists s. eapply weak_glob_type ; eassumption.
-Defined.
-
-Fact typed_ind_type :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind decl univs},
-      sdeclared_inductive (fst Σ) ind univs decl ->
-      isType Σ [] (sind_type decl).
-Proof.
-  intros Σ hg. destruct Σ as [Σ ϕ].
-  dependent induction hg.
-  - intros ind decl univs isdecl.
-    cbn in *. destruct isdecl as [decl' [[h1 h2] h3]].
-    inversion h1.
-  - intros ind decl univs isdecl.
-    destruct isdecl as [decl' [[h1 h2] h3]].
-    cbn in h1. unfold sdeclared_minductive in h1.
-    cbn in h1.
-    case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
-    + intro e. rewrite e in h1.
-      inversion h1 as [ h1' ]. subst.
-      cbn in t. clear e.
-      destruct (typed_ind_type' t h3) as [s h].
-      exists s. eapply weak_glob_type ; assumption.
-    + intro e. rewrite e in h1.
-      destruct (IHhg ind decl univs) as [s h].
-      * exists decl'. repeat split ; eassumption.
-      * exists s. eapply weak_glob_type ; assumption.
-Defined.
-
-Fact lift_ind_type :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind decl univs},
-      sdeclared_inductive (fst Σ) ind univs decl ->
-      forall n k,
-        lift n k (sind_type decl) = sind_type decl.
-Proof.
-  intros Σ hg ind decl univs h n k.
-  destruct (typed_ind_type hg h).
-  eapply closed_lift.
-  eapply type_ctxempty_closed.
-  eassumption.
-Defined.
-
-Fact xcomp_ind_type' :
-  forall {Σ : sglobal_context} {decl'},
-    type_inductive Σ (sind_bodies decl') ->
-    forall {n decl},
-      nth_error (sind_bodies decl') n = Some decl ->
-      Xcomp (sind_type decl).
-Proof.
-  intros Σ decl' hind. unfold type_inductive in hind.
-  induction hind.
-  - intros n decl h.
-    destruct n ; cbn in h ; inversion h.
-  - intros n decl h.
-    destruct n.
-    + cbn in h. inversion h as [ e ]. subst. clear h.
-      cbn. assumption.
-    + cbn in h. eapply IHhind.
-      eassumption.
-Defined.
-
-Fact xcomp_ind_type :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind decl univs},
-      sdeclared_inductive (fst Σ) ind univs decl ->
-      Xcomp (sind_type decl).
-Proof.
-  intros Σ hg. destruct Σ as [Σ ϕ].
-  dependent induction hg.
-  - intros ind decl univs isdecl.
-    cbn in *. destruct isdecl as [decl' [[h1 h2] h3]].
-    inversion h1.
-  - intros ind decl univs isdecl.
-    destruct isdecl as [decl' [[h1 h2] h3]].
-    cbn in h1. unfold sdeclared_minductive in h1.
-    cbn in h1.
-    case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
-    + intro e. rewrite e in h1.
-      inversion h1 as [ h1' ]. subst.
-      cbn in t. clear e.
-      apply (xcomp_ind_type' t h3).
-    + intro e. rewrite e in h1.
-      apply (IHhg ind decl univs).
-      exists decl'. repeat split ; eassumption.
-Defined.
-
-Fact type_inddecls_constr :
-  forall {Σ : sglobal_context} {inds Γ},
-    type_inddecls Σ [] Γ inds ->
-    forall {n decl},
-      nth_error inds n = Some decl ->
-      type_constructors Σ Γ (sind_ctors decl).
-Proof.
-  intros Σ inds Γ hind. induction hind.
-  - intros n decl h.
-    destruct n ; cbn in h ; inversion h.
-  - intros n decl h.
-    destruct n.
-    + cbn in h. inversion h as [ e ]. subst. clear h.
-      simpl. assumption.
-    + cbn in h. eapply IHhind. eassumption.
-Defined.
-
-Fact type_ind_type_constr :
-  forall {Σ : sglobal_context} {inds},
-    type_inductive Σ inds ->
-    forall {n decl},
-      nth_error inds n = Some decl ->
-      type_constructors Σ (arities_context inds) (sind_ctors decl).
-Proof.
-  intros Σ inds hind n decl h.
-  unfold type_inductive in hind.
-  eapply type_inddecls_constr ; eassumption.
-Defined.
-
-Fact typed_type_constructors :
-  forall {Σ : sglobal_context} {Γ l},
-    type_constructors Σ Γ l ->
-    forall {i decl},
-      nth_error l i = Some decl ->
-      let '(_, t, _) := decl in
-      isType Σ Γ t.
-Proof.
-  intros Σ Γ l htc. induction htc ; intros m decl hm.
-  - destruct m ; cbn in hm ; inversion hm.
-  - destruct m.
-    + cbn in hm. inversion hm. subst. clear hm.
-      assumption.
-    + cbn in hm. eapply IHhtc. eassumption.
-Defined.
-
 (* TODO: Move the 6 next constructions away. *)
 Fact substl_cons :
   forall {a l t}, substl (a :: l) t = (substl l (t{ 0 := a })).
@@ -400,12 +90,6 @@ Proof.
     + omega.
     + assumption.
     + replace (#|l| - 0) with #|l| by omega. assumption.
-Defined.
-
-Fact sinds_cons :
-  forall {ind a l}, sinds ind (a :: l) = sInd (mkInd ind #|l|) :: sinds ind l.
-Proof.
-  intros ind a l. reflexivity.
 Defined.
 
 Fact rev_cons :
@@ -482,93 +166,6 @@ Proof.
   intro l. apply h.
 Defined.
 
-Fact arities_context_cons :
-  forall {a l},
-    arities_context (a :: l) =
-    [ (sind_type a) ] ,,, arities_context l.
-Proof.
-  intros a l.
-  unfold arities_context.
-  rewrite rev_map_cons. reflexivity.
-Defined.
-
-Fact sinds_length :
-  forall {ind l},
-    #|sinds ind l| = #|l|.
-Proof.
-  intros ind l.
-  induction l.
-  - reflexivity.
-  - rewrite sinds_cons. cbn. omega.
-Defined.
-
-Fact length_sinds_arities :
-  forall {ind l},
-    #|sinds ind l| = #|arities_context l|.
-Proof.
-  intros ind l.
-  rewrite rev_map_length, sinds_length.
-  reflexivity.
-Defined.
-
-Fact closed_sinds :
-  forall {Σ id l},
-      type_inductive Σ l ->
-      closed_list (sinds id l).
-Proof.
-  intros Σ id l ti.
-  unfold type_inductive in ti. induction ti.
-  - cbn. constructor.
-  - rewrite sinds_cons. econstructor.
-    + reflexivity.
-    + assumption.
-Defined.
-
-Fact closed_type_of_constructor :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind i decl univs}
-      (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-      closed (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl).
-Proof.
-  intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
-  cbn in hg.
-  induction hg ; intros ind i decl univs isdecl.
-  - cbn. bang.
-  - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
-    + intro e.
-      destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].
-      assert (eqd : d = SInductiveDecl (inductive_mind ind) mb).
-      { unfold sdeclared_minductive in d'. cbn in d'. rewrite e in d'.
-        now inversion d'.
-      }
-      subst.
-      rewrite stype_of_constructor_eq by assumption.
-      cbn in t.
-      eapply closed_substl.
-      * eapply closed_sinds. eassumption.
-      * destruct decl as [[id trm] ci].
-        pose proof (type_ind_type_constr t hn) as tc.
-        destruct (typed_type_constructors tc hn') as [s ?].
-        rewrite length_sinds_arities.
-        eapply type_ctx_closed_above.
-        eassumption.
-    + intro e. erewrite stype_of_constructor_cons by assumption.
-      apply IHhg.
-      Unshelve.
-      destruct isdecl as [ib [[mb [[d' ?] ?]] ?]].
-      exists ib. split.
-      * exists mb. repeat split.
-        -- unfold sdeclared_minductive in *. cbn in d'.
-           rewrite e in d'. exact d'.
-        -- assumption.
-        -- assumption.
-      * assumption.
-Defined.
-
-Definition xcomp_list : list sterm -> Type :=
-  ForallT Xcomp.
-
 Fact xcomp_lift :
   forall {t}, Xcomp t ->
   forall {n k}, Xcomp (lift n k t).
@@ -587,102 +184,6 @@ Proof.
   all: try (cbn ; constructor ; easy).
   cbn. case_eq (m ?= n) ; try constructor.
   intro e. apply xcomp_lift. assumption.
-Defined.
-
-Fact xcomp_substl :
-  forall {l},
-    xcomp_list l ->
-    forall {t},
-      Xcomp t ->
-      Xcomp (substl l t).
-Proof.
-  intros l xl. induction xl ; intros t h.
-  - cbn. assumption.
-  - rewrite substl_cons. apply IHxl.
-    apply xcomp_subst ; assumption.
-Defined.
-
-Fact xcomp_sinds :
-  forall {Σ id l},
-      type_inductive Σ l ->
-      xcomp_list (sinds id l).
-Proof.
-  intros Σ id l ti.
-  unfold type_inductive in ti. induction ti.
-  - cbn. constructor.
-  - rewrite sinds_cons. econstructor.
-    + constructor.
-    + assumption.
-Defined.
-
-Fact xcomp_type_constructors :
-  forall {Σ : sglobal_context} {Γ l},
-    type_constructors Σ Γ l ->
-    forall {i decl},
-      nth_error l i = Some decl ->
-      let '(_, t, _) := decl in
-      Xcomp t.
-Proof.
-  intros Σ Γ l htc. induction htc ; intros m decl hm.
-  - destruct m ; cbn in hm ; inversion hm.
-  - destruct m.
-    + cbn in hm. inversion hm. subst. clear hm.
-      assumption.
-    + cbn in hm. eapply IHhtc. eassumption.
-Defined.
-
-Fact xcomp_type_of_constructor :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind i decl univs}
-      (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-      Xcomp (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl).
-Proof.
-  intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
-  cbn in hg.
-  induction hg ; intros ind i decl univs isdecl.
-  - cbn. bang.
-  - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
-    + intro e.
-      destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].
-      assert (eqd : d = SInductiveDecl (inductive_mind ind) mb).
-      { unfold sdeclared_minductive in d'. cbn in d'. rewrite e in d'.
-        now inversion d'.
-      }
-      subst.
-      rewrite stype_of_constructor_eq by assumption.
-      cbn in t.
-      eapply xcomp_substl.
-      * eapply xcomp_sinds. eassumption.
-      * destruct decl as [[id trm] ci].
-        pose proof (type_ind_type_constr t hn) as tc.
-        apply (xcomp_type_constructors tc hn').
-    + intro e. erewrite stype_of_constructor_cons by assumption.
-      apply IHhg.
-      Unshelve.
-      destruct isdecl as [ib [[mb [[d' ?] ?]] ?]].
-      exists ib. split.
-      * exists mb. repeat split.
-        -- unfold sdeclared_minductive in *. cbn in d'.
-           rewrite e in d'. exact d'.
-        -- assumption.
-        -- assumption.
-      * assumption.
-Defined.
-
-Fact lift_type_of_constructor :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind i decl univs}
-      {isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl},
-      forall n k,
-        lift n k (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl) =
-        stype_of_constructor (fst Σ) (ind, i) univs decl isdecl.
-Proof.
-  intros Σ hg ind i decl univs isdecl n k.
-  eapply closed_lift.
-  eapply closed_type_of_constructor.
-  assumption.
 Defined.
 
 Ltac ih h :=
@@ -771,6 +272,15 @@ Proof.
           with (lift #|Δ| (0 + #|Ξ|) (B { 0 := u })).
         rewrite substP1.
         eapply type_App ; eih.
+      - cbn. eapply type_Sum ; eih.
+      - cbn. eapply type_Pair ; eih.
+        change (#|Ξ|) with (0 + #|Ξ|)%nat.
+        rewrite substP1. reflexivity.
+      - cbn. eapply type_Pi1 ; eih.
+      - cbn.
+        change (#|Ξ|) with (0 + #|Ξ|)%nat.
+        rewrite substP1.
+        eapply type_Pi2 ; eih.
       - cbn. apply type_Eq ; eih.
       - cbn. eapply type_Refl ; eih.
       - change (#|Ξ|) with (0 + #|Ξ|)%nat.
@@ -840,6 +350,50 @@ Proof.
         + rewrite <- liftP2 by omega.
           change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
           rewrite substP1. cbn. reflexivity.
+      - cbn. eapply type_CongSum ; try eih.
+        cbn. f_equal.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+      - cbn. eapply type_CongPair ; eih.
+        + cbn. f_equal.
+          * rewrite <- liftP2 by omega.
+            change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+            rewrite substP1. cbn. reflexivity.
+          * rewrite <- liftP2 by omega.
+            change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+            rewrite substP1. cbn. reflexivity.
+        + cbn. f_equal.
+          * change #|Ξ| with (0 + #|Ξ|)%nat.
+            rewrite substP1. reflexivity.
+          * change #|Ξ| with (0 + #|Ξ|)%nat.
+            rewrite substP1. reflexivity.
+        + change #|Ξ| with (0 + #|Ξ|)%nat.
+          rewrite substP1. reflexivity.
+        + change #|Ξ| with (0 + #|Ξ|)%nat.
+          rewrite substP1. reflexivity.
+      - cbn. eapply type_CongPi1 ; eih.
+        cbn. f_equal.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+      - cbn.
+        change #|Ξ| with (0 + #|Ξ|)%nat.
+        rewrite 2!substP1.
+        eapply type_CongPi2 ; eih.
+        cbn. f_equal.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
+        + rewrite <- liftP2 by omega.
+          change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+          rewrite substP1. cbn. reflexivity.
       - cbn. eapply type_CongEq ; eih.
       - cbn. eapply type_CongRefl ; eih.
       - cbn. eapply type_EqToHeq ; eih.
@@ -848,12 +402,6 @@ Proof.
       - cbn. eapply @type_ProjT1 with (A2 := lift #|Δ| #|Ξ| A2) ; eih.
       - cbn. eapply @type_ProjT2 with (A1 := lift #|Δ| #|Ξ| A1) ; eih.
       - cbn. eapply type_ProjTe ; eih.
-      - cbn. erewrite lift_ind_type by eassumption.
-        eapply type_Ind.
-        + now apply wf_lift.
-        + eassumption.
-      - cbn. erewrite lift_type_of_constructor by eassumption.
-        eapply type_Construct. now apply wf_lift.
       - eapply type_conv ; try eih.
         eapply lift_conv. assumption.
     }
@@ -903,36 +451,6 @@ Proof.
   - assumption.
   - eapply typing_lift01  ; eassumption.
   - eassumption.
-Defined.
-
-Fact subst_ind_type :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind decl univs},
-      sdeclared_inductive (fst Σ) ind univs decl ->
-      forall n u,
-        (sind_type decl){ n := u } = sind_type decl.
-Proof.
-  intros Σ hg ind decl univs h n u.
-  destruct (typed_ind_type hg h).
-  eapply closed_subst.
-  eapply type_ctxempty_closed.
-  eassumption.
-Defined.
-
-Fact subst_type_of_constructor :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind i decl univs}
-      {isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl},
-      forall n u,
-        (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl){ n := u } =
-        stype_of_constructor (fst Σ) (ind, i) univs decl isdecl.
-Proof.
-  intros Σ hg ind i decl univs isdecl n u.
-  eapply closed_subst.
-  eapply closed_type_of_constructor.
-  assumption.
 Defined.
 
 Ltac sh h :=
@@ -1052,6 +570,15 @@ Proof.
           with ((B0 {0 := u0}) {0 + #|Δ| := u}).
         rewrite substP4. cbn.
         eapply type_App ; esh.
+      - cbn. eapply type_Sum ; esh.
+      - cbn. eapply type_Pair ; esh.
+        change (#|Δ|) with (0 + #|Δ|)%nat.
+        rewrite substP4. reflexivity.
+      - cbn. eapply type_Pi1 ; esh.
+      - cbn.
+        change (#|Δ|) with (0 + #|Δ|)%nat.
+        rewrite substP4.
+        eapply type_Pi2 ; esh.
       - cbn. eapply type_Eq ; esh.
       - cbn. eapply type_Refl ; esh.
       - cbn.
@@ -1119,6 +646,50 @@ Proof.
         + rewrite <- substP2 by omega.
           change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
           rewrite substP4. cbn. reflexivity.
+      - cbn. eapply type_CongSum ; esh.
+        cbn. f_equal.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+      - cbn. eapply type_CongPair ; esh.
+        + cbn. f_equal.
+          * rewrite <- substP2 by omega.
+            change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+            rewrite substP4. cbn. reflexivity.
+          * rewrite <- substP2 by omega.
+            change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+            rewrite substP4. cbn. reflexivity.
+        + cbn. f_equal.
+          * change #|Δ| with (0 + #|Δ|)%nat.
+            rewrite substP4. reflexivity.
+          * change #|Δ| with (0 + #|Δ|)%nat.
+            rewrite substP4. reflexivity.
+        + change #|Δ| with (0 + #|Δ|)%nat.
+          rewrite substP4. reflexivity.
+        + change #|Δ| with (0 + #|Δ|)%nat.
+          rewrite substP4. reflexivity.
+      - cbn. eapply type_CongPi1 ; esh.
+        cbn. f_equal.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+      - cbn.
+        change #|Δ| with (0 + #|Δ|)%nat.
+        rewrite 2!substP4. cbn.
+        eapply type_CongPi2 ; esh.
+        cbn. f_equal.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
+        + rewrite <- substP2 by omega.
+          change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+          rewrite substP4. cbn. reflexivity.
       - cbn. eapply type_CongEq ; esh.
       - cbn. eapply type_CongRefl ; esh.
       - cbn. eapply type_EqToHeq ; esh.
@@ -1127,12 +698,6 @@ Proof.
       - cbn. eapply @type_ProjT1 with (A2 := A2{#|Δ| := u}) ; esh.
       - cbn. eapply @type_ProjT2 with (A1 := A1{#|Δ| := u}) ; esh.
       - cbn. eapply type_ProjTe ; esh.
-      - cbn. erewrite subst_ind_type by eassumption.
-        eapply type_Ind.
-        + now eapply wf_subst.
-        + eassumption.
-      - cbn. erewrite subst_type_of_constructor by eassumption.
-        eapply type_Construct. now eapply wf_subst.
       - cbn. eapply type_conv ; try esh.
         eapply subst_conv. eassumption.
     }
@@ -1212,19 +777,6 @@ Proof.
   - rewrite substl_cons. cbn. apply IHl.
 Defined.
 
-Fact ind_bodies_declared :
-  forall {Σ ind mb},
-    sdeclared_minductive Σ (inductive_mind ind) mb ->
-    forall {n d},
-      nth_error (sind_bodies mb) n = Some d ->
-      sdeclared_inductive Σ (mkInd (inductive_mind ind) n) (sind_universes mb) d.
-Proof.
-  intros Σ ind mb hd n d hn.
-  exists mb. repeat split.
-  - cbn. assumption.
-  - cbn. assumption.
-Defined.
-
 Fact nth_error_error :
   forall {A} {l : list A} {n},
     nth_error l n = None ->
@@ -1265,164 +817,6 @@ Proof.
         omega.
 Defined.
 
-Fact sinds_nth_error :
-  forall ind {l n},
-    n < #|l| ->
-    nth_error (sinds ind l) n = Some (sInd (mkInd ind (#|l| - S n))).
-Proof.
-  intros ind l.
-  unfold sinds.
-  match goal with
-  | |- context [ nth_error (?faux _) ] => set (aux := faux)
-  end.
-  induction l ; intros n h.
-  - inversion h.
-  - destruct n.
-    + cbn. f_equal. f_equal. f_equal. omega.
-    + cbn. apply IHl. cbn in h. omega.
-Defined.
-
-Fact type_arities' :
-  forall {Σ ind mb},
-    type_glob Σ ->
-    sdeclared_minductive (fst Σ) (inductive_mind ind) mb ->
-    let id := inductive_mind ind in
-    let bs := sind_bodies mb in
-    let inds := sinds id bs in
-    let ac := arities_context bs in
-    forall n,
-      let l1 := lastn n inds in
-      let l2 := lastn n ac in
-      (typed_list Σ [] l1 l2) * (wf Σ l2).
-Proof.
-  intros Σ ind mb hg hd id bs inds ac n.
-  induction n.
-  - rewrite !lastn_O. cbn.
-    split ; constructor.
-  - assert (#|ac| = #|bs|) by (apply rev_map_length).
-    assert (#|inds| = #|bs|) by (apply sinds_length).
-    case_eq (#|bs| <=? n) ; intro e ; bprop e ; clear e.
-    + rewrite !lastn_all2 by omega.
-      rewrite !lastn_all2 in IHn by omega.
-      assumption.
-    + intros l1 l2.
-      case_eq (nth_error bs n).
-      * intros a hn.
-        (* Reconstructing l1 *)
-        assert (e : #|inds| - S n < #|bs|) by omega.
-        pose proof (sinds_nth_error id e) as hn1.
-        change (sinds id bs) with inds in hn1.
-        pose proof (lastn_reconstruct hn1 ltac:(omega)) as hl1.
-        change (lastn (S n) inds) with l1 in hl1.
-        set (l1' := lastn n inds) in *.
-        (* Same with l2 *)
-        assert (hn2 : nth_error ac (#|ac| - S n) = Some (sind_type a)).
-        { rewrite H.
-          unfold ac, arities_context.
-          erewrite rev_map_nth_error.
-          - reflexivity.
-          - assumption.
-        }
-        pose proof (lastn_reconstruct hn2 ltac:(omega)) as hl2.
-        change (lastn (S n) ac) with l2 in hl2.
-        set (l2' := lastn n ac) in *.
-        unfold l1 in IHn.
-        destruct IHn as [ih1 ih2].
-        rewrite !hl1, !hl2.
-        set (univs := sind_universes mb).
-        assert (isdecl :
-          sdeclared_inductive (fst Σ) {| inductive_mind := id; inductive_ind := #|bs| - S (#|inds| - S n) |} univs a
-        ).
-        { eapply ind_bodies_declared ; try eassumption.
-          replace (#|bs| - S (#|inds| - S n)) with n by omega.
-          assumption.
-        }
-        split.
-        -- econstructor.
-           ++ assumption.
-           ++ rewrite nil_cat. eapply type_Ind ; eassumption.
-        -- destruct (typed_ind_type hg isdecl) as [s h].
-           econstructor.
-           ++ assumption.
-           ++ instantiate (1 := s).
-              change (sSort s) with (lift #|l2'| #|@nil sterm| (sSort s)).
-              replace (sind_type a)
-                with (lift #|l2'| #|@nil sterm| (sind_type a))
-                by (erewrite lift_ind_type by eassumption ; reflexivity).
-              eapply meta_ctx_conv.
-              ** eapply @type_lift with (Γ := []) (Ξ := []) (Δ := l2').
-                 --- cbn. assumption.
-                 --- assumption.
-                 --- rewrite nil_cat. assumption.
-              ** cbn. apply nil_cat.
-      * intro hn.
-        pose proof (nth_error_error hn) as h. omega.
-Defined.
-
-Corollary type_arities :
-  forall {Σ ind mb},
-    type_glob Σ ->
-    sdeclared_minductive (fst Σ) (inductive_mind ind) mb ->
-    let id := inductive_mind ind in
-    let bs := sind_bodies mb in
-    let inds := sinds id bs in
-    let ac := arities_context bs in
-    (typed_list Σ [] inds ac) * (wf Σ ac).
-Proof.
-  intros Σ ind mb hg hd id bs inds ac.
-  pose proof (type_arities' hg hd #|bs|) as h.
-  rewrite !lastn_all2 in h.
-  - cbn in h. apply h.
-  - rewrite rev_map_length. auto.
-  - rewrite sinds_length. auto.
-Defined.
-
-Fact typed_type_of_constructor :
-  forall {Σ : sglobal_context},
-    type_glob Σ ->
-    forall {ind i decl univs}
-      (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-      isType Σ [] (stype_of_constructor (fst Σ) (ind, i) univs decl isdecl).
-Proof.
-  intros Σ hg. unfold type_glob in hg. destruct Σ as [Σ ϕ].
-  cbn in hg.
-  induction hg ; intros ind i decl univs isdecl.
-  - cbn. bang.
-  - case_eq (ident_eq (inductive_mind ind) (sglobal_decl_ident d)).
-    + intro e.
-      destruct isdecl as [ib [[mb [[d' ?] hn]] hn']].
-      assert (eqd : d = SInductiveDecl (inductive_mind ind) mb).
-      { unfold sdeclared_minductive in d'. cbn in d'. rewrite e in d'.
-        now inversion d'.
-      }
-      subst.
-      rewrite stype_of_constructor_eq by assumption.
-      cbn in t.
-      pose proof (type_ind_type_constr t hn) as tc.
-      destruct (typed_type_constructors tc hn') as [s hh].
-      exists s. erewrite <- substl_sort.
-      eapply type_substl.
-      * econstructor ; eassumption.
-      * eapply type_arities.
-        -- econstructor ; eassumption.
-        -- cbn. assumption.
-      * rewrite nil_cat.
-        eapply weak_glob_type ; [| eassumption ].
-        exact hh.
-    + intro e. erewrite stype_of_constructor_cons by assumption.
-      eapply weak_glob_isType ; [| eassumption ].
-      apply IHhg.
-      Unshelve.
-      destruct isdecl as [ib [[mb [[d' ?] ?]] ?]].
-      exists ib. split.
-      * exists mb. repeat split.
-        -- unfold sdeclared_minductive in *. cbn in d'.
-           rewrite e in d'. exact d'.
-        -- assumption.
-        -- assumption.
-      * assumption.
-Defined.
-
 Lemma istype_type :
   forall {Σ Γ t T},
     type_glob Σ ->
@@ -1454,6 +848,12 @@ Proof.
   - exists (max_sort s1 s2). apply type_Prod ; assumption.
   - exists s2. change (sSort s2) with ((sSort s2){ 0 := u }).
     eapply typing_subst ; eassumption.
+  - eexists. econstructor. eapply typing_wf. eassumption.
+  - eexists. econstructor ; eassumption.
+  - eexists. eassumption.
+  - exists s2. change (sSort s2) with ((sSort s2){ 0 := sPi1 A B p }).
+    eapply typing_subst ; try eassumption.
+    econstructor ; eassumption.
   - exists (succ_sort s). apply type_Sort. apply (typing_wf H).
   - exists s. now apply type_Eq.
   - exists s2.
@@ -1490,6 +890,35 @@ Proof.
       eapply typing_subst ; eassumption.
     + eapply type_App ; eassumption.
     + eapply type_App ; eassumption.
+  - exists (succ_sort (max_sort s z)).
+    apply type_Heq.
+    + eapply type_Sort. apply (typing_wf H).
+    + eapply type_Sort. apply (typing_wf H).
+    + apply type_Sum ; assumption.
+    + apply type_Sum ; assumption.
+  - eexists. econstructor.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+  - eexists. econstructor ; try eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+  - eexists. econstructor ; try eassumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ { 0 := ?t } : ?S =>
+        change S with (S{ 0 := t })
+      end.
+      eapply typing_subst ; try eassumption.
+      econstructor ; eassumption.
+    + match goal with
+      | |- _ ;;; _ |-i _ { 0 := ?t } : ?S =>
+        change S with (S{ 0 := t })
+      end.
+      eapply typing_subst ; try eassumption.
+      econstructor ; eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
   - exists (succ_sort s). apply type_Heq.
     + apply type_Sort ; apply (typing_wf H).
     + apply type_Sort ; apply (typing_wf H).
@@ -1509,28 +938,5 @@ Proof.
   - exists s. apply type_Heq ; try assumption.
     + eapply type_ProjT1 ; eassumption.
     + eapply @type_ProjT2 with (A1 := A1) ; eassumption.
-  - destruct (typed_ind_type hg isdecl) as [s h].
-    exists s.
-    change (sSort s) with (lift #|Γ| #|@nil sterm| (sSort s)).
-    replace (sind_type decl)
-      with (lift #|Γ| #|@nil sterm| (sind_type decl))
-      by (erewrite lift_ind_type by eassumption ; reflexivity).
-    eapply meta_ctx_conv.
-    + eapply @type_lift with (Γ := []) (Ξ := []) (Δ := Γ).
-      * assumption.
-      * assumption.
-      * rewrite nil_cat. assumption.
-    + cbn. apply nil_cat.
-  - destruct (typed_type_of_constructor hg isdecl) as [s h].
-    exists s. change (sSort s) with (lift #|Γ| #|@nil sterm| (sSort s)).
-    set (ty := stype_of_constructor (fst Σ) (ind, i) univs decl isdecl) in *.
-    replace ty with (lift #|Γ| #|@nil sterm| ty)
-      by (erewrite lift_type_of_constructor by eassumption ; reflexivity).
-    eapply meta_ctx_conv.
-    + eapply @type_lift with (Γ := []) (Ξ := []) (Δ := Γ).
-      * assumption.
-      * assumption.
-      * rewrite nil_cat. assumption.
-    + cbn. apply nil_cat.
   - exists s. assumption.
 Defined.

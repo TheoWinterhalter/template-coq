@@ -219,11 +219,47 @@ Section ctxconv.
         eexists ; econstructor ; ih.
       + econstructor ; try assumption.
         apply conv_refl.
-    - eapply type_ProjT2 with (A1 := A1) ; ih.
-    - econstructor.
-      + assumption.
+    - econstructor ; try ih.
+      eapply type_ctxconv'.
       + eassumption.
-    - econstructor. assumption.
+      + assumption.
+      + econstructor ; try assumption.
+        econstructor ; ih.
+      + econstructor ; try assumption.
+        eexists ; econstructor ; ih.
+      + econstructor ; try assumption.
+        apply conv_refl.
+    - econstructor ; try ih.
+      eapply type_ctxconv'.
+      + eassumption.
+      + assumption.
+      + econstructor ; try assumption.
+        econstructor ; ih.
+      + econstructor ; try assumption.
+        eexists ; econstructor ; ih.
+      + econstructor ; try assumption.
+        apply conv_refl.
+    - econstructor ; try ih.
+      eapply type_ctxconv'.
+      + eassumption.
+      + assumption.
+      + econstructor ; try assumption.
+        econstructor ; ih.
+      + econstructor ; try assumption.
+        eexists ; econstructor ; ih.
+      + econstructor ; try assumption.
+        apply conv_refl.
+    - econstructor ; try ih.
+      eapply type_ctxconv'.
+      + eassumption.
+      + assumption.
+      + econstructor ; try assumption.
+        econstructor ; ih.
+      + econstructor ; try assumption.
+        eexists ; econstructor ; ih.
+      + econstructor ; try assumption.
+        apply conv_refl.
+    - eapply type_ProjT2 with (A1 := A1) ; ih.
     - econstructor.
       + ih.
       + ih.

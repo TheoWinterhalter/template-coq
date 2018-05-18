@@ -5,7 +5,7 @@ From Equations Require Import Equations DepElimDec.
 From Template
 Require Import Ast utils monad_utils LiftSubst Typing Checker Template.
 From Translation
-Require Import util SAst SInduction SLiftSubst SCommon ITyping Quotes.
+Require Import util SAst SLiftSubst SCommon ITyping Quotes.
 
 Import MonadNotation.
 
@@ -102,6 +102,26 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       u' <- tsl_rec fuel Σ Γ u ;;
       v' <- tsl_rec fuel Σ Γ v ;;
       myret Σ Γ (tApp u' [v'])
+    | sSum n A B =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ (Γ ,, vass n A') B ;;
+      ret (mkSum A' B')
+    | sPair A B u v =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ (Γ ,, vass nAnon A') B ;;
+      u' <- tsl_rec fuel Σ Γ u ;;
+      v' <- tsl_rec fuel Σ Γ v ;;
+      myret Σ Γ (mkPair A' B' u' v')
+    | sPi1 A B p =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ (Γ ,, vass nAnon A') B ;;
+      p' <- tsl_rec fuel Σ Γ p ;;
+      myret Σ Γ (mkPi1 A' B' p')
+    | sPi2 A B p =>
+      A' <- tsl_rec fuel Σ Γ A ;;
+      B' <- tsl_rec fuel Σ (Γ ,, vass nAnon A') B ;;
+      p' <- tsl_rec fuel Σ Γ p ;;
+      myret Σ Γ (mkPi2 A' B' p')
     | sEq A u v =>
       A' <- tsl_rec fuel Σ Γ A ;;
       u' <- tsl_rec fuel Σ Γ u ;;
@@ -222,6 +242,74 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "CongApp 3" pA pA' T)
       | TypeError t => raise (TypingError t)
       end
+    | sCongSum B1 B2 pA pB =>
+      pA' <- tsl_rec fuel Σ Γ pA ;;
+      match infer_hnf fuel Σ Γ pA' with
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; A1' ; _ ; A2' ]) =>
+        pB' <- tsl_rec fuel Σ (Γ ,, vass nAnon (mkPack A1' A2')) pB ;;
+        B1' <- tsl_rec fuel Σ (Γ ,, vass nAnon A1') B1 ;;
+        B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
+        myret Σ Γ (mkCongSum A1' A2' B1' B2' pA' pB')
+      | Checked T => raise (UnexpectedTranslation "CongSum" pA pA' T)
+      | TypeError t => raise (TypingError t)
+      end
+    | sCongPair B1 B2 pA pB pu pv =>
+      pA' <- tsl_rec fuel Σ Γ pA ;;
+      match infer_hnf fuel Σ Γ pA' with
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; A1' ; _ ; A2' ]) =>
+        pB' <- tsl_rec fuel Σ (Γ ,, vass nAnon (mkPack A1' A2')) pB ;;
+        B1' <- tsl_rec fuel Σ (Γ ,, vass nAnon A1') B1 ;;
+        B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
+        pu' <- tsl_rec fuel Σ Γ pu ;;
+        pv' <- tsl_rec fuel Σ Γ pv ;;
+        match infer_hnf fuel Σ Γ pu' with
+        | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; u1' ; _ ; u2' ]) =>
+          match infer_hnf fuel Σ Γ pv' with
+          | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; v1' ; _ ; v2' ]) =>
+            myret Σ Γ (mkCongPair A1' A2' B1' B2' u1' u2' v1' v2' pA' pB' pu' pv')
+          | Checked T => raise (UnexpectedTranslation "CongPair" pv pv' T)
+          | TypeError t => raise (TypingError t)
+          end
+        | Checked T => raise (UnexpectedTranslation "CongPair" pu pu' T)
+        | TypeError t => raise (TypingError t)
+        end
+      | Checked T => raise (UnexpectedTranslation "CongPi1" pA pA' T)
+      | TypeError t => raise (TypingError t)
+      end
+    | sCongPi1 B1 B2 pA pB pp =>
+      pA' <- tsl_rec fuel Σ Γ pA ;;
+      match infer_hnf fuel Σ Γ pA' with
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; A1' ; _ ; A2' ]) =>
+        pB' <- tsl_rec fuel Σ (Γ ,, vass nAnon (mkPack A1' A2')) pB ;;
+        B1' <- tsl_rec fuel Σ (Γ ,, vass nAnon A1') B1 ;;
+        B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
+        pp' <- tsl_rec fuel Σ Γ pp ;;
+        match infer_hnf fuel Σ Γ pp' with
+        | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; p1' ; _ ; p2' ]) =>
+          myret Σ Γ (mkCongPi1 A1' A2' B1' B2' p1' p2' pA' pB' pp')
+        | Checked T => raise (UnexpectedTranslation "CongPi1" pp pp' T)
+        | TypeError t => raise (TypingError t)
+        end
+      | Checked T => raise (UnexpectedTranslation "CongPi1" pA pA' T)
+      | TypeError t => raise (TypingError t)
+      end
+    | sCongPi2 B1 B2 pA pB pp =>
+      pA' <- tsl_rec fuel Σ Γ pA ;;
+      match infer_hnf fuel Σ Γ pA' with
+      | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; A1' ; _ ; A2' ]) =>
+        pB' <- tsl_rec fuel Σ (Γ ,, vass nAnon (mkPack A1' A2')) pB ;;
+        B1' <- tsl_rec fuel Σ (Γ ,, vass nAnon A1') B1 ;;
+        B2' <- tsl_rec fuel Σ (Γ ,, vass nAnon A2') B2 ;;
+        pp' <- tsl_rec fuel Σ Γ pp ;;
+        match infer_hnf fuel Σ Γ pp' with
+        | Checked (tApp (tInd (mkInd "Translation.Quotes.heq" 0) _) [ _ ; p1' ; _ ; p2' ]) =>
+          myret Σ Γ (mkCongPi2 A1' A2' B1' B2' p1' p2' pA' pB' pp')
+        | Checked T => raise (UnexpectedTranslation "CongPi2" pp pp' T)
+        | TypeError t => raise (TypingError t)
+        end
+      | Checked T => raise (UnexpectedTranslation "CongPi2" pA pA' T)
+      | TypeError t => raise (TypingError t)
+      end
     | sCongEq pA pu pv =>
       pA' <- tsl_rec fuel Σ Γ pA ;;
       pu' <- tsl_rec fuel Σ Γ pu ;;
@@ -292,16 +380,6 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "ProjTe" p p' T)
       | TypeError t => raise (TypingError t)
       end
-    | sInd ind =>
-      ret (tInd ind [])
-    | sConstruct ind i =>
-      ret (tConstruct ind i [])
-    | sCase (ind, n) p c brs =>
-      (* TODO Check the contexts here! *)
-      p' <- tsl_rec fuel Σ Γ p ;;
-      c' <- tsl_rec fuel Σ Γ c ;;
-      brs' <- brs_repack (map (on_snd (tsl_rec fuel Σ Γ)) brs) ;;
-      ret (tCase (pair ind n) p' c' brs')
     end
   end.
 
@@ -320,6 +398,10 @@ Fixpoint tsl_ctx (fuel : nat) (Σ : global_context) (Γ : scontext)
 (* We define a term that mentions everything that the global context should
    have. *)
 Definition glob_term :=
+  let _ := @pp_sigT in
+  let _ := @epair in
+  let _ := @pi1 in
+  let _ := @pi2 in
   let _ := @eq in
   let _ := @transport in
   let _ := @K in
@@ -337,6 +419,10 @@ Definition glob_term :=
   let _ := @cong_prod in
   let _ := @cong_app in
   let _ := @cong_lambda in
+  let _ := @cong_sum in
+  let _ := @cong_pair in
+  let _ := @cong_pi1 in
+  let _ := @cong_pi2 in
   let _ := @cong_eq in
   let _ := @cong_refl in
   let _ := @eq_to_heq in
@@ -353,65 +439,3 @@ Definition Σ : global_context :=
   pair (Datatypes.fst glob_prog) init_graph.
 
 Arguments Σ : simpl never.
-
-(* Checking for the sake of checking *)
-(* Compute (infer Σ [] tEq). *)
-(* Compute (infer Σ [] tJ). *)
-(* Compute (infer Σ [] tTransport). *)
-(* Compute (infer Σ [] tK). *)
-(* Compute (infer Σ [] tFunext). *)
-(* Compute (infer Σ [] tHeq). *)
-(* Compute (infer Σ [] tHeqToEq). *)
-(* Compute (infer Σ [] tHeqRefl). *)
-(* Compute (infer Σ [] tHeqSym). *)
-(* Compute (infer Σ [] tHeqTrans). *)
-(* Compute (infer Σ [] tHeqTransport). *)
-(* Compute (infer Σ [] tPack). *)
-(* Compute (infer Σ [] tProjT1). *)
-(* Compute (infer Σ [] tProjT2). *)
-(* Compute (infer Σ [] tProjTe). *)
-(* Compute (infer Σ [] tCongProd). *)
-(* Compute (infer Σ [] tCongLambda). *)
-(* Compute (infer Σ [] tCongApp). *)
-(* Compute (infer Σ [] tCongEq). *)
-(* Compute (infer Σ [] tCongRefl). *)
-(* Compute (infer Σ [] tEqToHeq). *)
-(* Compute (infer Σ [] tHeqTypeEq). *)
-
-(* Theorem soundness : *)
-(*   forall {Γ t A}, *)
-(*     Σ ;;; Γ |-i t : A -> *)
-(*     forall {fuel Γ' t' A'}, *)
-(*       tsl_ctx fuel Σ Γ = Success Γ' -> *)
-(*       tsl_rec fuel Σ Γ' t = Success t' -> *)
-(*       tsl_rec fuel Σ Γ' A = Success A' -> *)
-(*       Σ ;;; Γ' |-- t' : A'. *)
-(* Proof. *)
-(*   intros Γ t A h. *)
-(*   dependent induction h ; intros fuel Γ' t' A' hΓ ht hA. *)
-(*   all: destruct fuel ; try discriminate. *)
-
-(*   - cbn in ht. inversion_clear ht. *)
-(*     admit. *)
-
-(*   - cbn in ht, hA. inversion_clear ht. inversion_clear hA. *)
-(*     apply T.type_Sort. *)
-
-(*   - cbn in hA. inversion_clear hA. *)
-(*     simpl in ht. inversion ht. *)
-(*     admit. *)
-
-(*   - admit. *)
-
-(*   - admit. *)
-
-(*   - cbn in hA. inversion_clear hA. *)
-(*     cbn in ht. *)
-(*     destruct (tsl_rec fuel Σ Γ' A) ; destruct (tsl_rec fuel Σ Γ' u) ; try (now inversion ht). *)
-(*     destruct (tsl_rec fuel Σ Γ' v) ; inversion_clear ht. *)
-(*     eapply T.type_App. *)
-(*     + econstructor. econstructor. split. *)
-(*       * econstructor. *)
-(*       * cbn. f_equal. *)
-(*     + econstructor. *)
-(* Abort. *)

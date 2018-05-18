@@ -36,6 +36,30 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-x u : A ->
     Σ ;;; Γ |-x (sApp t A B u) : B{ 0 := u }
 
+| type_Sum Γ n t b s1 s2 :
+    Σ ;;; Γ |-x t : sSort s1 ->
+    Σ ;;; Γ ,, t |-x b : sSort s2 ->
+    Σ ;;; Γ |-x (sSum n t b) : sSort (max_sort s1 s2)
+
+| type_Pair Γ n A B u v s1 s2 :
+    Σ ;;; Γ |-x A : sSort s1 ->
+    Σ ;;; Γ ,, A |-x B : sSort s2 ->
+    Σ ;;; Γ |-x u : A ->
+    Σ ;;; Γ |-x v : B{ 0 := u } ->
+    Σ ;;; Γ |-x sPair A B u v : sSum n A B
+
+| type_Pi1 Γ n A B s1 s2 p :
+    Σ ;;; Γ |-x p : sSum n A B ->
+    Σ ;;; Γ |-x A : sSort s1 ->
+    Σ ;;; Γ ,, A |-x B : sSort s2 ->
+    Σ ;;; Γ |-x sPi1 A B p : A
+
+| type_Pi2 Γ n A B s1 s2 p :
+    Σ ;;; Γ |-x p : sSum n A B ->
+    Σ ;;; Γ |-x A : sSort s1 ->
+    Σ ;;; Γ ,, A |-x B : sSort s2 ->
+    Σ ;;; Γ |-x sPi2 A B p : B{ 0 := sPi1 A B p }
+
 | type_Eq Γ s A u v :
     Σ ;;; Γ |-x A : sSort s ->
     Σ ;;; Γ |-x u : A ->
@@ -46,17 +70,6 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Type :=
     Σ ;;; Γ |-x A : sSort s ->
     Σ ;;; Γ |-x u : A ->
     Σ ;;; Γ |-x sRefl A u : sEq A u u
-
-| type_Ind Γ ind :
-    wf Σ Γ ->
-    forall univs decl (isdecl : sdeclared_inductive (fst Σ) ind univs decl),
-      Σ ;;; Γ |-x sInd ind : decl.(sind_type)
-
-| type_Construct Γ ind i :
-    wf Σ Γ ->
-    forall univs decl (isdecl : sdeclared_constructor (fst Σ) (ind, i) univs decl),
-    Σ ;;; Γ |-x (sConstruct ind i)
-             : stype_of_constructor (fst Σ) (ind, i) univs decl isdecl
 
 | type_conv Γ t A B s :
     Σ ;;; Γ |-x t : A ->
@@ -130,6 +143,46 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
     Σ ;;; Γ |-x u1 : A1 ->
     Σ ;;; Γ |-x u2 : A2 ->
     Σ ;;; Γ |-x (sApp t1 A1 B1 u1) = (sApp t2 A2 B2 u2) : B1{ 0 := u1 }
+
+| cong_Sum Γ n1 n2 A1 A2 B1 B2 s1 s2 :
+    Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ |-x (sSum n1 A1 B1) = (sSum n2 A2 B2) : sSort (max_sort s1 s2)
+
+| cong_Pair Γ n A1 A2 B1 B2 u1 u2 v1 v2 s1 s2 :
+    Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ |-x u1 = u2 : A1 ->
+    Σ ;;; Γ |-x v1 = v2 : B1{ 0 := u1 } ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ |-x u1 : A1 ->
+    Σ ;;; Γ |-x u2 : A2 ->
+    Σ ;;; Γ |-x v1 : B1{ 0 := u1 } ->
+    Σ ;;; Γ |-x v2 : B2{ 0 := u2 } ->
+    Σ ;;; Γ |-x sPair A1 B1 u1 v1 = sPair A2 B2 u2 v2 : sSum n A1 B1
+
+| cong_Pi1 Γ nx ny A1 A2 B1 B2 s1 s2 p1 p2 :
+    Σ ;;; Γ |-x p1 = p2 : sSum nx A1 B1 ->
+    Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ |-x p1 : sSum nx A1 B1 ->
+    Σ ;;; Γ |-x p2 : sSum ny A2 B2 ->
+    Σ ;;; Γ |-x sPi1 A1 B1 p1 = sPi1 A2 B2 p2 : A1
+
+| cong_Pi2 Γ nx ny A1 A2 B1 B2 s1 s2 p1 p2 :
+    Σ ;;; Γ |-x p1 = p2 : sSum nx A1 B1 ->
+    Σ ;;; Γ |-x A1 = A2 : sSort s1 ->
+    Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ |-x p1 : sSum nx A1 B1 ->
+    Σ ;;; Γ |-x p2 : sSum ny A2 B2 ->
+    Σ ;;; Γ |-x sPi2 A1 B1 p1 = sPi2 A2 B2 p2 : B1{ 0 := sPi1 A1 B1 p1 }
 
 | cong_Eq Γ s A1 A2 u1 u2 v1 v2 :
     Σ ;;; Γ |-x A1 = A2 : sSort s ->

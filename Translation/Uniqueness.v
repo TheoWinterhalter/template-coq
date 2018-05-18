@@ -33,6 +33,14 @@ Proof.
     pose proof (sort_conv_inv IHu2) as e2.
     subst. apply conv_refl.
   - eapply nl_conv ; try eassumption ; reflexivity.
+  - specialize (IHu1 _ _ _ h h0).
+    specialize (IHu2 _ _ _ h4 h7).
+    eapply conv_trans ; try eapply h6.
+    pose proof (sort_conv_inv IHu1) as e1.
+    pose proof (sort_conv_inv IHu2) as e2.
+    subst. apply conv_refl.
+  - eapply conv_trans ; [| exact h8 ].
+    apply cong_Sum ; apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h6).
     pose proof (sort_conv_inv IHu1) as e. subst. assumption.
   - specialize (IHu1 _ _ _ h h0).
@@ -101,6 +109,61 @@ Proof.
     + apply cong_App ; try assumption. apply conv_refl.
     + apply substs_conv. assumption.
     + apply cong_App ; try assumption. apply conv_refl.
+  - specialize (IHu3 _ _ _ h h0).
+    pose proof (heq_conv_inv IHu3) as e3. split_hyps.
+    pose proof (sort_conv_inv pi1_). subst.
+    assert (hh : Σ ;;; Γ,, A1 |-i u1 : sSort z0).
+    { eapply type_ctxconv ; try eassumption.
+      - econstructor ; try eassumption.
+        eapply typing_wf. eassumption.
+      - constructor.
+        + apply ctxconv_refl.
+        + apply conv_sym. assumption.
+    }
+    specialize (IHu1 _ _ _ h5 hh).
+    pose proof (sort_conv_inv IHu1). subst.
+    eapply conv_trans ; [| exact h10 ].
+    apply cong_Heq.
+    + apply conv_refl.
+    + apply cong_Sum ; try assumption.
+      apply conv_refl.
+    + apply conv_refl.
+    + apply cong_Sum ; try assumption. apply conv_refl.
+  - specialize IHu3 with (1 := h) (2 := h0).
+    specialize IHu5 with (1 := h13) (2 := h26).
+    specialize IHu6 with (1 := h12) (2 := h25).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu5).
+    pose proof (heq_conv_inv IHu6).
+    split_hyps.
+    eapply conv_trans ; [| exact h16 ].
+    apply cong_Heq.
+    + apply cong_Sum ; try apply conv_refl. assumption.
+    + apply cong_Pair ; try apply conv_refl ; assumption.
+    + apply cong_Sum ; try apply conv_refl. assumption.
+    + apply cong_Pair ; try apply conv_refl ; assumption.
+  - specialize IHu3 with (1 := h0) (2 := h12).
+    specialize IHu5 with (1 := h10) (2 := h20).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu5).
+    split_hyps.
+    eapply conv_trans ; [| exact h13 ].
+    apply cong_Heq ; try assumption.
+    + apply cong_Pi1 ; try assumption. apply conv_refl.
+    + apply cong_Pi1 ; try assumption. apply conv_refl.
+  - specialize IHu3 with (1 := h0) (2 := h12).
+    specialize IHu5 with (1 := h10) (2 := h20).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu5).
+    split_hyps.
+    eapply conv_trans ; [| exact h13 ].
+    apply cong_Heq ; try assumption.
+    + apply substs_conv.
+      apply cong_Pi1 ; try assumption. apply conv_refl.
+    + apply cong_Pi2 ; try assumption. apply conv_refl.
+    + apply substs_conv.
+      apply cong_Pi1 ; try assumption. apply conv_refl.
+    + apply cong_Pi2 ; try assumption. apply conv_refl.
   - specialize (IHu1 _ _ _ h0 h12).
     specialize (IHu2 _ _ _ h11 h21).
     specialize (IHu3 _ _ _ h10 h20).
@@ -152,14 +215,4 @@ Proof.
     split_hyps.
     eapply conv_trans ; [| exact h7 ].
     apply cong_Heq ; try assumption ; apply conv_refl.
-  - eapply conv_trans ; [| exact h0 ].
-    destruct isdecl as [d1 [[hd1 ?] hn1]].
-    destruct isdecl0 as [d2 [[hd2 ?] hn2]].
-    unfold sdeclared_minductive in *.
-    rewrite hd1 in hd2. inversion hd2. subst.
-    rewrite hn1 in hn2. inversion hn2. subst.
-    apply conv_refl.
-  - eapply conv_trans ; [| exact h0 ].
-    erewrite SCommon.stype_of_constructor_eq. apply conv_refl.
-  - ttinv h1.
 Defined.

@@ -6,7 +6,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega Bool_nat.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast utils LiftSubst Typing.
-From Translation Require Import SAst SInduction SLiftSubst SCommon ITyping
+From Translation Require Import SAst SLiftSubst SCommon ITyping
                                 ITypingLemmata ITypingAdmissible.
 
 Definition proj_1 {A} {P : A -> Prop} : {a:A | P a} -> A :=
@@ -70,10 +70,6 @@ Fixpoint sterm_eq (t u : sterm) : bool :=
       sterm_eq p p'
   | sProjTe p, sProjTe p' =>
       sterm_eq p p'
-  | sInd i, sInd i' =>
-      eq_ind i i'
-  | sConstruct i k, sConstruct i' k' =>
-      eq_ind i i' && eq_nat k k'
   | _ , _ => false
   end.
 
@@ -97,6 +93,26 @@ Fixpoint reduce (t : sterm) : sterm :=
     let B' := reduce B in
     let v' := reduce v in
     sApp u' A' B' v'
+  | sSum n A B =>
+    let A' := reduce A in
+    let B' := reduce B in
+    sSum n A' B'
+  | sPair A B u v =>
+    let A' := reduce A in
+    let B' := reduce B in
+    let u' := reduce u in
+    let v' := reduce v in
+    sPair A' B' u' v'
+  | sPi1 A B p =>
+    let A' := reduce A in
+    let B' := reduce B in
+    let p' := reduce p in
+    sPi1 A' B' p'
+  | sPi2 A B p =>
+    let A' := reduce A in
+    let B' := reduce B in
+    let p' := reduce p in
+    sPi2 A' B' p'
   | sEq A u v =>
     let A' := reduce A in
     let u' := reduce u in
@@ -211,6 +227,51 @@ Fixpoint reduce (t : sterm) : sterm :=
       sHeqRefl (B1'{ 0 := v' }) (sApp u' A' B1' v')
     | _,_,_,_ => sCongApp B1' B2' pu' pA' pB' pv'
     end
+  | sCongSum B1 B2 pA pB =>
+    let pA' := reduce pA in
+    let pB' := reduce pB in
+    let B1' := reduce B1 in
+    let B2' := reduce B2 in
+    match pA', pB' with
+    | sHeqRefl (sSort s) A', sHeqRefl (sSort z) B' =>
+      (* We use nAnon here because we don't care! *)
+      sHeqRefl (sSort (max_sort s z)) (sSum nAnon A' B')
+    | _,_ => sCongSum B1' B2' pA' pB'
+    end
+  | sCongPair B1 B2 pA pB pu pv =>
+    let pA' := reduce pA in
+    let pB' := reduce pB in
+    let pu' := reduce pu in
+    let pv' := reduce pv in
+    let B1' := reduce B1 in
+    let B2' := reduce B2 in
+    match pA', pB', pu', pv' with
+    | sHeqRefl _ A', sHeqRefl _ B', sHeqRefl _ u', sHeqRefl _ v' =>
+      sHeqRefl (sSum nAnon A' B') (sPair A' B' u' v')
+    | _,_,_,_ => sCongPair B1' B2' pA' pB' pu' pv'
+    end
+  | sCongPi1 B1 B2 pA pB pp =>
+    let pA' := reduce pA in
+    let pB' := reduce pB in
+    let pp' := reduce pp in
+    let B1' := reduce B1 in
+    let B2' := reduce B2 in
+    match pA', pB', pp' with
+    | sHeqRefl _ A', sHeqRefl _ B', sHeqRefl _ p' =>
+      sHeqRefl A' (sPi1 A' B' p')
+    | _,_,_ => sCongPi1 B1' B2' pA' pB' pp'
+    end
+  | sCongPi2 B1 B2 pA pB pp =>
+    let pA' := reduce pA in
+    let pB' := reduce pB in
+    let pp' := reduce pp in
+    let B1' := reduce B1 in
+    let B2' := reduce B2 in
+    match pA', pB', pp' with
+    | sHeqRefl _ A', sHeqRefl _ B', sHeqRefl _ p' =>
+      sHeqRefl (B'{ 0 := sPi1 A' B' p'}) (sPi2 A' B' p')
+    | _,_,_ => sCongPi2 B1' B2' pA' pB' pp'
+    end
   | sCongEq pA pu pv =>
     let pA' := reduce pA in
     let pu' := reduce pu in
@@ -257,11 +318,4 @@ Fixpoint reduce (t : sterm) : sterm :=
   | sProjTe p =>
     let p' := reduce p in
     sProjTe p'
-  | sInd ind => sInd ind
-  | sConstruct ind i => sConstruct ind i
-  | sCase indn p c brs =>
-    let p' := reduce p in
-    let c' := reduce c in
-    let brs' := map (on_snd reduce) brs in
-    sCase indn p' c' brs'
   end.

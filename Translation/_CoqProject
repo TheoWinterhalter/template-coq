@@ -5,7 +5,6 @@
 
 util.v
 SAst.v
-SInduction.v
 Equality.v
 SLiftSubst.v
 SCommon.v
@@ -19,6 +18,7 @@ Uniqueness.v
 SubjectReduction.v
 ITypingAdmissible.v
 PackLifts.v
+FundamentalLemma.v
 Translation.v
 Reduction.v
 Quotes.v
