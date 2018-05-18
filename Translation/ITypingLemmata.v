@@ -289,6 +289,23 @@ Proof.
       eapply weak_glob_isType ; eassumption.
 Defined.
 
+Fact xcomp_ax_type :
+ forall {Σ}, type_glob Σ ->
+  forall {id ty},
+    lookup_glob Σ id = Some ty ->
+    Xcomp ty.
+Proof.
+  intros Σ hg. dependent induction hg ; intros id ty h.
+  - cbn in h. discriminate h.
+  - cbn in h.
+    case_eq (ident_eq id (dname d)).
+    + intro e. rewrite e in h. inversion h. subst.
+      assumption.
+    + intro e. rewrite e in h.
+      specialize (IHhg _ _ h).
+      assumption.
+Defined.
+
 Fact lift_ax_type :
   forall {Σ},
     type_glob Σ ->

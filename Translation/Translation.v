@@ -748,9 +748,6 @@ Proof.
       repeat split.
       * now destruct hΓ.
       * apply inrel_refl.
-        (* We need to enhance type_glob to take this into account.
-           TODO!
-         *)
         eapply xcomp_ax_type ; eassumption.
       * constructor.
       * eapply type_Ax ; try eassumption.

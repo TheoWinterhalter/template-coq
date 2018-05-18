@@ -318,4 +318,5 @@ Fixpoint reduce (t : sterm) : sterm :=
   | sProjTe p =>
     let p' := reduce p in
     sProjTe p'
+  | sAx id => sAx id
   end.

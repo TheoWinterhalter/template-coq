@@ -12,6 +12,11 @@ Open Scope string_scope.
 
 Module IT := ITyping.
 
+Definition Σi : sglobal_context := [].
+
+Fact hΣi : type_glob Σi.
+Proof. constructor. Defined.
+
 (* Now some useful lemmata *)
 
 Lemma xmeta_conv :
@@ -39,8 +44,6 @@ Fixpoint multiLam (bl : list sterm) (t : sterm) :=
   | [ A ] => t
   | A :: bl => sLambda pn A (multiProd bl) (multiLam bl t)
   end.
-
-Definition Σi := tt.
 
 Inductive wfb : scontext -> list sterm -> Type :=
 | wfb_nil Γ : wfb Γ []
@@ -158,9 +161,6 @@ Proof.
   - constructor.
   - constructor.
 Defined.
-
-Fact hΣi : type_glob Σi.
-Proof. easy. Defined.
 
 Definition type_translation {Γ t A} h {Γ'} hΓ :=
   pi2_ (pi1_ (@complete_translation Σi hΣi)) Γ t A h Γ' hΓ.

@@ -407,12 +407,13 @@ Inductive fresh_glob (id : ident) : sglobal_context -> Prop :=
 
 Derive Signature for fresh_glob.
 
-Inductive type_glob : sglobal_context -> Prop :=
+Inductive type_glob : sglobal_context -> Type :=
 | type_glob_nil : type_glob []
 | type_glob_cons Σ d :
     type_glob Σ ->
     fresh_glob (dname d) Σ ->
     isType Σ [] (dtype d) ->
+    Xcomp (dtype d) ->
     type_glob (d :: Σ).
 
 Derive Signature for type_glob.
