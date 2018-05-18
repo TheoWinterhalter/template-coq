@@ -44,4 +44,6 @@ Inductive sterm : Type :=
 | sProjT1 (p : sterm)
 | sProjT2 (p : sterm)
 | sProjTe (p : sterm)
+(* External axioms *)
+| sAx (id : ident)
 .

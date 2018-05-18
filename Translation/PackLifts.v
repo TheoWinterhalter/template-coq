@@ -87,6 +87,7 @@ Fixpoint llift γ δ (t:sterm)  : sterm :=
   | sProjT1 x => sProjT1 (llift γ δ x)
   | sProjT2 x => sProjT2 (llift γ δ x)
   | sProjTe x => sProjTe (llift γ δ x)
+  | sAx id => sAx id
   end.
 
 Notation llift0 γ t := (llift γ 0 t).
@@ -159,6 +160,7 @@ Fixpoint rlift γ δ t : sterm :=
   | sProjT1 x => sProjT1 (rlift γ δ x)
   | sProjT2 x => sProjT2 (rlift γ δ x)
   | sProjTe x => sProjTe (rlift γ δ x)
+  | sAx id => sAx id
   end.
 
 Notation rlift0 γ t := (rlift γ 0 t).
@@ -895,6 +897,32 @@ Proof.
     + eapply rlift_red1. eassumption.
 Defined.
 
+Fact llift_ax_type :
+  forall {Σ},
+    type_glob Σ ->
+    forall {id ty},
+      lookup_glob Σ id = Some ty ->
+      forall n k, llift n k ty = ty.
+Proof.
+  intros Σ hg id ty isd n k.
+  destruct (typed_ax_type hg isd).
+  eapply closed_llift.
+  eapply type_ctxempty_closed. eassumption.
+Defined.
+
+Fact rlift_ax_type :
+  forall {Σ},
+    type_glob Σ ->
+    forall {id ty},
+      lookup_glob Σ id = Some ty ->
+      forall n k, rlift n k ty = ty.
+Proof.
+  intros Σ hg id ty isd n k.
+  destruct (typed_ax_type hg isd).
+  eapply closed_rlift.
+  eapply type_ctxempty_closed. eassumption.
+Defined.
+
 Ltac lh h :=
   lazymatch goal with
   | [ type_llift' :
@@ -1198,6 +1226,10 @@ Proof.
       - cbn. eapply @type_ProjT1 with (A2 := llift #|Γm| #|Δ| A2) ; emh.
       - cbn. eapply @type_ProjT2 with (A1 := llift #|Γm| #|Δ| A1) ; emh.
       - cbn. eapply type_ProjTe ; emh.
+      - cbn. erewrite llift_ax_type by eassumption.
+        eapply type_Ax.
+        + eapply wf_llift' ; eassumption.
+        + assumption.
       - eapply type_conv ; try emh.
         eapply llift_conv. assumption.
     }
@@ -1383,6 +1415,10 @@ Proof.
       - cbn. eapply @type_ProjT1 with (A2 := rlift #|Γm| #|Δ| A2) ; emh.
       - cbn. eapply @type_ProjT2 with (A1 := rlift #|Γm| #|Δ| A1) ; emh.
       - cbn. eapply type_ProjTe ; emh.
+      - cbn. erewrite rlift_ax_type by eassumption.
+        eapply type_Ax.
+        + eapply wf_rlift' ; eassumption.
+        + assumption.
       - eapply type_conv ; try emh.
         eapply rlift_conv. assumption.
     }

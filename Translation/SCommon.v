@@ -160,9 +160,20 @@ Proof.
     + cbn. eapply IHn.
 Defined.
 
-(* TMP
+(** Global contexts of axioms
+    Basically a list of ITT types.
  *)
-Definition sglobal_context : Type := unit.
+Record glob_decl := { dname : ident ; dtype : sterm }.
+
+Definition sglobal_context : Type := list glob_decl.
+
+Fixpoint lookup_glob (Σ : sglobal_context) (id : ident) : option sterm :=
+  match Σ with
+  | nil => None
+  | d :: Σ =>
+    if ident_eq id (dname d) then Some (dtype d)
+    else lookup_glob Σ id
+  end.
 
 (* Lifting of context *)
 

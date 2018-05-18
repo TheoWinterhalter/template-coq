@@ -82,6 +82,9 @@ Inductive trel : sterm -> sterm -> Type :=
     u1 ∼ u2 ->
     sRefl A1 u1 ∼ sRefl A2 u2
 
+| trel_Ax id :
+    sAx id ∼ sAx id
+
 where " t1 ∼ t2 " := (trel t1 t2).
 
 Derive Signature for trel.
@@ -157,6 +160,9 @@ Inductive inrel : sterm -> sterm -> Type :=
     A ⊏ A' ->
     u ⊏ u' ->
     sRefl A u ⊏ sRefl A' u'
+
+| inrel_Ax id :
+    sAx id ⊏ sAx id
 
 where " t ⊏ t' " := (inrel t t').
 
@@ -1007,6 +1013,50 @@ Proof.
           change u with (rlift0 #|Γm| (sEq A2 u2 u2))
         end.
         apply rlift_conv. assumption.
+
+  (* Ax *)
+  - case_eq (lookup_glob Σ id).
+    + (* The axiom is in the global context *)
+      intros ty eq.
+      exists (sHeqRefl ty (sAx id)).
+      intros Γm U1 U2 hm h1 h2.
+      assert (h1' : Σ ;;; Γ ,,, Γm |-i sAx id : llift0 #|Γm| U1).
+      { change (sAx id) with (llift0 #|Γm| (sAx id)).
+        eapply type_llift0 ; eassumption.
+      }
+      assert (h2' : Σ ;;; Γ ,,, Γm |-i sAx id : rlift0 #|Γm| U2).
+      { change (sAx id) with (rlift0 #|Γm| (sAx id)).
+        eapply type_rlift0 ; eassumption.
+      }
+      pose proof (uniqueness hg h1' h2').
+      destruct (istype_type hg h1).
+      destruct (istype_type hg h2).
+      eapply type_conv.
+      * eapply type_HeqRefl' ; try assumption.
+        econstructor ; try eassumption.
+        eapply typing_wf. eassumption.
+      * eapply type_Heq.
+        -- lift_sort. eapply type_llift0 ; eassumption.
+        -- lift_sort. eapply type_conv.
+           ++ eapply type_rlift0 ; eassumption.
+           ++ cbn. econstructor. eapply typing_wf. eassumption.
+           ++ apply conv_sym. eapply subj_conv ; try eassumption.
+              ** cbn. lift_sort.
+                 eapply type_llift0 ; eassumption.
+              ** eapply type_rlift0 ; eassumption.
+        -- eapply type_llift0 ; eassumption.
+        -- eapply type_rlift0 ; eassumption.
+      * ttinv h1'. ttinv h2'.
+        rewrite h0 in h4. inversion h4. subst.
+        rewrite h0 in eq. inversion eq. subst.
+        eapply cong_Heq.
+        all: try (apply conv_refl). all: assumption.
+    + (* The axiom isn't declared. We return garbage. *)
+      intro neq.
+      exists (sRel 0).
+      intros Γm U1 U2 hm h1 h2.
+      exfalso. ttinv h1.
+      rewrite h0 in neq. discriminate neq.
 
   Unshelve.
   all: cbn ; try rewrite !length_cat ; omega.

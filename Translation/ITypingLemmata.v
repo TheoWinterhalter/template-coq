@@ -186,6 +186,122 @@ Proof.
   intro e. apply xcomp_lift. assumption.
 Defined.
 
+Fixpoint weak_glob_red1 {Σ d t1 t2} (h : Σ |-i t1 ▷ t2) :
+  (d::Σ) |-i t1 ▷ t2.
+Proof.
+  induction h ; (econstructor ; eassumption).
+Defined.
+
+Lemma weak_glob_conv :
+  forall {Σ d t1 t2},
+    Σ |-i t1 = t2 ->
+    (d::Σ) |-i t1 = t2.
+Proof.
+  intros Σ d t1 t2 h.
+  induction h.
+  all: try (econstructor ; eassumption).
+  - eapply conv_red_l ; try eassumption.
+    cbn. eapply weak_glob_red1. assumption.
+  - eapply conv_red_r ; try eassumption.
+    cbn. eapply weak_glob_red1. assumption.
+Defined.
+
+Fact ident_neq_fresh :
+  forall {Σ id ty d},
+    lookup_glob Σ id = Some ty ->
+    fresh_glob (dname d) Σ ->
+    ident_eq id (dname d) = false.
+Proof.
+  intro Σ. induction Σ ; intros id ty d h hf.
+  - cbn in h. discriminate h.
+  - cbn in h. dependent destruction hf.
+    case_eq (ident_eq id (dname d0)) ;
+    intro e ; rewrite e in h.
+    + inversion h as [ h' ]. subst. clear h.
+      destruct (ident_eq_spec id (dname d)).
+      * subst. destruct (ident_eq_spec (dname d) (dname d0)).
+        -- exfalso. easy.
+        -- easy.
+      * reflexivity.
+    + eapply IHΣ ; eassumption.
+Defined.
+
+Fixpoint weak_glob_type {Σ Γ t A} (h : Σ ;;; Γ |-i t : A) :
+  forall {d},
+    fresh_glob (dname d) Σ ->
+    (d::Σ) ;;; Γ |-i t : A
+
+with weak_glob_wf {Σ Γ} (h : wf Σ Γ) :
+  forall {d},
+    fresh_glob (dname d) Σ ->
+    wf (d::Σ) Γ.
+Proof.
+  (* weak_glob_type *)
+  - { dependent destruction h ; intros d fd.
+      all: try (econstructor ; try apply weak_glob_wf ;
+                try apply weak_glob_type ;
+                try apply weak_glob_conv ;
+                eassumption
+               ).
+      - eapply type_HeqTrans with (B := B) (b := b).
+        all: apply weak_glob_type ; eassumption.
+      - eapply type_ProjT2 with (A1 := A1).
+        all: apply weak_glob_type ; eassumption.
+      - eapply type_Ax.
+        + eapply weak_glob_wf ; eassumption.
+        + cbn. erewrite ident_neq_fresh by eassumption.
+          assumption.
+    }
+
+  (* weak_glob_wf *)
+  - { dependent destruction h ; intros fd.
+      - constructor.
+      - econstructor.
+        + apply weak_glob_wf ; assumption.
+        + apply weak_glob_type ; eassumption.
+    }
+Defined.
+
+Corollary weak_glob_isType :
+  forall {Σ Γ A} (h : isType Σ Γ A) {d},
+    fresh_glob (dname d) Σ ->
+    isType (d::Σ) Γ A.
+Proof.
+  intros Σ Γ A h d hf.
+  destruct h as [s h].
+  exists s. eapply weak_glob_type ; eassumption.
+Defined.
+
+Fact typed_ax_type :
+  forall {Σ}, type_glob Σ ->
+  forall {id ty},
+    lookup_glob Σ id = Some ty ->
+    isType Σ [] ty.
+Proof.
+  intros Σ hg. dependent induction hg ; intros id ty h.
+  - cbn in h. discriminate h.
+  - cbn in h.
+    case_eq (ident_eq id (dname d)).
+    + intro e. rewrite e in h. inversion h. subst.
+      eapply weak_glob_isType ; eassumption.
+    + intro e. rewrite e in h.
+      specialize (IHhg _ _ h).
+      eapply weak_glob_isType ; eassumption.
+Defined.
+
+Fact lift_ax_type :
+  forall {Σ},
+    type_glob Σ ->
+    forall {id ty},
+      lookup_glob Σ id = Some ty ->
+      forall n k, lift n k ty = ty.
+Proof.
+  intros Σ hg id ty isd n k.
+  destruct (typed_ax_type hg isd).
+  eapply closed_lift.
+  eapply type_ctxempty_closed. eassumption.
+Defined.
+
 Ltac ih h :=
   lazymatch goal with
   | [ type_lift :
@@ -402,6 +518,10 @@ Proof.
       - cbn. eapply @type_ProjT1 with (A2 := lift #|Δ| #|Ξ| A2) ; eih.
       - cbn. eapply @type_ProjT2 with (A1 := lift #|Δ| #|Ξ| A1) ; eih.
       - cbn. eapply type_ProjTe ; eih.
+      - cbn. erewrite lift_ax_type by eassumption.
+        eapply type_Ax.
+        + now apply wf_lift.
+        + assumption.
       - eapply type_conv ; try eih.
         eapply lift_conv. assumption.
     }
@@ -451,6 +571,19 @@ Proof.
   - assumption.
   - eapply typing_lift01  ; eassumption.
   - eassumption.
+Defined.
+
+Fact subst_ax_type :
+  forall {Σ},
+    type_glob Σ ->
+    forall {id ty},
+      lookup_glob Σ id = Some ty ->
+      forall n u, ty{ n := u } = ty.
+Proof.
+  intros Σ hg id ty isd n k.
+  destruct (typed_ax_type hg isd).
+  eapply closed_subst.
+  eapply type_ctxempty_closed. eassumption.
 Defined.
 
 Ltac sh h :=
@@ -698,6 +831,10 @@ Proof.
       - cbn. eapply @type_ProjT1 with (A2 := A2{#|Δ| := u}) ; esh.
       - cbn. eapply @type_ProjT2 with (A1 := A1{#|Δ| := u}) ; esh.
       - cbn. eapply type_ProjTe ; esh.
+      - cbn. erewrite subst_ax_type by eassumption.
+        eapply type_Ax.
+        + now eapply wf_subst.
+        + assumption.
       - cbn. eapply type_conv ; try esh.
         eapply subst_conv. eassumption.
     }
@@ -938,5 +1075,15 @@ Proof.
   - exists s. apply type_Heq ; try assumption.
     + eapply type_ProjT1 ; eassumption.
     + eapply @type_ProjT2 with (A1 := A1) ; eassumption.
+  - destruct (typed_ax_type hg H0) as [s hh].
+    exists s. change (sSort s) with (lift #|Γ| #|@nil sterm| (sSort s)).
+    replace ty with (lift #|Γ| #|@nil sterm| ty)
+      by (erewrite lift_ax_type by eassumption ; reflexivity).
+    eapply meta_ctx_conv.
+    + eapply @type_lift with (Γ := []) (Ξ := []) (Δ := Γ).
+      * assumption.
+      * assumption.
+      * rewrite nil_cat. assumption.
+    + cbn. apply nil_cat.
   - exists s. assumption.
 Defined.

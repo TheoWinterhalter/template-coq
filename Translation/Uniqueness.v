@@ -215,4 +215,5 @@ Proof.
     split_hyps.
     eapply conv_trans ; [| exact h7 ].
     apply cong_Heq ; try assumption ; apply conv_refl.
+  - rewrite h4 in h0. inversion h0. subst. assumption.
 Defined.

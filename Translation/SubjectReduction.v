@@ -2420,6 +2420,7 @@ Proof.
     + go. symmetry. cbn. f_equal ; try assumption.
       * f_equal. assumption.
       * f_equal. assumption.
+  - go. subst. assumption.
   - go.
   Unshelve. all: auto.
   cbn. omega.

@@ -310,6 +310,11 @@ Inductive typing (Σ : sglobal_context) : scontext -> sterm -> sterm -> Prop :=
     Σ ;;; Γ |-i p : sPack A1 A2 ->
     Σ ;;; Γ |-i sProjTe p : sHeq A1 (sProjT1 p) A2 (sProjT2 p)
 
+| type_Ax Γ id ty :
+    wf Σ Γ ->
+    lookup_glob Σ id = Some ty ->
+    Σ ;;; Γ |-i sAx id : ty
+
 | type_conv Γ t A B s :
     Σ ;;; Γ |-i t : A ->
     Σ ;;; Γ |-i B : sSort s ->
@@ -355,6 +360,26 @@ Inductive Xcomp : sterm -> Type :=
     Xcomp B ->
     Xcomp v ->
     Xcomp (sApp u A B v)
+| xcomp_Sum na A B :
+    Xcomp A ->
+    Xcomp B ->
+    Xcomp (sSum na A B)
+| xcomp_Pair A B u v :
+    Xcomp A ->
+    Xcomp B ->
+    Xcomp u ->
+    Xcomp v ->
+    Xcomp (sPair A B u v)
+| xcomp_Pi1 A B p :
+    Xcomp A ->
+    Xcomp B ->
+    Xcomp p ->
+    Xcomp (sPi1 A B p)
+| xcomp_Pi2 A B p :
+    Xcomp A ->
+    Xcomp B ->
+    Xcomp p ->
+    Xcomp (sPi2 A B p)
 | xcomp_Eq A u v :
     Xcomp A ->
     Xcomp u ->
@@ -364,11 +389,30 @@ Inductive Xcomp : sterm -> Type :=
     Xcomp A ->
     Xcomp u ->
     Xcomp (sRefl A u)
+| xcomp_Ax id :
+    Xcomp (sAx id)
 .
 
 Derive Signature for Xcomp.
 
 Definition isType (Σ : sglobal_context) (Γ : scontext) (t : sterm) :=
-  ∑ s, Σ ;;; Γ |-i t : sSort s.
+  exists s, Σ ;;; Γ |-i t : sSort s.
 
-Definition type_glob (Σ : sglobal_context) : Prop := True.
+Inductive fresh_glob (id : ident) : sglobal_context -> Prop :=
+| fresh_glob_nil : fresh_glob id []
+| fresh_glob_cons Σ d :
+    fresh_glob id Σ ->
+    (dname d) <> id ->
+    fresh_glob id (d :: Σ).
+
+Derive Signature for fresh_glob.
+
+Inductive type_glob : sglobal_context -> Prop :=
+| type_glob_nil : type_glob []
+| type_glob_cons Σ d :
+    type_glob Σ ->
+    fresh_glob (dname d) Σ ->
+    isType Σ [] (dtype d) ->
+    type_glob (d :: Σ).
+
+Derive Signature for type_glob.

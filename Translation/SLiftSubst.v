@@ -69,6 +69,7 @@ Fixpoint lift n k t : sterm :=
   | sProjT2 p => sProjT2 (lift n k p)
   | sProjTe p => sProjTe (lift n k p)
   | sSort s => sSort s
+  | sAx id => sAx id
   end.
 
 Notation lift0 n t := (lift n 0 t).
@@ -141,6 +142,7 @@ Fixpoint subst t k u :=
   | sProjT2 p => sProjT2 (subst t k p)
   | sProjTe p => sProjTe (subst t k p)
   | sSort s => sSort s
+  | sAx id => sAx id
   end.
 
 Notation subst0 t u := (subst t 0 u).
@@ -228,6 +230,7 @@ Fixpoint closed_above k t :=
   | sProjT1 p => closed_above k p
   | sProjT2 p => closed_above k p
   | sProjTe p => closed_above k p
+  | sAx id => true
   end.
 
 Definition closed t := closed_above 0 t = true.
