@@ -50,6 +50,10 @@ Fixpoint lift n k t : sterm :=
   | sCongSum B1 B2 pA pB =>
     sCongSum (lift n (S k) B1) (lift n (S k) B2)
              (lift n k pA) (lift n (S k) pB)
+  | sCongPair B1 B2 pA pB pu pv =>
+    sCongPair (lift n (S k) B1) (lift n (S k) B2)
+              (lift n k pA) (lift n (S k) pB)
+              (lift n k pu) (lift n k pv)
   | sCongPi1 B1 B2 pA pB pp =>
     sCongPi1 (lift n (S k) B1) (lift n (S k) B2)
              (lift n k pA) (lift n (S k) pB) (lift n k pp)
@@ -118,6 +122,10 @@ Fixpoint subst t k u :=
   | sCongSum B1 B2 pA pB =>
     sCongSum (subst t (S k) B1) (subst t (S k) B2)
              (subst t k pA) (subst t (S k) pB)
+  | sCongPair B1 B2 pA pB pu pv =>
+    sCongPair (subst t (S k) B1) (subst t (S k) B2)
+              (subst t k pA) (subst t (S k) pB)
+              (subst t k pu) (subst t k pv)
   | sCongPi1 B1 B2 pA pB pp =>
     sCongPi1 (subst t (S k) B1) (subst t (S k) B2)
              (subst t k pA) (subst t (S k) pB) (subst t k pp)
@@ -201,6 +209,10 @@ Fixpoint closed_above k t :=
   | sCongSum B1 B2 pA pB =>
     closed_above (S k) B1 && closed_above (S k) B2 &&
     closed_above k pA && closed_above (S k) pB
+  | sCongPair B1 B2 pA pB pu pv =>
+    closed_above (S k) B1 && closed_above (S k) B2 &&
+    closed_above k pA && closed_above (S k) pB &&
+    closed_above k pu && closed_above k pv
   | sCongPi1 B1 B2 pA pB pp =>
     closed_above (S k) B1 && closed_above (S k) B2 &&
     closed_above k pA && closed_above (S k) pB && closed_above k pp

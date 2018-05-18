@@ -358,6 +358,23 @@ Proof.
         + rewrite <- liftP2 by omega.
           change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
           rewrite substP1. cbn. reflexivity.
+      - cbn. eapply type_CongPair ; eih.
+        + cbn. f_equal.
+          * rewrite <- liftP2 by omega.
+            change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+            rewrite substP1. cbn. reflexivity.
+          * rewrite <- liftP2 by omega.
+            change (S #|Ξ|) with (0 + (S #|Ξ|))%nat at 1.
+            rewrite substP1. cbn. reflexivity.
+        + cbn. f_equal.
+          * change #|Ξ| with (0 + #|Ξ|)%nat.
+            rewrite substP1. reflexivity.
+          * change #|Ξ| with (0 + #|Ξ|)%nat.
+            rewrite substP1. reflexivity.
+        + change #|Ξ| with (0 + #|Ξ|)%nat.
+          rewrite substP1. reflexivity.
+        + change #|Ξ| with (0 + #|Ξ|)%nat.
+          rewrite substP1. reflexivity.
       - cbn. eapply type_CongPi1 ; eih.
         cbn. f_equal.
         + rewrite <- liftP2 by omega.
@@ -637,6 +654,23 @@ Proof.
         + rewrite <- substP2 by omega.
           change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
           rewrite substP4. cbn. reflexivity.
+      - cbn. eapply type_CongPair ; esh.
+        + cbn. f_equal.
+          * rewrite <- substP2 by omega.
+            change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+            rewrite substP4. cbn. reflexivity.
+          * rewrite <- substP2 by omega.
+            change (S #|Δ|) with (0 + (S #|Δ|))%nat at 1.
+            rewrite substP4. cbn. reflexivity.
+        + cbn. f_equal.
+          * change #|Δ| with (0 + #|Δ|)%nat.
+            rewrite substP4. reflexivity.
+          * change #|Δ| with (0 + #|Δ|)%nat.
+            rewrite substP4. reflexivity.
+        + change #|Δ| with (0 + #|Δ|)%nat.
+          rewrite substP4. reflexivity.
+        + change #|Δ| with (0 + #|Δ|)%nat.
+          rewrite substP4. reflexivity.
       - cbn. eapply type_CongPi1 ; esh.
         cbn. f_equal.
         + rewrite <- substP2 by omega.
@@ -862,6 +896,11 @@ Proof.
     + eapply type_Sort. apply (typing_wf H).
     + apply type_Sum ; assumption.
     + apply type_Sum ; assumption.
+  - eexists. econstructor.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
+    + econstructor ; eassumption.
   - eexists. econstructor ; try eassumption.
     + econstructor ; eassumption.
     + econstructor ; eassumption.

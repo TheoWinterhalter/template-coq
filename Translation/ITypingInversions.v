@@ -470,6 +470,38 @@ Proof.
     eapply conv_trans ; eassumption.
 Defined.
 
+Lemma inversionCongPair :
+  forall {Σ Γ B1 B2 pA pB pu pv T},
+    Σ ;;; Γ |-i sCongPair B1 B2 pA pB pu pv : T ->
+    exists s z nx ny A1 A2 u1 u2 v1 v2,
+      (Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2) *
+      (Σ ;;; Γ ,, (sPack A1 A2)
+       |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                    (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) })) *
+      (Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2) *
+      (Σ ;;; Γ |-i pv : sHeq (B1{ 0 := u1 }) v1 (B2{ 0 := u2 }) v2) *
+      (Σ ;;; Γ |-i A1 : sSort s) *
+      (Σ ;;; Γ |-i A2 : sSort s) *
+      (Σ ;;; Γ ,, A1 |-i B1 : sSort z) *
+      (Σ ;;; Γ ,, A2 |-i B2 : sSort z) *
+      (Σ ;;; Γ |-i u1 : A1) *
+      (Σ ;;; Γ |-i u2 : A2) *
+      (Σ ;;; Γ |-i v1 : B1{ 0 := u1 }) *
+      (Σ ;;; Γ |-i v2 : B2{ 0 := u2 }) *
+      (Σ |-i sHeq (sSum nx A1 B1) (sPair A1 B1 u1 v1)
+                 (sSum ny A2 B2) (sPair A2 B2 u2 v2)
+          = T).
+Proof.
+  intros Σ Γ B1 B2 pA pB pu pv T h.
+  dependent induction h.
+  - exists s, z, nx, ny, A1, A2, u1, u2, v1, v2. repeat split. all: try assumption.
+    apply conv_refl.
+  - destruct IHh1 as (s' & z & nx & ny & A1 & A2 & u1 & u2 & v1 & v2 & ?).
+    split_hyps.
+    exists s', z, nx, ny, A1, A2, u1, u2, v1, v2. repeat split. all: try assumption.
+    eapply conv_trans ; eassumption.
+Defined.
+
 Lemma inversionCongPi1 :
   forall {Σ Γ B1 B2 pA pB pp T},
     Σ ;;; Γ |-i sCongPi1 B1 B2 pA pB pp : T ->
@@ -678,6 +710,8 @@ Ltac ttinv h :=
   let C := fresh "C" in
   let A1 := fresh "A1" in
   let A2 := fresh "A2" in
+  let B1 := fresh "B1" in
+  let B2 := fresh "B2" in
   let u := fresh "u" in
   let v := fresh "v" in
   let u1 := fresh "u1" in
@@ -742,6 +776,10 @@ Ltac ttinv h :=
       splits_one hh
     | sCongSum _ _ _ _ =>
       destruct (inversionCongSum h) as (s & z & nx & ny & A1 & A2 & hh) ;
+      splits_one hh
+    | sCongPair _ _ _ _ _ _ =>
+      destruct (inversionCongPair h)
+        as (s & z & nx & ny & A1 & A2 & u1 & u2 & v1 & v2 & hh) ;
       splits_one hh
     | sCongPi1 _ _ _ _ _ =>
       destruct (inversionCongPi1 h)

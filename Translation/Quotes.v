@@ -16,6 +16,9 @@ Quote Definition tPi2 := @pi2.
 Definition mkSum (A B : term) : term :=
   tApp tSum [ A ;  B ].
 
+Definition mkPair (A B u v : term) : term :=
+  tApp tSum [ A ;  B ; u ; v ].
+
 Definition mkPi1 (A B p : term) : term :=
   tApp tPi1 [ A ; B ; p ].
 

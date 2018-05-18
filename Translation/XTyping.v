@@ -156,6 +156,12 @@ with eq_term (Σ : sglobal_context) : scontext -> sterm -> sterm -> sterm -> Typ
     Σ ;;; Γ ,, A1 |-x B1 = B2 : sSort s2 ->
     Σ ;;; Γ |-x u1 = u2 : A1 ->
     Σ ;;; Γ |-x v1 = v2 : B1{ 0 := u1 } ->
+    Σ ;;; Γ ,, A1 |-x B1 : sSort s2 ->
+    Σ ;;; Γ ,, A2 |-x B2 : sSort s2 ->
+    Σ ;;; Γ |-x u1 : A1 ->
+    Σ ;;; Γ |-x u2 : A2 ->
+    Σ ;;; Γ |-x v1 : B1{ 0 := u1 } ->
+    Σ ;;; Γ |-x v2 : B2{ 0 := u2 } ->
     Σ ;;; Γ |-x sPair A1 B1 u1 v1 = sPair A2 B2 u2 v2 : sSum n A1 B1
 
 | cong_Pi1 Γ nx ny A1 A2 B1 B2 s1 s2 p1 p2 :

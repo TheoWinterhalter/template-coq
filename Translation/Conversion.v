@@ -335,6 +335,31 @@ Inductive red1 (Σ : sglobal_context) : sterm -> sterm -> Prop :=
     red1 Σ pB pB' ->
     red1 Σ (sCongSum B1 B2 pA pB) (sCongSum B1 B2 pA pB')
 
+(** CongPair *)
+| congpair_red_ty_l B1 B1' B2 pA pB pu pv :
+    red1 Σ B1 B1' ->
+    red1 Σ (sCongPair B1 B2 pA pB pu pv) (sCongPair B1' B2 pA pB pu pv)
+
+| congpair_red_ty_r B1 B2 B2' pA pB pu pv :
+    red1 Σ B2 B2' ->
+    red1 Σ (sCongPair B1 B2 pA pB pu pv) (sCongPair B1 B2' pA pB pu pv)
+
+| congpair_red_tm_dom B1 B2 pA pA' pB pu pv :
+    red1 Σ pA pA' ->
+    red1 Σ (sCongPair B1 B2 pA pB pu pv) (sCongPair B1 B2 pA' pB pu pv)
+
+| congpair_red_tm_cod B1 B2 pA pB pB' pu pv :
+    red1 Σ pB pB' ->
+    red1 Σ (sCongPair B1 B2 pA pB pu pv) (sCongPair B1 B2 pA pB' pu pv)
+
+| congpair_red_tm_tm_l B1 B2 pA pB pu pv pu' :
+    red1 Σ pu pu' ->
+    red1 Σ (sCongPair B1 B2 pA pB pu pv) (sCongPair B1 B2 pA pB pu' pv)
+
+| congpair_red_tm_tm_r B1 B2 pA pB pu pv pv' :
+    red1 Σ pv pv' ->
+    red1 Σ (sCongPair B1 B2 pA pB pu pv) (sCongPair B1 B2 pA pB pu pv')
+
 (** CongPi1 *)
 | congpi1_red_ty_l B1 B1' B2 pA pB pp :
     red1 Σ B1 B1' ->

@@ -58,6 +58,13 @@ Inductive trel : sterm -> sterm -> Type :=
     v1 ∼ v2 ->
     sApp u1 A1 B1 v1 ∼ sApp u2 A2 B2 v2
 
+| trel_Pair A1 A2 B1 B2 u1 u2 v1 v2 :
+    A1 ∼ A2 ->
+    B1 ∼ B2 ->
+    u1 ∼ u2 ->
+    v1 ∼ v2 ->
+    sPair A1 B1 u1 v1 ∼ sPair A2 B2 u2 v2
+
 | trel_Pi1 A1 A2 B1 B2 p1 p2 :
     A1 ∼ A2 ->
     B1 ∼ B2 ->
@@ -126,6 +133,13 @@ Inductive inrel : sterm -> sterm -> Type :=
     B ⊏ B' ->
     v ⊏ v' ->
     sApp u A B v ⊏ sApp u' A' B' v'
+
+| inrel_Pair A A' B B' u u' v  v' :
+    A ⊏ A' ->
+    B ⊏ B' ->
+    u ⊏ u' ->
+    v ⊏ v' ->
+    sPair A B u v ⊏ sPair A' B' u' v'
 
 | inrel_Pi1 A A' B B' p p' :
     A ⊏ A' ->
@@ -724,6 +738,88 @@ Proof.
         apply llift_conv. assumption.
       * rewrite <- rlift_subst. cbn.
         apply rlift_conv. assumption.
+
+  (* Pair *)
+  - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].
+    destruct (IHsim2 Γ (Γ1,, A1) (Γ2,, A2)) as [pB hpB].
+    destruct (IHsim3 Γ Γ1 Γ2) as [pu hpu].
+    destruct (IHsim4 Γ Γ1 Γ2) as [pv hpv].
+    clear IHsim1 IHsim2 IHsim3 IHsim4.
+    exists (sCongPair (llift #|Γ1| 1 B1) (rlift #|Γ1| 1 B2) pA pB pu pv).
+    intros Γm U1 U2 hm h1 h2.
+    pose proof (mix_length1 hm) as ml. rewrite <- ml.
+    ttinv h1. ttinv h2.
+    specialize (hpA _ _ _ hm h h0).
+    destruct (istype_type hg hpA) as [? iA].
+    ttinv iA. pose proof (sort_conv_inv h13) as hh. symmetry in hh. subst.
+    clear h13.
+    assert (s1 = s0).
+    { eapply sorts_in_sort ; eassumption. }
+    subst.
+    assert (hm' :
+              ismix Σ Γ
+                    (Γ1 ,, A1)
+                    (Γ2 ,, A2)
+                    (Γm ,, (sPack (llift0 #|Γm| A1) (rlift0 #|Γm| A2)))
+    ).
+    { econstructor ; eassumption. }
+    specialize (hpB _ _ _ hm' h6 h11).
+    assert (s3 = s2).
+    { destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+      apply conv_sym in h17. pose proof (sort_conv_inv h17). subst. clear h15.
+      eapply sorts_in_sort ; eassumption.
+    } subst.
+    specialize (hpu _ _ _ hm h5 h10).
+    specialize (hpv _ _ _ hm h4 h9).
+    eapply type_conv.
+    + eapply type_CongPair' ; try assumption.
+      * apply hpA.
+      * rewrite llift_substProj, rlift_substProj.
+        apply hpB.
+      * apply hpu.
+      * replace 0 with (0 + 0)%nat in hpv by omega.
+        rewrite llift_subst, rlift_subst in hpv.
+        apply hpv.
+      * lift_sort. eapply type_llift1 ; eassumption.
+      * lift_sort. eapply type_rlift1 ; eassumption.
+    + instantiate (1 := max s0 s2).
+      apply type_Heq.
+      * lift_sort. eapply type_llift0 ; try eassumption.
+        destruct (istype_type hg h1).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           try eassumption.
+           econstructor ; eassumption.
+      * lift_sort. eapply type_rlift0 ; try eassumption.
+        destruct (istype_type hg h2).
+        eapply type_conv ; try eassumption.
+        -- econstructor. eapply typing_wf. eassumption.
+        -- apply conv_sym.
+           eapply subj_conv ; [ assumption | .. | eassumption ] ;
+           try eassumption.
+           econstructor ; eassumption.
+      * eapply type_llift0 ; eassumption.
+      * eapply type_rlift0 ; eassumption.
+    + cbn. apply cong_Heq.
+      all: try apply conv_refl.
+      * match goal with
+        | |- _ |-i ?t = _ =>
+          match t with
+          | sSum ?nx (llift ?n ?k ?A) (llift _ _ ?B) =>
+            change t with (llift n k (sSum nx A B))
+          end
+        end.
+        apply llift_conv. eassumption.
+      * match goal with
+        | |- _ |-i ?t = _ =>
+          match t with
+          | sSum ?nx (rlift ?n ?k ?A) (rlift _ _ ?B) =>
+            change t with (rlift n k (sSum nx A B))
+          end
+        end.
+        apply rlift_conv. eassumption.
 
   (* Pi1 *)
   - destruct (IHsim1 Γ Γ1 Γ2) as [pA hpA].

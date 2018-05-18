@@ -97,6 +97,12 @@ Fixpoint reduce (t : sterm) : sterm :=
     let A' := reduce A in
     let B' := reduce B in
     sSum n A' B'
+  | sPair A B u v =>
+    let A' := reduce A in
+    let B' := reduce B in
+    let u' := reduce u in
+    let v' := reduce v in
+    sPair A' B' u' v'
   | sPi1 A B p =>
     let A' := reduce A in
     let B' := reduce B in
@@ -231,6 +237,18 @@ Fixpoint reduce (t : sterm) : sterm :=
       (* We use nAnon here because we don't care! *)
       sHeqRefl (sSort (max_sort s z)) (sSum nAnon A' B')
     | _,_ => sCongSum B1' B2' pA' pB'
+    end
+  | sCongPair B1 B2 pA pB pu pv =>
+    let pA' := reduce pA in
+    let pB' := reduce pB in
+    let pu' := reduce pu in
+    let pv' := reduce pv in
+    let B1' := reduce B1 in
+    let B2' := reduce B2 in
+    match pA', pB', pu', pv' with
+    | sHeqRefl _ A', sHeqRefl _ B', sHeqRefl _ u', sHeqRefl _ v' =>
+      sHeqRefl (sSum nAnon A' B') (sPair A' B' u' v')
+    | _,_,_,_ => sCongPair B1' B2' pA' pB' pu' pv'
     end
   | sCongPi1 B1 B2 pA pB pp =>
     let pA' := reduce pA in

@@ -359,6 +359,58 @@ Proof.
   eapply type_CongSum'' ; eassumption.
 Defined.
 
+Lemma type_CongPair'' :
+  forall {Σ Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv},
+    type_glob Σ ->
+    Σ ;;; Γ |-i pA : sHeq (sSort s) A1 (sSort s) A2 ->
+    Σ ;;; Γ ,, (sPack A1 A2)
+    |-i pB : sHeq (sSort z) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                (sSort z) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
+    Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2 ->
+    Σ ;;; Γ |-i pv : sHeq (B1{ 0 := u1 }) v1 (B2{ 0 := u2 }) v2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z ->
+    Σ ;;; Γ |-i sCongPair B1 B2 pA pB pu pv :
+    sHeq (sSum nx A1 B1) (sPair A1 B1 u1 v1)
+         (sSum ny A2 B2) (sPair A2 B2 u2 v2).
+Proof.
+  intros Σ Γ s z nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
+         hg hpA hpB hpu hpv hB1 hB2.
+  destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
+  destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+  destruct (istype_type hg hpu) as [? ipu]. ttinv ipu.
+  destruct (istype_type hg hpv) as [? ipv]. ttinv ipv.
+  eapply type_CongPair.
+  all: eassumption.
+Defined.
+
+Lemma type_CongPair' :
+  forall {Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv},
+    type_glob Σ ->
+    Σ ;;; Γ |-i pA : sHeq (sSort s1) A1 (sSort s2) A2 ->
+    Σ ;;; Γ ,, (sPack A1 A2)
+    |-i pB : sHeq (sSort z1) ((lift 1 1 B1){ 0 := sProjT1 (sRel 0) })
+                (sSort z2) ((lift 1 1 B2){ 0 := sProjT2 (sRel 0) }) ->
+    Σ ;;; Γ |-i pu : sHeq A1 u1 A2 u2 ->
+    Σ ;;; Γ |-i pv : sHeq (B1{ 0 := u1 }) v1 (B2{ 0 := u2 }) v2 ->
+    Σ ;;; Γ ,, A1 |-i B1 : sSort z1 ->
+    Σ ;;; Γ ,, A2 |-i B2 : sSort z2 ->
+    Σ ;;; Γ |-i sCongPair B1 B2 pA pB pu pv :
+    sHeq (sSum nx A1 B1) (sPair A1 B1 u1 v1)
+         (sSum ny A2 B2) (sPair A2 B2 u2 v2).
+Proof.
+  intros Σ Γ s1 s2 z1 z2 nx ny A1 A2 B1 B2 u1 u2 v1 v2 pA pB pu pv
+         hg hpA hpB hpu hpv hB1 hB2.
+  destruct (istype_type hg hpA) as [? ipA]. ttinv ipA.
+  destruct (istype_type hg hpB) as [? ipB]. ttinv ipB.
+  destruct (istype_type hg hpu) as [? ipu]. ttinv ipu.
+  destruct (istype_type hg hpv) as [? ipv]. ttinv ipv.
+  destruct (prod_sorts hg hpA hpB) as [e1 e2].
+  subst.
+  eapply type_CongPair''.
+  all: eassumption.
+Defined.
+
 Lemma type_CongPi1'' :
   forall {Σ Γ nx ny pA s A1 A2 pB z B1 B2 pp p1 p2},
     type_glob Σ ->

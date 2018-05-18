@@ -1203,6 +1203,146 @@ Section subjred.
                            eapply typing_wf. eassumption.
              ++ apply cong_Heq ; try apply conv_refl.
                 apply subst_conv. apply lift_conv. assumption.
+          -- instantiate (1 := v1). econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                ** econstructor ; try eassumption.
+                   --- lift_sort. eapply typing_subst ; try eassumption.
+                   --- apply subst_conv. assumption.
+             ++ apply cong_Heq ; try apply conv_refl.
+                apply subst_conv. assumption.
+          -- econstructor ; try eassumption.
+             ++ lift_sort. eapply typing_subst ; eassumption.
+             ++ apply subst_conv. assumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+        * apply conv_sym. apply cong_Heq ; try apply conv_refl.
+          -- apply cong_Sum ; try apply conv_refl. assumption.
+          -- apply cong_Pair ; try apply conv_refl. assumption.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                ** econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+                ** econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                   --- lift_sort.
+                       eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A1 ]) ;
+                         try eassumption.
+                       eapply typing_wf. eassumption.
+                   --- cbn. eapply type_ProjT1 with (A2 := lift0 1 A2).
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                           eapply typing_wf. eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                   --- lift_sort.
+                       eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A2 ]) ;
+                         try eassumption.
+                       eapply typing_wf. eassumption.
+                   --- cbn. eapply type_ProjT2 with (A1 := lift0 1 A1).
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                           eapply typing_wf. eassumption.
+             ++ apply cong_Heq ; try apply conv_refl.
+                apply subst_conv. apply lift_conv. assumption.
+          -- instantiate (1 := v2). econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                ** econstructor ; try eassumption.
+                   --- lift_sort. eapply typing_subst ; try eassumption.
+                   --- apply subst_conv. assumption.
+             ++ apply cong_Heq ; try apply conv_refl.
+                apply subst_conv. assumption.
+          -- econstructor ; try eassumption.
+             ++ lift_sort. eapply typing_subst ; eassumption.
+             ++ apply subst_conv. assumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+        * apply conv_sym. apply cong_Heq ; try apply conv_refl.
+          -- apply cong_Sum ; try apply conv_refl. assumption.
+          -- apply cong_Pair ; try apply conv_refl. assumption.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas. econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+      + econstructor ; try eassumption.
+    - canvas.
+      + econstructor ; try eassumption.
+        * econstructor ; try eassumption.
+          -- econstructor ; try eassumption.
+             ++ econstructor ; try eassumption.
+                ** econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+                ** econstructor ; try eassumption.
+                   eapply typing_wf. eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                   --- lift_sort.
+                       eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A1 ]) ;
+                         try eassumption.
+                       eapply typing_wf. eassumption.
+                   --- cbn. eapply type_ProjT1 with (A2 := lift0 1 A2).
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                           eapply typing_wf. eassumption.
+                ** lift_sort. eapply typing_subst ; try eassumption.
+                   --- lift_sort.
+                       eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A2 ]) ;
+                         try eassumption.
+                       eapply typing_wf. eassumption.
+                   --- cbn. eapply type_ProjT2 with (A1 := lift0 1 A1).
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ lift_sort. eapply typing_lift01 ; try eassumption.
+                           econstructor ; try eassumption.
+                       +++ refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                           eapply typing_wf. eassumption.
+             ++ apply cong_Heq ; try apply conv_refl.
+                apply subst_conv. apply lift_conv. assumption.
           -- instantiate (1 := p1). econstructor ; try eassumption.
              ++ econstructor ; try eassumption.
                 ** econstructor ; try eassumption.
@@ -2052,6 +2192,77 @@ Proof.
       * go.
       * go.
     + go. cbn. symmetry. f_equal ; f_equal ; assumption.
+  - go.
+    + go.
+      * go.
+        -- go.
+           ++ go. eapply typing_wf. eassumption.
+           ++ go. eapply typing_wf. eassumption.
+           ++ lift_sort. eapply typing_subst ; try eassumption.
+              ** lift_sort.
+                 eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A1 ]) ;
+                   try eassumption.
+                 --- apply IHht7. assumption.
+                 --- eapply typing_wf. eassumption.
+              ** cbn. eapply type_ProjT1 with (A2 := lift0 1 A2).
+                 --- lift_sort. eapply typing_lift01 ; try eassumption.
+                     go.
+                 --- lift_sort. eapply typing_lift01 ; try eassumption.
+                     go.
+                 --- refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                     eapply typing_wf. eassumption.
+           ++ lift_sort. eapply typing_subst ; try eassumption.
+              ** lift_sort.
+                 eapply @type_lift with (Δ := [ sPack A1 A2 ]) (Ξ := [ A2 ]) ;
+                   try eassumption.
+                 --- apply IHht8. assumption.
+                 --- eapply typing_wf. eassumption.
+              ** cbn. eapply type_ProjT2 with (A1 := lift0 1 A1).
+                 --- lift_sort. eapply typing_lift01 ; try eassumption.
+                     go.
+                 --- lift_sort. eapply typing_lift01 ; try eassumption.
+                     go.
+                 --- refine (type_Rel _ _ _ _ _) ; try (cbn ; omega).
+                     eapply typing_wf. eassumption.
+        -- apply cong_Heq ; try apply conv_refl.
+           ++ apply subst_conv. apply lift_conv. go.
+           ++ apply subst_conv. apply lift_conv. go.
+      * instantiate (2 := v1). instantiate (1 := v2).
+        go.
+        -- go.
+           ++ lift_sort. eapply typing_subst ; try eassumption.
+              apply IHht7. assumption.
+           ++ lift_sort. eapply typing_subst ; try eassumption.
+              apply IHht8. assumption.
+           ++ go.
+              ** lift_sort. eapply typing_subst ; try eassumption.
+                 apply IHht7. assumption.
+              ** apply subst_conv. go.
+           ++ go.
+              ** lift_sort. eapply typing_subst ; try eassumption.
+                 apply IHht8. assumption.
+              ** apply subst_conv. go.
+        -- apply cong_Heq ; try apply conv_refl.
+           ++ apply subst_conv. go.
+           ++ apply subst_conv. go.
+      * go.
+        -- lift_sort. eapply typing_subst ; try eassumption.
+           apply IHht7. assumption.
+        -- apply subst_conv. go.
+      * go.
+        -- lift_sort. eapply typing_subst ; try eassumption.
+           apply IHht8. assumption.
+        -- apply subst_conv. go.
+    + go.
+      * go.
+      * go.
+      * go.
+      * go.
+    + apply conv_sym. apply cong_Heq.
+      * apply cong_Sum ; try apply conv_refl. go.
+      * apply cong_Pair ; try apply conv_refl. go.
+      * apply cong_Sum ; try apply conv_refl. go.
+      * apply cong_Pair ; try apply conv_refl. go.
   - go.
     + go.
       * go.

@@ -129,6 +129,19 @@ Proof.
       apply conv_refl.
     + apply conv_refl.
     + apply cong_Sum ; try assumption. apply conv_refl.
+  - specialize IHu3 with (1 := h) (2 := h0).
+    specialize IHu5 with (1 := h13) (2 := h26).
+    specialize IHu6 with (1 := h12) (2 := h25).
+    pose proof (heq_conv_inv IHu3).
+    pose proof (heq_conv_inv IHu5).
+    pose proof (heq_conv_inv IHu6).
+    split_hyps.
+    eapply conv_trans ; [| exact h16 ].
+    apply cong_Heq.
+    + apply cong_Sum ; try apply conv_refl. assumption.
+    + apply cong_Pair ; try apply conv_refl ; assumption.
+    + apply cong_Sum ; try apply conv_refl. assumption.
+    + apply cong_Pair ; try apply conv_refl ; assumption.
   - specialize IHu3 with (1 := h0) (2 := h12).
     specialize IHu5 with (1 := h10) (2 := h20).
     pose proof (heq_conv_inv IHu3).
