@@ -3,14 +3,104 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
-From Translation Require Import util SAst SLiftSubst SCommon ITyping
+From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
                                 ITypingLemmata ITypingAdmissible XTyping
                                 FundamentalLemma Translation Reduction
                                 FinalTranslation.
 
+(* The context for Template Coq *)
+
+(* We define a term that mentions everything that the global context should
+   have. *)
+Definition glob_term :=
+  let _ := @pp_sigT in
+  let _ := @epair in
+  let _ := @pi1 in
+  let _ := @pi2 in
+  let _ := @eq in
+  let _ := @transport in
+  let _ := @K in
+  let _ := @funext in
+  let _ := @heq in
+  let _ := @heq_to_eq in
+  let _ := @heq_refl in
+  let _ := @heq_sym in
+  let _ := @heq_trans in
+  let _ := @heq_transport in
+  let _ := @Pack in
+  let _ := @ProjT1 in
+  let _ := @ProjT2 in
+  let _ := @ProjTe in
+  let _ := @cong_prod in
+  let _ := @cong_app in
+  let _ := @cong_lambda in
+  let _ := @cong_sum in
+  let _ := @cong_pair in
+  let _ := @cong_pi1 in
+  let _ := @cong_pi2 in
+  let _ := @cong_eq in
+  let _ := @cong_refl in
+  let _ := @eq_to_heq in
+  let _ := @heq_type_eq in
+  (* More for the sake of examples *)
+  let _ := @nat in
+  let _ := @bool in
+  let _ := @vec in
+  let _ := @axiom_nat in
+  let _ := @axiom_bool in
+  let _ := @axiom_vec in
+  Type.
+
+Quote Recursively Definition glob_prog := @glob_term.
+Definition Σ : global_context :=
+  (* reconstruct_global_context (fst glob_prog). *)
+  pair (Datatypes.fst glob_prog) init_graph.
+
+Arguments Σ : simpl never.
+
 Open Scope string_scope.
 
 Module IT := ITyping.
+
+(* The context for ITT *)
+
+Definition decl := Build_glob_decl.
+
+Fixpoint Sums (L : list (name * sterm)) (T : sterm) :=
+  match L with
+  | (na,A) :: L => sSum na A (Sums L T)
+  | [] => T
+  end.
+
+Fixpoint Prods (L : list (name * sterm)) (T : sterm) :=
+  match L with
+  | (na,A) :: L => sProd na A (Prods L T)
+  | [] => T
+  end.
+
+Definition Arrow A B := sProd nAnon A (lift0 1 B).
+Notation "A ==> B" := (Arrow A B) (at level 20).
+
+(* TODO Maybe implement functions to deal with this automatically.
+   Also, try to write a tactic / function to type check in ITT
+   (but also in ETT).
+ *)
+
+(* Definition Σi : sglobal_context := [ *)
+(*   decl "nat" (Sums [ *)
+(*     (nNamed "nat", sSort 0) ; *)
+(*     (nNamed "zero", sRel 0) ; *)
+(*     (nNamed "succ", sRel 1 ==> sRel 1) ; *)
+(*     (nNamed "ind", Prods [ *)
+(*       (nNamed "P", sRel 3 ==> sSort 0) ; *)
+(*       (nNamed "Pz", sApp (sRel 0) (sRel 4) (sSort 0) (sRel 3)) ; *)
+(*       (nNamed "Ps", *)
+(*        sProd (nNamed "n") (sRel 5) *)
+(*              ((sApp (sRel 3) (sRel 7) (sSort 0) (sRel 0)) ==> *)
+(*               (sApp ? ? ? ?))) *)
+(*     ] ?) *)
+(*   ] ?) *)
+(* ]. *)
 
 Definition Σi : sglobal_context := [].
 
