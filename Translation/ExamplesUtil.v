@@ -6,9 +6,11 @@ From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
                                 ITypingLemmata ITypingAdmissible XTyping
                                 FundamentalLemma Translation Reduction
-                                FinalTranslation.
+                                FinalTranslation FullQuote.
 
 (* The context for Template Coq *)
+
+Definition axiom_nat_ty := ltac:(let t := type of axiom_nat in exact t).
 
 (* We define a term that mentions everything that the global context should
    have. *)
@@ -47,6 +49,7 @@ Definition glob_term :=
   let _ := @bool in
   let _ := @vec in
   let _ := @axiom_nat in
+  let _ := @axiom_nat_ty in
   let _ := @axiom_bool in
   let _ := @axiom_vec in
   Type.
@@ -63,6 +66,29 @@ Open Scope string_scope.
 Module IT := ITyping.
 
 (* The context for ITT *)
+
+(* Getting axiom_nat as an axiom for ITT/ETT *)
+Quote Recursively Definition taxiom_nat_ty := axiom_nat_ty.
+Definition ttaxiom_nat_ty :=
+  let t := Datatypes.snd taxiom_nat_ty in
+  match hnf Σ [] t with
+  | Checked t => t
+  | _ => tRel 0
+  end.
+Definition rtaxiom_nat_ty :=
+  ltac:(let u := eval lazy in ttaxiom_nat_ty in exact u).
+Definition fq_ax_nat_ty :=
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty.
+Definition rfq_ax_nat_ty :=
+  ltac:(let u := eval lazy in fq_ax_nat_ty in exact u).
+Definition ax_nat_ty :=
+  match rfq_ax_nat_ty with
+  | Success t => t
+  | _ => sRel 0
+  end.
+Definition rtax_nat_ty :=
+  ltac:(let u := eval lazy in ax_nat_ty in exact u).
+
 
 Definition decl := Build_glob_decl.
 
@@ -81,11 +107,6 @@ Fixpoint Prods (L : list (name * sterm)) (T : sterm) :=
 Definition Arrow A B := sProd nAnon A (lift0 1 B).
 Notation "A ==> B" := (Arrow A B) (at level 20).
 
-(* TODO Maybe implement functions to deal with this automatically.
-   Also, try to write a tactic / function to type check in ITT
-   (but also in ETT).
- *)
-
 (* Definition Σi : sglobal_context := [ *)
 (*   decl "nat" (Sums [ *)
 (*     (nNamed "nat", sSort 0) ; *)
@@ -102,10 +123,57 @@ Notation "A ==> B" := (Arrow A B) (at level 20).
 (*   ] ?) *)
 (* ]. *)
 
-Definition Σi : sglobal_context := [].
+Definition Σi : sglobal_context := [
+  decl "nat" rtax_nat_ty
+].
+
+(* Maybe move somewhere else *)
+Ltac ittintro :=
+  lazymatch goal with
+  | |- ?Σ ;;; ?Γ |-i ?t : ?T =>
+    lazymatch t with
+    | sRel ?n => refine (IT.type_Rel _ _ n _ _)
+    | sSort _ => eapply IT.type_Sort
+    | sProd _ _ _ => eapply IT.type_Prod
+    | sLambda _ _ _ _ => eapply IT.type_Lambda
+    | sApp _ _ _ _ => eapply IT.type_App
+    | sSum _ _ _ => eapply IT.type_Sum
+    | sPair _ _ _ _ => eapply IT.type_Pair
+    | sPi1 _ _ _ => eapply IT.type_Pi1
+    | sPi2 _ _ _ => eapply IT.type_Pi2
+    | sEq _ _ _ => eapply IT.type_Eq
+    | sRefl _ _ => eapply IT.type_Refl
+    | _ => fail "No introduction rule for" t
+    end
+  | _ => fail "Not applicable"
+  end.
+
+Ltac ittcheck1 :=
+  lazymatch goal with
+  | |- ?Σ ;;; ?Γ |-i ?t : ?T =>
+    first [
+      ittintro
+    | eapply meta_conv ; [ ittintro | cbn ; try reflexivity ]
+    | eapply meta_ctx_conv ; [
+        eapply meta_conv ; [ ittintro | cbn ; try reflexivity ]
+      | cbn ; try reflexivity
+      ]
+    ]
+  | |- wf ?Σ ?Γ => econstructor
+  | _ => fail "Not applicable"
+  end.
+
+Ltac ittcheck := repeat (ittcheck1 ; try (cbn ; omega)).
 
 Fact hΣi : type_glob Σi.
-Proof. constructor. Defined.
+Proof.
+  repeat (eapply type_glob_cons) ; try apply type_glob_nil.
+  - constructor.
+  - eexists. lazy.
+    (* ittcheck. *)
+    admit.
+  - repeat constructor.
+Admitted.
 
 (* Now some useful lemmata *)
 

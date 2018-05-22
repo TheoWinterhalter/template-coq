@@ -23,5 +23,6 @@ Translation.v
 Reduction.v
 Quotes.v
 FinalTranslation.v
+FullQuote.v
 ExamplesUtil.v
 Example.v
