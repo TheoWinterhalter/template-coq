@@ -159,11 +159,13 @@ Ltac ittcheck1 :=
       | cbn ; try reflexivity
       ]
     ]
-  | |- wf ?Σ ?Γ => econstructor
+  | |- IT.wf ?Σ ?Γ => econstructor
   | _ => fail "Not applicable"
   end.
 
-Ltac ittcheck := repeat (ittcheck1 ; try (cbn ; omega)).
+Ltac ittcheck' := ittcheck1 ; try (cbn ; omega).
+
+Ltac ittcheck := repeat ittcheck'.
 
 Fact hΣi : type_glob Σi.
 Proof.
