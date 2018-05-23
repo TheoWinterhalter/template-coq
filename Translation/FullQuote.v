@@ -44,80 +44,71 @@ Instance monad_exc : MonadExc fq_error fq_result :=
 Open Scope t_scope.
 
 Fixpoint fullquote (fuel : nat) (Σ : global_context) (Γ : context) (t : term)
-         (sl : list sort) (si : sort)
-         {struct fuel} : fq_result (sterm * list sort * sort) :=
+         (sf : nat -> sort) (si : nat)
+         {struct fuel} : fq_result (sterm * nat) :=
   match fuel with
   | 0 => raise NotEnoughFuel
   | S fuel =>
     match t with
-    | tRel n => ret (sRel n, sl, si)
-    | tSort u =>
-      match sl with
-      | s :: sl => ret (sSort 0, sl, si)
-      | [] => ret (sSort si, [], succ_sort si)
-      end
+    | tRel n => ret (sRel n, si)
+    | tSort u => ret (sSort (sf si), S si)
     | tProd nx A B =>
-      A' <- fullquote fuel Σ Γ A sl si ;;
-      let '(A', sl, si) := A' in
-      B' <- fullquote fuel Σ (Γ ,, vass nx A) B sl si ;;
-      let '(B', sl, si) := B' in
-      ret (sProd nx A' B', sl, si)
+      A' <- fullquote fuel Σ Γ A sf si ;;
+      let '(A', si) := A' in
+      B' <- fullquote fuel Σ (Γ ,, vass nx A) B sf si ;;
+      let '(B', si) := B' in
+      ret (sProd nx A' B', si)
     | tLambda nx A t =>
       match infer_hnf fuel Σ (Γ ,, vass nx A) t with
       | Checked B =>
-        A' <- fullquote fuel Σ Γ A sl si ;;
-        let '(A', sl, si) := A' in
-        B' <- fullquote fuel Σ (Γ ,, vass nx A) B sl si ;;
-        let '(B', sl, si) := B' in
-        t' <- fullquote fuel Σ (Γ ,, vass nx A) t sl si ;;
-        let '(t', sl, si) := t' in
-        ret (sLambda nx A' B' t', sl, si)
+        A' <- fullquote fuel Σ Γ A sf si ;;
+        let '(A', si) := A' in
+        B' <- fullquote fuel Σ (Γ ,, vass nx A) B sf si ;;
+        let '(B', si) := B' in
+        t' <- fullquote fuel Σ (Γ ,, vass nx A) t sf si ;;
+        let '(t', si) := t' in
+        ret (sLambda nx A' B' t', si)
       | TypeError e => raise (TypingError "Lambda" e (Γ ,, vass nx A) t)
       end
     | tApp (tInd {| inductive_mind := "Translation.util.pp_sigT"; inductive_ind := 0 |} []) [ A ; B ] =>
-      A' <- fullquote fuel Σ Γ A sl si ;;
-      let '(A', sl, si) := A' in
-      B' <- fullquote fuel Σ Γ B sl si ;;
-      let '(B', sl, si) := B' in
-      match sl with
-      | s :: sl =>
-        ret (sSum nAnon A' (sApp (lift0 1 B') (lift0 1 A') (sSort s) (sRel 0)), sl, si)
-      | [] =>
-        ret (sSum nAnon A' (sApp (lift0 1 B') (lift0 1 A') (sSort si) (sRel 0)), [], succ_sort si)
-      end
+      A' <- fullquote fuel Σ Γ A sf si ;;
+      let '(A', si) := A' in
+      B' <- fullquote fuel Σ Γ B sf si ;;
+      let '(B', si) := B' in
+      ret (sSum nAnon A' (sApp (lift0 1 B') (lift0 1 A') (sSort (sf si)) (sRel 0)), S si)
     | tApp (tInd {| inductive_mind := "Translation.util.pp_prod"; inductive_ind := 0 |} []) [ A ; B ] =>
-      A' <- fullquote fuel Σ Γ A sl si ;;
-      let '(A', sl, si) := A' in
-      B' <- fullquote fuel Σ Γ B sl si ;;
-      let '(B', sl, si) := B' in
-      ret (sSum nAnon A' (lift0 1 B'), sl, si)
+      A' <- fullquote fuel Σ Γ A sf si ;;
+      let '(A', si) := A' in
+      B' <- fullquote fuel Σ Γ B sf si ;;
+      let '(B', si) := B' in
+      ret (sSum nAnon A' (lift0 1 B'), si)
     | tApp (tInd {| inductive_mind := "Coq.Init.Logic.eq"; inductive_ind := 0 |} []) [ A ; u ; v ] =>
-      A' <- fullquote fuel Σ Γ A sl si ;;
-      let '(A', sl, si) := A' in
-      u' <- fullquote fuel Σ Γ u sl si ;;
-      let '(u', sl, si) := u' in
-      v' <- fullquote fuel Σ Γ v sl si ;;
-      let '(v', sl, si) := v' in
-      ret (sEq A' u' v', sl, si)
+      A' <- fullquote fuel Σ Γ A sf si ;;
+      let '(A', si) := A' in
+      u' <- fullquote fuel Σ Γ u sf si ;;
+      let '(u', si) := u' in
+      v' <- fullquote fuel Σ Γ v sf si ;;
+      let '(v', si) := v' in
+      ret (sEq A' u' v', si)
     | tApp u [] =>
-      fullquote fuel Σ Γ u sl si
+      fullquote fuel Σ Γ u sf si
     | tApp u [ v ] =>
       match infer_hnf fuel Σ Γ u with
       | Checked (tProd nx A B) =>
-        u' <- fullquote fuel Σ Γ u sl si ;;
-        let '(u', sl, si) := u' in
-        A' <- fullquote fuel Σ Γ A sl si ;;
-        let '(A', sl, si) := A' in
-        B' <- fullquote fuel Σ (Γ ,, vass nx A) B sl si ;;
-        let '(B', sl, si) := B' in
-        v' <- fullquote fuel Σ Γ v sl si ;;
-        let '(v', sl, si) := v' in
-        ret (sApp u' A' B' v', sl, si)
+        u' <- fullquote fuel Σ Γ u sf si ;;
+        let '(u', si) := u' in
+        A' <- fullquote fuel Σ Γ A sf si ;;
+        let '(A', si) := A' in
+        B' <- fullquote fuel Σ (Γ ,, vass nx A) B sf si ;;
+        let '(B', si) := B' in
+        v' <- fullquote fuel Σ Γ v sf si ;;
+        let '(v', si) := v' in
+        ret (sApp u' A' B' v', si)
       | Checked T => raise (WrongType "Prod" T)
       | TypeError e => raise (TypingError "App1" e Γ u)
       end
     | tApp u (v :: l) =>
-      fullquote fuel Σ Γ (tApp (tApp u [ v ]) l) sl si
+      fullquote fuel Σ Γ (tApp (tApp u [ v ]) l) sf si
     | _ => raise NotHandled
     end
   end.

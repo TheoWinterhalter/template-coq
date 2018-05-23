@@ -74,29 +74,6 @@ Module IL := ITypingLemmata.
 
 (* The context for ITT *)
 
-(* Getting axiom_nat as an axiom for ITT/ETT *)
-Quote Recursively Definition taxiom_nat_ty := axiom_nat_ty.
-Definition ttaxiom_nat_ty :=
-  let t := Datatypes.snd taxiom_nat_ty in
-  match hnf Σ [] t with
-  | Checked t => t
-  | _ => tRel 0
-  end.
-Definition rtaxiom_nat_ty :=
-  ltac:(let u := eval lazy in ttaxiom_nat_ty in exact u).
-Definition fq_ax_nat_ty :=
-  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty [] 100.
-Definition rfq_ax_nat_ty :=
-  ltac:(let u := eval lazy in fq_ax_nat_ty in exact u).
-Definition ax_nat_ty :=
-  match rfq_ax_nat_ty with
-  | Success (t,_,_) => t
-  | _ => sRel 0
-  end.
-Definition rtax_nat_ty :=
-  ltac:(let u := eval lazy in ax_nat_ty in exact u).
-
-
 Definition decl := Build_glob_decl.
 
 Fixpoint Sums (L : list (name * sterm)) (T : sterm) :=
@@ -129,10 +106,6 @@ Notation "A ==> B" := (Arrow A B) (at level 20).
 (*     ] ?) *)
 (*   ] ?) *)
 (* ]. *)
-
-Definition Σi : sglobal_context := [
-  decl "nat" rtax_nat_ty
-].
 
 (* Some admissible lemmata to do memoisation in a way. *)
 Lemma type_Prod' :
@@ -234,7 +207,7 @@ Ltac ittcheck1 :=
       ]
     ]
   | |- IT.wf ?Σ ?Γ => first [ assumption | econstructor ]
-  | |- sSort _ = sSort _ => lazy ; first [ reflexivity | admit ]
+  | |- sSort _ = sSort _ => first [ lazy ; reflexivity | shelve ]
   | |- type_glob _ => first [ assumption | constructor ]
   | _ => fail "Not applicable"
   end.
@@ -243,14 +216,56 @@ Ltac ittcheck' := ittcheck1 ; try (lazy ; omega).
 
 Ltac ittcheck := repeat ittcheck'.
 
+(* Getting axiom_nat as an axiom for ITT/ETT *)
+Quote Recursively Definition taxiom_nat_ty := axiom_nat_ty.
+Definition ttaxiom_nat_ty :=
+  let t := Datatypes.snd taxiom_nat_ty in
+  match hnf Σ [] t with
+  | Checked t => t
+  | _ => tRel 0
+  end.
+Definition rtaxiom_nat_ty :=
+  ltac:(let u := eval lazy in ttaxiom_nat_ty in exact u).
+
+  (* Variable axf' : nat -> sort. *)
+
+Definition axf (i : nat) :=
+  match i with
+  | 4 => 1
+  | 15 => 1
+  | 69 => 1
+  | 70 => 1
+  | 71 => 1
+  | 3 => 1
+  | 2 => 1
+  | 72 => 1
+  | i => 0
+  end.
+Definition fq_ax_nat_ty :=
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty axf 0.
+Definition rfq_ax_nat_ty :=
+  ltac:(let u := eval lazy in fq_ax_nat_ty in exact u).
+Definition ax_nat_ty :=
+  match rfq_ax_nat_ty with
+  | Success (t,_) => t
+  | _ => sRel 0
+  end.
+Definition rtax_nat_ty :=
+  ltac:(let u := eval lazy in ax_nat_ty in exact u).
+
+Definition Σi : sglobal_context := [
+  decl "nat" rtax_nat_ty
+].
+
 Fact hΣi : type_glob Σi.
 Proof.
+  Opaque max. Opaque max_sort.
   repeat (eapply type_glob_cons) ; try apply type_glob_nil.
   - constructor.
   - eexists. lazy. ittcheck.
   - repeat constructor.
     Unshelve. all: exact nAnon.
-Admitted.
+Defined.
 
 (* Now some useful lemmata *)
 
