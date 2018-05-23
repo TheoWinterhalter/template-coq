@@ -414,3 +414,66 @@ Defined.
 
 Definition type_translation {Γ t A} h {Γ'} hΓ :=
   pi2_ (pi1_ (@complete_translation Σi hΣi)) Γ t A h Γ' hΓ.
+
+
+
+(* Getting the usual nat from axiom *)
+Lemma ex_type_Nat :
+  ∑ sNat,
+    forall {Γ},
+      IT.wf Σi Γ ->
+      Σi ;;; Γ |-i sNat : sSort 0.
+Proof.
+  eexists. intros Γ hw.
+  eapply type_Pi1' ; try apply hΣi.
+  eapply IT.type_Ax with (id := "nat") ; try assumption.
+  lazy. reflexivity.
+Defined.
+
+Definition sNat := pi1 ex_type_Nat.
+Lemma type_Nat :
+  forall {Γ},
+    IT.wf Σi Γ ->
+    Σi ;;; Γ |-i sNat : sSort 0.
+Proof.
+  apply (pi2 ex_type_Nat).
+Defined.
+
+Lemma ex_type_Zero :
+  ∑ sZero,
+    forall {Γ},
+      IT.wf Σi Γ ->
+      Σi ;;; Γ |-i sZero : sNat.
+Proof.
+  eexists. intros Γ hw.
+  eapply meta_conv.
+  - eapply type_Pi2' ; try apply hΣi.
+    eapply IT.type_Ax with (id := "nat") ; try assumption.
+    lazy. reflexivity.
+  - lazy. Fail reflexivity.
+Abort.
+
+
+(* We actually want them in ETT *)
+Lemma ex_Nat :
+  ∑ sNat,
+    forall {Γ},
+      wf Σi Γ ->
+      Σi ;;; Γ |-x sNat : sSort 0.
+Proof.
+  eexists. intros Γ hw.
+  eapply type_Pi1.
+  - eapply type_Ax with (id := "nat") ; try assumption.
+    lazy. reflexivity.
+  - econstructor. assumption.
+  - admit.
+Admitted.
+
+Definition xNat := pi1 ex_Nat.
+Lemma type_xNat :
+  forall {Γ},
+    wf Σi Γ ->
+    Σi ;;; Γ |-x xNat : sSort 0.
+Proof.
+  apply (pi2 ex_Nat).
+Defined.

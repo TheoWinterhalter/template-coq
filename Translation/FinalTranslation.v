@@ -380,7 +380,7 @@ Fixpoint tsl_rec (fuel : nat) (Σ : global_context) (Γ : context) (t : sterm) {
       | Checked T => raise (UnexpectedTranslation "ProjTe" p p' T)
       | TypeError t => raise (TypingError t)
       end
-    | sAx id => myret Σ Γ (tConst ("axiom_" ++ id) [])
+    | sAx id => myret Σ Γ (tConst ("Translation.Quotes.axiom_" ++ id) [])
     end
   end.
 

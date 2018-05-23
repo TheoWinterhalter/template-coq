@@ -166,3 +166,58 @@ Make Definition coq_red_tm0 :=
               end)
       in exact t
   ).
+
+
+(*! EXAMPLE 3:
+    nat
+    It gets translated to ???.
+*)
+
+Lemma natty : Σi ;;; [] |-x xNat : sSort 0.
+Proof.
+  eapply type_xNat. econstructor.
+Defined.
+
+Definition itt_nat : sterm.
+  destruct (type_translation natty istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+(* Definition itt_nat' := ltac:(let t := eval lazy in itt_nat in exact t). *)
+
+(* Definition red_itt_tm0 := reduce itt_tm0. *)
+
+(* Definition red_itt_tm0' := ltac:(let t := eval lazy in red_itt_tm0 in exact t). *)
+
+(* Definition tc_red_tm0 : tsl_result term := *)
+(*   tsl_rec (2 ^ 18) Σ [] red_itt_tm0'. *)
+
+(* Definition tc_red_tm0' := ltac:(let t := eval lazy in tc_red_tm0 in exact t). *)
+
+(* Make Definition coq_red_tm0 := *)
+(*   ltac:( *)
+(*     let t := eval lazy in *)
+(*              (match tc_red_tm0' with *)
+(*               | Success t => t *)
+(*               | _ => tSort Universe.type0 *)
+(*               end) *)
+(*       in exact t *)
+(*   ). *)
+
+
+(* Just a test *)
+Definition tc_nat : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] sNat.
+
+Definition tc_nat' := ltac:(let t := eval lazy in tc_nat in exact t).
+(* Set Printing Depth 1000. *)
+
+(* Make Definition coq_nat := *)
+(*   ltac:( *)
+(*     let t := eval lazy in *)
+(*              (match tc_nat' with *)
+(*               | Success t => t *)
+(*               | _ => tSort Universe.type0 *)
+(*               end) *)
+(*       in exact tt *)
+(*   ). *)
