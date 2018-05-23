@@ -85,12 +85,12 @@ Definition ttaxiom_nat_ty :=
 Definition rtaxiom_nat_ty :=
   ltac:(let u := eval lazy in ttaxiom_nat_ty in exact u).
 Definition fq_ax_nat_ty :=
-  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty.
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty [] 100.
 Definition rfq_ax_nat_ty :=
   ltac:(let u := eval lazy in fq_ax_nat_ty in exact u).
 Definition ax_nat_ty :=
   match rfq_ax_nat_ty with
-  | Success t => t
+  | Success (t,_,_) => t
   | _ => sRel 0
   end.
 Definition rtax_nat_ty :=
