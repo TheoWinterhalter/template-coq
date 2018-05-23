@@ -4,11 +4,17 @@ From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
 From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
-                                ITypingLemmata ITypingAdmissible XTyping
-                                FundamentalLemma Translation Reduction
-                                FinalTranslation FullQuote.
+     ITypingInversions ITypingLemmata ITypingAdmissible XTyping
+     FundamentalLemma Translation Reduction FinalTranslation FullQuote.
 
 (* The context for Template Coq *)
+
+(* Definition axiom_nat : *)
+(*   ∑ (N : Type) (zero : N) (succ : N -> N), *)
+(*     forall P, P zero -> (forall n, P n -> P (succ n)) -> forall n, P n. *)
+(* Proof. *)
+(*   exists nat, 0, S. exact nat_rect. *)
+(* Defined. *)
 
 Definition axiom_nat_ty := ltac:(let t := type of axiom_nat in exact t).
 
@@ -64,6 +70,7 @@ Arguments Σ : simpl never.
 Open Scope string_scope.
 
 Module IT := ITyping.
+Module IL := ITypingLemmata.
 
 (* The context for ITT *)
 
@@ -127,6 +134,74 @@ Definition Σi : sglobal_context := [
   decl "nat" rtax_nat_ty
 ].
 
+(* Some admissible lemmata to do memoisation in a way. *)
+Lemma type_Prod' :
+  forall {Σ Γ n A B s1 s2},
+    Σ ;;; Γ |-i A : sSort s1 ->
+    (IT.wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-i B : sSort s2) ->
+    Σ ;;; Γ |-i sProd n A B : sSort (max_sort s1 s2).
+Proof.
+  intros Σ' Γ n A B s1 s2 hA hB.
+  eapply IT.type_Prod.
+  - assumption.
+  - apply hB. econstructor ; try eassumption.
+    eapply IL.typing_wf. eassumption.
+Defined.
+
+Lemma type_Lambda' :
+  forall {Σ Γ n n' A B t s},
+    type_glob Σ ->
+    Σ ;;; Γ |-i A : sSort s ->
+    (IT.wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-i t : B) ->
+    Σ ;;; Γ |-i sLambda n A B t : sProd n' A B.
+Proof.
+  intros Σ Γ n n' A B t s hg hA ht.
+  assert (hw : IT.wf Σ (Γ ,, A)).
+  { econstructor ; try eassumption.
+    eapply IL.typing_wf. eassumption.
+  }
+  specialize (ht hw). destruct (istype_type hg ht).
+  eapply IT.type_Lambda ; eassumption.
+Defined.
+
+Lemma type_App' :
+  forall {Σ Γ n t A B u},
+    type_glob Σ ->
+    Σ ;;; Γ |-i t : sProd n A B ->
+    Σ ;;; Γ |-i u : A ->
+    Σ ;;; Γ |-i sApp t A B u : (B{0 := u})%s.
+Proof.
+  intros Σ Γ n t A B u hg ht hu.
+  destruct (istype_type hg ht).
+  destruct (istype_type hg hu).
+  ttinv H.
+  eapply IT.type_App ; eassumption.
+Defined.
+
+Lemma type_Sum' :
+  forall {Σ Γ n A B s1 s2},
+    Σ ;;; Γ |-i A : sSort s1 ->
+    (IT.wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-i B : sSort s2) ->
+    Σ ;;; Γ |-i sSum n A B : sSort (max_sort s1 s2).
+Proof.
+  intros Σ' Γ n A B s1 s2 hA hB.
+  eapply IT.type_Sum.
+  - assumption.
+  - apply hB. econstructor ; try eassumption.
+    eapply IL.typing_wf. eassumption.
+Defined.
+
+Lemma type_Refl' :
+  forall {Σ Γ A u},
+    type_glob Σ ->
+    Σ ;;; Γ |-i u : A ->
+    Σ ;;; Γ |-i sRefl A u : sEq A u u.
+Proof.
+  intros Σ Γ A u hg h.
+  destruct (istype_type hg h).
+  eapply IT.type_Refl ; eassumption.
+Defined.
+
 (* Maybe move somewhere else *)
 Ltac ittintro :=
   lazymatch goal with
@@ -134,15 +209,15 @@ Ltac ittintro :=
     lazymatch t with
     | sRel ?n => refine (IT.type_Rel _ _ n _ _)
     | sSort _ => eapply IT.type_Sort
-    | sProd _ _ _ => eapply IT.type_Prod
-    | sLambda _ _ _ _ => eapply IT.type_Lambda
-    | sApp _ _ _ _ => eapply IT.type_App
-    | sSum _ _ _ => eapply IT.type_Sum
-    | sPair _ _ _ _ => eapply IT.type_Pair
-    | sPi1 _ _ _ => eapply IT.type_Pi1
-    | sPi2 _ _ _ => eapply IT.type_Pi2
+    | sProd _ _ _ => eapply type_Prod' ; [| intro ]
+    | sLambda _ _ _ _ => eapply type_Lambda' ; [ .. | intro ]
+    | sApp _ _ _ _ => eapply type_App'
+    | sSum _ _ _ => eapply type_Sum' ; [| intro ]
+    | sPair _ _ _ _ => eapply type_Pair'
+    | sPi1 _ _ _ => eapply type_Pi1'
+    | sPi2 _ _ _ => eapply type_Pi2'
     | sEq _ _ _ => eapply IT.type_Eq
-    | sRefl _ _ => eapply IT.type_Refl
+    | sRefl _ _ => eapply type_Refl'
     | _ => fail "No introduction rule for" t
     end
   | _ => fail "Not applicable"
@@ -152,18 +227,19 @@ Ltac ittcheck1 :=
   lazymatch goal with
   | |- ?Σ ;;; ?Γ |-i ?t : ?T =>
     first [
-      ittintro
-    | eapply meta_conv ; [ ittintro | cbn ; try reflexivity ]
+      eapply meta_conv ; [ ittintro | lazy ; try reflexivity ]
     | eapply meta_ctx_conv ; [
-        eapply meta_conv ; [ ittintro | cbn ; try reflexivity ]
+        eapply meta_conv ; [ ittintro | lazy ; try reflexivity ]
       | cbn ; try reflexivity
       ]
     ]
-  | |- IT.wf ?Σ ?Γ => econstructor
+  | |- IT.wf ?Σ ?Γ => admit
+  | |- sSort _ = sSort _ => admit
+  | |- type_glob _ => first [ assumption | constructor ]
   | _ => fail "Not applicable"
   end.
 
-Ltac ittcheck' := ittcheck1 ; try (cbn ; omega).
+Ltac ittcheck' := ittcheck1 ; try (lazy ; omega).
 
 Ltac ittcheck := repeat ittcheck'.
 
@@ -171,10 +247,9 @@ Fact hΣi : type_glob Σi.
 Proof.
   repeat (eapply type_glob_cons) ; try apply type_glob_nil.
   - constructor.
-  - eexists. lazy.
-    (* ittcheck. *)
-    admit.
+  - eexists. lazy. ittcheck.
   - repeat constructor.
+    Unshelve. all: exact nAnon.
 Admitted.
 
 (* Now some useful lemmata *)
