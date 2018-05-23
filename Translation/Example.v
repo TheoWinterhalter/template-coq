@@ -239,3 +239,46 @@ Make Definition coq_zero :=
               end)
       in exact t
   ).
+
+(*! EXAMPLE 3'':
+    succ zero
+    It gets translated to itself.
+*)
+
+Definition sNat := sAx "nat".
+Definition sZero := sAx "zero".
+Definition sSucc := sAx "succ".
+
+Definition sOne := sApp sSucc sNat sNat sZero.
+
+Lemma onety : Σi ;;; [] |-x sOne : sNat.
+Proof.
+  unfold sOne, sNat, sZero, sSucc.
+  ettcheck.
+Defined.
+
+Definition itt_one : sterm.
+  destruct (type_translation onety istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+Definition itt_one' := ltac:(let t := eval lazy in itt_one in exact t).
+
+Definition red_one := reduce itt_one'.
+
+Definition red_one' := ltac:(let t := eval lazy in red_one in exact t).
+
+Definition tc_red_one : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] red_one'.
+
+Definition tc_red_one' := ltac:(let t := eval lazy in tc_red_one in exact t).
+
+Make Definition coq_one :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_red_one' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).

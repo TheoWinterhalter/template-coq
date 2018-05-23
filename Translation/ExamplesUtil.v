@@ -12,6 +12,12 @@ From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
 Definition axiom_nat_ty := ltac:(let t := type of axiom_nat in exact t).
 Definition axiom_zero_ty := ltac:(let t := type of axiom_zero in exact t).
 Definition axiom_succ_ty := ltac:(let t := type of axiom_succ in exact t).
+Definition axiom_nat_rect_ty :=
+  ltac:(let t := type of axiom_nat_rect in exact t).
+Definition axiom_nat_rect_zero_ty :=
+  ltac:(let t := type of axiom_nat_rect_zero in exact t).
+Definition axiom_nat_rect_succ_ty :=
+  ltac:(let t := type of axiom_nat_rect_succ in exact t).
 
 (* We define a term that mentions everything that the global context should
    have. *)
@@ -52,6 +58,12 @@ Definition glob_term :=
   let _ := @axiom_zero_ty in
   let _ := @axiom_succ in
   let _ := @axiom_succ_ty in
+  let _ := @axiom_nat_rect in
+  let _ := @axiom_nat_rect_ty in
+  let _ := @axiom_nat_rect_zero in
+  let _ := @axiom_nat_rect_zero_ty in
+  let _ := @axiom_nat_rect_succ in
+  let _ := @axiom_nat_rect_succ_ty in
   Type.
 
 Quote Recursively Definition glob_prog := @glob_term.
@@ -84,22 +96,6 @@ Fixpoint Prods (L : list (name * sterm)) (T : sterm) :=
 
 Definition Arrow A B := sProd nAnon A (lift0 1 B).
 Notation "A ==> B" := (Arrow A B) (at level 20).
-
-(* Definition Σi : sglobal_context := [ *)
-(*   decl "nat" (Sums [ *)
-(*     (nNamed "nat", sSort 0) ; *)
-(*     (nNamed "zero", sRel 0) ; *)
-(*     (nNamed "succ", sRel 1 ==> sRel 1) ; *)
-(*     (nNamed "ind", Prods [ *)
-(*       (nNamed "P", sRel 3 ==> sSort 0) ; *)
-(*       (nNamed "Pz", sApp (sRel 0) (sRel 4) (sSort 0) (sRel 3)) ; *)
-(*       (nNamed "Ps", *)
-(*        sProd (nNamed "n") (sRel 5) *)
-(*              ((sApp (sRel 3) (sRel 7) (sSort 0) (sRel 0)) ==> *)
-(*               (sApp ? ? ? ?))) *)
-(*     ] ?) *)
-(*   ] ?) *)
-(* ]. *)
 
 (* Some admissible lemmata to do memoisation in a way. *)
 Lemma type_Prod' :
@@ -272,7 +268,47 @@ Definition ax_nat_ty :=
 Definition rtax_nat_ty :=
   ltac:(let u := eval lazy in ax_nat_ty in exact u).
 
+(* Getting axiom_nat_rect as an axiom for ITT/ETT *)
+Quote Recursively Definition taxiom_nat_rect_ty := axiom_nat_rect_ty.
+Definition ttaxiom_nat_rect_ty :=
+  let t := Datatypes.snd taxiom_nat_rect_ty in
+  match hnf Σ [] t with
+  | Checked t => t
+  | _ => tRel 0
+  end.
+Definition rtaxiom_nat_rect_ty :=
+  ltac:(let u := eval lazy in ttaxiom_nat_rect_ty in exact u).
+
+Variable axf' : nat -> sort.
+
+Definition axf (i : nat) :=
+  match i with
+  | 1 => 1
+  | _ => 0
+  end.
+
+Definition fq_ax_nat_rect_ty :=
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_rect_ty axf 0.
+Definition rfq_ax_nat_rect_ty :=
+  ltac:(let u := eval lazy in fq_ax_nat_rect_ty in exact u).
+Definition ax_nat_rect_ty :=
+  match rfq_ax_nat_rect_ty with
+  | Success (t,_) => t
+  | _ => sRel 0
+  end.
+Definition rtax_nat_rect_ty :=
+  ltac:(let u := eval lazy in ax_nat_rect_ty in exact u).
+
+
+
+
+
+(* The global context *)
+
 Definition Σi : sglobal_context := [
+  (* We probably need to find the right instances for sorts *)
+  (* decl "nat_rect" rtax_nat_rect_ty ; *)
+  decl "succ" (sAx "nat" ==> sAx "nat") ;
   decl "zero" (sAx "nat") ;
   decl "nat" rtax_nat_ty
 ].
@@ -282,6 +318,8 @@ Proof.
   repeat glob ; lazy.
   - ittcheck.
   - ittcheck.
+  - ittcheck.
+  (* - ittcheck. *)
 Defined.
 
 (* Now some useful lemmata *)

@@ -553,3 +553,12 @@ Arguments vcons {_} _ _ _.
 Definition axiom_nat := nat.
 Definition axiom_zero := 0.
 Definition axiom_succ := S.
+Definition axiom_nat_rect := nat_rect.
+
+Lemma axiom_nat_rect_zero :
+  forall P Pz Ps, nat_rect P Pz Ps 0 = Pz.
+Proof. reflexivity. Defined.
+
+Lemma axiom_nat_rect_succ :
+  forall P Pz Ps n, nat_rect P Pz Ps (S n) = Ps n (nat_rect P Pz Ps n).
+Proof. reflexivity. Defined.
