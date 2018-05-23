@@ -9,14 +9,9 @@ From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
 
 (* The context for Template Coq *)
 
-(* Definition axiom_nat : *)
-(*   ∑ (N : Type) (zero : N) (succ : N -> N), *)
-(*     forall P, P zero -> (forall n, P n -> P (succ n)) -> forall n, P n. *)
-(* Proof. *)
-(*   exists nat, 0, S. exact nat_rect. *)
-(* Defined. *)
-
 Definition axiom_nat_ty := ltac:(let t := type of axiom_nat in exact t).
+Definition axiom_zero_ty := ltac:(let t := type of axiom_zero in exact t).
+Definition axiom_succ_ty := ltac:(let t := type of axiom_succ in exact t).
 
 (* We define a term that mentions everything that the global context should
    have. *)
@@ -51,13 +46,12 @@ Definition glob_term :=
   let _ := @eq_to_heq in
   let _ := @heq_type_eq in
   (* More for the sake of examples *)
-  let _ := @nat in
-  let _ := @bool in
-  let _ := @vec in
   let _ := @axiom_nat in
   let _ := @axiom_nat_ty in
-  let _ := @axiom_bool in
-  let _ := @axiom_vec in
+  let _ := @axiom_zero in
+  let _ := @axiom_zero_ty in
+  let _ := @axiom_succ in
+  let _ := @axiom_succ_ty in
   Type.
 
 Quote Recursively Definition glob_prog := @glob_term.
@@ -191,10 +185,35 @@ Ltac ittintro :=
     | sPi2 _ _ _ => eapply type_Pi2'
     | sEq _ _ _ => eapply IT.type_Eq
     | sRefl _ _ => eapply type_Refl'
+    | sAx _ => eapply IT.type_Ax ; [| lazy ; try reflexivity ]
     | _ => fail "No introduction rule for" t
     end
   | _ => fail "Not applicable"
   end.
+
+Lemma type_glob_cons' :
+  forall {Σ d},
+    type_glob Σ ->
+    fresh_glob (dname d) Σ ->
+    (type_glob Σ -> isType Σ [] (dtype d)) ->
+    Xcomp (dtype d) ->
+    type_glob (d :: Σ).
+Proof.
+  intros Σ d hg hf hd hx.
+  specialize (hd hg).
+  econstructor ; eassumption.
+Defined.
+
+Ltac glob :=
+  first [
+    eapply type_glob_nil
+  | eapply type_glob_cons' ; [
+      idtac
+    | repeat (lazy ; econstructor) ; lazy ; try discriminate
+    | intro ; eexists
+    | repeat econstructor
+    ]
+  ].
 
 Ltac ittcheck1 :=
   lazymatch goal with
@@ -208,7 +227,7 @@ Ltac ittcheck1 :=
     ]
   | |- IT.wf ?Σ ?Γ => first [ assumption | econstructor ]
   | |- sSort _ = sSort _ => first [ lazy ; reflexivity | shelve ]
-  | |- type_glob _ => first [ assumption | constructor ]
+  | |- type_glob _ => first [ assumption | glob ]
   | _ => fail "Not applicable"
   end.
 
@@ -227,22 +246,22 @@ Definition ttaxiom_nat_ty :=
 Definition rtaxiom_nat_ty :=
   ltac:(let u := eval lazy in ttaxiom_nat_ty in exact u).
 
-  (* Variable axf' : nat -> sort. *)
+(* Variable axf' : nat -> sort. *)
 
-Definition axf (i : nat) :=
-  match i with
-  | 4 => 1
-  | 15 => 1
-  | 69 => 1
-  | 70 => 1
-  | 71 => 1
-  | 3 => 1
-  | 2 => 1
-  | 72 => 1
-  | i => 0
-  end.
+(* Definition axf (i : nat) := *)
+(*   match i with *)
+(*   | 4 => 1 *)
+(*   | 15 => 1 *)
+(*   | 69 => 1 *)
+(*   | 70 => 1 *)
+(*   | 71 => 1 *)
+(*   | 3 => 1 *)
+(*   | 2 => 1 *)
+(*   | 72 => 1 *)
+(*   | i => 0 *)
+(*   end. *)
 Definition fq_ax_nat_ty :=
-  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty axf 0.
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_ty (fun _ => 0) 0.
 Definition rfq_ax_nat_ty :=
   ltac:(let u := eval lazy in fq_ax_nat_ty in exact u).
 Definition ax_nat_ty :=
@@ -254,17 +273,15 @@ Definition rtax_nat_ty :=
   ltac:(let u := eval lazy in ax_nat_ty in exact u).
 
 Definition Σi : sglobal_context := [
+  decl "zero" (sAx "nat") ;
   decl "nat" rtax_nat_ty
 ].
 
 Fact hΣi : type_glob Σi.
 Proof.
-  Opaque max. Opaque max_sort.
-  repeat (eapply type_glob_cons) ; try apply type_glob_nil.
-  - constructor.
-  - eexists. lazy. ittcheck.
-  - repeat constructor.
-    Unshelve. all: exact nAnon.
+  repeat glob ; lazy.
+  - ittcheck.
+  - ittcheck.
 Defined.
 
 (* Now some useful lemmata *)
@@ -417,63 +434,109 @@ Definition type_translation {Γ t A} h {Γ'} hΓ :=
 
 
 
-(* Getting the usual nat from axiom *)
-Lemma ex_type_Nat :
-  ∑ sNat,
-    forall {Γ},
-      IT.wf Σi Γ ->
-      Σi ;;; Γ |-i sNat : sSort 0.
+
+
+
+
+
+(* Same for ETT *)
+Lemma xtype_Prod' :
+  forall {Σ Γ n A B s1 s2},
+    Σ ;;; Γ |-x A : sSort s1 ->
+    (wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-x B : sSort s2) ->
+    Σ ;;; Γ |-x sProd n A B : sSort (max_sort s1 s2).
 Proof.
-  eexists. intros Γ hw.
-  eapply type_Pi1' ; try apply hΣi.
-  eapply IT.type_Ax with (id := "nat") ; try assumption.
-  lazy. reflexivity.
+  intros Σ Γ n A B s1 s2 hA hB.
+  eapply type_Prod.
+  - assumption.
+  - apply hB. econstructor ; try eassumption.
+    eapply typing_wf. eassumption.
 Defined.
 
-Definition sNat := pi1 ex_type_Nat.
-Lemma type_Nat :
-  forall {Γ},
-    IT.wf Σi Γ ->
-    Σi ;;; Γ |-i sNat : sSort 0.
+Lemma xtype_Lambda' :
+  forall {Σ Γ n n' A B t s1 s2},
+    Σ ;;; Γ |-x A : sSort s1 ->
+    (wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-x B : sSort s2) ->
+    (wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-x t : B) ->
+    Σ ;;; Γ |-x sLambda n A B t : sProd n' A B.
 Proof.
-  apply (pi2 ex_type_Nat).
+  intros Σ Γ n n' A B t s1 s2 hA hB ht.
+  assert (hw : wf Σ (Γ ,, A)).
+  { econstructor ; try eassumption.
+    eapply typing_wf. eassumption.
+  }
+  specialize (ht hw). specialize (hB hw).
+  eapply type_Lambda ; eassumption.
 Defined.
 
-Lemma ex_type_Zero :
-  ∑ sZero,
-    forall {Γ},
-      IT.wf Σi Γ ->
-      Σi ;;; Γ |-i sZero : sNat.
+Lemma xtype_App' :
+  forall {Σ Γ n t A B u s1 s2},
+    Σ ;;; Γ |-x t : sProd n A B ->
+    Σ ;;; Γ |-x u : A ->
+    Σ ;;; Γ |-x A : sSort s1 ->
+    (wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-x B : sSort s2) ->
+    Σ ;;; Γ |-x sApp t A B u : (B{0 := u})%s.
 Proof.
-  eexists. intros Γ hw.
-  eapply meta_conv.
-  - eapply type_Pi2' ; try apply hΣi.
-    eapply IT.type_Ax with (id := "nat") ; try assumption.
-    lazy. reflexivity.
-  - lazy. Fail reflexivity.
-Abort.
-
-
-(* We actually want them in ETT *)
-Lemma ex_Nat :
-  ∑ sNat,
-    forall {Γ},
-      wf Σi Γ ->
-      Σi ;;; Γ |-x sNat : sSort 0.
-Proof.
-  eexists. intros Γ hw.
-  eapply type_Pi1.
-  - eapply type_Ax with (id := "nat") ; try assumption.
-    lazy. reflexivity.
-  - econstructor. assumption.
-  - admit.
-Admitted.
-
-Definition xNat := pi1 ex_Nat.
-Lemma type_xNat :
-  forall {Γ},
-    wf Σi Γ ->
-    Σi ;;; Γ |-x xNat : sSort 0.
-Proof.
-  apply (pi2 ex_Nat).
+  intros Σ Γ n t A B u s1 s2 ht hu hA hB.
+  assert (hw : wf Σ (Γ ,, A)).
+  { econstructor ; try eassumption.
+    eapply typing_wf. eassumption.
+  }
+  specialize (hB hw).
+  eapply type_App ; eassumption.
 Defined.
+
+Lemma xtype_Sum' :
+  forall {Σ Γ n A B s1 s2},
+    Σ ;;; Γ |-x A : sSort s1 ->
+    (wf Σ (Γ ,, A) -> Σ ;;; Γ ,, A |-x B : sSort s2) ->
+    Σ ;;; Γ |-x sSum n A B : sSort (max_sort s1 s2).
+Proof.
+  intros Σ' Γ n A B s1 s2 hA hB.
+  eapply type_Sum.
+  - assumption.
+  - apply hB. econstructor ; try eassumption.
+    eapply typing_wf. eassumption.
+Defined.
+
+(* Maybe move somewhere else *)
+Ltac ettintro :=
+  lazymatch goal with
+  | |- ?Σ ;;; ?Γ |-x ?t : ?T =>
+    lazymatch t with
+    | sRel ?n => refine (type_Rel _ _ n _ _)
+    | sSort _ => eapply type_Sort
+    | sProd _ _ _ => eapply xtype_Prod' ; [| intro ]
+    | sLambda _ _ _ _ => eapply xtype_Lambda' ; [ .. | intro | intro ]
+    | sApp _ _ _ _ => eapply xtype_App' ; [ .. | intro ]
+    | sSum _ _ _ => eapply xtype_Sum' ; [| intro ]
+    | sPair _ _ _ _ => eapply type_Pair
+    | sPi1 _ _ _ => eapply type_Pi1
+    | sPi2 _ _ _ => eapply type_Pi2
+    | sEq _ _ _ => eapply type_Eq
+    | sRefl _ _ => eapply type_Refl
+    | sAx _ => eapply type_Ax ; [| lazy ; try reflexivity ]
+    | _ => fail "No introduction rule for" t
+    end
+  | _ => fail "Not applicable"
+  end.
+
+Ltac ettcheck1 :=
+  lazymatch goal with
+  | |- ?Σ ;;; ?Γ |-x ?t : ?T =>
+    first [
+      eapply xmeta_conv ; [ ettintro | lazy ; try reflexivity ]
+    (* | eapply meta_ctx_conv ; [ *)
+    (*     eapply meta_conv ; [ ettintro | lazy ; try reflexivity ] *)
+    (*   | cbn ; try reflexivity *)
+    (*   ] *)
+    ]
+  | |- wf ?Σ ?Γ => first [ assumption | econstructor ]
+  | |- sSort _ = sSort _ => first [ lazy ; reflexivity | shelve ]
+  | |- type_glob _ => first [ assumption | glob ]
+  | _ => fail "Not applicable"
+  end.
+
+Ltac ettcheck' := ettcheck1 ; try (lazy ; omega).
+
+Ltac ettcheck := repeat ettcheck'.

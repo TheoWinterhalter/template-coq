@@ -76,12 +76,13 @@ Fixpoint fullquote (fuel : nat) (Σ : global_context) (Γ : context) (t : term)
       B' <- fullquote fuel Σ Γ B sf si ;;
       let '(B', si) := B' in
       ret (sSum nAnon A' (sApp (lift0 1 B') (lift0 1 A') (sSort (sf si)) (sRel 0)), S si)
-    | tApp (tInd {| inductive_mind := "Translation.util.pp_prod"; inductive_ind := 0 |} []) [ A ; B ] =>
-      A' <- fullquote fuel Σ Γ A sf si ;;
-      let '(A', si) := A' in
-      B' <- fullquote fuel Σ Γ B sf si ;;
-      let '(B', si) := B' in
-      ret (sSum nAnon A' (lift0 1 B'), si)
+    (* We cannot quote both ∑ and * to Σ-types *)
+    (* | tApp (tInd {| inductive_mind := "Translation.util.pp_prod"; inductive_ind := 0 |} []) [ A ; B ] => *)
+    (*   A' <- fullquote fuel Σ Γ A sf si ;; *)
+    (*   let '(A', si) := A' in *)
+    (*   B' <- fullquote fuel Σ Γ B sf si ;; *)
+    (*   let '(B', si) := B' in *)
+    (*   ret (sSum nAnon A' (lift0 1 B'), si) *)
     | tApp (tInd {| inductive_mind := "Coq.Init.Logic.eq"; inductive_ind := 0 |} []) [ A ; u ; v ] =>
       A' <- fullquote fuel Σ Γ A sf si ;;
       let '(A', si) := A' in

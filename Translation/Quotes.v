@@ -513,39 +513,43 @@ Inductive vec A : nat -> Type :=
 Arguments vnil {_}.
 Arguments vcons {_} _ _ _.
 
-Definition axiom_nat :
-  ∑ (N : Type) (zero : N) (succ : N -> N)
-    (ind : forall P, P zero -> (forall n, P n -> P (succ n)) -> forall n, P n),
-    (forall P Pz Ps, ind P Pz Ps zero = Pz) *
-    (forall P Pz Ps n, ind P Pz Ps (succ n) = Ps n (ind P Pz Ps n)).
-Proof.
-  exists nat, 0, S, nat_rect. split ; reflexivity.
-Defined.
+(* Definition axiom_nat : *)
+(*   ∑ (N : Type) (zero : N) (succ : N -> N) *)
+(*     (ind : forall P, P zero -> (forall n, P n -> P (succ n)) -> forall n, P n), *)
+(*     (forall P Pz Ps, ind P Pz Ps zero = Pz) * *)
+(*     (forall P Pz Ps n, ind P Pz Ps (succ n) = Ps n (ind P Pz Ps n)). *)
+(* Proof. *)
+(*   exists nat, 0, S, nat_rect. split ; reflexivity. *)
+(* Defined. *)
 
-Definition ax_nat := pi1 axiom_nat.
-Definition ax_zero := pi1 (pi2 axiom_nat).
-Definition ax_S := pi1 (pi2 (pi2 axiom_nat)).
+(* Definition ax_nat := pi1 axiom_nat. *)
+(* Definition ax_zero := pi1 (pi2 axiom_nat). *)
+(* Definition ax_S := pi1 (pi2 (pi2 axiom_nat)). *)
 
-Definition axiom_bool :
-  ∑ (B : Type) (T : B) (F : B)
-    (ind : forall P, P T -> P F -> forall b, P b),
-    (forall P PT PF, ind P PT PF T = PT) *
-    (forall P PT PF, ind P PT PF F = PF).
-Proof.
-  exists bool, true, false, bool_rect. split ; reflexivity.
-Defined.
+(* Definition axiom_bool : *)
+(*   ∑ (B : Type) (T : B) (F : B) *)
+(*     (ind : forall P, P T -> P F -> forall b, P b), *)
+(*     (forall P PT PF, ind P PT PF T = PT) * *)
+(*     (forall P PT PF, ind P PT PF F = PF). *)
+(* Proof. *)
+(*   exists bool, true, false, bool_rect. split ; reflexivity. *)
+(* Defined. *)
 
-Definition axiom_vec :
-  ∑ (V : forall A, ax_nat -> Type)
-    (vnil : forall A, V A ax_zero)
-    (vcons : forall A, A -> forall n, V A n -> V A (ax_S n))
-    (ind : forall A (P : forall n, V A n -> Type),
-        P ax_zero (vnil A) ->
-        (forall a n v, P n v -> P (ax_S n) (vcons A a n v)) ->
-        forall n v, P n v),
-    (forall A P Pz Ps, ind A P Pz Ps ax_zero (vnil A) = Pz) *
-    (forall A P Pz Ps a n v,
-        ind A P Pz Ps (ax_S n) (vcons A a n v) = Ps a n v (ind A P Pz Ps n v)).
-Proof.
-  exists vec, @vnil, @vcons, vec_rect. split ; reflexivity.
-Defined.
+(* Definition axiom_vec : *)
+(*   ∑ (V : forall A, ax_nat -> Type) *)
+(*     (vnil : forall A, V A ax_zero) *)
+(*     (vcons : forall A, A -> forall n, V A n -> V A (ax_S n)) *)
+(*     (ind : forall A (P : forall n, V A n -> Type), *)
+(*         P ax_zero (vnil A) -> *)
+(*         (forall a n v, P n v -> P (ax_S n) (vcons A a n v)) -> *)
+(*         forall n v, P n v), *)
+(*     (forall A P Pz Ps, ind A P Pz Ps ax_zero (vnil A) = Pz) * *)
+(*     (forall A P Pz Ps a n v, *)
+(*         ind A P Pz Ps (ax_S n) (vcons A a n v) = Ps a n v (ind A P Pz Ps n v)). *)
+(* Proof. *)
+(*   exists vec, @vnil, @vcons, vec_rect. split ; reflexivity. *)
+(* Defined. *)
+
+Definition axiom_nat := nat.
+Definition axiom_zero := 0.
+Definition axiom_succ := S.
