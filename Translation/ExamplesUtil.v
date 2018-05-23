@@ -233,8 +233,8 @@ Ltac ittcheck1 :=
       | cbn ; try reflexivity
       ]
     ]
-  | |- IT.wf ?Σ ?Γ => admit
-  | |- sSort _ = sSort _ => admit
+  | |- IT.wf ?Σ ?Γ => first [ assumption | econstructor ]
+  | |- sSort _ = sSort _ => lazy ; first [ reflexivity | admit ]
   | |- type_glob _ => first [ assumption | constructor ]
   | _ => fail "Not applicable"
   end.
