@@ -20,7 +20,7 @@ ITypingAdmissible.v
 PackLifts.v
 FundamentalLemma.v
 Translation.v
-Reduction.v
+Pruning.v
 Quotes.v
 FinalTranslation.v
 FullQuote.v

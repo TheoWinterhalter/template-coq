@@ -5,7 +5,7 @@ From Equations Require Import Equations DepElimDec.
 From Template Require Import utils Ast LiftSubst Typing Checker Template.
 From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
      ITypingInversions ITypingLemmata ITypingAdmissible XTyping
-     FundamentalLemma Translation Reduction FinalTranslation FullQuote.
+     FundamentalLemma Translation Pruning FinalTranslation FullQuote.
 
 (* The context for Template Coq *)
 
