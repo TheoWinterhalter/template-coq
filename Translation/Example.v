@@ -87,7 +87,7 @@ Definition itt_tm' := ltac:(let t := eval lazy in itt_tm in exact t).
 
 (* We simplify the produced term *)
 
-Definition red_itt_tm := reduce itt_tm'.
+Definition red_itt_tm := prune itt_tm'.
 
 Definition red_itt_tm' := ltac:(let t := eval lazy in red_itt_tm in exact t).
 
@@ -148,7 +148,7 @@ Defined.
 
 Definition itt_tm0' := ltac:(let t := eval lazy in itt_tm0 in exact t).
 
-Definition red_itt_tm0 := reduce itt_tm0.
+Definition red_itt_tm0 := prune itt_tm0.
 
 Definition red_itt_tm0' := ltac:(let t := eval lazy in red_itt_tm0 in exact t).
 
@@ -185,7 +185,7 @@ Defined.
 
 Definition itt_nat' := ltac:(let t := eval lazy in itt_nat in exact t).
 
-Definition red_nat := reduce itt_nat'.
+Definition red_nat := prune itt_nat'.
 
 Definition red_nat' := ltac:(let t := eval lazy in red_nat in exact t).
 
@@ -221,7 +221,7 @@ Defined.
 
 Definition itt_zero' := ltac:(let t := eval lazy in itt_zero in exact t).
 
-Definition red_zero := reduce itt_zero'.
+Definition red_zero := prune itt_zero'.
 
 Definition red_zero' := ltac:(let t := eval lazy in red_zero in exact t).
 
@@ -265,7 +265,7 @@ Defined.
 
 Definition itt_one' := ltac:(let t := eval lazy in itt_one in exact t).
 
-Definition red_one := reduce itt_one'.
+Definition red_one := prune itt_one'.
 
 Definition red_one' := ltac:(let t := eval lazy in red_one in exact t).
 
@@ -287,7 +287,7 @@ Make Definition coq_one :=
 
 (*! EXAMPLE 4.1:
     vcons one zero vnil
-    It doesn't get translated properly?
+    It gets translated to itself (but checking takes a long time!).
 *)
 
 Open Scope type_scope.
@@ -327,7 +327,7 @@ Defined.
 
 Definition itt_vtest' := ltac:(let t := eval lazy in itt_vtest in exact t).
 
-Definition red_vtest := reduce itt_vtest'.
+Definition red_vtest := prune itt_vtest'.
 
 Definition red_vtest' := ltac:(let t := eval lazy in red_vtest in exact t).
 
