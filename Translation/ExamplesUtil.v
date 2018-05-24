@@ -2,7 +2,7 @@
 
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
-From Template Require Import Ast LiftSubst Typing Checker Template.
+From Template Require Import utils Ast LiftSubst Typing Checker Template.
 From Translation Require Import util Quotes SAst SLiftSubst SCommon ITyping
      ITypingInversions ITypingLemmata ITypingAdmissible XTyping
      FundamentalLemma Translation Reduction FinalTranslation FullQuote.
@@ -97,6 +97,7 @@ Definition Σ : global_context :=
 Arguments Σ : simpl never.
 
 Open Scope string_scope.
+Open Scope s_scope.
 
 Module IT := ITyping.
 Module IL := ITypingLemmata.
@@ -105,16 +106,31 @@ Module IL := ITypingLemmata.
 
 Definition decl := Build_glob_decl.
 
-Fixpoint Sums (L : list (name * sterm)) (T : sterm) :=
+Definition nctx := list (name * sterm).
+
+Fixpoint Sums (L : nctx) (T : sterm) :=
   match L with
   | (na,A) :: L => sSum na A (Sums L T)
   | [] => T
   end.
 
-Fixpoint Prods (L : list (name * sterm)) (T : sterm) :=
+Fixpoint Prods (L : nctx) (T : sterm) :=
   match L with
   | (na,A) :: L => sProd na A (Prods L T)
   | [] => T
+  end.
+
+Definition subst_nctx u (L : nctx) :=
+  map_i (fun i '(nx, A) => (nx, A{ i := u })) L.
+
+Definition substn_nctx u n (L : nctx) :=
+  map_i_aux (fun i '(nx, A) => (nx, A{ i := u })) n L.
+
+Fixpoint Apps (f : sterm) (L : nctx) (T : sterm) (l : list sterm) : sterm :=
+  match L, l with
+  | (nx,A) :: L, u :: l =>
+    Apps (sApp f A (Prods L T) u) (subst_nctx u L) (T{ #|L| := u }) l
+  | _,_ => f
   end.
 
 Definition Arrow A B := sProd nAnon A (lift0 1 B).

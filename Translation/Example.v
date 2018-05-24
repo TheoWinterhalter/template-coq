@@ -5,7 +5,7 @@
 From Coq Require Import Bool String List BinPos Compare_dec Omega.
 From Equations Require Import Equations DepElimDec.
 From Template Require Import Ast LiftSubst Typing Checker Template.
-From Translation Require Import SAst SLiftSubst SCommon ITyping
+From Translation Require Import util SAst SLiftSubst SCommon ITyping
                                 ITypingLemmata ITypingAdmissible XTyping
                                 Translation Reduction FinalTranslation
                                 ExamplesUtil.
@@ -247,13 +247,14 @@ Make Definition coq_zero :=
 
 Definition sNat := sAx "nat".
 Definition sZero := sAx "zero".
-Definition sSucc := sAx "succ".
+Definition sSucc n :=
+  sApp (sAx "succ") sNat sNat n.
 
-Definition sOne := sApp sSucc sNat sNat sZero.
+Definition sOne := sSucc sZero.
 
 Lemma onety : Σi ;;; [] |-x sOne : sNat.
 Proof.
-  unfold sOne, sNat, sZero, sSucc.
+  unfold sOne, sSucc, sNat, sZero.
   ettcheck.
 Defined.
 
@@ -277,6 +278,68 @@ Make Definition coq_one :=
   ltac:(
     let t := eval lazy in
              (match tc_red_one' with
+              | Success t => t
+              | _ => tSort Universe.type0
+              end)
+      in exact t
+  ).
+
+
+(*! EXAMPLE 4.1:
+    vcons one zero vnil
+    It doesn't get translated properly?
+*)
+
+Open Scope type_scope.
+
+Definition sVec A n :=
+  Apps (sAx "vec") [ (nNamed "A", sSort 0) ; (nAnon, sNat) ] (sSort 0) [ A ; n ].
+
+Definition sVnil A :=
+  sApp (sAx "vnil")
+       (sSort 0)
+       (sVec (sRel 0) sZero)
+       A.
+
+Definition sVcons A a n v :=
+  Apps
+    (sAx "vcons")
+    [ (nNamed "A", sSort 0) ;
+      (nAnon, sRel 0) ;
+      (nNamed "n", sNat) ;
+      (nAnon, sVec (sRel 2) (sRel 0))
+    ]
+    (sVec (sRel 3) (sSucc (sRel 1)))
+    [ A ; a ; n ; v ].
+
+Definition vtest := sVcons sNat sOne sZero (sVnil sNat).
+
+Lemma vtestty : Σi ;;; [] |-x vtest : sVec sNat sOne.
+Proof.
+  unfold vtest, sVcons, sVec, sVnil, sOne, sSucc, sNat, sZero. lazy.
+  ettcheck.
+Defined.
+
+Definition itt_vtest : sterm.
+  destruct (type_translation vtestty istrans_nil) as [A [t [_ h]]].
+  exact t.
+Defined.
+
+Definition itt_vtest' := ltac:(let t := eval lazy in itt_vtest in exact t).
+
+Definition red_vtest := reduce itt_vtest'.
+
+Definition red_vtest' := ltac:(let t := eval lazy in red_vtest in exact t).
+
+Definition tc_red_vtest : tsl_result term :=
+  tsl_rec (2 ^ 18) Σ [] red_vtest'.
+
+Definition tc_red_vtest' := ltac:(let t := eval lazy in tc_red_vtest in exact t).
+
+Make Definition coq_vtest :=
+  ltac:(
+    let t := eval lazy in
+             (match tc_red_vtest' with
               | Success t => t
               | _ => tSort Universe.type0
               end)
