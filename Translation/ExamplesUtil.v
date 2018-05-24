@@ -279,16 +279,16 @@ Definition ttaxiom_nat_rect_ty :=
 Definition rtaxiom_nat_rect_ty :=
   ltac:(let u := eval lazy in ttaxiom_nat_rect_ty in exact u).
 
-Variable axf' : nat -> sort.
+(* Variable axf' : nat -> sort. *)
 
-Definition axf (i : nat) :=
-  match i with
-  | 1 => 1
-  | _ => 0
-  end.
+(* Maybe we shouldn't use 0 for all sorts. *)
+(* Definition axf (i : nat) := *)
+(*   match i with *)
+(*   | i => 0 *)
+(*   end. *)
 
 Definition fq_ax_nat_rect_ty :=
-  fullquote (2 ^ 18) Σ [] rtaxiom_nat_rect_ty axf 0.
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_rect_ty (fun _ => 0) 0.
 Definition rfq_ax_nat_rect_ty :=
   ltac:(let u := eval lazy in fq_ax_nat_rect_ty in exact u).
 Definition ax_nat_rect_ty :=
@@ -306,8 +306,7 @@ Definition rtax_nat_rect_ty :=
 (* The global context *)
 
 Definition Σi : sglobal_context := [
-  (* We probably need to find the right instances for sorts *)
-  (* decl "nat_rect" rtax_nat_rect_ty ; *)
+  decl "nat_rect" rtax_nat_rect_ty ;
   decl "succ" (sAx "nat" ==> sAx "nat") ;
   decl "zero" (sAx "nat") ;
   decl "nat" rtax_nat_ty
@@ -319,7 +318,7 @@ Proof.
   - ittcheck.
   - ittcheck.
   - ittcheck.
-  (* - ittcheck. *)
+  - ittcheck.
 Defined.
 
 (* Now some useful lemmata *)
