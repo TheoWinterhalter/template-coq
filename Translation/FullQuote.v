@@ -89,6 +89,8 @@ Fixpoint fullquote (fuel : nat) (Σ : global_context) (Γ : context) (t : term)
       ret (sAx "vnil", si)
     | tConstruct {| inductive_mind := "Translation.Quotes.vec"; inductive_ind := 0 |} 1 [] =>
       ret (sAx "vcons", si)
+    | tConst "Translation.Quotes.vec_rect" [] =>
+      ret (sAx "vec_rect", si)
     (* Resuming *)
     | tApp (tInd {| inductive_mind := "Translation.util.pp_sigT"; inductive_ind := 0 |} []) [ A ; B ] =>
       A' <- fullquote fuel Σ Γ A sf si ;;

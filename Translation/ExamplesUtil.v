@@ -492,10 +492,36 @@ Definition rtax_vec_rect_vnil_ty :=
 
 
 
+(* axiom_vec_rect_vcons *)
+Quote Recursively Definition taxiom_vec_rect_vcons_ty := axiom_vec_rect_vcons_ty.
+Definition ttaxiom_vec_rect_vcons_ty :=
+  let t := Datatypes.snd taxiom_vec_rect_vcons_ty in
+  match hnf Σ [] t with
+  | Checked t => t
+  | _ => tRel 0
+  end.
+Definition rtaxiom_vec_rect_vcons_ty :=
+  ltac:(let u := eval lazy in ttaxiom_vec_rect_vcons_ty in exact u).
+Definition fq_ax_vec_rect_vcons_ty :=
+  fullquote (2 ^ 18) Σ [] rtaxiom_vec_rect_vcons_ty (fun _ => 0) 0.
+Definition rfq_ax_vec_rect_vcons_ty :=
+  ltac:(let u := eval lazy in fq_ax_vec_rect_vcons_ty in exact u).
+Definition ax_vec_rect_vcons_ty :=
+  match rfq_ax_vec_rect_vcons_ty with
+  | Success (t,_) => t
+  | _ => sRel 0
+  end.
+Definition rtax_vec_rect_vcons_ty :=
+  ltac:(let u := eval lazy in ax_vec_rect_vcons_ty in exact u).
+
+
+
 
 (* The global context *)
 
 Definition Σi : sglobal_context := [
+  decl "vec_rect_vcons" rtax_vec_rect_vcons_ty ;
+  decl "vec_rect_vnil" rtax_vec_rect_vnil_ty ;
   decl "vec_rect" rtax_vec_rect_ty ;
   decl "vcons" rtax_vcons_ty ;
   decl "vnil" rtax_vnil_ty ;
@@ -511,6 +537,8 @@ Definition Σi : sglobal_context := [
 Fact hΣi : type_glob Σi.
 Proof.
   repeat glob ; lazy.
+  - ittcheck.
+  - ittcheck.
   - ittcheck.
   - ittcheck.
   - ittcheck.
