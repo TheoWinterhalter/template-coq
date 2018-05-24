@@ -70,13 +70,20 @@ Fixpoint fullquote (fuel : nat) (Σ : global_context) (Γ : context) (t : term)
         ret (sLambda nx A' B' t', si)
       | TypeError e => raise (TypingError "Lambda" e (Γ ,, vass nx A) t)
       end
-    (* The 3 following examples should be handled more generically? *)
+    (* The following examples should be handled more generically? *)
     | tInd {| inductive_mind := "Coq.Init.Datatypes.nat"; inductive_ind := 0 |} [] =>
       ret (sAx "nat", si)
     | tConstruct {| inductive_mind := "Coq.Init.Datatypes.nat"; inductive_ind := 0 |} 0 [] =>
       ret (sAx "zero", si)
     | tConstruct {| inductive_mind := "Coq.Init.Datatypes.nat"; inductive_ind := 0 |} 1 [] =>
       ret (sAx "succ", si)
+    | tConst "Coq.Init.Datatypes.nat_rect" [] =>
+      ret (sAx "nat_rect", si)
+    | tConst "Coq.Init.Datatypes.nat_rect_zero" [] =>
+      ret (sAx "nat_rect_zero", si)
+    | tConst "Coq.Init.Datatypes.nat_rect_succ" [] =>
+      ret (sAx "nat_rect_succ", si)
+    (* Resuming *)
     | tApp (tInd {| inductive_mind := "Translation.util.pp_sigT"; inductive_ind := 0 |} []) [ A ; B ] =>
       A' <- fullquote fuel Σ Γ A sf si ;;
       let '(A', si) := A' in

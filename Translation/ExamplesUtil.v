@@ -301,11 +301,60 @@ Definition rtax_nat_rect_ty :=
 
 
 
+(* axiom_nat_rect_zero *)
+Quote Recursively Definition taxiom_nat_rect_zero_ty := axiom_nat_rect_zero_ty.
+Definition ttaxiom_nat_rect_zero_ty :=
+  let t := Datatypes.snd taxiom_nat_rect_zero_ty in
+  match hnf Σ [] t with
+  | Checked t => t
+  | _ => tRel 0
+  end.
+Definition rtaxiom_nat_rect_zero_ty :=
+  ltac:(let u := eval lazy in ttaxiom_nat_rect_zero_ty in exact u).
+Definition fq_ax_nat_rect_zero_ty :=
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_rect_zero_ty (fun _ => 0) 0.
+Definition rfq_ax_nat_rect_zero_ty :=
+  ltac:(let u := eval lazy in fq_ax_nat_rect_zero_ty in exact u).
+Definition ax_nat_rect_zero_ty :=
+  match rfq_ax_nat_rect_zero_ty with
+  | Success (t,_) => t
+  | _ => sRel 0
+  end.
+Definition rtax_nat_rect_zero_ty :=
+  ltac:(let u := eval lazy in ax_nat_rect_zero_ty in exact u).
+
+
+
+(* axiom_nat_rect_succ *)
+Quote Recursively Definition taxiom_nat_rect_succ_ty := axiom_nat_rect_succ_ty.
+Definition ttaxiom_nat_rect_succ_ty :=
+  let t := Datatypes.snd taxiom_nat_rect_succ_ty in
+  match hnf Σ [] t with
+  | Checked t => t
+  | _ => tRel 0
+  end.
+Definition rtaxiom_nat_rect_succ_ty :=
+  ltac:(let u := eval lazy in ttaxiom_nat_rect_succ_ty in exact u).
+Definition fq_ax_nat_rect_succ_ty :=
+  fullquote (2 ^ 18) Σ [] rtaxiom_nat_rect_succ_ty (fun _ => 0) 0.
+Definition rfq_ax_nat_rect_succ_ty :=
+  ltac:(let u := eval lazy in fq_ax_nat_rect_succ_ty in exact u).
+Definition ax_nat_rect_succ_ty :=
+  match rfq_ax_nat_rect_succ_ty with
+  | Success (t,_) => t
+  | _ => sRel 0
+  end.
+Definition rtax_nat_rect_succ_ty :=
+  ltac:(let u := eval lazy in ax_nat_rect_succ_ty in exact u).
+
+
 
 
 (* The global context *)
 
 Definition Σi : sglobal_context := [
+  decl "nat_rect_succ" rtax_nat_rect_succ_ty ;
+  decl "nat_rect_zero" rtax_nat_rect_zero_ty ;
   decl "nat_rect" rtax_nat_rect_ty ;
   decl "succ" (sAx "nat" ==> sAx "nat") ;
   decl "zero" (sAx "nat") ;
@@ -315,6 +364,8 @@ Definition Σi : sglobal_context := [
 Fact hΣi : type_glob Σi.
 Proof.
   repeat glob ; lazy.
+  - ittcheck.
+  - ittcheck.
   - ittcheck.
   - ittcheck.
   - ittcheck.
