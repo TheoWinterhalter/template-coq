@@ -562,3 +562,17 @@ Proof. reflexivity. Defined.
 Lemma axiom_nat_rect_succ :
   forall P Pz Ps n, nat_rect P Pz Ps (S n) = Ps n (nat_rect P Pz Ps n).
 Proof. reflexivity. Defined.
+
+
+Definition axiom_vec := vec.
+Definition axiom_vnil := @vnil.
+Definition axiom_vcons := @vcons.
+Definition axiom_vec_rect := vec_rect.
+
+Lemma axiom_vec_rect_vnil :
+  forall A P Pn Pc, vec_rect A P Pn Pc 0 vnil = Pn.
+Proof. reflexivity. Defined.
+
+Lemma axiom_vec_rect_vcons :
+  forall A P Pn Pc n a v, vec_rect A P Pn Pc (S n) (vcons a n v) = Pc a n v (vec_rect A P Pn Pc n v).
+Proof. reflexivity. Defined.

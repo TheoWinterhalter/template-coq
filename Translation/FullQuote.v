@@ -83,6 +83,12 @@ Fixpoint fullquote (fuel : nat) (Σ : global_context) (Γ : context) (t : term)
       ret (sAx "nat_rect_zero", si)
     | tConst "Coq.Init.Datatypes.nat_rect_succ" [] =>
       ret (sAx "nat_rect_succ", si)
+    | tInd {| inductive_mind := "Translation.Quotes.vec"; inductive_ind := 0 |} [] =>
+      ret (sAx "vec", si)
+    | tConstruct {| inductive_mind := "Translation.Quotes.vec"; inductive_ind := 0 |} 0 [] =>
+      ret (sAx "vnil", si)
+    | tConstruct {| inductive_mind := "Translation.Quotes.vec"; inductive_ind := 0 |} 1 [] =>
+      ret (sAx "vcons", si)
     (* Resuming *)
     | tApp (tInd {| inductive_mind := "Translation.util.pp_sigT"; inductive_ind := 0 |} []) [ A ; B ] =>
       A' <- fullquote fuel Σ Γ A sf si ;;
