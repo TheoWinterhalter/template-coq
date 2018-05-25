@@ -134,7 +134,7 @@ Fixpoint Apps (f : sterm) (L : nctx) (T : sterm) (l : list sterm) : sterm :=
   end.
 
 Definition Arrow A B := sProd nAnon A (lift0 1 B).
-Notation "A ==> B" := (Arrow A B) (at level 20).
+Notation "A ==> B" := (Arrow A B) (at level 20, right associativity).
 
 (* Some admissible lemmata to do memoisation in a way. *)
 Lemma type_Prod' :
@@ -549,6 +549,8 @@ Definition Σi : sglobal_context := [
   decl "zero" (sAx "nat") ;
   decl "nat" rtax_nat_ty
 ].
+
+Arguments Σi : simpl never.
 
 Fact hΣi : type_glob Σi.
 Proof.

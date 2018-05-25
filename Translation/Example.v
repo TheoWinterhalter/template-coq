@@ -250,12 +250,32 @@ Definition sZero := sAx "zero".
 Definition sSucc n :=
   sApp (sAx "succ") sNat sNat n.
 
+Lemma type_zero :
+  forall {Γ},
+    wf Σi Γ ->
+    Σi ;;; Γ |-x sZero : sNat.
+Proof.
+  unfold sZero, sNat.
+  intros Γ h.
+  ettcheck.
+Defined.
+
+Lemma type_succ :
+  forall {Γ n},
+    Σi ;;; Γ |-x n : sNat ->
+    Σi ;;; Γ |-x sSucc n : sNat.
+Proof.
+  unfold sSucc, sNat.
+  intros Γ n h.
+  pose proof (typing_wf h) as hw.
+  ettcheck. assumption.
+Defined.
+
 Definition sOne := sSucc sZero.
 
 Lemma onety : Σi ;;; [] |-x sOne : sNat.
 Proof.
-  unfold sOne, sSucc, sNat, sZero.
-  ettcheck.
+  unfold sOne. eapply type_succ. eapply type_zero. constructor.
 Defined.
 
 Definition itt_one : sterm.
@@ -312,6 +332,51 @@ Definition sVcons A a n v :=
     (sVec (sRel 3) (sSucc (sRel 1)))
     [ A ; a ; n ; v ].
 
+Lemma type_vec :
+  forall {Γ A n},
+    Σi ;;; Γ |-x A : sSort 0 ->
+    Σi ;;; Γ |-x n : sNat ->
+    Σi ;;; Γ |-x sVec A n : sSort 0.
+Proof.
+  unfold sVcons, sVec, sVnil, sOne, sSucc, sNat, sZero.
+  intros Γ A n hA hn.
+  pose proof (typing_wf hA) as hw.
+  simpl. ettcheck. all: assumption.
+Defined.
+
+Lemma type_vnil :
+  forall {Γ A},
+    Σi ;;; Γ |-x A : sSort 0 ->
+    Σi ;;; Γ |-x sVnil A : sVec A sZero.
+Proof.
+  unfold sVcons, sVec, sVnil, sSucc, sNat, sZero.
+  intros Γ A h. simpl.
+  pose proof (typing_wf h) as hw.
+  Opaque lift.
+  ettcheck.
+  - assumption.
+  - unfold sVec, sNat. simpl. ettcheck.
+  - rewrite lift00. reflexivity.
+Defined.
+
+Transparent lift.
+
+(* Lemma type_vcons : *)
+(*   forall {Γ A a n v}, *)
+(*     Σi ;;; Γ |-x A : sSort 0 -> *)
+(*     Σi ;;; Γ |-x a : A -> *)
+(*     Σi ;;; Γ |-x n : sNat -> *)
+(*     Σi ;;; Γ |-x v : sVec A n -> *)
+(*     Σi ;;; Γ |-x sVcons A a n v : sVec A (sSucc n). *)
+(* Proof. *)
+(*   unfold sVcons, sVec, sVnil, sSucc, sNat, sZero. *)
+(*   intros Γ A a n v hA ha hn hv. *)
+(*   pose proof (typing_wf ha) as hw. *)
+(*   simpl. *)
+(*   ettcheck. *)
+(*   all: rewrite ?lift00. all: try eassumption. *)
+(*   - *)
+
 Definition vtest := sVcons sNat sOne sZero (sVnil sNat).
 
 Lemma vtestty : Σi ;;; [] |-x vtest : sVec sNat sOne.
@@ -345,3 +410,40 @@ Make Definition coq_vtest :=
               end)
       in exact t
   ).
+
+
+(*! EXAMPLE 4.2:
+    plus
+*)
+Definition snatrec P Pz Ps n :=
+  Apps
+    (sAx "nat_rect")
+    [ (nNamed "P", sNat ==> sSort 0) ;
+      (nAnon, sApp (sRel 0) sNat (sSort 0) sZero) ;
+      (nAnon, sProd (nNamed "n") sNat (sApp (sRel 2) sNat (sSort 0) (sRel 0) ==> sApp (sRel 2) sNat (sSort 0) (sSucc (sRel 0)))) ;
+      (nNamed "n", sNat)
+    ]
+    (sApp (sRel 3) sNat (sSort 0) (sRel 0))
+    [ P ; Pz ; Ps ; n ].
+
+Definition plus n m :=
+  snatrec (sLambda (nNamed "n") sNat (sSort 0) sNat)
+          m
+          (multiLam [ sNat ; sNat ; sNat ] (sSucc (sRel 0)))
+          n.
+
+Definition cplus :=
+  sLambda (nNamed "n") sNat (sNat ==> sNat)
+  (sLambda (nNamed "m") sNat sNat (plus (sRel 1) (sRel 0))).
+
+Lemma plusty : Σi ;;; [] |-x cplus : sNat ==> sNat ==> sNat.
+Proof.
+  unfold cplus, plus, snatrec, sZero, sSucc, sNat, Arrow. simpl.
+  ettcheck. (* We need a better version that will try to apply conversion
+               instead of equality. *)
+Abort.
+
+(*! EXAMPLE 4.? (more ambitious):
+    rev A n m (v : vec A n) (acc : vec A m) : vec A (n + m) :=
+      vec_rect A ???
+*)
