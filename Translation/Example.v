@@ -353,10 +353,10 @@ Proof.
   intros Γ A h. simpl.
   pose proof (typing_wf h) as hw.
   Opaque lift.
-  ettcheck.
-  - assumption.
+  ettcheck. all: try assumption.
   - unfold sVec, sNat. simpl. ettcheck.
-  - rewrite lift00. reflexivity.
+  - simpl. rewrite lift00. constructor.
+    ettcheck. assumption.
 Defined.
 
 Transparent lift.
@@ -436,11 +436,58 @@ Definition cplus :=
   sLambda (nNamed "n") sNat (sNat ==> sNat)
   (sLambda (nNamed "m") sNat sNat (plus (sRel 1) (sRel 0))).
 
+Ltac ettcong :=
+  lazymatch goal with
+  | |- ?Σ ;;; ?Γ |-x ?t = _ : ?T =>
+    lazymatch t with
+    | sRel ?n => eapply eq_reflexivity
+    | sSort _ => eapply eq_reflexivity
+    | sProd _ _ _ => eapply cong_Prod
+    | sLambda _ _ _ _ => eapply cong_Lambda
+    | sApp _ _ _ _ => eapply cong_App
+    | sSum _ _ _ => eapply cong_Sum
+    | sPair _ _ _ _ => eapply cong_Pair
+    | sPi1 _ _ _ => eapply cong_Pi1
+    | sPi2 _ _ _ => eapply cong_Pi2
+    | sEq _ _ _ => eapply cong_Eq
+    | sRefl _ _ => eapply cong_Refl
+    | sAx _ => eapply eq_reflexivity
+    | _ => fail "No congruence rule for" t
+    end
+  | _ => fail "Not applicable"
+  end.
+
+Lemma xmeta_eq_conv :
+  forall {Σ Γ A B T U},
+    Σ ;;; Γ |-x A = B : U ->
+    T = U ->
+    Σ ;;; Γ |-x A = B : T.
+Proof.
+  intros Σ Γ A B T U h e. destruct e. assumption.
+Defined.
+
+Ltac ettconvcheck1 :=
+  lazymatch goal with
+  | |- ?Σ ;;; ?Γ |-x ?t = ?u : ?T =>
+    first [
+      eapply xmeta_eq_conv ; [ ettcong | lazy ; reflexivity ]
+    | eapply eq_conv ; [ ettcong | .. ]
+    (* | eapply meta_ctx_conv ; [ *)
+    (*     eapply meta_conv ; [ ettintro | lazy ; try reflexivity ] *)
+    (*   | cbn ; try reflexivity *)
+    (*   ] *)
+    ]
+  | |- wf ?Σ ?Γ => first [ assumption | econstructor ]
+  | |- sSort _ = sSort _ => first [ lazy ; reflexivity | shelve ]
+  | |- type_glob _ => first [ assumption | glob ]
+  | _ => fail "Not applicable"
+  end.
+
 Lemma plusty : Σi ;;; [] |-x cplus : sNat ==> sNat ==> sNat.
 Proof.
   unfold cplus, plus, snatrec, sZero, sSucc, sNat, Arrow. simpl.
-  ettcheck. (* We need a better version that will try to apply conversion
-               instead of equality. *)
+  (* ettcheck. *)
+  (* - cbn. repeat ettconvcheck1. all: ettcheck. *)
 Abort.
 
 (*! EXAMPLE 4.? (more ambitious):

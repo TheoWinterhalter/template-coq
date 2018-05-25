@@ -810,7 +810,8 @@ Ltac ettcheck1 :=
   lazymatch goal with
   | |- ?Σ ;;; ?Γ |-x ?t : ?T =>
     first [
-      eapply xmeta_conv ; [ ettintro | lazy ; try reflexivity ]
+      eapply xmeta_conv ; [ ettintro | lazy ; reflexivity ]
+    | eapply type_conv ; [ ettintro | .. ]
     (* | eapply meta_ctx_conv ; [ *)
     (*     eapply meta_conv ; [ ettintro | lazy ; try reflexivity ] *)
     (*   | cbn ; try reflexivity *)
