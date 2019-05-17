@@ -139,4 +139,17 @@ Proof.
 
 Abort.
 
+(* Quotienting a relation *)
+Definition nl__R (R : term -> term -> Prop) (u v : nlterm) : Prop :=
+  exists u' v',
+    nl u' = u /\ nl v' = v /\ R u' v'.
+
+Lemma wf_nl__R :
+  forall R,
+    well_founded R ->
+    well_founded (nl__R R).
+Proof.
+  intros R h u.
+Abort.
+
 End Nl.
