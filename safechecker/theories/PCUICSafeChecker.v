@@ -1159,10 +1159,6 @@ Definition make_graph_and_infer {cf:checker_flags} {Σ} (HΣ : ∥ wf_ext Σ ∥
 
 
 Print Assumptions infer.
-Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
-Extract Constant fix_guard => "fun _ -> true".
-Extraction "infer.ml" infer.
-
 
 Require Checker.
 Require Import Checker.wGraph.
@@ -1562,3 +1558,27 @@ Section CheckEnv.
   Defined.
 
 End CheckEnv.
+
+From MetaCoq.Template Require Import All.
+From MetaCoq.PCUIC Require Import TemplateToPCUIC.
+
+(* Quote Recursively Definition foo := Nat.add. *)
+Quote Recursively Definition foo := (fun (A : Prop) (x : A) => x).
+
+(* Definition infer_foo := *)
+(*   let '(Σ, t) := foo in *)
+(*   @infer' default_checker_flags Σ. *)
+
+Definition trans_program (p : Ast.program) : PCUICAst.program :=
+  let '(Σ, t) := p in
+  (trans_global_decls Σ, trans t).
+
+Definition typecheck_program_foo :=
+  typecheck_program (cf := default_checker_flags) (trans_program foo).
+
+Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
+Extract Constant fix_guard => "fun _ -> true".
+Extract Constant ind_guard => "fun _ -> true".
+Extract Constant check_one_ind_body => "fun _ -> true".
+(* Extraction "infer.ml" infer. *)
+Extraction "typecheck.ml" typecheck_program_foo.
