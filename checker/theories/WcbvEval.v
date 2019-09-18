@@ -374,7 +374,7 @@ Section Wcbv.
     - now eapply atom_mkApps in H.
     - intros * isapp appeq. move: (value_head_nApp H) => Ht.
       apply mkApps_eq_inj in appeq; intuition subst; auto.
-    - intros * isapp appeq. move: (isStuckfix_nApp H1) => Hf.
+    - intros * isapp appeq. move: (isStuckfix_nApp H) => Hf.
       apply mkApps_eq_inj in appeq; intuition subst; auto.
   Qed.
 
@@ -400,8 +400,8 @@ Section Wcbv.
       destruct decl as [? [b|] ?]; try discriminate.
       constructor. constructor.
     - eapply value_stuck_fix => //.
-      now eapply All2_right in H.
-    - eapply All2_right in H2.
+      now eapply All2_right in X0.
+    - eapply All2_right in X0.
       depelim IHeve.
       destruct t; simpl in * |- *; try congruence.
       eapply value_app; auto.
@@ -450,14 +450,14 @@ Section Wcbv.
     induction 1 using value_values_ind; simpl; auto using value.
     - now constructor.
     - assert (All2 eval l l).
-      { induction X; constructor; auto. eapply IHX. now depelim H0. }
+      { induction X0; constructor; auto. eapply IHX0. now depelim X. }
       move/implyP: (value_head_spec t).
       move/(_ H) => Ht.
       induction l using rev_ind. simpl.
       now eapply value_head_final.
-      eapply All_app in H0 as [Hl Hx]. depelim Hx.
-      eapply All_app in X as [Hl' Hx']. depelim Hx'.
-      eapply All2_app_inv_r in X0 as [Hl'' [Hx'' [? [? ?]]]]. depelim a0. depelim a0.
+      eapply All_app in X as [Hl Hx]. depelim Hx.
+      eapply All_app in X0 as [Hl' Hx']. depelim Hx'.
+      eapply All2_app_inv_r in X1 as [Hl'' [Hx'' [? [? ?]]]]. depelim a0. depelim a0.
       pose proof (value_head_nApp H).
       rewrite -{1}mkApps_tApp => //. rewrite is_empty_app /= // andb_false_r //.
       eapply eval_app_cong; auto. rewrite is_empty_app /= andb_false_r //.
@@ -467,7 +467,7 @@ Section Wcbv.
       eapply All2_app; auto.
     - destruct f; try discriminate.
       assert (All2 eval args args).
-      { clear H0. induction X; constructor; auto. eapply IHX. now depelim H. }
+      { clear H. induction X0; constructor; auto. eapply IHX0. now depelim X. }
       eapply eval_fix_value => //.
       constructor; auto.
   Qed.

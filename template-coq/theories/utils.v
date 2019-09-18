@@ -2208,7 +2208,7 @@ Qed.
 (** * Non Empty List *)
 Module NEL.
 
-  Inductive t (A : Set) :=
+  Inductive t A :=
   | sing : A -> t A
   | cons : A -> t A -> t A.
 
@@ -2237,7 +2237,7 @@ Module NEL.
     | x :: l => x :: (to_list l)
     end.
 
-  Fixpoint map {A B : Set} (f : A -> B) (l : t A) : t B :=
+  Fixpoint map {A B} (f : A -> B) (l : t A) : t B :=
     match l with
     | [x] => [f x]
     | x :: l => f x :: map f l
@@ -2251,19 +2251,19 @@ Module NEL.
 
   Infix "++" := app : nel_scope.
 
-  Fixpoint app_r {A : Set} (l : list A) (l' : t A) : t A :=
+  Fixpoint app_r {A} (l : list A) (l' : t A) : t A :=
     match l with
     | [] => l'
     | (x :: l)%list => x :: app_r l l'
     end.
 
-  Fixpoint cons' {A : Set} (x : A) (l : list A) : t A :=
+  Fixpoint cons' {A} (x : A) (l : list A) : t A :=
     match l with
     | [] => [x]
     | (y :: l)%list => x :: cons' y l
     end.
 
-  Lemma cons'_spec {A : Set} (x : A) l
+  Lemma cons'_spec {A} (x : A) l
     : to_list (cons' x l) = (x :: l)%list.
   Proof.
     revert x; induction l; simpl.
@@ -2271,45 +2271,45 @@ Module NEL.
     intro x; now rewrite IHl.
   Qed.
 
-  Fixpoint fold_left {A} {B : Set} (f : A -> B -> A) (l : t B) (a0 : A) : A :=
+  Fixpoint fold_left {A} {B} (f : A -> B -> A) (l : t B) (a0 : A) : A :=
     match l with
     | [b] => f a0 b
     | b :: l => fold_left f l (f a0 b)
     end.
 
-  Fixpoint forallb {A : Set} (f : A -> bool) (l : t A) :=
+  Fixpoint forallb {A} (f : A -> bool) (l : t A) :=
     match l with
     | [x] => f x
     | hd :: tl => f hd && forallb f tl
     end.
 
-  Fixpoint forallb2 {A : Set} (f : A -> A -> bool) (l l' : t A) :=
+  Fixpoint forallb2 {A} (f : A -> A -> bool) (l l' : t A) :=
     match l, l' with
     | [x], [x'] => f x x'
     | hd :: tl, hd' :: tl' => f hd hd' && forallb2 f tl tl'
     | _, _ => false
     end.
 
-  Lemma map_to_list {A B : Set} (f : A -> B) (l : t A)
+  Lemma map_to_list {A B} (f : A -> B) (l : t A)
     : to_list (map f l) = List.map f (to_list l).
   Proof.
     induction l; cbn; congruence.
   Qed.
 
-  Lemma map_app {A B : Set} (f : A -> B) l l' :
+  Lemma map_app {A B} (f : A -> B) l l' :
     map f (l ++ l') = map f l ++ map f l'.
   Proof.
     induction l; cbn; congruence.
   Qed.
 
-  Lemma map_map {A B C : Set} (f : A -> B) (g : B -> C) l :
+  Lemma map_map {A B C} (f : A -> B) (g : B -> C) l :
     map g (map f l) = map (fun x => g (f x)) l.
   Proof.
     induction l; simpl; auto.
     rewrite IHl; auto.
   Qed.
 
-  Lemma map_ext {A B : Set} (f g : A -> B) l :
+  Lemma map_ext {A B} (f g : A -> B) l :
     (forall x, f x = g x) -> map f l = map g l.
   Proof.
     intros.
@@ -2756,7 +2756,7 @@ Qed.
 Lemma forallb_impl {A} (p q : pred A) l :
   (forall x, In x l -> p x -> q x) -> forallb p l -> forallb q l.
 Proof.
-  intros H0 H1. eapply forallb_forall. intros x H2. 
+  intros H0 H1. eapply forallb_forall. intros x H2.
   eapply forallb_forall in H1; tea.
   now eapply H0.
 Qed.

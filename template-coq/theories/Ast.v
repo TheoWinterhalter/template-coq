@@ -36,7 +36,7 @@ From MetaCoq.Template Require Export Universes.
 
 From MetaCoq.Template Require Export BasicAst.
 
-Inductive term : Set :=
+Inductive term :=
 | tRel (n : nat)
 | tVar (id : ident) (* For free variables (e.g. in a goal) *)
 | tEvar (ev : nat) (args : list term)
@@ -142,11 +142,11 @@ Inductive constant_entry :=
   [x1:X1;...;xn:Xn].
 *)
 
-Inductive local_entry : Set :=
+Inductive local_entry :=
 | LocalDef : term -> local_entry (* local let binding *)
 | LocalAssum : term -> local_entry.
 
-Record one_inductive_entry : Set := {
+Record one_inductive_entry := {
   mind_entry_typename : ident;
   mind_entry_arity : term;
   mind_entry_template : bool; (* template polymorphism *)

@@ -5,19 +5,19 @@ Definition ident   := string. (* e.g. nat *)
 Definition qualid  := string. (* e.g. Datatypes.nat *)
 Definition kername := string. (* e.g. Coq.Init.Datatypes.nat *)
 
-Inductive name : Set :=
+Inductive name :=
 | nAnon
 | nNamed (_ : ident).
 
-Record inductive : Set := mkInd { inductive_mind : kername ;
+Record inductive := mkInd { inductive_mind : kername ;
                                   inductive_ind : nat }.
 Arguments mkInd _%string _%nat.
 
-Definition projection : Set := inductive * nat (* params *) * nat (* argument *).
+Definition projection : Type := inductive * nat (* params *) * nat (* argument *).
 
 (** Parametrized by term because term is not yet defined *)
 
-Record def (term : Set) : Set := mkdef {
+Record def term := mkdef {
   dname : name; (* the name **)
   dtype : term;
   dbody : term; (* the body (a lambda term). Note, this may mention other (mutually-defined) names **)
@@ -28,12 +28,12 @@ Arguments dtype {term} _.
 Arguments dbody {term} _.
 Arguments rarg {term} _.
 
-Definition mfixpoint (term : Set) : Set :=
+Definition mfixpoint term :=
   list (def term).
 
 (** The kind of a cast *)
 
-Inductive cast_kind : Set :=
+Inductive cast_kind :=
 | VmCast
 | NativeCast
 | Cast

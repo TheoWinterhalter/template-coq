@@ -350,7 +350,7 @@ Qed.
 
 Lemma wf_it_mkProd_or_LetIn `{checker_flags} Σ Γ (wfΓ : wf_local Σ Γ)
   : All_local_env_over typing
-  (fun (Σ : global_env_ext) (Γ : context) (_ : wf_local Σ Γ) 
+  (fun (Σ : global_env_ext) (Γ : context) (_ : wf_local Σ Γ)
      (t T : term) (_ : Σ;;; Γ |- t : T) => Ast.wf t /\ Ast.wf T) Σ
          Γ wfΓ
 -> forall t, Ast.wf t -> Ast.wf (it_mkProd_or_LetIn Γ t).
@@ -401,7 +401,7 @@ Proof.
     apply wf_subst; auto with wf. apply wf_subst_instance_constr.
     eapply declared_constructor_wf; eauto.
   - split. wf. constructor; eauto. solve_all.
-    apply wf_mkApps. wf. solve_all. apply wf_mkApps_inv in H7. solve_all.
+    apply wf_mkApps. wf. solve_all. apply wf_mkApps_inv in H6. solve_all.
     apply All_app_inv; solve_all. now apply All_skipn.
   - split. wf. apply wf_subst. solve_all. constructor. wf.
     apply wf_mkApps_inv in H2. apply All_rev. solve_all.

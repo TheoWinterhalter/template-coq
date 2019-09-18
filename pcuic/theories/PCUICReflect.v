@@ -219,13 +219,13 @@ Proof.
   unfold eq_inductive, eqb; cbn. now rewrite eq_string_refl Nat.eqb_refl.
 Defined.
 
-Definition eq_def {A : Set} `{ReflectEq A} (d1 d2 : def A) : bool :=
+Definition eq_def {A} `{ReflectEq A} (d1 d2 : def A) : bool :=
   match d1, d2 with
   | mkdef n1 t1 b1 a1, mkdef n2 t2 b2 a2 =>
     eqb n1 n2 && eqb t1 t2 && eqb b1 b2 && eqb a1 a2
   end.
 
-Instance reflect_def : forall {A : Set} `{ReflectEq A}, ReflectEq (def A) := {
+Instance reflect_def : forall {A} `{ReflectEq A}, ReflectEq (def A) := {
   eqb := eq_def
 }.
 Proof.
@@ -238,7 +238,7 @@ Proof.
   cbn. constructor. subst. reflexivity.
 Defined.
 
-Fixpoint eq_non_empty_list {A : Set} (eqA : A -> A -> bool) (l l' : non_empty_list A) : bool :=
+Fixpoint eq_non_empty_list {A} (eqA : A -> A -> bool) (l l' : non_empty_list A) : bool :=
   match l, l' with
   | NEL.sing a, NEL.sing a' => eqA a a'
   | NEL.cons a l, NEL.cons a' l' => 
@@ -247,7 +247,7 @@ Fixpoint eq_non_empty_list {A : Set} (eqA : A -> A -> bool) (l l' : non_empty_li
   end.
 
 Instance reflect_non_empty_list :
-  forall {A : Set} `{ReflectEq A}, ReflectEq (non_empty_list A) :=
+  forall {A} `{ReflectEq A}, ReflectEq (non_empty_list A) :=
   { eqb := eq_non_empty_list eqb }.
 Proof.
   induction x, y; cbn.
@@ -296,13 +296,13 @@ Next Obligation.
   induction x using term_forall_list_rec ; intro t ;
     destruct t ; try (right ; discriminate).
   all: term_dec_tac term_dec.
-  - revert l0. induction H ; intro l0.
+  - revert l0. induction X ; intro l0.
     + destruct l0.
       * left. reflexivity.
       * right. discriminate.
     + destruct l0.
       * right. discriminate.
-      * destruct (IHForallT l0) ; nodec.
+      * destruct (IHX l0) ; nodec.
         destruct (p t) ; nodec.
         subst. left. inversion e. reflexivity.
   - destruct (IHx1 t1) ; nodec.

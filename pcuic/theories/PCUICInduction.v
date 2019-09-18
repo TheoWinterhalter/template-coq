@@ -70,7 +70,7 @@ Inductive ForallT {A} (P : A -> Type) : list A -> Type :=
 Definition tCaseBrsType {A} (P : A -> Type) (l : list (nat * A)) :=
   ForallT (fun x => P (snd x)) l.
 
-Definition tFixType {A : Set} (P P' : A -> Type) (m : mfixpoint A) :=
+Definition tFixType {A} (P P' : A -> Type) (m : mfixpoint A) :=
   ForallT (fun x : def A => P x.(dtype) * P' x.(dbody))%type m.
 
 Lemma term_forall_list_rec :

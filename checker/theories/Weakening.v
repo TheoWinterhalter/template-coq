@@ -924,10 +924,10 @@ Lemma lift_eq_context `{checker_flags} φ l l' n k :
 Proof.
   induction l in l', n, k |- *; intros; destruct l'; rewrite -> ?lift_context_snoc0.
   - constructor.
-  - inversion H0.
-  - inversion H0.
-  - inversion H0; subst. constructor.
-    + apply All2_Forall2, Forall2_length in H6. rewrite H6.
+  - inversion X.
+  - inversion X.
+  - inversion X; subst. constructor.
+    + apply All2_Forall2, Forall2_length in X0. rewrite X0.
       now apply lift_eq_decl.
     + now apply IHl.
 Qed.
@@ -945,11 +945,11 @@ Proof.
   unfold check_correct_arity. intro H.
   inversion H; subst. simpl. rewrite lift_context_snoc0.
   constructor.
-  - apply All2_Forall2, Forall2_length in H4. destruct H4.
-    clear -H2. apply (lift_eq_decl _ #|Γ''| (#|indctx| + #|Γ'|)) in H2.
-    unfold lift_decl, map_decl in H2; cbn in H2.
+  - apply All2_Forall2, Forall2_length in X. destruct X.
+    clear -H3. apply (lift_eq_decl _ #|Γ''| (#|indctx| + #|Γ'|)) in H3.
+    unfold lift_decl, map_decl in H3; cbn in H3.
     assert (XX : lift #|Γ''| (#|indctx| + #|Γ'|) (mkApps (tInd ind u) (map (lift0 #|indctx|) (firstn npar args) ++ to_extended_list indctx)) = mkApps (tInd ind u) (map (lift0 #|lift_context #|Γ''| #|Γ'| indctx|) (firstn npar (map (lift #|Γ''| #|Γ'|) args)) ++ to_extended_list (lift_context #|Γ''| #|Γ'| indctx)));
-      [|now rewrite XX in H2].
+      [|now rewrite XX in H3].
 
     rewrite -> lift_mkApps, map_app.
     rewrite -> firstn_map. rewrite -> to_extended_list_lift.
@@ -1088,7 +1088,7 @@ Proof.
     -- erewrite -> lift_declared_inductive; eauto.
     -- auto.
     -- auto.
-    -- revert H1.
+    -- revert X2.
        subst pars.
        erewrite lift_declared_inductive; eauto.
        apply lift_check_correct_arity.

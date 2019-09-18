@@ -4,7 +4,7 @@ From MetaCoq.Template Require Import utils BasicAst config.
 Import ListNotations.
 
 Module Level.
-  Inductive t : Set :=
+  Inductive t :=
   | lProp
   | lSet
   | Level (_ : string)
@@ -98,7 +98,7 @@ Definition universe_level := Level.t.
 Module Universe.
   Module Expr.
     (* level+1 if true. Except if Prop -> boolean ignored *)
-    Definition t : Set := Level.t * bool.
+    Definition t : Type := Level.t * bool.
 
     (* Warning: (lProp, true) represents also Prop *)
     Definition is_small (e : t) : bool :=
@@ -134,7 +134,7 @@ Module Universe.
     Definition type1 : t := (Level.set, true).
   End Expr.
 
-  Definition t : Set := non_empty_list Expr.t.
+  Definition t : Type := non_empty_list Expr.t.
 
   Definition equal (u1 u2 : t) : bool :=
     NEL.forallb2 Expr.equal u1 u2.
@@ -230,10 +230,10 @@ Module ConstraintType.
 End ConstraintType.
 
 Definition constraint_type := ConstraintType.t.
-Definition univ_constraint : Set := universe_level * ConstraintType.t * universe_level.
+Definition univ_constraint : Type := universe_level * ConstraintType.t * universe_level.
 
 Module UnivConstraintDec.
-  Definition t : Set := univ_constraint.
+  Definition t : Type := univ_constraint.
   Definition eq : t -> t -> Prop := eq.
   Definition eq_equiv : RelationClasses.Equivalence eq := _.
   Definition eq_dec : forall x y : t, {eq x y} + {~ eq x y}.
@@ -267,7 +267,7 @@ Definition empty_constraint : constraints := ConstraintSet.empty.
 
 Module Instance.
 
-  Definition t : Set := list Level.t.
+  Definition t : Type := list Level.t.
   (** A universe instance represents a vector of argument universes
       to a polymorphic definition (constant, inductive or constructor). *)
 
@@ -491,7 +491,7 @@ Qed.
 
 (** **** Lemmas about eq and leq **** *)
 
-(** We show that equality and inequality of universes form an equivalence and 
+(** We show that equality and inequality of universes form an equivalence and
     a partial order (one w.r.t. the other).
     We use classes from [CRelationClasses] for consistency with the rest of the
     development which uses relations in [Type] rather than [Prop].

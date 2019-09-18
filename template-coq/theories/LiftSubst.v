@@ -196,7 +196,7 @@ Qed.
 Hint Resolve -> on_snd_eq_id_spec : all.
 Hint Resolve -> on_snd_eq_spec : all.
 
-Lemma map_def_eq_spec {A B : Set} (f f' g g' : A -> B) (x : def A) :
+Lemma map_def_eq_spec {A B} (f f' g g' : A -> B) (x : def A) :
   f (dtype x) = g (dtype x) ->
   f' (dbody x) = g' (dbody x) ->
   map_def f f' x = map_def g g' x.
@@ -205,7 +205,7 @@ Proof.
 Qed.
 Hint Resolve map_def_eq_spec : all.
 
-Lemma map_def_id_spec {A : Set} (f f' : A -> A) (x : def A) :
+Lemma map_def_id_spec {A} (f f' : A -> A) (x : def A) :
   f (dtype x) = (dtype x) ->
   f' (dbody x) = (dbody x) ->
   map_def f f' x = x.
@@ -289,7 +289,7 @@ Lemma permute_lift :
 Proof.
   intros M.
   elim M using term_forall_list_ind;
-    intros; simpl; 
+    intros; simpl;
       rewrite -> ?map_map_compose, ?compose_on_snd, ?compose_map_def, ?map_length, ?Nat.add_assoc;
       try solve [f_equal; auto; solve_all]; repeat nth_leb_simpl.
 Qed.
@@ -473,7 +473,7 @@ Proof.
 
   - unfold subst at 2.
     elim (leb_spec p n); intros; try easy.
-    
+
     + destruct (nth_error_spec N (n - p)).
       ++ rewrite -> subst_rel_lt by lia.
          erewrite subst_rel_eq; try easy.
