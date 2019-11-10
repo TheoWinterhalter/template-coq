@@ -80,9 +80,28 @@ Module Environment (T : Term).
       cst_body : option term;
       cst_universes : universes_decl }.
 
+  (** REWRITE RULES *)
+  Inductive elimination :=
+  | eApp (p : term)
+  | eCase (indn : inductive * nat) (p : term) (brs : list (nat * term))
+  | eProj (p : term).
+
+  Record rewrite_rule := mkrew {
+    pat_context : context ;
+    head : nat ; (* Head symbol, local reference in the block *)
+    elims : list elimination ;
+    rhs : term
+  }.
+
+  Record rewrite_decl := {
+    symbols : list term ; (* Typpes of the different symbols in the block *)
+    rules : list rewrite_rule
+  }.
+
   Inductive global_decl :=
   | ConstantDecl : kername -> constant_body -> global_decl
-  | InductiveDecl : kername -> mutual_inductive_body -> global_decl.
+  | InductiveDecl : kername -> mutual_inductive_body -> global_decl
+  | RewriteDecl : kername -> rewrite_decl -> global_decl.
 
   Definition global_env := list global_decl.
 
