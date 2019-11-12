@@ -16,6 +16,7 @@ Module Lookup (T : Term) (E : EnvironmentSig T).
     match d with
     | ConstantDecl id _ => id
     | InductiveDecl id _ => id
+    | RewriteDecl id _ => id
     end.
 
   Fixpoint lookup_env (Σ : global_env) (id : ident) : option global_decl :=
@@ -59,6 +60,7 @@ Module Lookup (T : Term) (E : EnvironmentSig T).
   match d with
   | ConstantDecl  _ cb => F cb.(cst_universes)
   | InductiveDecl _ mb => F mb.(ind_universes)
+  | RewriteDecl _ rw => F rw.(rew_universes)
   end.
 
   Definition monomorphic_udecl_decl := on_udecl_decl monomorphic_udecl.
@@ -439,10 +441,24 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       | None => on_type Σ [] d.(cst_type)
       end.
 
+    (** *** Typing of rewrite rule declarations  *)
+
+    (* TODO We need to ask for some predicate stating that something
+       is a pattern.
+     *)
+
+    Definition on_rewrite_rule (Δ : context) (r : rewrite_rule) := unit.
+
+    Definition on_rewrite_decl Σ d :=
+      let Δ := map (vass nAnon) d.(symbols) in
+      All_local_env (P Σ) Δ ×
+      All (on_rewrite_rule Δ) d.(rules).
+
     Definition on_global_decl Σ decl :=
       match decl with
       | ConstantDecl id d => on_constant_decl Σ d
       | InductiveDecl ind inds => on_inductive Σ ind inds
+      | RewriteDecl id rew => on_rewrite_decl Σ rew
       end.
 
     (** *** Typing of global environment

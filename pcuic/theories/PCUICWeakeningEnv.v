@@ -336,45 +336,59 @@ Definition weaken_env_prop `{checker_flags}
 
 Lemma weakening_on_global_decl `{checker_flags} P Σ Σ' φ decl :
   weaken_env_prop P ->
-  wf Σ' -> extends Σ Σ' ->
+  wf Σ' ->
+  extends Σ Σ' ->
   on_global_decl P (Σ, φ) decl ->
   on_global_decl P (Σ', φ) decl.
 Proof.
   unfold weaken_env_prop.
   intros HPΣ wfΣ' Hext Hdecl.
-  destruct decl. destruct c. destruct cst_body. simpl in *.
-  red in Hdecl |- *. simpl in *.
-  eapply HPΣ; eauto.
-  eapply HPΣ; eauto.
-  simpl in *.
-  destruct Hdecl as [onI onP onnP]; constructor; eauto.
-  - eapply Alli_impl; eauto. intros.
-    destruct X. unshelve econstructor; eauto.
-    -- unfold on_type in *; intuition eauto.
-    -- unfold on_constructors in *. eapply All2_impl; eauto.
-       intros. unfold on_constructor, on_type in *; intuition eauto.
-       destruct b as [cs Hcs]. exists cs.
-       induction (cshape_args cs); simpl in *; auto.
-       destruct a0 as [na [b|] ty]; simpl in *; intuition eauto.
-    -- intros Hprojs; destruct onProjections; try constructor; auto.
-       eapply Alli_impl; eauto. intros ip [id trm].
-       unfold on_projection, on_type; eauto.
-    -- unfold check_ind_sorts in *. destruct universe_family; auto.
-       --- split; [apply fst in ind_sorts|apply snd in ind_sorts].
-           eapply Forall_impl; tea; cbn.
-           intros. eapply leq_universe_subset; tea.
-           apply weakening_env_global_ext_constraints; tea.
-           destruct indices_matter; [|trivial]. clear -ind_sorts HPΣ wfΣ' Hext.
-           induction ind_indices; simpl in *; auto.
-           destruct a as [na [b|] ty]; simpl in *; intuition eauto.
-       --- split; [apply fst in ind_sorts|apply snd in ind_sorts].
-           eapply Forall_impl; tea; cbn.
-           intros. eapply leq_universe_subset; tea.
-           apply weakening_env_global_ext_constraints; tea.
-           destruct indices_matter; [|trivial]. clear -ind_sorts HPΣ wfΣ' Hext.
-           induction ind_indices; simpl in *; auto.
-           destruct a as [na [b|] ty]; simpl in *; intuition eauto.
-  - red in onP |- *. eapply All_local_env_impl; eauto.
+  destruct decl.
+  - destruct c. destruct cst_body.
+    + simpl in *.
+      red in Hdecl |- *. simpl in *.
+      eapply HPΣ; eauto.
+    + eapply HPΣ; eauto.
+  - simpl in *.
+    destruct Hdecl as [onI onP onnP]; constructor; eauto.
+    + eapply Alli_impl; eauto. intros.
+      destruct X. unshelve econstructor; eauto.
+      * unfold on_type in *; intuition eauto.
+      * unfold on_constructors in *. eapply All2_impl; eauto.
+        intros. unfold on_constructor, on_type in *; intuition eauto.
+        destruct b as [cs Hcs]. exists cs.
+        induction (cshape_args cs); simpl in *; auto.
+        destruct a0 as [na [b|] ty]; simpl in *; intuition eauto.
+      * intros Hprojs; destruct onProjections; try constructor; auto.
+        eapply Alli_impl; eauto. intros ip [id trm].
+        unfold on_projection, on_type; eauto.
+      * unfold check_ind_sorts in *. destruct universe_family; auto.
+        -- split; [apply fst in ind_sorts|apply snd in ind_sorts].
+           ++ eapply Forall_impl; tea; cbn.
+              intros. eapply leq_universe_subset; tea.
+              apply weakening_env_global_ext_constraints; tea.
+           ++ destruct indices_matter; [|trivial].
+              clear -ind_sorts HPΣ wfΣ' Hext.
+              induction ind_indices; simpl in *; auto.
+              destruct a as [na [b|] ty]; simpl in *; intuition eauto.
+        -- split; [apply fst in ind_sorts|apply snd in ind_sorts].
+           ++ eapply Forall_impl; tea; cbn.
+              intros. eapply leq_universe_subset; tea.
+              apply weakening_env_global_ext_constraints; tea.
+           ++ destruct indices_matter; [|trivial].
+              clear -ind_sorts HPΣ wfΣ' Hext.
+              induction ind_indices; simpl in *; auto.
+              destruct a as [na [b|] ty]; simpl in *; intuition eauto.
+    + red in onP |- *. eapply All_local_env_impl; eauto.
+  - destruct Hdecl as [hctx hr]. split.
+    + eapply All_local_env_impl; eauto.
+    + (* TODO It won't always be unit *)
+      assert (h : forall A l, @All A (fun _ => unit) l).
+      { clear. intros A l. induction l.
+        - constructor.
+        - constructor. all: easy.
+      }
+      apply h.
 Qed.
 
 Lemma weakening_env_lookup_on_global_env `{checker_flags} P Σ Σ' c decl :
@@ -607,11 +621,11 @@ Proof.
       * auto.
       * intros l Hl. simpl. replace (monomorphic_levels_decl d) with ctx.1.
         -- apply LevelSet.union_spec; now left.
-        -- clear -eq. destruct d as [? c|? c]; cbn in *.
+        -- clear - eq. destruct d as [? c | ? c | ? c]; cbn in *.
            all: destruct c; cbn in *; now rewrite eq.
       * simpl. replace (monomorphic_constraints_decl d) with ctx.2.
         -- intros c Hc; apply ConstraintSet.union_spec; now left.
-        -- clear -eq. destruct d as [? c|? c]; cbn in *.
+        -- clear - eq. destruct d as [? c | ? c | ? c]; cbn in *.
            all: destruct c; cbn in *; now rewrite eq.
       * clear -eq H4. destruct H4 as [v Hv]. exists v.
       intros c Hc; apply (Hv c).
@@ -619,8 +633,8 @@ Proof.
       2: apply ConstraintSet.union_spec in Hc; destruct Hc as [Hc|Hc].
       -- apply ConstraintSet.union_spec. simpl in *. left; now rewrite eq.
       -- apply ConstraintSet.union_spec; left. simpl.
-         destruct d as [? [? ? []]|? [? ? ? ? []]]; simpl in *; tas;
-           now apply ConstraintSet.empty_spec in Hc.
+         destruct d as [? [? ? []]|? [? ? ? ? []]|? [? ? []]]; simpl in *; tas.
+         all: try now apply ConstraintSet.empty_spec in Hc.
       -- apply ConstraintSet.union_spec; now right.
   - specialize (IHwfΣ HH). revert IHwfΣ o; clear.
     generalize (universes_decl_of_decl decl); intros d' HH Hd.
@@ -644,7 +658,7 @@ Proof.
           2: apply ConstraintSet.union_spec in Hc; destruct Hc as [Hc|Hc];
             simpl in *.
           -- apply H2 in Hc. apply ConstraintSet.union_spec; now right.
-          -- clear -Hc. destruct d as [? [? ? []]|? [? ? ? ? []]]; cbn in *.
+          -- clear - Hc. destruct d as [? [? ? []]|? [? ? ? ? []]|? [? ? []]]; cbn in *.
              all: try (apply ConstraintSet.empty_spec in Hc; contradiction).
              all: apply ConstraintSet.union_spec; now left.
           -- apply ConstraintSet.union_spec; now right.

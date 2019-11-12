@@ -1241,6 +1241,24 @@ Proof.
          specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ:=(Σ, udecl)) Hu)
                                                                            (existT _ _ (existT _ _ Hu))))))).
          simpl in IH. simpl. exists u. apply IH. constructor 1. simpl. lia.
+    + red in Xg. destruct Xg as [hctx hr].
+      split.
+      * eapply All_local_env_impl. 1: eassumption.
+        intros Δ u T h. destruct T. all: simpl in h. all: simpl.
+        -- specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ := (Σ, udecl)) h) (existT _ _ (existT _ _ h))))))).
+          simpl in IH. apply IH. constructor 1. simpl. lia.
+        -- destruct h as [s h].
+           specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ:=(Σ, udecl)) h)
+            (existT _ _ (existT _ _ h))))))).
+           simpl in IH. simpl. exists s. apply IH.
+           constructor 1. simpl. lia.
+      * (* TODO It won't always be unit *)
+        assert (h : forall A l, @All A (fun _ => unit) l).
+        { clear. intros A l. induction l.
+          - constructor.
+          - constructor. all: easy.
+        }
+        apply h.
 
   - assert (forall Γ (wfΓ : wf_local Σ Γ) t T (Hty : Σ ;;; Γ |- t : T),
                typing_size Hty < typing_size H ->

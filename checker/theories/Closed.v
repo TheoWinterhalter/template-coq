@@ -424,6 +424,7 @@ Proof.
     -- red in onP. red.
        eapply All_local_env_impl. eauto.
        intros. now apply X.
+  - todo "rewrite rules"%string.
 Qed.
 
 Lemma declared_decl_closed `{checker_flags} (Σ : global_env) cst decl :

@@ -585,6 +585,7 @@ Proof.
     -- red in onP. red.
        eapply All_local_env_impl. eauto.
        intros. now apply X.
+  - todo "rewrite rules"%string.
 Qed.
 
 Lemma typing_wf_sigma {cf:checker_flags} Σ (wfΣ : wf Σ) :

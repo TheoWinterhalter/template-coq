@@ -2963,7 +2963,7 @@ Section Confluence.
 
     - (* Constant unfolding *)
       simpl.
-      case e: lookup_env => [[kn decl|kn decl]|] //.
+      case e: lookup_env => [[kn decl|kn decl|kn decl]|] //.
       case eb: cst_body => [b|] //.
       rewrite rename_inst inst_closed0 //.
       apply declared_decl_closed in e => //.

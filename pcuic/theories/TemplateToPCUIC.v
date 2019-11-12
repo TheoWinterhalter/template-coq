@@ -67,6 +67,7 @@ Definition trans_global_decl (d : Ast.global_decl) :=
   match d with
   | Ast.ConstantDecl kn bd => ConstantDecl kn (trans_constant_body bd)
   | Ast.InductiveDecl kn bd => InductiveDecl kn (trans_minductive_body bd)
+  | Ast.RewriteDecl kn bd => RewriteDecl kn (todo "rewrite rules"%string)
   end.
 
 Definition trans_global_decls d :=

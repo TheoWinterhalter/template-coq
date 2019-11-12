@@ -87,6 +87,7 @@ Section print_term.
     match d with
     | ConstantDecl id _ => id
     | InductiveDecl id _ => id
+    | RewriteDecl id _ => id
     end.
 
   Fixpoint lookup_env (Σ : global_env) (id : ident) : option global_decl :=

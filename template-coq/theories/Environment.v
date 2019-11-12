@@ -86,6 +86,8 @@ Module Environment (T : Term).
   | eCase (indn : inductive * nat) (p : term) (brs : list (nat * term))
   | eProj (p : term).
 
+  (* TODO Some mkElim and then mkElims with a fold *)
+
   Record rewrite_rule := mkrew {
     pat_context : context ;
     head : nat ; (* Head symbol, local reference in the block *)
@@ -94,8 +96,12 @@ Module Environment (T : Term).
   }.
 
   Record rewrite_decl := {
-    symbols : list term ; (* Typpes of the different symbols in the block *)
-    rules : list rewrite_rule
+    symbols : list term ; (* Types of the different symbols in the block,
+                             can be thought of as a context.
+                             The head can depend on the tail.
+                           *)
+    rules : list rewrite_rule ;
+    rew_universes : universes_decl
   }.
 
   Inductive global_decl :=

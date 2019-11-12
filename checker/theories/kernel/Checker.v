@@ -1108,6 +1108,8 @@ Section Checker.
       List.fold_left (fun acc body =>
                         acc ;; check_wf_type body.(ind_name) Σ G body.(ind_type))
                      inds.(ind_bodies) (ret ())
+    | RewriteDecl id rew =>
+      EnvError (AlreadyDeclared id)
     end.
 
   Fixpoint check_fresh id env : EnvCheck () :=
@@ -1132,6 +1134,7 @@ Section Checker.
     match d with
     | ConstantDecl _ cb => monomorphic_constraints cb.(cst_universes)
     | InductiveDecl _ mb => monomorphic_constraints mb.(ind_universes)
+    | RewriteDecl _ rw => monomorphic_constraints rw.(rew_universes)
     end.
 
   Definition add_gc_constraints ctrs  (G : universes_graph) : universes_graph

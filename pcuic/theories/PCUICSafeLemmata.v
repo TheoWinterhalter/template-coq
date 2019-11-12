@@ -1003,6 +1003,9 @@ Section Lemmata.
       + cbn in e. destruct (ident_eq_spec c' k).
         * inversion e.
         * apply IHΣ'. assumption.
+      + cbn in e. destruct (ident_eq_spec c' k).
+        * inversion e.
+        * apply IHΣ'. assumption.
   Qed.
 
   Lemma red_const :

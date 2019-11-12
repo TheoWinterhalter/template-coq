@@ -399,6 +399,7 @@ Proof.
           induction ind_indices; simpl in *; auto.
           destruct a as [na [b|] ty]; simpl in *; intuition eauto.
   - red in onP |- *. eapply All_local_env_impl; eauto.
+  - todo "rewrite rules"%string.
 Qed.
 
 Lemma weakening_env_lookup_on_global_env `{checker_flags} P Σ Σ' c decl :

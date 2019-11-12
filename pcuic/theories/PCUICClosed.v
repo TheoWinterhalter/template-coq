@@ -457,7 +457,7 @@ Lemma on_global_env_impl `{checker_flags} Σ P Q :
   on_global_env P Σ -> on_global_env Q Σ.
 Proof.
   intros X X0.
-  simpl in *. induction X0; constructor; auto.
+  induction X0; constructor; auto.
   clear IHX0. destruct d; simpl.
   - destruct c; simpl. destruct cst_body; simpl in *.
     red in o |- *. simpl in *. now eapply X.
@@ -496,6 +496,18 @@ Proof.
     -- red in onP. red.
        eapply All_local_env_impl. eauto.
        intros. now apply X.
+  - red in o. simpl in *.
+    destruct o0 as [hctx hr].
+    split.
+    + eapply All_local_env_impl. 1: eassumption.
+      intros. eapply X. all: auto.
+    + (* TODO It won't always be unit *)
+      assert (h : forall A l, @All A (fun _ => unit) l).
+      { clear. intros A l. induction l.
+        - constructor.
+        - constructor. all: easy.
+      }
+      apply h.
 Qed.
 
 

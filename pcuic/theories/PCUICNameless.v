@@ -410,10 +410,31 @@ Definition nl_mutual_inductive_body m :=
     (map nl_one_inductive_body m.(ind_bodies))
     m.(ind_universes).
 
+Definition nl_elimination e :=
+  match e with
+  | eApp p => eApp (nl p)
+  | eCase indn p brs => eCase indn (nl p) (map (on_snd nl) brs)
+  | eProj p => eProj (nl p)
+  end.
+
+Definition nl_rewrite_rule r :=
+  mkrew
+    (nlctx r.(pat_context))
+    r.(head)
+    (map nl_elimination r.(elims))
+    (nl r.(rhs)).
+
+Definition nl_rewrite_decl r :=
+  Build_rewrite_decl
+    (map nl r.(symbols))
+    (map nl_rewrite_rule r.(rules))
+    r.(rew_universes).
+
 Definition nl_global_decl (d : global_decl) : global_decl :=
   match d with
   | ConstantDecl kn cb => ConstantDecl kn (nl_constant_body cb)
   | InductiveDecl kn mib => InductiveDecl kn (nl_mutual_inductive_body mib)
+  | RewriteDecl kn rew => RewriteDecl kn (nl_rewrite_decl rew)
   end.
 
 Definition nlg (Σ : global_env_ext) : global_env_ext :=

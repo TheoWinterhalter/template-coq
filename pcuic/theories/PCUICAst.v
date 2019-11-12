@@ -24,6 +24,7 @@ Inductive term : Set :=
 | tLambda (na : name) (A t : term)
 | tLetIn (na : name) (b B t : term) (* let na := b : B in t *)
 | tApp (u v : term)
+(* | tSymb (k : kername) (n : nat) (ui : universe_instance) *)
 | tConst (k : kername) (ui : universe_instance)
 | tInd (ind : inductive) (ui : universe_instance)
 | tConstruct (ind : inductive) (n : nat) (ui : universe_instance)
