@@ -803,12 +803,66 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
   (global_env_ext -> context -> term -> term -> Type) :=
   fun Σ Γ t T => P Σ Γ (Some t) T.
 
+(* Pattern definition
+   TODO Find a suitable place
+
+   This definition is relative to the number of pattern variables,
+   and the number of bound variables introduced afterwards.
+
+   TODO Can we have an "exact" pattern this way?
+
+   TODO How to guarantee the tConstruct is fully applied?
+*)
+Inductive pattern (npat : nat) (nb : nat) : term -> Prop :=
+| pattern_variable :
+    forall n l,
+      nb <= n ->
+      n < npat + nb ->
+      Forall (fun m => m < nb) l ->
+      pattern npat nb (mkApps (tRel n) (map tRel l))
+
+| pattern_bound :
+    forall n,
+      n < nb ->
+      pattern npat nb (tRel n)
+
+| pattern_lambda :
+    forall na A t,
+      pattern npat nb A ->
+      pattern npat (S nb) t ->
+      pattern npat nb (tLambda na A t)
+
+| pattern_construct :
+    forall ind n ui args,
+      Forall (pattern npat nb) args ->
+      pattern npat nb (mkApps (tConstruct ind n ui) args)
+
+(* | pattern_symbol : *)
+(* When we have symbols in the syntax *)
+.
+
+Inductive elim_pattern (npat : nat) : elimination -> Prop :=
+| pat_elim_App :
+    forall p,
+      pattern npat 0 p ->
+      elim_pattern npat (eApp p)
+
+| pat_elim_Case :
+    forall indn p brs,
+      pattern npat 0 p ->
+      Forall (fun br => pattern npat 0 br.2) brs ->
+      elim_pattern npat (eCase indn p brs)
+
+| pat_elim_Proj :
+    forall p,
+      elim_pattern npat (eProj p).
 
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
   Definition ind_guard := ind_guard.
   Definition typing := @typing.
   Definition smash_context := smash_context.
+  Definition elim_pattern := elim_pattern.
 
 End PCUICTypingDef.
 

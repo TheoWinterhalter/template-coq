@@ -254,6 +254,8 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
 
+  Parameter (elim_pattern : nat -> elimination -> Prop).
+
 End Typing.
 
 Module DeclarationTyping (T : Term) (E : EnvironmentSig T)

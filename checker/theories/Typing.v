@@ -925,6 +925,7 @@ Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTypi
   Definition ind_guard := ind_guard.
   Definition typing := @typing.
   Definition smash_context := smash_context.
+  Definition elim_pattern (npat : nat) (e : elimination) := False.
 
 End TemplateTyping.
 
