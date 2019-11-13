@@ -129,6 +129,8 @@ Record mutual_inductive_entry := {
     Definition tProd := tProd.
     Definition tLetIn := tLetIn.
     Definition tInd := tInd.
+    Definition tCase := tCase.
+    Definition tProj := tProj.
 
     Definition mkApps := mkApps.
 

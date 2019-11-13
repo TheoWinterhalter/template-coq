@@ -414,7 +414,7 @@ Definition nl_elimination e :=
   match e with
   | eApp p => eApp (nl p)
   | eCase indn p brs => eCase indn (nl p) (map (on_snd nl) brs)
-  | eProj p => eProj (nl p)
+  | eProj p => eProj p
   end.
 
 Definition nl_rewrite_rule r :=

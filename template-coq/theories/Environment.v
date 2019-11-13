@@ -15,6 +15,8 @@ Module Type Term.
   Parameter (tProd : name -> term -> term -> term).
   Parameter (tLetIn : name -> term -> term -> term -> term).
   Parameter (tInd : inductive -> universe_instance -> term).
+  Parameter (tCase : inductive × nat -> term -> term -> list (nat × term) -> term).
+  Parameter (tProj : projection -> term -> term).
 
   Parameter (mkApps : term -> list term -> term).
 
@@ -84,9 +86,17 @@ Module Environment (T : Term).
   Inductive elimination :=
   | eApp (p : term)
   | eCase (indn : inductive * nat) (p : term) (brs : list (nat * term))
-  | eProj (p : term).
+  | eProj (p : projection).
 
-  (* TODO Some mkElim and then mkElims with a fold *)
+  Definition mkElim t e :=
+    match e with
+    | eApp p => mkApps t [ p ]
+    | eCase indn p brs => tCase indn p t brs
+    | eProj p => tProj p t
+    end.
+
+  Definition mkElims t el :=
+    fold_left mkElim el t.
 
   Record rewrite_rule := mkrew {
     pat_context : context ;
