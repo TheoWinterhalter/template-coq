@@ -128,6 +128,7 @@ Record mutual_inductive_entry := {
     Definition tSort := tSort.
     Definition tProd := tProd.
     Definition tLetIn := tLetIn.
+    Definition tSymb := tSymb.
     Definition tInd := tInd.
     Definition tCase := tCase.
     Definition tProj := tProj.

@@ -14,6 +14,7 @@ Module Type Term.
   Parameter (tSort : universe -> term).
   Parameter (tProd : name -> term -> term -> term).
   Parameter (tLetIn : name -> term -> term -> term -> term).
+  Parameter (tSymb : kername -> nat -> universe_instance -> term).
   Parameter (tInd : inductive -> universe_instance -> term).
   Parameter (tCase : inductive × nat -> term -> term -> list (nat × term) -> term).
   Parameter (tProj : projection -> term -> term).

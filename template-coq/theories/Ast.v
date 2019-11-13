@@ -175,6 +175,7 @@ Module TemplateTerm <: Term.
   Definition tSort := tSort.
   Definition tProd := tProd.
   Definition tLetIn := tLetIn.
+  Definition tSymb (k : kername) (n : nat) (ui : universe_instance) := tRel 0.
   Definition tInd := tInd.
   Definition tCase := tCase.
   Definition tProj := tProj.
