@@ -382,13 +382,12 @@ Proof.
     + red in onP |- *. eapply All_local_env_impl; eauto.
   - destruct Hdecl as [hctx hr]. split.
     + eapply All_local_env_impl; eauto.
-    + (* TODO It won't always be unit *)
-      assert (h : forall A l, @All A (fun _ => unit) l).
-      { clear. intros A l. induction l.
-        - constructor.
-        - constructor. all: easy.
-      }
-      apply h.
+    + eapply All_impl. 1: eassumption.
+      intros rw [T onrhs onhead onelims].
+      exists T.
+      * eapply HPΣ. all: eauto.
+      * assumption.
+      * assumption.
 Qed.
 
 Lemma weakening_env_lookup_on_global_env `{checker_flags} P Σ Σ' c decl :

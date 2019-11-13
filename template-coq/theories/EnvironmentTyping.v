@@ -445,16 +445,18 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
     (** *** Typing of rewrite rule declarations  *)
 
-    (* TODO We need to ask for some predicate stating that something
-       is a pattern.
-     *)
-
-    Definition on_rewrite_rule (Δ : context) (r : rewrite_rule) := unit.
+    Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
+      rewCommonType : term ;
+      (* lhsTyped : P Σ r.(pat_context) (mkElims (tSymbol r.(head)) r.(elims)) ; *)
+      rhsTyped : P Σ r.(pat_context) r.(rhs) (Some rewCommonType) ;
+      onHead : r.(head) < #|Δ| ;
+      onElims : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
+    }.
 
     Definition on_rewrite_decl Σ d :=
       let Δ := map (vass nAnon) d.(symbols) in
-      All_local_env (P Σ) Δ ×
-      All (on_rewrite_rule Δ) d.(rules).
+      on_context Σ Δ ×
+      All (on_rewrite_rule Σ Δ) d.(rules).
 
     Definition on_global_decl Σ decl :=
       match decl with

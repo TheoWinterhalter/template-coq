@@ -812,6 +812,9 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
    TODO Can we have an "exact" pattern this way?
 
    TODO How to guarantee the tConstruct is fully applied?
+   Maybe we don't have to.
+
+   TODO Maybe constraint pattern_variable so the list is without duplicates.
 *)
 Inductive pattern (npat : nat) (nb : nat) : term -> Prop :=
 | pattern_variable :
@@ -1306,13 +1309,21 @@ Proof.
             (existT _ _ (existT _ _ h))))))).
            simpl in IH. simpl. exists s. apply IH.
            constructor 1. simpl. lia.
-      * (* TODO It won't always be unit *)
-        assert (h : forall A l, @All A (fun _ => unit) l).
-        { clear. intros A l. induction l.
-          - constructor.
-          - constructor. all: easy.
-        }
-        apply h.
+      * eapply All_impl. 1: eassumption.
+        intros rw [T onrhs onhead onelims].
+        exists T.
+        -- match type of IH with
+           | ?T -> _ =>
+             unshelve epose (y := _ : T)
+           end.
+           ++ exists (Σ, udecl). exists X13.
+              unshelve eexists _, _, _, _.
+              5: exact onrhs.
+              eapply typing_wf_local. eassumption.
+           ++ specialize (IH y). subst y. simpl in IH.
+              apply IH. constructor 1. simpl. lia.
+        -- assumption.
+        -- assumption.
 
   - assert (forall Γ (wfΓ : wf_local Σ Γ) t T (Hty : Σ ;;; Γ |- t : T),
                typing_size Hty < typing_size H ->

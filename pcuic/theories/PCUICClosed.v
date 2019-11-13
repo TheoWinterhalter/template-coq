@@ -501,13 +501,12 @@ Proof.
     split.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
-    + (* TODO It won't always be unit *)
-      assert (h : forall A l, @All A (fun _ => unit) l).
-      { clear. intros A l. induction l.
-        - constructor.
-        - constructor. all: easy.
-      }
-      apply h.
+    + eapply All_impl. 1: eassumption.
+      intros rw [T onrhs onhead onelims].
+      exists T.
+      * eapply X. all: eauto.
+      * assumption.
+      * assumption.
 Qed.
 
 
