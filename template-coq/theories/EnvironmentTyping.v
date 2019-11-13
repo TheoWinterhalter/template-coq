@@ -447,8 +447,11 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
     Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
       rewCommonType : term ;
-      (* lhsTyped : P Σ r.(pat_context) (mkElims (tSymbol r.(head)) r.(elims)) ; *)
-      rhsTyped : P Σ r.(pat_context) r.(rhs) (Some rewCommonType) ;
+      lhsTyped :
+        P Σ (Δ ,,, r.(pat_context))
+          (mkElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims))
+          (Some rewCommonType) ;
+      rhsTyped : P Σ (Δ ,,, r.(pat_context)) r.(rhs) (Some rewCommonType) ;
       onHead : r.(head) < #|Δ| ;
       onElims : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
     }.

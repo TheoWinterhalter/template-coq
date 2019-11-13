@@ -1310,8 +1310,18 @@ Proof.
            simpl in IH. simpl. exists s. apply IH.
            constructor 1. simpl. lia.
       * eapply All_impl. 1: eassumption.
-        intros rw [T onrhs onhead onelims].
+        intros rw [T onlhs onrhs onhead onelims].
         exists T.
+        -- match type of IH with
+           | ?T -> _ =>
+             unshelve epose (y := _ : T)
+           end.
+           ++ exists (Σ, udecl). exists X13.
+              unshelve eexists _, _, _, _.
+              5: exact onlhs.
+              eapply typing_wf_local. eassumption.
+           ++ specialize (IH y). subst y. simpl in IH.
+              apply IH. constructor 1. simpl. lia.
         -- match type of IH with
            | ?T -> _ =>
              unshelve epose (y := _ : T)

@@ -383,8 +383,9 @@ Proof.
   - destruct Hdecl as [hctx hr]. split.
     + eapply All_local_env_impl; eauto.
     + eapply All_impl. 1: eassumption.
-      intros rw [T onrhs onhead onelims].
+      intros rw [T onlhs onrhs onhead onelims].
       exists T.
+      * eapply HPΣ. all: eauto.
       * eapply HPΣ. all: eauto.
       * assumption.
       * assumption.
