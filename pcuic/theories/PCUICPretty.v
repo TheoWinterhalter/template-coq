@@ -56,6 +56,7 @@ Section print_term.
     | tLambda na b t => "f"
     | tLetIn na b _ t' => name_from_term t'
     | tApp f _ => name_from_term f
+    | tSymb k n u => "x"
     | tConst c u => "x"
     | tInd (mkInd i k) u =>
       match lookup_ind_decl Σ i k with
@@ -115,6 +116,7 @@ Section print_term.
                       print_term (vdef na' def dom :: Γ) true false body)
   | tApp f l =>
     parens (top || inapp) (print_term Γ false true f ++ " " ++ print_term Γ false false l)
+  | tSymb k n u => k ++ "(" ++ string_of_nat n ++ ")" ++ print_universe_instance u
   | tConst c u => c ++ print_universe_instance u
   | tInd (mkInd i k) u =>
     match lookup_ind_decl Σ i k with

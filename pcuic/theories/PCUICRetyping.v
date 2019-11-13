@@ -74,6 +74,8 @@ Section TypeOf.
       let '(a1, b1) := pi in
       ret (subst10 a b1)
 
+    | tSymb k n u => lookup_symbol_type Σ k n u
+
     | tConst cst u => lookup_constant_type Σ cst u
 
     | tInd (mkInd ind i) u => lookup_ind_type Σ ind i u

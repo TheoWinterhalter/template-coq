@@ -25,6 +25,7 @@ Instance subst_instance_constr : UnivSubst term :=
   | tRel _ | tVar _  => c
   | tEvar ev args => tEvar ev (List.map (subst_instance_constr u) args)
   | tSort s => tSort (subst_instance_univ u s)
+  | tSymb k n u' => tSymb k n (subst_instance_instance u u')
   | tConst c u' => tConst c (subst_instance_instance u u')
   | tInd i u' => tInd i (subst_instance_instance u u')
   | tConstruct ind k u' => tConstruct ind k (subst_instance_instance u u')
@@ -127,6 +128,7 @@ Section Closedu.
   | tSort univ => closedu_universe univ
   | tInd _ u => closedu_instance u
   | tConstruct _ _ u => closedu_instance u
+  | tSymb _ _ u => closedu_instance u
   | tConst _ u => closedu_instance u
   | tRel i => true
   | tEvar ev args => forallb closedu args

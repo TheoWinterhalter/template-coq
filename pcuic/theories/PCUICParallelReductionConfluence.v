@@ -250,6 +250,7 @@ Lemma term_forall_ctx_list_ind :
     (forall (t u : term),
         (forall t', size t' < size (tApp t u) -> P t') ->
         P t -> P u -> P (tApp t u)) ->
+    (forall (s : String.string) (n : nat) (u : list Level.t), P (tSymb s n u)) ->
     (forall (s : String.string) (u : list Level.t), P (tConst s u)) ->
     (forall (i : inductive) (u : list Level.t), P (tInd i u)) ->
     (forall (i : inductive) (n : nat) (u : list Level.t), P (tConstruct i n u)) ->
@@ -282,10 +283,10 @@ Proof.
         | H : _ |- _ => solve [apply H; (eapply aux || eapply auxl); red; simpl; try lia]
         end.
 
-  eapply X12; try (apply aux; red; simpl; lia).
+  eapply X13; try (apply aux; red; simpl; lia).
   red. apply All_pair. split; apply auxl; simpl; auto.
 
-  eapply X13; try (apply aux; red; simpl; lia).
+  eapply X14; try (apply aux; red; simpl; lia).
   red. apply All_pair. split; apply auxl; simpl; auto.
 Defined.
 
@@ -962,6 +963,7 @@ Section Confluence.
           end
         | _, _ => tProj p x'
         end
+      | tSymb k n u => (* TODO *) tSymb k n u
       | tConst c u =>
         match lookup_env Σ c with
         | Some (ConstantDecl id decl) =>
@@ -1672,7 +1674,7 @@ Section Confluence.
     revert Δ Δ' σ τ.
     revert Γ Γ' s t redst.
     set (P' := fun Γ Γ' => pred1_ctx Σ Γ Γ').
-    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); subst P';
+    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); subst P';
       try (intros until Δ; intros Δ' σ τ Hσ Hτ Hrel); trivial.
 
     (* induction redst using ; sigma; intros Δ Δ' σ τ Hσ Hτ Hrel. *)
@@ -2818,7 +2820,7 @@ Section Confluence.
     rename r (rho Γ t) = rho Δ (rename r t).
   Proof.
     revert t Γ Δ r.
-    refine (term_forall_ctx_list_ind _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+    refine (term_forall_ctx_list_ind _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
       intros; try subst Γ; try rename Γ0 into Γ(* ; rename_all_hyps *).
     all:auto 2.
 
@@ -3952,7 +3954,7 @@ Section Confluence.
     pred1 Σ Γ Δ t u -> pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
       subst Pctx; intros *.
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;

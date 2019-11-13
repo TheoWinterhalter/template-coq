@@ -29,6 +29,7 @@ Inductive type_error :=
 | UnboundVar (id : string)
 | UnboundMeta (m : nat)
 | UnboundEvar (ev : nat)
+| UndeclaredSymbol (c : string) (n : nat)
 | UndeclaredConstant (c : string)
 | UndeclaredInductive (c : inductive)
 | UndeclaredConstructor (c : inductive) (i : nat)
@@ -75,6 +76,7 @@ Definition fix_decls (l : mfixpoint term) :=
   in aux [] l.
 
 Section lookups.
+
   Context (Σ : global_env).
 
   Definition lookup_constant_type Σ cst u :=
@@ -110,4 +112,25 @@ Section lookups.
     res <- lookup_constructor_decl ind i k ;;
     let '(l, uctx, ty) := res in
     ret (subst0 (inds ind u l) (subst_instance_constr u ty)).
+
+  (* TODO MOVE *)
+  Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
+    match n with
+    | 0 => []
+    | S n => f i :: list_make f (S i) n
+    end.
+
+  Definition symbols_subst k n u m :=
+    list_make (fun i => tSymb k i u) (S n) (m - 2 - n).
+
+  Definition lookup_symbol_type Σ k n u :=
+    match lookup_env Σ k with
+    | Some (RewriteDecl _ rd) =>
+      match nth_error rd.(symbols) n with
+      | Some ty => ret (subst_instance_constr u (subst (symbols_subst k n u #|rd.(symbols)|) 0 ty))
+      | None => raise (UndeclaredSymbol k n)
+      end
+    | _ => raise (UndeclaredSymbol k n)
+    end.
+
 End lookups.

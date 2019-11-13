@@ -744,6 +744,8 @@ Section Principality.
         eapply conv_alt_sym; eauto.
         eapply cumul_refl'.
 
+    - admit.
+
     - eapply inversion_Const in hA as [decl ?] => //.
       eapply inversion_Const in hB as [decl' ?] => //.
       repeat outtimes.

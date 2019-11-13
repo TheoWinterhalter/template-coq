@@ -27,6 +27,7 @@ Fixpoint nameless (t : term) : bool :=
   | tLambda na A b => anon na && nameless A && nameless b
   | tLetIn na b B t => anon na && nameless b && nameless B && nameless t
   | tApp u v => nameless u && nameless v
+  | tSymb k n u => true
   | tConst c u => true
   | tInd i u => true
   | tConstruct i n u => true
@@ -58,6 +59,7 @@ Fixpoint nl (t : term) : term :=
   | tLambda na A b => tLambda nAnon (nl A) (nl b)
   | tLetIn na b B t => tLetIn nAnon (nl b) (nl B) (nl t)
   | tApp u v => tApp (nl u) (nl v)
+  | tSymb k n u => tSymb k n u
   | tConst c u => tConst c u
   | tInd i u => tInd i u
   | tConstruct i n u => tConstruct i n u
@@ -129,6 +131,8 @@ Proof.
       f_equal.
       * eapply H2 ; assumption.
       * eapply IHl ; assumption.
+  - f_equal ; try solve [ ih ].
+    eapply eq_univ_make. assumption.
   - f_equal ; try solve [ ih ].
     eapply eq_univ_make. assumption.
   - f_equal ; try solve [ ih ].

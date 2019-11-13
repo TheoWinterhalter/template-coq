@@ -75,6 +75,10 @@ Inductive eq_term_upto_univ (Re Rle : universe -> universe -> Prop) : term -> te
     eq_term_upto_univ Re Re u u' ->
     eq_term_upto_univ Re Rle (tApp t u) (tApp t' u')
 
+| eq_Symb k n u u' :
+    R_universe_instance Re u u' ->
+    eq_term_upto_univ Re Rle (tSymb k n u) (tSymb k n u')
+
 | eq_Const c u u' :
     R_universe_instance Re u u' ->
     eq_term_upto_univ Re Rle (tConst c u) (tConst c u')
@@ -548,6 +552,11 @@ Fixpoint eqb_term_upto_univ (equ lequ : universe -> universe -> bool) (u v : ter
     eqb_term_upto_univ equ lequ u u' &&
     eqb_term_upto_univ equ equ v v'
 
+  | tSymb k n u, tSymb k' n' u' =>
+    eqb k k' &&
+    eqb n n' &&
+    forallb2 equ (map Universe.make u) (map Universe.make u')
+
   | tConst c u, tConst c' u' =>
     eqb c c' &&
     forallb2 equ (map Universe.make u) (map Universe.make u')
@@ -663,9 +672,17 @@ Proof.
   - intro. toProp. constructor; eauto.
   - intro. toProp. constructor; eauto.
   - intro. toProp. constructor; eauto.
+  - unfold kername in *.
+    eqspec. 2: discriminate.
+    eqspec. 2: discriminate.
+    simpl.
+    intro h. constructor.
+    apply forallb2_Forall2 in h.
+    eapply Forall2_impl. 1: eassumption.
+    eauto.
   - unfold kername in *. eqspec; [|discriminate].
-    intro. toProp. constructor; eauto.
-    apply forallb2_Forall2 in H0.
+    simpl. intro h. constructor; eauto.
+    apply forallb2_Forall2 in h.
     eapply Forall2_impl; tea; eauto.
   - unfold kername in *. eqspec; [|discriminate].
     intro. toProp. constructor; eauto.
@@ -747,6 +764,42 @@ Proof.
     constructor. constructor ; assumption.
   - cbn - [eqb]. eqspecs. equspec equ he. equspec lequ hle. ih.
     constructor. constructor ; assumption.
+  - cbn - [eqb].
+    pose proof (eqb_spec s k) as e.
+    match goal with
+    | |- context G[ eqb ?x ?y ] =>
+      set (toto := eqb x y) in * ;
+      let G' := context G[toto] in
+      change G'
+    end.
+    destruct e. 2: nodec.
+    subst.
+    pose proof (eqb_spec n n0) as e.
+    match goal with
+    | |- context G[ eqb ?x ?y ] =>
+      set (toto := eqb x y) in * ;
+      let G' := context G[toto] in
+      change G'
+    end.
+    destruct e. 2: nodec.
+    subst. simpl.
+    induction u in ui |- *.
+    + destruct ui.
+      * constructor. constructor. constructor.
+      * constructor. intro bot. inversion bot. subst. inversion H0.
+    + destruct ui.
+      * constructor. intro bot. inversion bot. subst. inversion H0.
+      * cbn. equspec equ he. equspec lequ hle.
+        -- cbn. destruct (IHu ui).
+          ++ constructor. constructor.
+              inversion e. subst.
+              constructor ; assumption.
+          ++ constructor. intro bot. apply f.
+              inversion bot. subst. constructor. inversion H0.
+              subst. assumption.
+        -- constructor. intro bot. apply f.
+          inversion bot. subst. inversion H0. subst.
+          assumption.
   - cbn - [eqb].
     pose proof (eqb_spec s k) as H.
     match goal with
@@ -914,6 +967,8 @@ Proof.
   - induction H.
     + reflexivity.
     + simpl. rewrite -> p by assumption. auto.
+  - eapply forallb2_map. eapply forallb2_refl.
+    intro l. eapply eqb_refl.
   - eapply forallb2_map. eapply forallb2_refl.
     intro l. eapply eqb_refl.
   - eapply forallb2_map. eapply forallb2_refl.
@@ -1542,6 +1597,8 @@ Proof.
   revert Re Rle u v H Rle'.
   induction 1; intros; constructor; intuition auto.
   - eapply All2_symP; auto. eapply eq_term_upto_univ_sym; auto.
+  - eapply Forall2_sym. eapply Forall2_map_inv in r.
+    eapply Forall2_map. solve_all.
   - eapply Forall2_sym. eapply Forall2_map_inv in r.
     eapply Forall2_map. solve_all.
   - eapply Forall2_sym. eapply Forall2_map_inv in r.

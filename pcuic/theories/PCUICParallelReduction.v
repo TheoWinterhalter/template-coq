@@ -83,6 +83,7 @@ Lemma term_forall_ctx_list_ind :
     (forall Γ (n : name) (t : term),
         P Γ t -> forall t0 : term, P Γ t0 -> forall t1 : term, P (vdef n t t0 :: Γ) t1 -> P Γ (tLetIn n t t0 t1)) ->
     (forall Γ (t u : term), P Γ t -> P Γ u -> P Γ (tApp t u)) ->
+    (forall Γ (s : String.string) (n : nat) (u : list Level.t), P Γ (tSymb s n u)) ->
     (forall Γ (s : String.string) (u : list Level.t), P Γ (tConst s u)) ->
     (forall Γ (i : inductive) (u : list Level.t), P Γ (tInd i u)) ->
     (forall Γ (i : inductive) (n : nat) (u : list Level.t), P Γ (tConstruct i n u)) ->
@@ -141,11 +142,11 @@ Proof.
         | H : _ |- _ => solve [apply H; (eapply aux || eapply auxl); red; simpl; try lia]
         end.
 
-  eapply X12; try (apply aux; red; simpl; lia).
+  eapply X13; try (apply aux; red; simpl; lia).
   apply auxl'. simpl. lia.
   red. apply All_pair. split; apply auxl; simpl; auto.
 
-  eapply X13; try (apply aux; red; simpl; lia).
+  eapply X14; try (apply aux; red; simpl; lia).
   apply auxl'. simpl. lia.
   red. apply All_pair. split; apply auxl; simpl; auto.
 Defined.
@@ -495,6 +496,12 @@ Section ParallelReduction.
       pred1 Γ Γ' (tProj p (mkApps (tCoFix mfix0 idx) args0))
             (tProj p (mkApps fn args1))
 
+  (** Symbols and rewrite rules  *)
+
+  | pred_symb k n u :
+      All2_local_env (on_decl pred1) Γ Γ' ->
+      pred1 Γ Γ' (tSymb k n u) (tSymb k n u)
+
   (** Constant unfolding *)
 
   | pred_delta c decl body (isdecl : declared_constant Σ c decl) u :
@@ -820,6 +827,10 @@ Section ParallelReduction.
           unfold_cofix mfix1 idx = Some (narg, fn) ->
           All2 (P' Γ Γ') args0 args1 ->
           P Γ Γ' (tProj p (mkApps (tCoFix mfix0 idx) args0)) (tProj p (mkApps fn args1))) ->
+      (forall (Γ Γ' : context) (c : ident) (n : nat) (u : universe_instance),
+          All2_local_env (on_decl pred1) Γ Γ' ->
+          Pctx Γ Γ' ->
+          P Γ Γ' (tSymb c n u) (tSymb c n u)) ->
       (forall (Γ Γ' : context) (c : ident) (decl : constant_body) (body : term),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
@@ -890,7 +901,7 @@ Section ParallelReduction.
           pred_atom t -> P Γ Γ' t t) ->
       forall (Γ Γ' : context) (t t0 : term), pred1 Γ Γ' t t0 -> P Γ Γ' t t0.
   Proof.
-    intros P Pctx P' Hctx. intros. revert Γ Γ' t t0 X20.
+    intros P Pctx P' Hctx. intros. revert Γ Γ' t t0 X21.
     fix aux 5. intros Γ Γ' t t'.
     move aux at top.
     destruct 1; match goal with
@@ -900,55 +911,58 @@ Section ParallelReduction.
                 | |- P _ _ (tCase _ _ (mkApps (tCoFix _ _) _) _) _ => idtac
                 | |- P _ _ (tProj _ (mkApps (tCoFix _ _) _)) _ => idtac
                 | |- P _ _ (tRel _) _ => idtac
+                | |- P _ _ (tSymb _ _ _) _ => idtac
                 | |- P _ _ (tConst _ _) _ => idtac
                 | H : _ |- _ => eapply H; eauto
                 end.
     - simpl. apply X1; auto. apply Hctx.
-      apply (All2_local_env_impl a). intros. eapply X20.
-      apply (All2_local_env_impl a). intros. eapply (aux _ _ _ _ X20).
+      apply (All2_local_env_impl a). intros. eapply X21.
+      apply (All2_local_env_impl a). intros. eapply (aux _ _ _ _ X21).
     - simpl. apply X2; auto.
-      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X20).
-    - apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X20).
+      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X21).
+    - apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X21).
     - eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
     - eapply (All2_All2_prop_eq (P:=pred1) (Q:=P') (f:=snd) (g:=fst) a1 (extendP aux Γ Γ')).
     - eapply X4; eauto.
-      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X20).
-      eapply (All2_local_env_impl a0). intros. red. red in X20. apply (aux _ _ _ _ X20).
-      eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
-      eapply (All2_All2_prop (P:=pred1) (Q:=P') a2 (extendP aux Γ Γ')).
-    - eapply X5; eauto.
       apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X21).
       eapply (All2_local_env_impl a0). intros. red. red in X21. apply (aux _ _ _ _ X21).
       eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
       eapply (All2_All2_prop (P:=pred1) (Q:=P') a2 (extendP aux Γ Γ')).
-      eapply (All2_All2_prop_eq (P:=pred1) (Q:=P') (f:=snd) a3 (extendP aux Γ Γ')).
-    - eapply X6; eauto.
-      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X20).
-      eapply (All2_local_env_impl a0). intros. red. red in X20. apply (aux _ _ _ _ X20).
+    - eapply X5; eauto.
+      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X22).
+      eapply (All2_local_env_impl a0). intros. red. red in X22. apply (aux _ _ _ _ X22).
       eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
       eapply (All2_All2_prop (P:=pred1) (Q:=P') a2 (extendP aux Γ Γ')).
-    - eapply X7; eauto.
-      apply Hctx, (All2_local_env_impl a). intros. exact a. intros. apply (aux _ _ _ _ X20).
+      eapply (All2_All2_prop_eq (P:=pred1) (Q:=P') (f:=snd) a3 (extendP aux Γ Γ')).
+    - eapply X6; eauto.
+      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X21).
+      eapply (All2_local_env_impl a0). intros. red. red in X21. apply (aux _ _ _ _ X21).
+      eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
+      eapply (All2_All2_prop (P:=pred1) (Q:=P') a2 (extendP aux Γ Γ')).
+    - eapply X7. 1: assumption.
+      apply Hctx, (All2_local_env_impl a). intros. exact a. intros. apply (aux _ _ _ _ X21).
     - eapply X8; eauto.
-      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X20).
-    - apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X20).
-    - eapply (All2_All2_prop (P:=pred1) (Q:=P) a0). intros. apply (aux _ _ _ _ X20).
+      apply Hctx, (All2_local_env_impl a). intros. exact a. intros. apply (aux _ _ _ _ X21).
+    - eapply X9; eauto.
+      apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X21).
+    - apply Hctx, (All2_local_env_impl a). exact a. intros. apply (aux _ _ _ _ X21).
+    - eapply (All2_All2_prop (P:=pred1) (Q:=P) a0). intros. apply (aux _ _ _ _ X21).
     - eapply (All2_All2_prop_eq (P:=pred1) (Q:=P') (f:=snd) a (extendP aux Γ Γ')).
-    - eapply X15.
-      eapply (All2_local_env_impl a). intros. apply X20.
-      eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X20).
-      eapply (All2_local_env_impl a0). intros. red. exact X20.
-      eapply (All2_local_env_impl a0). intros. red. apply (aux _ _ _ _ X20).
-      eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
     - eapply X16.
-      eapply (All2_local_env_impl a). intros. apply X20.
-      eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X20).
-      eapply (All2_local_env_impl a0). intros. red. exact X20.
-      eapply (All2_local_env_impl a0). intros. red. apply (aux _ _ _ _ X20).
+      eapply (All2_local_env_impl a). intros. apply X21.
+      eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X21).
+      eapply (All2_local_env_impl a0). intros. red. exact X21.
+      eapply (All2_local_env_impl a0). intros. red. apply (aux _ _ _ _ X21).
       eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
-    - eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X20).
+    - eapply X17.
+      eapply (All2_local_env_impl a). intros. apply X21.
+      eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X21).
+      eapply (All2_local_env_impl a0). intros. red. exact X21.
+      eapply (All2_local_env_impl a0). intros. red. apply (aux _ _ _ _ X21).
+      eapply (All2_All2_prop2_eq (Q:=P') (f:=dtype) (g:=dbody) a1 (extendP aux)).
+    - eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X21).
     - eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 (extendP aux Γ Γ')).
-    - eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X20).
+    - eapply (Hctx _ _ a), (All2_local_env_impl a). intros. apply (aux _ _ _ _ X21).
   Defined.
 
   Lemma pred1_refl_gen Γ Γ' t : pred1_ctx Γ Γ' -> pred1 Γ Γ' t t.
@@ -1008,7 +1022,7 @@ Section ParallelReduction.
   Lemma pred1_pred1_ctx {Γ Δ t u} : pred1 Γ Δ t u -> pred1_ctx Γ Δ.
   Proof.
     intros H; revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx _ (fun Γ Γ' => pred1_ctx Γ Γ') _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *.
+    refine (pred1_ind_all_ctx _ (fun Γ Γ' => pred1_ctx Γ Γ') _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *.
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;
         try solve [eexists; split; constructor; eauto].
@@ -1216,7 +1230,7 @@ Section ParallelWeakening.
              All2_local_env_over (pred1 Σ) Γ Δ Γ'' Δ'' ->
              pred1_ctx Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ') (Δ ,,, Δ'' ,,, lift_context #|Δ''| 0 Δ')).
 
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; intros; subst Pctx;
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; intros; subst Pctx;
       rename_all_hyps; try subst Γ Γ'; simplify_IH_hyps; cbn -[iota_red];
       match goal with
         |- context [iota_red _ _ _ _] => idtac
@@ -1685,7 +1699,7 @@ Section ParallelSubstitution.
                 #|Γ| = #|Γ1| ->
                All2_local_env_over (pred1 Σ) Γ Γ1 Δ Δ1 ->
                pred1_ctx Σ (Γ ,,, subst_context s 0 Γ') (Γ1 ,,, subst_context s' 0 Γ'1)).
-    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; !intros;
+    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; !intros;
       try subst Γ Γ'; simplify_IH_hyps; cbn -[iota_red];
       match goal with
         |- context [iota_red _ _ _ _] => idtac

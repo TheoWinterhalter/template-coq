@@ -729,6 +729,10 @@ Section Alpha.
       induction a; simpl; intros args0 args'0 H1 H2.
       + inv H1; inv H2; constructor; eauto.
       + inv H1; inv H2. constructor; eauto.
+    - apply Forall2_eq, map_inj in H3.
+      apply Forall2_eq, map_inj in H4.
+      congruence.
+      all: intros x y H; now inv H.
     - apply Forall2_eq, map_inj in H2.
       apply Forall2_eq, map_inj in H3.
       congruence.
