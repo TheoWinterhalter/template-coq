@@ -289,6 +289,12 @@ Section Alpha.
         apply eq_term_sym.
         eapply upto_names_impl_eq_term.
         eapply eq_term_upto_univ_subst ; now auto.
+    - intros k n u decl ty ? ? hdecl hty hcons v e.
+      dependent destruction e.
+      apply Forall2_eq in r. apply map_inj in r ; revgoals.
+      { intros x y h. inversion h. reflexivity. }
+      subst.
+      constructor. all: auto.
     - intros cst u decl ? ? hdecl hcons v e.
       dependent destruction e.
       apply Forall2_eq in r. apply map_inj in r ; revgoals.

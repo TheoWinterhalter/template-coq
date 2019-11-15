@@ -1052,11 +1052,21 @@ Proof.
   all: now rewrite nl_subst_instance_constr.
 Qed.
 
+(* TODO MOVE *)
+Lemma list_make_map :
+  forall A f i n B (g : A -> B),
+    map g (@PCUICTyping.list_make A f i n) =
+    PCUICTyping.list_make (fun i => g (f i)) i n.
+Proof.
+  intros A f i n B g.
+  induction n in i |- *.
+  - reflexivity.
+  - simpl. f_equal. eapply IHn.
+Qed.
 
 Lemma typing_nlg {cf : checker_flags} :
   env_prop (fun Σ Γ t T => nlg Σ ;;; nlctx Γ |- nl t : nl T).
 Proof.
-  clear.
   apply typing_ind_env; cbn; intros;
     rewrite ?nl_lift, ?nl_subst, ?nl_subst_instance_constr;
     try (econstructor; eauto using nlg_wf_local; fail).
@@ -1066,6 +1076,20 @@ Proof.
     unfold nlctx. rewrite nth_error_map. now rewrite H.
   - constructor; eauto using nlg_wf_local.
     now rewrite global_ext_levels_nlg.
+  - eapply meta_conv.
+    + econstructor.
+      * eauto using nlg_wf_local.
+      * unfold declared_symbol in *.
+        erewrite lookup_env_nlg. 2: eassumption. reflexivity.
+      * unfold nl_rewrite_decl. simpl.
+        rewrite nth_error_map. rewrite H0.
+        simpl. reflexivity.
+      * unfold nl_rewrite_decl. simpl.
+        red.
+        rewrite global_ext_levels_nlg, global_ext_constraints_nlg; assumption.
+    + f_equal. rewrite nl_subst. f_equal.
+      unfold symbols_subst. rewrite list_make_map. simpl.
+      rewrite map_length. reflexivity.
   - replace (nl (cst_type decl)) with (cst_type (map_constant_body nl decl));
       [|destruct decl; reflexivity].
     constructor; eauto using nlg_wf_local.

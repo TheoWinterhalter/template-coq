@@ -163,6 +163,23 @@ Hint Rewrite lift_mkApps : lift.
 Hint Rewrite distr_lift_subst distr_lift_subst10 : lift.
 Hint Rewrite lift_iota_red : lift.
 
+Lemma lift_declared_symbol `{checker_flags} :
+  forall Σ k n u decl ty i j,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (symbols decl) n = Some ty ->
+    let ty' :=
+      subst_instance_constr u ((subst0 (symbols_subst k n u #|symbols decl|)) ty)
+    in
+    lift i j ty' = ty'.
+Proof.
+  intros Σ k n u decl ty i j hΣ h e ty'.
+  eapply lift_closed.
+  eapply closed_upwards.
+  - eapply closed_declared_symbol. all: eauto.
+  - lia.
+Qed.
+
 Lemma lift_declared_constant `{checker_flags} Σ cst decl n k :
   wf Σ ->
   declared_constant Σ cst decl ->
@@ -836,6 +853,9 @@ Proof.
 
   - eapply refine_type. econstructor; auto.
     now rewrite -> distr_lift_subst10.
+
+  - erewrite lift_declared_symbol by eassumption.
+    econstructor. all: eauto.
 
   - autorewrite with lift.
     rewrite -> map_cst_type. constructor; auto.

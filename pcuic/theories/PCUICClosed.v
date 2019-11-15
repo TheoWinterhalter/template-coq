@@ -355,6 +355,44 @@ Proof.
     move=> Hs. apply: Hs => /=. rewrite H => //.
     rewrite Nat.add_1_r. auto.
 
+  - eapply (@closed_upwards 0). 2: lia.
+    rewrite closedn_subst_instance_constr.
+    eapply lookup_on_global_env in H ; eauto.
+    destruct H as [Σ' [HΣ' IH]].
+    repeat red in IH. destruct IH as [hctx hr].
+    eapply closedn_subst0.
+    + eapply forallb_Forall. clear.
+      unfold symbols_subst.
+      generalize (#|symbols decl| - 1 - n). intro m.
+      generalize (S n). clear. intro n.
+      induction m in n |- *.
+      * simpl. constructor.
+      * simpl. constructor.
+        -- simpl. reflexivity.
+        -- eapply IHm.
+    + simpl.
+      unfold on_context in hctx.
+      rename H0 into e.
+      rewrite symbols_subst_length.
+      clear - e hctx.
+      set (l := symbols decl) in *. clearbody l.
+      induction l in n, e, hctx |- *.
+      * destruct n. all: discriminate.
+      * destruct n.
+        -- simpl in *. apply some_inj in e. subst.
+           dependent destruction hctx. 2: discriminate.
+           hnf in H. noconf H. cbn in *.
+           destruct l0 as [s h].
+           apply utils.andP in h as [h _].
+           rewrite map_length in h.
+           eapply closed_upwards. 1: eassumption. lia.
+        -- simpl in *. specialize IHl with (1 := e).
+           dependent destruction hctx. 2: discriminate.
+           hnf in H. noconf H. cbn in *.
+           forward IHl by assumption.
+           replace (#|l| - 0 - S n) with (#|l| - 1 - n) by lia.
+           assumption.
+
   - rewrite closedn_subst_instance_constr.
     eapply lookup_on_global_env in H; eauto.
     destruct H as [Σ' [HΣ' IH]].
@@ -510,6 +548,67 @@ Proof.
       * assumption.
 Qed.
 
+Lemma closed_declared_symbol_nth_error `{checker_flags} :
+forall Σ k n decl ty,
+  wf Σ ->
+  declared_symbol Σ k decl ->
+  nth_error (symbols decl) n = Some ty ->
+  closedn (#|symbols decl| - 1 - n) ty.
+Proof.
+  intros Σ k n decl ty hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx hr].
+  unfold on_context in hctx.
+  set (l := symbols decl) in *.
+  clearbody l. clear - e hctx wfΣ'.
+  induction l in n, e, hctx |- *.
+  - destruct n. all: discriminate.
+  - destruct n.
+    + simpl in *. apply some_inj in e. subst.
+      dependent destruction hctx. 2: discriminate.
+      hnf in H0. noconf H0.
+      cbn in *.
+      destruct l0 as [s h].
+      apply typecheck_closed in h. all: eauto.
+      rewrite map_length in h.
+      replace (#|l| - 0 - 0) with #|l| by lia.
+      destruct h as [_ h]. apply utils.andP in h.
+      apply h.
+    + simpl in *.
+      dependent destruction hctx. 2: discriminate.
+      hnf in H0. noconf H0.
+      cbn in *.
+      eapply IHl in e. 2: assumption.
+      replace (#|l| - 0 - S n) with (#|l| - 1 - n) by lia.
+      assumption.
+Qed.
+
+Lemma closed_declared_symbol `{checker_flags} :
+forall Σ k n u decl ty,
+  wf Σ ->
+  declared_symbol Σ k decl ->
+  nth_error (symbols decl) n = Some ty ->
+  closed (subst_instance_constr u ((subst0 (symbols_subst k n u #|symbols decl|)) ty)).
+Proof.
+  intros Σ k n u decl ty hΣ h e.
+  rewrite closedn_subst_instance_constr.
+  rewrite closedn_subst0.
+  - eapply forallb_Forall. clear.
+    unfold symbols_subst.
+    generalize (#|symbols decl| - 1 - n). intro m.
+    generalize (S n). clear. intro n.
+    induction m in n |- *.
+    + simpl. constructor.
+    + simpl. constructor.
+      * simpl. reflexivity.
+      * eapply IHm.
+  - rewrite symbols_subst_length. simpl.
+    eapply closed_declared_symbol_nth_error. all: eauto.
+  - reflexivity.
+Qed.
 
 Lemma declared_decl_closed `{checker_flags} (Σ : global_env) cst decl :
   wf Σ ->

@@ -1637,6 +1637,8 @@ Proof.
       * simpl. reflexivity.
       * simpl. replace (i - 0) with i by lia.
         reflexivity.
+  - intros Σ wfΣ Γ wfΓ k n u decl ty ? ? isdecl hty hconst Δ f hf.
+    admit.
   - intros Σ wfΣ Γ wfΓ cst u decl X X0 isdecl hconst Δ f hf.
     simpl. eapply meta_conv.
     + constructor. all: eauto.
@@ -2195,6 +2197,7 @@ Proof.
     (* autorewrite with sigma. *) simpl.
     (* NEED Commutation *)
     admit.
+  - admit.
   - intros Σ wfΣ Γ wfΓ ind u mdecl idecl isdecl X X0 hconst Δ σ hΔ hσ.
     (* autorewrite with sigma. *) simpl.
     (* NEED Commutation *)

@@ -650,6 +650,35 @@ Section WfArity.
     { wfa : isWfArity Σ Γ T & All_local_env_over typing property Σ _ (snd (projT2 (projT2 wfa))) }.
 End WfArity.
 
+(* TODO MOVE *)
+Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
+  match n with
+  | 0 => []
+  | S n => f i :: list_make f (S i) n
+  end.
+
+Lemma list_make_length :
+  forall A f i n,
+    #|@list_make A f i n| = n.
+Proof.
+  intros A f i n.
+  induction n in i |- *.
+  - reflexivity.
+  - simpl. f_equal. apply IHn.
+Qed.
+
+Definition symbols_subst k n u m :=
+  list_make (fun i => tSymb k i u) (S n) (m - 1 - n).
+
+Lemma symbols_subst_length :
+  forall k n u m,
+    #|symbols_subst k n u m| = m - 1 - n.
+Proof.
+  intros k n u m.
+  unfold symbols_subst.
+  apply list_make_length.
+Qed.
+
 (* AXIOM GUARD CONDITION *)
 Axiom fix_guard : mfixpoint term -> bool.
 
@@ -721,6 +750,13 @@ Inductive typing `{checker_flags} (Σ : global_env_ext) (Γ : context) : term ->
     Σ ;;; Γ |- t : tProd na A B ->
     Σ ;;; Γ |- u : A ->
     Σ ;;; Γ |- tApp t u : B{0 := u}
+
+| type_Symb k n u :
+    All_local_env (lift_typing typing Σ) Γ ->
+    forall decl (isdecl : declared_symbol Σ.1 k decl) ty,
+      nth_error decl.(symbols) n = Some ty ->
+      consistent_instance_ext Σ decl.(rew_universes) u ->
+      Σ ;;; Γ |- tSymb k n u : subst_instance_constr u (subst (symbols_subst k n u #|decl.(symbols)|) 0 ty)
 
 | type_Const cst u :
     All_local_env (lift_typing typing Σ) Γ ->
@@ -898,6 +934,7 @@ Proof.
     end.
   exact (S (wf_local_size _ typing_size _ a)).
   exact (S (wf_local_size _ typing_size _ a)).
+  exact (S (S (wf_local_size _ typing_size _ a))).
   exact (S (S (wf_local_size _ typing_size _ a))).
   exact (S (S (wf_local_size _ typing_size _ a))).
   exact (S (S (wf_local_size _ typing_size _ a))).
@@ -1101,6 +1138,14 @@ Lemma typing_ind_env `{cf : checker_flags} :
         Σ ;;; Γ |- u : A -> P Σ Γ u A ->
         P Σ Γ (tApp t u) (B{0 := u})) ->
 
+    (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (k : ident) (n : nat) u decl ty,
+        Forall_decls_typing P Σ.1 ->
+        All_local_env_over typing Pdecl Σ Γ wfΓ ->
+        declared_symbol Σ.1 k decl ->
+        nth_error decl.(symbols) n = Some ty ->
+        consistent_instance_ext Σ decl.(rew_universes) u ->
+        P Σ Γ (tSymb k n u) (subst_instance_constr u (subst (symbols_subst k n u #|decl.(symbols)|) 0 ty))) ->
+
     (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (cst : ident) u (decl : constant_body),
         Forall_decls_typing P Σ.1 ->
         All_local_env_over typing Pdecl Σ Γ wfΓ ->
@@ -1185,7 +1230,7 @@ Lemma typing_ind_env `{cf : checker_flags} :
        env_prop P.
 Proof.
   intros P Pdecl; unfold env_prop.
-  intros X X0 X1 X2 X3 X4 X5 X6 X7 X8 X9 X10 X11 X12 Σ wfΣ Γ wfΓ t T H.
+  intros X X0 X1 X2 X3 X4 XSymb X5 X6 X7 X8 X9 X10 X11 X12 Σ wfΣ Γ wfΓ t T H.
   (* NOTE (Danil): while porting to 8.9, I had to split original "pose" into 2 pieces,
    otherwise it takes forever to execure the "pose", for some reason *)
   pose (@Fix_F ({ Σ : _ & { wfΣ : wf Σ.1 & { Γ : context & { wfΓ : wf_local Σ Γ &
@@ -1385,6 +1430,10 @@ Proof.
        ++ unshelve eapply X14. all: eauto.
           ** econstructor ; eauto. eexists ; eauto.
           ** simpl. lia.
+
+    -- eapply XSymb. all: eauto.
+      specialize (X14 [] localenv_nil _ _ (type_Prop _)).
+      simpl in X14. forward X14; auto. lia. apply X14.
 
     -- eapply X5; eauto. simpl in X14.
        specialize (X14 [] localenv_nil _ _ (type_Prop _)).

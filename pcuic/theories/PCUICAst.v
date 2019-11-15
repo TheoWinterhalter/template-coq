@@ -120,22 +120,22 @@ Record mutual_inductive_entry := {
 
 
 
-  Module PCUICTerm <: Term.
+Module PCUICTerm <: Term.
 
-    Definition term := term.
+  Definition term := term.
 
-    Definition tRel := tRel.
-    Definition tSort := tSort.
-    Definition tProd := tProd.
-    Definition tLetIn := tLetIn.
-    Definition tSymb := tSymb.
-    Definition tInd := tInd.
-    Definition tCase := tCase.
-    Definition tProj := tProj.
+  Definition tRel := tRel.
+  Definition tSort := tSort.
+  Definition tProd := tProd.
+  Definition tLetIn := tLetIn.
+  Definition tSymb := tSymb.
+  Definition tInd := tInd.
+  Definition tCase := tCase.
+  Definition tProj := tProj.
 
-    Definition mkApps := mkApps.
+  Definition mkApps := mkApps.
 
-  End PCUICTerm.
+End PCUICTerm.
 
-  Module PCUICEnvironment := Environment PCUICTerm.
-  Include PCUICEnvironment.
+Module PCUICEnvironment := Environment PCUICTerm.
+Include PCUICEnvironment.

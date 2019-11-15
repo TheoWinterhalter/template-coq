@@ -250,6 +250,7 @@ Section TypeOf.
     - admit.
     - admit.
     - admit.
+    - admit.
     - split.
       + ih.
       + eapply cumul_trans ; try eassumption.

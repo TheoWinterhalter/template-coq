@@ -1055,6 +1055,15 @@ Qed.
 
 Hint Resolve All_local_env_over_subst_instance : univ_subst.
 
+Lemma meta_conv :
+  forall Σ Γ t A B,
+    Σ ;;; Γ |- t : A ->
+    A = B ->
+    Σ ;;; Γ |- t : B.
+Proof.
+  intros Σ Γ t A B h []. assumption.
+Qed.
+
 Lemma typing_subst_instance :
   env_prop (fun Σ Γ t T => forall u univs,
                 wf_ext_wk Σ ->
@@ -1085,7 +1094,20 @@ Proof.
     rewrite <- subst_subst_instance_constr. cbn. econstructor.
     + eapply X1; eauto.
     + eapply X3; eauto.
-  - intros. rewrite subst_instance_constr_two. econstructor; [aa|aa|].
+  - intros k n u decl ty hΣ hΓ isdecl hty constu ui udecl wΣ hsub h.
+    eapply meta_conv.
+    + eapply type_Symb. all: eauto. all: aa.
+    + rewrite subst_instance_constr_two.
+      rewrite <- 2!subst_subst_instance_constr. f_equal.
+      unfold symbols_subst.
+      generalize (#|symbols decl| - 1 - n). intro m.
+      generalize (S n). intro p.
+      induction m in p |- *.
+      * simpl. reflexivity.
+      * simpl. f_equal. 2: eapply IHm.
+        f_equal.
+        admit. (* TODO Rewrite rules *)
+  - intros. rewrite subst_instance_constr_two. econstructor ; [aa|aa|].
     clear X X0; cbn in *.
     eapply consistent_ext_trans; eauto.
   - intros. rewrite subst_instance_constr_two. econstructor; [aa|aa|].
@@ -1214,7 +1236,8 @@ Proof.
         eapply p; tas.
       * aa.
     + destruct HSub. eapply cumul_subst_instance; aa.
-Qed.
+(* Qed. *)
+Admitted.
 
 
 Lemma typing_subst_instance' Σ φ Γ t T u univs :

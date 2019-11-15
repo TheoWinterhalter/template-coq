@@ -210,6 +210,16 @@ Proof.
   - econstructor 3; eauto. eapply weakening_env_red1; eauto. exists Σ''; eauto.
 Qed.
 
+Lemma weakening_env_declared_symbol `{CF:checker_flags}:
+  forall (Σ : global_env) (k : ident) (decl : rewrite_decl),
+    declared_symbol Σ k decl ->
+    forall Σ' : global_env, wf Σ' -> extends Σ Σ' -> declared_symbol Σ' k decl.
+Proof.
+  intros Σ cst decl H0 Σ' X2 H2.
+  eapply extends_lookup; eauto.
+Qed.
+Hint Resolve weakening_env_declared_symbol : extends.
+
 (* Lemma weakening_env_consistent_universe_context_instance `{checker_flags} : *)
 (*   forall (Σ : global_env_ext) (u : list Level.t) univs, *)
 (*     consistent_universe_context_instance (snd Σ) univs u -> *)

@@ -113,16 +113,6 @@ Section lookups.
     let '(l, uctx, ty) := res in
     ret (subst0 (inds ind u l) (subst_instance_constr u ty)).
 
-  (* TODO MOVE *)
-  Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
-    match n with
-    | 0 => []
-    | S n => f i :: list_make f (S i) n
-    end.
-
-  Definition symbols_subst k n u m :=
-    list_make (fun i => tSymb k i u) (S n) (m - 2 - n).
-
   Definition lookup_symbol_type Σ k n u :=
     match lookup_env Σ k with
     | Some (RewriteDecl _ rd) =>
