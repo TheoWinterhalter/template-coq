@@ -356,10 +356,6 @@ Proof.
     rewrite Nat.add_1_r. auto.
 
   - eapply (@closed_upwards 0). 2: lia.
-    rewrite closedn_subst_instance_constr.
-    eapply lookup_on_global_env in H ; eauto.
-    destruct H as [Σ' [HΣ' IH]].
-    repeat red in IH. destruct IH as [hctx hr].
     eapply closedn_subst0.
     + eapply forallb_Forall. clear.
       unfold symbols_subst.
@@ -371,6 +367,10 @@ Proof.
         -- simpl. reflexivity.
         -- eapply IHm.
     + simpl.
+      rewrite closedn_subst_instance_constr.
+      eapply lookup_on_global_env in H ; eauto.
+      destruct H as [Σ' [HΣ' IH]].
+      repeat red in IH. destruct IH as [hctx hr].
       unfold on_context in hctx.
       rename H0 into e.
       rewrite symbols_subst_length.
@@ -591,10 +591,9 @@ forall Σ k n u decl ty,
   wf Σ ->
   declared_symbol Σ k decl ->
   nth_error (symbols decl) n = Some ty ->
-  closed (subst_instance_constr u ((subst0 (symbols_subst k n u #|symbols decl|)) ty)).
+  closed ((subst0 (symbols_subst k n u #|symbols decl|)) (subst_instance_constr u ty)).
 Proof.
   intros Σ k n u decl ty hΣ h e.
-  rewrite closedn_subst_instance_constr.
   rewrite closedn_subst0.
   - eapply forallb_Forall. clear.
     unfold symbols_subst.
@@ -605,7 +604,8 @@ Proof.
     + simpl. constructor.
       * simpl. reflexivity.
       * eapply IHm.
-  - rewrite symbols_subst_length. simpl.
+  - rewrite closedn_subst_instance_constr.
+    rewrite symbols_subst_length. simpl.
     eapply closed_declared_symbol_nth_error. all: eauto.
   - reflexivity.
 Qed.

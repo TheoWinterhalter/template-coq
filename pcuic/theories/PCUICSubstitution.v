@@ -356,7 +356,7 @@ Lemma subst_declared_symbol `{checker_flags} :
     declared_symbol Σ k decl ->
     nth_error (symbols decl) n = Some ty ->
     let ty' :=
-      subst_instance_constr u ((subst0 (symbols_subst k n u #|symbols decl|)) ty)
+      subst0 (symbols_subst k n u #|symbols decl|) (subst_instance_constr u ty)
     in
     subst s i ty' = ty'.
 Proof.

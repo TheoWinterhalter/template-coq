@@ -1087,8 +1087,7 @@ Proof.
       * unfold nl_rewrite_decl. simpl.
         red.
         rewrite global_ext_levels_nlg, global_ext_constraints_nlg; assumption.
-    + f_equal. rewrite nl_subst. f_equal.
-      unfold symbols_subst. rewrite list_make_map. simpl.
+    + f_equal. unfold symbols_subst. rewrite list_make_map. simpl.
       rewrite map_length. reflexivity.
   - replace (nl (cst_type decl)) with (cst_type (map_constant_body nl decl));
       [|destruct decl; reflexivity].

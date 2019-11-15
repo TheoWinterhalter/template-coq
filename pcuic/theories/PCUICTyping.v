@@ -756,7 +756,7 @@ Inductive typing `{checker_flags} (Σ : global_env_ext) (Γ : context) : term ->
     forall decl (isdecl : declared_symbol Σ.1 k decl) ty,
       nth_error decl.(symbols) n = Some ty ->
       consistent_instance_ext Σ decl.(rew_universes) u ->
-      Σ ;;; Γ |- tSymb k n u : subst_instance_constr u (subst (symbols_subst k n u #|decl.(symbols)|) 0 ty)
+      Σ ;;; Γ |- tSymb k n u : subst (symbols_subst k n u #|decl.(symbols)|) 0 (subst_instance_constr u ty)
 
 | type_Const cst u :
     All_local_env (lift_typing typing Σ) Γ ->
@@ -1144,7 +1144,7 @@ Lemma typing_ind_env `{cf : checker_flags} :
         declared_symbol Σ.1 k decl ->
         nth_error decl.(symbols) n = Some ty ->
         consistent_instance_ext Σ decl.(rew_universes) u ->
-        P Σ Γ (tSymb k n u) (subst_instance_constr u (subst (symbols_subst k n u #|decl.(symbols)|) 0 ty))) ->
+        P Σ Γ (tSymb k n u) (subst (symbols_subst k n u #|decl.(symbols)|) 0 (subst_instance_constr u ty))) ->
 
     (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (cst : ident) u (decl : constant_body),
         Forall_decls_typing P Σ.1 ->
