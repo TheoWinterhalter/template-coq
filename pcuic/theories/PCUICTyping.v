@@ -167,6 +167,47 @@ Definition iota_red npar c args brs :=
 Local Open Scope type_scope.
 Arguments OnOne2 {A} P%type l l'.
 
+(* TODO MOVE *)
+Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
+  match n with
+  | 0 => []
+  | S n => f i :: list_make f (S i) n
+  end.
+
+(* TODO MOVE *)
+Lemma list_make_length :
+  forall A f i n,
+    #|@list_make A f i n| = n.
+Proof.
+  intros A f i n.
+  induction n in i |- *.
+  - reflexivity.
+  - simpl. f_equal. apply IHn.
+Qed.
+
+(* TODO MOVE *)
+Lemma list_make_map :
+  forall A f i n B (g : A -> B),
+    map g (@list_make A f i n) = list_make (fun i => g (f i)) i n.
+Proof.
+  intros A f i n B g.
+  induction n in i |- *.
+  - reflexivity.
+  - simpl. f_equal. eapply IHn.
+Qed.
+
+Definition symbols_subst k n u m :=
+  list_make (fun i => tSymb k i u) n (m - n).
+
+Lemma symbols_subst_length :
+  forall k n u m,
+    #|symbols_subst k n u m| = m - n.
+Proof.
+  intros k n u m.
+  unfold symbols_subst.
+  apply list_make_length.
+Qed.
+
 Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 (** Reductions *)
 (** Beta *)
@@ -210,9 +251,19 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
     red1 Σ Γ (tConst c u) (subst_instance_constr u body)
 
 (** Proj *)
-| red_proj i pars narg args k u arg:
+| red_proj i pars narg args k u arg :
     nth_error args (pars + narg) = Some arg ->
     red1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg
+
+(** Rewrite rule *)
+| red_rewrite_rule k ui decl n r s :
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    #|s| = #|r.(pat_context)| ->
+    let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+    let lhs := subst0 s (subst ss #|s| (lhs r)) in
+    let rhs := subst0 s (subst ss #|s| (rhs r)) in
+    red1 Σ Γ lhs rhs
 
 
 | abs_red_l na M M' N : red1 Σ Γ M M' -> red1 Σ Γ (tLambda na M N) (tLambda na M' N)
@@ -293,6 +344,15 @@ Lemma red1_ind_all :
            nth_error args (pars + narg) = Some arg ->
            P Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg) ->
 
+       (forall Γ k ui decl n r s,
+          declared_symbol Σ k decl ->
+          nth_error decl.(rules) n = Some r ->
+          #|s| = #|r.(pat_context)| ->
+          let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+          let lhs := subst0 s (subst ss #|s| (lhs r)) in
+          let rhs := subst0 s (subst ss #|s| (rhs r)) in
+          P Γ lhs rhs) ->
+
        (forall (Γ : context) (na : name) (M M' N : term),
         red1 Σ Γ M M' -> P Γ M M' -> P Γ (tLambda na M N) (tLambda na M' N)) ->
 
@@ -358,20 +418,26 @@ Lemma red1_ind_all :
 
        forall (Γ : context) (t t0 : term), red1 Σ Γ t t0 -> P Γ t t0.
 Proof.
-  intros. rename X26 into Xlast. revert Γ t t0 Xlast.
+  intros Σ P X X0 X1 X2 X3 X4 X5 X6 X7 XSymb X8 X9 X10 X11 X12 X13 X14 X15 X16
+         X17 X18 X19 X20 X21 X22 X23 X24 X25 Γ t t0 Xlast.
+  revert Γ t t0 Xlast.
   fix aux 4. intros Γ t T.
   move aux at top.
-  destruct 1; match goal with
-              | |- P _ (tFix _ _) (tFix _ _) => idtac
-              | |- P _ (tCoFix _ _) (tCoFix _ _) => idtac
-              | |- P _ (mkApps (tFix _ _) _) _ => idtac
-              | |- P _ (tCase _ _ (mkApps (tCoFix _ _) _) _) _ => idtac
-              | |- P _ (tProj _ (mkApps (tCoFix _ _) _)) _ => idtac
-              | H : _ |- _ => eapply H; eauto
-              end.
+  destruct 1 ;
+  match goal with
+  | |- P _ (tFix _ _) (tFix _ _) => idtac
+  | |- P _ (tCoFix _ _) (tCoFix _ _) => idtac
+  | |- P _ (mkApps (tFix _ _) _) _ => idtac
+  | |- P _ (tCase _ _ (mkApps (tCoFix _ _) _) _) _ => idtac
+  | |- P _ (tProj _ (mkApps (tCoFix _ _) _)) _ => idtac
+  | lhs0 := _ |- P _ _ _ => idtac
+  | H : _ |- _ => eapply H; eauto
+  end.
   - eapply X3; eauto.
   - eapply X4; eauto.
   - eapply X5; eauto.
+
+  - eapply XSymb. all: eauto.
 
   - revert brs brs' o.
     fix auxl 3.
@@ -650,35 +716,6 @@ Section WfArity.
     { wfa : isWfArity Σ Γ T & All_local_env_over typing property Σ _ (snd (projT2 (projT2 wfa))) }.
 End WfArity.
 
-(* TODO MOVE *)
-Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
-  match n with
-  | 0 => []
-  | S n => f i :: list_make f (S i) n
-  end.
-
-Lemma list_make_length :
-  forall A f i n,
-    #|@list_make A f i n| = n.
-Proof.
-  intros A f i n.
-  induction n in i |- *.
-  - reflexivity.
-  - simpl. f_equal. apply IHn.
-Qed.
-
-Definition symbols_subst k n u m :=
-  list_make (fun i => tSymb k i u) (S n) (m - 1 - n).
-
-Lemma symbols_subst_length :
-  forall k n u m,
-    #|symbols_subst k n u m| = m - 1 - n.
-Proof.
-  intros k n u m.
-  unfold symbols_subst.
-  apply list_make_length.
-Qed.
-
 (* AXIOM GUARD CONDITION *)
 Axiom fix_guard : mfixpoint term -> bool.
 
@@ -756,7 +793,7 @@ Inductive typing `{checker_flags} (Σ : global_env_ext) (Γ : context) : term ->
     forall decl (isdecl : declared_symbol Σ.1 k decl) ty,
       nth_error decl.(symbols) n = Some ty ->
       consistent_instance_ext Σ decl.(rew_universes) u ->
-      Σ ;;; Γ |- tSymb k n u : subst (symbols_subst k n u #|decl.(symbols)|) 0 (subst_instance_constr u ty)
+      Σ ;;; Γ |- tSymb k n u : subst (symbols_subst k (S n) u #|decl.(symbols)|) 0 (subst_instance_constr u ty)
 
 | type_Const cst u :
     All_local_env (lift_typing typing Σ) Γ ->
@@ -1144,7 +1181,7 @@ Lemma typing_ind_env `{cf : checker_flags} :
         declared_symbol Σ.1 k decl ->
         nth_error decl.(symbols) n = Some ty ->
         consistent_instance_ext Σ decl.(rew_universes) u ->
-        P Σ Γ (tSymb k n u) (subst (symbols_subst k n u #|decl.(symbols)|) 0 (subst_instance_constr u ty))) ->
+        P Σ Γ (tSymb k n u) (subst (symbols_subst k (S n) u #|decl.(symbols)|) 0 (subst_instance_constr u ty))) ->
 
     (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (cst : ident) u (decl : constant_body),
         Forall_decls_typing P Σ.1 ->

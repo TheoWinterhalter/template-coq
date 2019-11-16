@@ -832,6 +832,20 @@ Proof.
   - cbn. rewrite subst_instance_constr_two. econstructor; eauto.
   - cbn. rewrite !subst_instance_constr_mkApps.
     econstructor. now rewrite nth_error_map, H.
+  - subst lhs rhs. rewrite <- 4!subst_subst_instance_constr.
+    assert (e :
+      map (subst_instance_constr u) ss =
+      symbols_subst k 0 (subst_instance_instance u ui) #|symbols decl|
+    ).
+    { subst ss. unfold symbols_subst.
+      rewrite list_make_map. simpl. reflexivity.
+    }
+    rewrite e.
+    replace #|s| with #|map (subst_instance_constr u) s|
+    by (now rewrite map_length).
+    Fail eapply red_rewrite_rule.
+    (* We're missing some closedness hyp for universes? *)
+    admit.
   - cbn. econstructor; eauto.
     eapply OnOne2_map. eapply OnOne2_impl. eassumption.
     firstorder.
@@ -860,7 +874,8 @@ Proof.
     unfold subst_instance_context, map_context in *. rewrite map_app in *.
     eassumption.
     Grab Existential Variables. all:repeat econstructor.
-Qed.
+(* Qed. *)
+Admitted.
 
 
 
@@ -1099,7 +1114,7 @@ Proof.
     + eapply type_Symb. all: eauto. all: aa.
     + rewrite <- subst_subst_instance_constr. f_equal.
       * unfold symbols_subst.
-        generalize (#|symbols decl| - 1 - n). intro m.
+        generalize (#|symbols decl| - S n). intro m.
         generalize (S n). intro p.
         induction m in p |- *.
         -- simpl. reflexivity.

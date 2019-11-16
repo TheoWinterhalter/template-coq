@@ -789,6 +789,7 @@ Proof.
   - simpl. rewrite rename_mkApps. simpl.
     econstructor. rewrite nth_error_map. rewrite H0. reflexivity.
 
+  - admit.
   - simpl. constructor. induction X.
     + destruct p0 as [[p1 p2] p3]. constructor. split ; eauto.
       simpl. eapply p2. assumption.
@@ -887,7 +888,8 @@ Proof.
       * simpl. easy.
     + intros L x l l' h ih.
       simpl. constructor. eapply ih.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma meta_conv :
   forall Σ Γ t A B,

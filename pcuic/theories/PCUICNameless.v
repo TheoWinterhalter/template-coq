@@ -911,6 +911,7 @@ Proof.
       * discriminate.
   - rewrite nl_mkApps. cbn. constructor.
     rewrite nth_error_map, H. reflexivity.
+  - admit.
   - constructor. eapply OnOne2_map, OnOne2_impl. 1: eassumption.
     cbn. intros x y [[? ?] ?]. split. all: assumption.
   - constructor. eapply OnOne2_map, OnOne2_impl. 1: eassumption.
@@ -929,7 +930,8 @@ Proof.
     cbn. intros x y [[? ?] ?]. split.
     + rewrite nlctx_app_context, nl_fix_context in r0. assumption.
     + cbn. congruence.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma nl_cumul {cf:checker_flags} :
   forall Σ Γ A B,
@@ -1050,18 +1052,6 @@ Proof.
   f_equal. 2: apply IHctx.
   clear. destruct a as [? [] ?]; unfold map_decl, map_decl_anon; cbn; f_equal.
   all: now rewrite nl_subst_instance_constr.
-Qed.
-
-(* TODO MOVE *)
-Lemma list_make_map :
-  forall A f i n B (g : A -> B),
-    map g (@PCUICTyping.list_make A f i n) =
-    PCUICTyping.list_make (fun i => g (f i)) i n.
-Proof.
-  intros A f i n B g.
-  induction n in i |- *.
-  - reflexivity.
-  - simpl. f_equal. eapply IHn.
 Qed.
 
 Lemma typing_nlg {cf : checker_flags} :
@@ -1393,6 +1383,7 @@ Proof.
     * cbn. rewrite IHn. reflexivity.
   - aa. rewrite nl_mkApps. constructor.
     rewrite nth_error_map, H. reflexivity.
+  - admit.
   - assert (Y : ∑ brs'', map (on_snd nl) brs' = map (on_snd nl) brs''
     × OnOne2 (on_Trel_eq (red1 Σ (nlctx Γ)) snd fst) (map (on_snd nl) brs) brs''). {
       induction X.

@@ -194,8 +194,10 @@ Proof.
     try solve [econstructor; eauto;
                eapply (OnOne2_impl X1); simpl; intuition eauto].
 
-  eapply extends_lookup in X0; eauto.
-  econstructor; eauto.
+  - eapply extends_lookup in X0; eauto.
+    econstructor; eauto.
+  - eapply extends_lookup in H. all: eauto.
+    econstructor. all: eauto.
 Qed.
 
 Lemma weakening_env_cumul `{CF:checker_flags} Σ Σ' φ Γ M N :

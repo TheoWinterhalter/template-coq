@@ -169,7 +169,7 @@ Lemma lift_declared_symbol `{checker_flags} :
     declared_symbol Σ k decl ->
     nth_error (symbols decl) n = Some ty ->
     let ty' :=
-      subst0 (symbols_subst k n u #|symbols decl|) (subst_instance_constr u ty)
+      subst0 (symbols_subst k (S n) u #|symbols decl|) (subst_instance_constr u ty)
     in
     lift i j ty' = ty'.
 Proof.
@@ -681,6 +681,26 @@ Proof.
 
   - simpl. constructor.
     now rewrite -> nth_error_map, H.
+
+  - rewrite 2!distr_lift_subst_rec.
+    assert (e : forall i j, map (lift i j) ss = ss).
+    { intros i j. subst ss. unfold symbols_subst.
+      rewrite list_make_map. simpl. reflexivity.
+    }
+    rewrite e.
+    rewrite lift_closed.
+    1:{ eapply closed_upwards. 1: eapply closed_rule_lhs.
+        all: eauto.
+        subst ss. rewrite symbols_subst_length. lia.
+    }
+    rewrite lift_closed.
+    1:{ eapply closed_upwards. 1: eapply closed_rule_rhs.
+        all: eauto.
+        subst ss. rewrite symbols_subst_length. lia.
+    }
+    replace #|s| with #|map (lift #|Γ''| #|Γ'|) s| by (now rewrite map_length).
+    eapply red_rewrite_rule. all: eauto.
+    rewrite map_length. assumption.
 
   - constructor.
     specialize (IHred1 Γ0 (Γ' ,, vass na N) Γ'' eq_refl).

@@ -115,6 +115,9 @@ Module Environment (T : Term).
     rew_universes : universes_decl
   }.
 
+  Definition lhs (r : rewrite_rule) : term :=
+    mkElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims).
+
   Inductive global_decl :=
   | ConstantDecl : kername -> constant_body -> global_decl
   | InductiveDecl : kername -> mutual_inductive_body -> global_decl

@@ -359,7 +359,7 @@ Proof.
     eapply closedn_subst0.
     + eapply forallb_Forall. clear.
       unfold symbols_subst.
-      generalize (#|symbols decl| - 1 - n). intro m.
+      generalize (#|symbols decl| - (S n)). intro m.
       generalize (S n). clear. intro n.
       induction m in n |- *.
       * simpl. constructor.
@@ -549,11 +549,11 @@ Proof.
 Qed.
 
 Lemma closed_declared_symbol_nth_error `{checker_flags} :
-forall Σ k n decl ty,
-  wf Σ ->
-  declared_symbol Σ k decl ->
-  nth_error (symbols decl) n = Some ty ->
-  closedn (#|symbols decl| - 1 - n) ty.
+  forall Σ k n decl ty,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (symbols decl) n = Some ty ->
+    closedn (#|symbols decl| - (S n)) ty.
 Proof.
   intros Σ k n decl ty hΣ h e.
   unfold declared_symbol in h.
@@ -574,7 +574,7 @@ Proof.
       destruct l0 as [s h].
       apply typecheck_closed in h. all: eauto.
       rewrite map_length in h.
-      replace (#|l| - 0 - 0) with #|l| by lia.
+      replace (#|l| - 0) with #|l| by lia.
       destruct h as [_ h]. apply utils.andP in h.
       apply h.
     + simpl in *.
@@ -582,22 +582,21 @@ Proof.
       hnf in H0. noconf H0.
       cbn in *.
       eapply IHl in e. 2: assumption.
-      replace (#|l| - 0 - S n) with (#|l| - 1 - n) by lia.
       assumption.
 Qed.
 
 Lemma closed_declared_symbol `{checker_flags} :
-forall Σ k n u decl ty,
-  wf Σ ->
-  declared_symbol Σ k decl ->
-  nth_error (symbols decl) n = Some ty ->
-  closed ((subst0 (symbols_subst k n u #|symbols decl|)) (subst_instance_constr u ty)).
+  forall Σ k n u decl ty,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (symbols decl) n = Some ty ->
+    closed ((subst0 (symbols_subst k (S n) u #|symbols decl|)) (subst_instance_constr u ty)).
 Proof.
   intros Σ k n u decl ty hΣ h e.
   rewrite closedn_subst0.
   - eapply forallb_Forall. clear.
     unfold symbols_subst.
-    generalize (#|symbols decl| - 1 - n). intro m.
+    generalize (#|symbols decl| - (S n)). intro m.
     generalize (S n). clear. intro n.
     induction m in n |- *.
     + simpl. constructor.
@@ -608,6 +607,56 @@ Proof.
     rewrite symbols_subst_length. simpl.
     eapply closed_declared_symbol_nth_error. all: eauto.
   - reflexivity.
+Qed.
+
+Lemma closed_rule_lhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (lhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx hr].
+  eapply nth_error_all in hn. 2: eassumption.
+  destruct hn as [T h _ _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  2: { eapply typing_wf_local. eassumption. }
+  destruct h as [_ h].
+  apply utils.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
+Qed.
+
+Lemma closed_rule_rhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (rhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx hr].
+  eapply nth_error_all in hn. 2: eassumption.
+  destruct hn as [T _ h _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  2: { eapply typing_wf_local. eassumption. }
+  destruct h as [_ h].
+  apply utils.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
 Qed.
 
 Lemma declared_decl_closed `{checker_flags} (Σ : global_env) cst decl :

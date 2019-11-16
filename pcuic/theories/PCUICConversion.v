@@ -90,19 +90,31 @@ Lemma cumul_Sort_inv {cf:checker_flags} Σ Γ s s' :
 Proof.
   intros H; depind H; auto.
   - now inversion l.
-  - depelim r. solve_discr.
-  - depelim r. solve_discr.
-Qed.
+  - dependent destruction r.
+    + solve_discr.
+    + (* This looks like an equation bug! *)
+      admit.
+  - depelim r.
+    + solve_discr.
+    + admit. (* Same! *)
+(* Qed. *)
+Admitted.
 
 Lemma cumul_Sort_Prod_inv {cf:checker_flags} Σ Γ s na dom codom :
   Σ ;;; Γ |- tSort s <= tProd na dom codom -> False.
 Proof.
   intros H; depind H; auto.
   - now inversion l.
-  - depelim r. solve_discr.
-  - depelim r. solve_discr. eapply IHcumul. reflexivity.
-    eapply IHcumul. reflexivity.
-Qed.
+  - depelim r.
+    + solve_discr.
+    + admit.
+  - depelim r.
+    + solve_discr.
+    + admit.
+    + eapply IHcumul. reflexivity.
+    + eapply IHcumul. reflexivity.
+(* Qed. *)
+Admitted.
 
 Lemma cumul_Sort_l_inv {cf:checker_flags} Σ Γ s T :
   Σ ;;; Γ |- tSort s <= T ->
@@ -110,10 +122,13 @@ Lemma cumul_Sort_l_inv {cf:checker_flags} Σ Γ s T :
 Proof.
   intros H; depind H; auto.
   - now inversion l.
-  - depelim r. solve_discr.
+  - depelim r.
+    + solve_discr.
+    + admit.
   - destruct IHcumul as [s' [redv leq]].
     exists s'. split; auto. now eapply red_step with v.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma cumul_Sort_r_inv {cf:checker_flags} Σ Γ s T :
   Σ ;;; Γ |- T <= tSort s ->
@@ -123,8 +138,11 @@ Proof.
   - now inversion l.
   - destruct IHcumul as [s' [redv leq]].
     exists s'. split; auto. now eapply red_step with v.
-  - depelim r. solve_discr.
-Qed.
+  - depelim r.
+    + solve_discr.
+    + admit.
+(* Qed. *)
+Admitted.
 
 Lemma cumul_LetIn_l_inv {cf:checker_flags} (Σ : global_env_ext) Γ na b B codom T :
   wf Σ ->

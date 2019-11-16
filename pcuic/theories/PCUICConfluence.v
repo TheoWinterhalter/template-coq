@@ -400,7 +400,7 @@ Proof.
     ]
   ].
   (* tLambda and tProd *)
-  10,13: solve [
+  11,14: solve [
     dependent destruction e ;
     edestruct IHh as [? [? ?]] ; [ .. | eassumption | ] ; eauto ;
     clear h ;
@@ -540,6 +540,7 @@ Proof.
     eexists. split.
     + constructor. eassumption.
     + eapply eq_term_upto_univ_leq ; eauto.
+  - admit.
   - dependent destruction e.
     edestruct IHh as [? [? ?]] ; [ .. | eassumption | ] ; eauto.
     clear h.
@@ -902,7 +903,8 @@ Proof.
     eexists. split.
     +  eapply cofix_red_body. eassumption.
     + constructor. all: eauto.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma red1_eq_context_upto_r Σ Re Γ Δ u v :
   RelationClasses.Reflexive Re ->
@@ -1180,6 +1182,8 @@ Section RedPred.
     induction 1 using red1_ind_all; intros; pcuic.
     - econstructor; pcuic. eauto.
     - econstructor; pcuic. eauto.
+    - (* TODO Need to extend pred1 *)
+      admit.
     - econstructor; pcuic. eauto.
       unfold on_Trel.
       (* TODO fix OnOne2 use in red1 to use onTrel_eq to have equality on annotation *)
@@ -1307,7 +1311,8 @@ Section RedPred.
           unfold on_Trel.
           simpl in *. intuition pcuic.
           noconf b; noconf H; rewrite H0; pcuic. congruence.
-  Qed.
+  (* Qed. *)
+  Admitted.
 
 End RedPred.
 
@@ -2237,6 +2242,8 @@ Section RedConfluence.
     - eapply red_step; repeat (econstructor; eauto).
     - eapply red_step; repeat (econstructor; eauto).
     - eapply red_step; repeat (econstructor; eauto).
+    - econstructor.  1: constructor.
+      eapply red_rewrite_rule. all: eauto.
     - eapply red_abs_alt. eauto. eauto.
     - eapply red_abs_alt. eauto. apply (IHr (Δ ,, vass na N)).
       constructor; auto. red. auto.
