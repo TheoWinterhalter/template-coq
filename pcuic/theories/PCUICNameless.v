@@ -432,6 +432,7 @@ Definition nl_rewrite_decl r :=
   Build_rewrite_decl
     (map nl r.(symbols))
     (map nl_rewrite_rule r.(rules))
+    (map nl_rewrite_rule r.(prules))
     r.(rew_universes).
 
 Definition nl_global_decl (d : global_decl) : global_decl :=

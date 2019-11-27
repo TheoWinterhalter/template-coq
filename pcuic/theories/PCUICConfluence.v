@@ -1311,8 +1311,7 @@ Section RedPred.
           unfold on_Trel.
           simpl in *. intuition pcuic.
           noconf b; noconf H; rewrite H0; pcuic. congruence.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
 End RedPred.
 

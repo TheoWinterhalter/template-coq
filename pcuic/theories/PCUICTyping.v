@@ -1380,8 +1380,8 @@ Proof.
          specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ:=(Σ, udecl)) Hu)
                                                                            (existT _ _ (existT _ _ Hu))))))).
          simpl in IH. simpl. exists u. apply IH. constructor 1. simpl. lia.
-    + red in Xg. destruct Xg as [hctx hr].
-      split.
+    + red in Xg. destruct Xg as [hctx [hr hpr]].
+      split. 2: split.
       * eapply All_local_env_impl. 1: eassumption.
         intros Δ u T h. destruct T. all: simpl in h. all: simpl.
         -- specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ := (Σ, udecl)) h) (existT _ _ (existT _ _ h))))))).
@@ -1413,6 +1413,31 @@ Proof.
               5: exact onrhs.
               eapply typing_wf_local. eassumption.
            ++ specialize (IH y). subst y. simpl in IH.
+              apply IH. constructor 1. simpl. lia.
+        -- assumption.
+        -- assumption.
+      * eapply All_impl. 1: eassumption.
+        intros rw [T onlhs onrhs onhead onelims].
+        exists T.
+        -- match type of IH with
+          | ?T -> _ =>
+            unshelve epose (y := _ : T)
+          end.
+          ++ exists (Σ, udecl). exists X13.
+              unshelve eexists _, _, _, _.
+              5: exact onlhs.
+              eapply typing_wf_local. eassumption.
+          ++ specialize (IH y). subst y. simpl in IH.
+              apply IH. constructor 1. simpl. lia.
+        -- match type of IH with
+          | ?T -> _ =>
+            unshelve epose (y := _ : T)
+          end.
+          ++ exists (Σ, udecl). exists X13.
+              unshelve eexists _, _, _, _.
+              5: exact onrhs.
+              eapply typing_wf_local. eassumption.
+          ++ specialize (IH y). subst y. simpl in IH.
               apply IH. constructor 1. simpl. lia.
         -- assumption.
         -- assumption.

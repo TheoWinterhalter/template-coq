@@ -459,7 +459,8 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Definition on_rewrite_decl Σ d :=
       let Δ := map (vass nAnon) d.(symbols) in
       on_context Σ Δ ×
-      All (on_rewrite_rule Σ Δ) d.(rules).
+      All (on_rewrite_rule Σ Δ) d.(rules) ×
+      All (on_rewrite_rule Σ Δ) d.(prules).
 
     Definition on_global_decl Σ decl :=
       match decl with

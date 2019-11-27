@@ -535,10 +535,17 @@ Proof.
        eapply All_local_env_impl. eauto.
        intros. now apply X.
   - red in o. simpl in *.
-    destruct o0 as [hctx hr].
-    split.
+    destruct o0 as [hctx [hr hpr]].
+    split. 2: split.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
+    + eapply All_impl. 1: eassumption.
+      intros rw [T onlhs onrhs onhead onelims].
+      exists T.
+      * eapply X. all: eauto.
+      * eapply X. all: eauto.
+      * assumption.
+      * assumption.
     + eapply All_impl. 1: eassumption.
       intros rw [T onlhs onrhs onhead onelims].
       exists T.
@@ -621,7 +628,7 @@ Proof.
   eapply lookup_on_global_env in isdecl. 2: eauto.
   destruct isdecl as [Σ' [wfΣ' decl']].
   red in decl'. red in decl'.
-  destruct decl' as [hctx hr].
+  destruct decl' as [hctx [hr hpr]].
   eapply nth_error_all in hn. 2: eassumption.
   destruct hn as [T h _ _ _]. simpl in *.
   eapply typecheck_closed in h.
@@ -646,7 +653,7 @@ Proof.
   eapply lookup_on_global_env in isdecl. 2: eauto.
   destruct isdecl as [Σ' [wfΣ' decl']].
   red in decl'. red in decl'.
-  destruct decl' as [hctx hr].
+  destruct decl' as [hctx [hr hpr]].
   eapply nth_error_all in hn. 2: eassumption.
   destruct hn as [T _ h _ _]. simpl in *.
   eapply typecheck_closed in h.

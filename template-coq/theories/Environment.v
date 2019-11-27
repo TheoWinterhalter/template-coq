@@ -111,7 +111,12 @@ Module Environment (T : Term).
                              can be thought of as a context.
                              The head can depend on the tail.
                            *)
-    rules : list rewrite_rule ;
+    rules : list rewrite_rule ; (* The actual rewrite rules *)
+    prules : list rewrite_rule ; (* Parallel rewrite rules to complete the
+                                    others. They aren't used in the theory
+                                    itself, only as an intermediary for
+                                    confluence.
+                                  *)
     rew_universes : universes_decl
   }.
 

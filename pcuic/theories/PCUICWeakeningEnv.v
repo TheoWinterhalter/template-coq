@@ -392,8 +392,15 @@ Proof.
               induction ind_indices; simpl in *; auto.
               destruct a as [na [b|] ty]; simpl in *; intuition eauto.
     + red in onP |- *. eapply All_local_env_impl; eauto.
-  - destruct Hdecl as [hctx hr]. split.
+  - destruct Hdecl as [hctx [hr hpr]]. split. 2: split.
     + eapply All_local_env_impl; eauto.
+    + eapply All_impl. 1: eassumption.
+      intros rw [T onlhs onrhs onhead onelims].
+      exists T.
+      * eapply HPΣ. all: eauto.
+      * eapply HPΣ. all: eauto.
+      * assumption.
+      * assumption.
     + eapply All_impl. 1: eassumption.
       intros rw [T onlhs onrhs onhead onelims].
       exists T.
@@ -621,7 +628,7 @@ Proof.
   cbn in HH. subst udecl. destruct (ident_eq c (global_decl_ident d)).
   - apply some_inj in HH; destruct HH.
     clear -o. unfold on_udecl, on_udecl_prop in *.
-    destruct o as [H1 [H2 [H3 H4]]]. repeat split.
+    destruct o as [H1 [H2 [H3 H4]]]. split.
     + clear -H2. intros [[? ?] ?] Hc. specialize (H2 _ Hc).
       destruct H2 as [H H']. simpl. split.
       apply LevelSet.union_spec in H. apply LevelSet.union_spec.
@@ -645,7 +652,7 @@ Proof.
       2: apply ConstraintSet.union_spec in Hc; destruct Hc as [Hc|Hc].
       -- apply ConstraintSet.union_spec. simpl in *. left; now rewrite eq.
       -- apply ConstraintSet.union_spec; left. simpl.
-         destruct d as [? [? ? []]|? [? ? ? ? []]|? [? ? []]]; simpl in *; tas.
+         destruct d as [? [? ? []]|? [? ? ? ? []]|? [? ? [] []]]; simpl in *; tas.
          all: try now apply ConstraintSet.empty_spec in Hc.
       -- apply ConstraintSet.union_spec; now right.
   - specialize (IHwfΣ HH). revert IHwfΣ o; clear.
@@ -670,7 +677,7 @@ Proof.
           2: apply ConstraintSet.union_spec in Hc; destruct Hc as [Hc|Hc];
             simpl in *.
           -- apply H2 in Hc. apply ConstraintSet.union_spec; now right.
-          -- clear - Hc. destruct d as [? [? ? []]|? [? ? ? ? []]|? [? ? []]]; cbn in *.
+          -- clear - Hc. destruct d as [? [? ? []]|? [? ? ? ? []]|? [? ? [] []]]; cbn in *.
              all: try (apply ConstraintSet.empty_spec in Hc; contradiction).
              all: apply ConstraintSet.union_spec; now left.
           -- apply ConstraintSet.union_spec; now right.
