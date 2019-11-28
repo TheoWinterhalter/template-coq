@@ -502,6 +502,28 @@ Section ParallelReduction.
       All2_local_env (on_decl pred1) Γ Γ' ->
       pred1 Γ Γ' (tSymb k n u) (tSymb k n u)
 
+  | pred_rewrite_rule k ui decl n r s s' :
+      All2_local_env (on_decl pred1) Γ Γ' ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(rules) n = Some r ->
+      All2 (pred1 Γ Γ') s s' ->
+      #|s| = #|r.(pat_context)| ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      let lhs := subst0 s (subst ss #|s| (lhs r)) in
+      let rhs := subst0 s' (subst ss #|s| (rhs r)) in
+      pred1 Γ Γ' lhs rhs
+
+  | pred_par_rewrite_rule k ui decl n r s s' :
+      All2_local_env (on_decl pred1) Γ Γ' ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(prules) n = Some r ->
+      All2 (pred1 Γ Γ') s s' ->
+      #|s| = #|r.(pat_context)| ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      let lhs := subst0 s (subst ss #|s| (lhs r)) in
+      let rhs := subst0 s' (subst ss #|s| (rhs r)) in
+      pred1 Γ Γ' lhs rhs
+
   (** Constant unfolding *)
 
   | pred_delta c decl body (isdecl : declared_constant Σ c decl) u :
@@ -831,6 +853,28 @@ Section ParallelReduction.
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           P Γ Γ' (tSymb c n u) (tSymb c n u)) ->
+      (forall (Γ Γ' : context) k ui decl n r s s',
+          All2_local_env (on_decl pred1) Γ Γ' ->
+          declared_symbol Σ k decl ->
+          nth_error decl.(rules) n = Some r ->
+          All2 (P' Γ Γ') s s' ->
+          #|s| = #|r.(pat_context)| ->
+          let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+          let lhs := subst0 s (subst ss #|s| (lhs r)) in
+          let rhs := subst0 s' (subst ss #|s| (rhs r)) in
+          P Γ Γ' lhs rhs
+      ) ->
+      (forall (Γ Γ' : context) k ui decl n r s s',
+          All2_local_env (on_decl pred1) Γ Γ' ->
+          declared_symbol Σ k decl ->
+          nth_error decl.(prules) n = Some r ->
+          All2 (P' Γ Γ') s s' ->
+          #|s| = #|r.(pat_context)| ->
+          let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+          let lhs := subst0 s (subst ss #|s| (lhs r)) in
+          let rhs := subst0 s' (subst ss #|s| (rhs r)) in
+          P Γ Γ' lhs rhs
+      ) ->
       (forall (Γ Γ' : context) (c : ident) (decl : constant_body) (body : term),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
@@ -901,7 +945,10 @@ Section ParallelReduction.
           pred_atom t -> P Γ Γ' t t) ->
       forall (Γ Γ' : context) (t t0 : term), pred1 Γ Γ' t t0 -> P Γ Γ' t t0.
   Proof.
-    intros P Pctx P' Hctx. intros. revert Γ Γ' t t0 X21.
+    intros P Pctx P' Hctx.
+    intros X X0 X1 X2 X3 X4 X5 X6 X7 Xrw Xprw X8 X9 X10 X11 X12 X13 X14 X15 X16
+      X17 X18 X19 X20 Γ Γ' t t0 X21.
+    revert Γ Γ' t t0 X21.
     fix aux 5. intros Γ Γ' t t'.
     move aux at top.
     destruct 1; match goal with
@@ -913,6 +960,7 @@ Section ParallelReduction.
                 | |- P _ _ (tRel _) _ => idtac
                 | |- P _ _ (tSymb _ _ _) _ => idtac
                 | |- P _ _ (tConst _ _) _ => idtac
+                | lhs := _, rhs := _ |- _ => idtac
                 | H : _ |- _ => eapply H; eauto
                 end.
     - simpl. apply X1; auto. apply Hctx.
@@ -941,6 +989,10 @@ Section ParallelReduction.
       eapply (All2_All2_prop (P:=pred1) (Q:=P') a2 (extendP aux Γ Γ')).
     - eapply X7. 1: assumption.
       apply Hctx, (All2_local_env_impl a). intros. exact a. intros. apply (aux _ _ _ _ X21).
+    - eapply Xrw. all: eauto.
+      eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
+    - eapply Xprw. all: eauto.
+      eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
     - eapply X8; eauto.
       apply Hctx, (All2_local_env_impl a). intros. exact a. intros. apply (aux _ _ _ _ X21).
     - eapply X9; eauto.
@@ -1022,7 +1074,7 @@ Section ParallelReduction.
   Lemma pred1_pred1_ctx {Γ Δ t u} : pred1 Γ Δ t u -> pred1_ctx Γ Δ.
   Proof.
     intros H; revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx _ (fun Γ Γ' => pred1_ctx Γ Γ') _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *.
+    refine (pred1_ind_all_ctx _ (fun Γ Γ' => pred1_ctx Γ Γ') _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *.
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;
         try solve [eexists; split; constructor; eauto].
@@ -1230,7 +1282,7 @@ Section ParallelWeakening.
              All2_local_env_over (pred1 Σ) Γ Δ Γ'' Δ'' ->
              pred1_ctx Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ') (Δ ,,, Δ'' ,,, lift_context #|Δ''| 0 Δ')).
 
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; intros; subst Pctx;
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; intros; subst Pctx;
       rename_all_hyps; try subst Γ Γ'; simplify_IH_hyps; cbn -[iota_red];
       match goal with
         |- context [iota_red _ _ _ _] => idtac
@@ -1395,6 +1447,10 @@ Section ParallelWeakening.
       now rewrite (map_cofix_subst (fun k => lift #|Δ''| (k + #|Δ'|))).
       eapply All2_map. solve_all.
 
+    - admit. (* TODO Rewrite rules *)
+
+    - admit. (* TODO Rewrite rules *)
+
     - assert(Hlen:#|Γ''| = #|Δ''|). eapply All2_local_env_length in X1; pcuic.
       pose proof (lift_declared_constant _ _ _ #|Δ''| #|Δ'| wfΣ H).
       econstructor; eauto.
@@ -1449,7 +1505,8 @@ Section ParallelWeakening.
 
     - revert H. induction t; intros; try discriminate; try solve [ constructor; simpl; eauto ];
                   try solve [ apply (pred_atom); auto ].
-  Qed.
+  (* Qed. *)
+  Admitted.
 
   Lemma weakening_pred1_pred1 Σ Γ Δ Γ' Δ' M N : wf Σ ->
     All2_local_env_over (pred1 Σ) Γ Δ Γ' Δ' ->
@@ -1699,7 +1756,7 @@ Section ParallelSubstitution.
                 #|Γ| = #|Γ1| ->
                All2_local_env_over (pred1 Σ) Γ Γ1 Δ Δ1 ->
                pred1_ctx Σ (Γ ,,, subst_context s 0 Γ') (Γ1 ,,, subst_context s' 0 Γ'1)).
-    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; !intros;
+    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; !intros;
       try subst Γ Γ'; simplify_IH_hyps; cbn -[iota_red];
       match goal with
         |- context [iota_red _ _ _ _] => idtac
@@ -1922,6 +1979,10 @@ Section ParallelSubstitution.
       now rewrite (distr_subst_rec _ _ _ _ 0) cofix_subst_length.
       eapply All2_map. solve_all.
 
+    - admit. (* TODO Rewrite rules *)
+
+    - admit. (* TODO Rewrite rules *)
+
     - pose proof (subst_declared_constant _ _ _ s' #|Γ'0| u wfΣ H).
       apply (f_equal cst_body) in H0.
       rewrite <- !map_cst_body in H0. rewrite heq_cst_body in H0. simpl in H0.
@@ -1988,7 +2049,8 @@ Section ParallelSubstitution.
 
     - revert H. induction t; intros; try discriminate; try solve [ constructor; simpl; eauto ];
                   try solve [ apply (pred_atom); auto ].
-  Qed.
+  (* Qed. *)
+  Admitted.
 
   Hint Constructors psubst : pcuic.
   Hint Transparent vass vdef : pcuic.
