@@ -666,6 +666,56 @@ Proof.
   assumption.
 Qed.
 
+Lemma closed_prule_lhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (lhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr hpr]].
+  eapply nth_error_all in hn. 2: eassumption.
+  destruct hn as [T h _ _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  2: { eapply typing_wf_local. eassumption. }
+  destruct h as [_ h].
+  apply utils.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
+Qed.
+
+Lemma closed_prule_rhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (rhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr hpr]].
+  eapply nth_error_all in hn. 2: eassumption.
+  destruct hn as [T _ h _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  2: { eapply typing_wf_local. eassumption. }
+  destruct h as [_ h].
+  apply utils.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
+Qed.
+
 Lemma declared_decl_closed `{checker_flags} (Σ : global_env) cst decl :
   wf Σ ->
   lookup_env Σ cst = Some decl ->
