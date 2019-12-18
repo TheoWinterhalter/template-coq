@@ -3933,7 +3933,7 @@ Section Confluence.
     assert (#|List.rev mfix0| = #|List.rev mfix1|) by (rewrite !List.rev_length; lia).
     revert H.
     generalize (List.rev mfix0) (List.rev mfix1).
-    intros l l' Heqlen Hlen' Hlen'' H. induction H. simpl. constructor.
+    intros l l' Heqlen Hlen' Hlen'' H. induction H. 1: constructor.
     simpl.
     simpl in *.
     replace (S (#|mfix0| - S #|l|)) with (#|mfix0| - #|l|) by lia.
@@ -3942,39 +3942,44 @@ Section Confluence.
     assert ((Nat.pred #|mfix0| - (#|mfix0| - S #|l|)) = #|l|) by lia.
     assert ((Nat.pred #|mfix0| - (#|mfix0| - S #|l'|)) = #|l'|) by lia.
     rewrite H0 H1.
-    intros. depelim Hctxs. red in o.
-    simpl in H2. noconf H2.
-    simpl in H3. noconf H3.
-    constructor. unfold mapi in IHAll2.
-    forward IHAll2 by lia.
-    forward IHAll2 by lia.
-    forward IHAll2 by lia. rewrite -Hlen in IHAll2.
-    apply IHAll2; clear IHAll2. apply Hctxs; clear Hctxs.
-    clear IHAll2 Hctxs. destruct r.
-    destruct o0. destruct p. destruct p. red in o.
-    simpl in *. noconf Heqlen. simpl in H.
-    rewrite H in o |- *.
-    rewrite rho_ctx_app in o. apply o.
-    econstructor. eauto. clear Hctxs o IHAll2.
-    rewrite -fold_fix_context_rho_ctx.
-    eapply All2_local_env_pred_fix_ctx. eapply Hctxs'.
-    eapply All2_mix. rewrite -fold_fix_context_rho_ctx.
-    all:clear IHAll2 Hctxs H o r.
-    { eapply All2_mix_inv in a0. destruct a0.
-      eapply All2_sym. unfold on_Trel.
-      eapply All2_mix_inv in a. destruct a.
-      eapply All2_map_left. simpl. auto. }
-    { eapply All2_mix_inv in a0. destruct a0.
-      eapply All2_sym. unfold on_Trel.
-      eapply All2_mix_inv in a0. destruct a0.
-      eapply All2_mix_inv in a0. destruct a0.
-      eapply All2_mix.
-      rewrite -fold_fix_context_rho_ctx.
-      rewrite fix_context_map_fix. simpl.
-      rewrite rho_ctx_app in a2. unfold on_Trel.
-      eapply All2_map_left. simpl. eapply a2.
-      eapply All2_map_left. simpl. solve_all. }
-    hnf in H2. noconf H2.
+    intros. depelim Hctxs.
+    - red in o.
+      simpl in H2. noconf H2.
+      simpl in H3. noconf H3.
+      constructor.
+      + unfold mapi in IHAll2.
+        forward IHAll2 by lia.
+        forward IHAll2 by lia.
+        forward IHAll2 by lia. rewrite -Hlen in IHAll2.
+        apply IHAll2; clear IHAll2. apply Hctxs; clear Hctxs.
+      + clear IHAll2 Hctxs. destruct r.
+        destruct o0. destruct p. destruct p. red in o.
+        simpl in *. noconf Heqlen. simpl in H.
+        rewrite H in o |- *.
+        rewrite rho_ctx_app in o. apply o.
+      + econstructor.
+        * eauto.
+        * clear Hctxs o IHAll2.
+          rewrite -fold_fix_context_rho_ctx.
+          eapply All2_local_env_pred_fix_ctx. eapply Hctxs'.
+        * eapply All2_mix.
+          all:clear IHAll2 Hctxs H o r.
+          -- rewrite -fold_fix_context_rho_ctx.
+             eapply All2_mix_inv in a0. destruct a0.
+             eapply All2_sym. unfold on_Trel.
+             eapply All2_mix_inv in a. destruct a.
+             eapply All2_map_left. simpl. auto.
+          -- eapply All2_mix_inv in a0. destruct a0.
+             eapply All2_sym. unfold on_Trel.
+             eapply All2_mix_inv in a0. destruct a0.
+             eapply All2_mix_inv in a0. destruct a0.
+             eapply All2_mix.
+             ++ rewrite -fold_fix_context_rho_ctx.
+                rewrite fix_context_map_fix. simpl.
+                rewrite rho_ctx_app in a2. unfold on_Trel.
+                eapply All2_map_left. simpl. eapply a2.
+             ++ eapply All2_map_left. simpl. solve_all.
+    - hnf in H2. noconf H2.
   Qed.
 
   Lemma rho_cofix_subst Γ mfix :
@@ -3982,8 +3987,8 @@ Section Confluence.
     = (map (rho (rho_ctx Γ)) (cofix_subst mfix)).
   Proof.
     unfold cofix_subst. unfold map_fix at 2. rewrite !map_length.
-    induction #|mfix|. reflexivity. simpl.
-    rewrite - fold_fix_context_rho_ctx. f_equal. apply IHn.
+    induction #|mfix|. 1: reflexivity.
+    simpl. rewrite - fold_fix_context_rho_ctx. f_equal. apply IHn.
   Qed.
 
   Lemma rho_fix_subst Γ mfix :
@@ -3991,8 +3996,8 @@ Section Confluence.
     = (map (rho (rho_ctx Γ)) (fix_subst mfix)).
   Proof.
     unfold fix_subst. unfold map_fix at 2. rewrite !map_length.
-    induction #|mfix|. reflexivity. simpl.
-    rewrite - fold_fix_context_rho_ctx. f_equal. apply IHn.
+    induction #|mfix|. 1: reflexivity.
+    simpl. rewrite - fold_fix_context_rho_ctx. f_equal. apply IHn.
   Qed.
 
   Lemma ctxmap_cofix_subst:
@@ -4002,21 +4007,22 @@ Section Confluence.
     intros Γ' mfix1.
     intros x d' Hnth.
     destruct (leb_spec_Set #|fix_context mfix1| x).
-    rewrite nth_error_app_ge // in Hnth.
-    rewrite fix_context_length in l Hnth.
-    destruct d' as [na [b'|] ty]; simpl; auto.
-    rewrite subst_consn_ge cofix_subst_length //.
-    unfold ids. eexists _, _; split; eauto.
-    rewrite Hnth. split; simpl; eauto.
-    apply inst_ext.
-    rewrite /subst_compose. simpl. intros v.
-    rewrite subst_consn_ge ?cofix_subst_length. lia.
-    unfold shiftk. f_equal. lia.
-    rewrite nth_error_app_lt in Hnth => //.
-    pose proof (fix_context_assumption_context mfix1).
-    destruct d' as [na [b'|] ty]; simpl; auto.
-    elimtype False. eapply nth_error_assumption_context in H; eauto.
-    simpl in H; discriminate.
+    - rewrite nth_error_app_ge // in Hnth.
+      rewrite fix_context_length in l Hnth.
+      destruct d' as [na [b'|] ty]; simpl; auto.
+      rewrite subst_consn_ge cofix_subst_length //.
+      unfold ids. eexists _, _; split; eauto.
+      rewrite Hnth. split; simpl; eauto.
+      apply inst_ext.
+      rewrite /subst_compose. simpl. intros v.
+      rewrite subst_consn_ge ?cofix_subst_length. 1: lia.
+      unfold shiftk. f_equal. lia.
+    - rewrite nth_error_app_lt in Hnth => //.
+      pose proof (fix_context_assumption_context mfix1).
+      destruct d' as [na [b'|] ty]; simpl; auto.
+      elimtype False.
+      eapply nth_error_assumption_context in H; eauto.
+      simpl in H; discriminate.
   Qed.
 
   Lemma ctxmap_fix_subst:
@@ -4026,21 +4032,22 @@ Section Confluence.
     intros Γ' mfix1.
     intros x d' Hnth.
     destruct (leb_spec_Set #|fix_context mfix1| x).
-    rewrite nth_error_app_ge // in Hnth.
-    rewrite fix_context_length in l Hnth.
-    destruct d' as [na [b'|] ty]; simpl; auto.
-    rewrite subst_consn_ge fix_subst_length //.
-    unfold ids. eexists _, _; split; eauto.
-    rewrite Hnth. split; simpl; eauto.
-    apply inst_ext.
-    rewrite /subst_compose. simpl. intros v.
-    rewrite subst_consn_ge ?fix_subst_length. lia.
-    unfold shiftk. f_equal. lia.
-    rewrite nth_error_app_lt in Hnth => //.
-    pose proof (fix_context_assumption_context mfix1).
-    destruct d' as [na [b'|] ty]; simpl; auto.
-    elimtype False. eapply nth_error_assumption_context in H; eauto.
-    simpl in H; discriminate.
+    - rewrite nth_error_app_ge // in Hnth.
+      rewrite fix_context_length in l Hnth.
+      destruct d' as [na [b'|] ty]; simpl; auto.
+      rewrite subst_consn_ge fix_subst_length //.
+      unfold ids. eexists _, _; split; eauto.
+      rewrite Hnth. split; simpl; eauto.
+      apply inst_ext.
+      rewrite /subst_compose. simpl. intros v.
+      rewrite subst_consn_ge ?fix_subst_length. 1: lia.
+      unfold shiftk. f_equal. lia.
+    - rewrite nth_error_app_lt in Hnth => //.
+      pose proof (fix_context_assumption_context mfix1).
+      destruct d' as [na [b'|] ty]; simpl; auto.
+      elimtype False.
+      eapply nth_error_assumption_context in H; eauto.
+      simpl in H; discriminate.
   Qed.
 
   Lemma nth_error_cofix_subst mfix n b :
@@ -4048,11 +4055,13 @@ Section Confluence.
     b = tCoFix mfix (#|mfix| - S n).
   Proof.
     unfold cofix_subst.
-    generalize #|mfix|. induction n0 in n, b |- *. simpl.
-    destruct n; simpl; congruence.
-    destruct n; simpl. intros [= <-]. f_equal.
-    destruct n0; simpl; try reflexivity.
-    intros H. now specialize (IHn0 _ _ H).
+    generalize #|mfix|. induction n0 in n, b |- *.
+    - simpl.
+      destruct n; simpl; congruence.
+    - destruct n; simpl.
+      + intros [= <-]. f_equal.
+        destruct n0; simpl; try reflexivity.
+      + intros H. now specialize (IHn0 _ _ H).
   Qed.
 
   Lemma nth_error_fix_subst mfix n b :
@@ -4060,11 +4069,12 @@ Section Confluence.
     b = tFix mfix (#|mfix| - S n).
   Proof.
     unfold fix_subst.
-    generalize #|mfix|. induction n0 in n, b |- *. simpl.
-    destruct n; simpl; congruence.
-    destruct n; simpl. intros [= <-]. f_equal.
-    destruct n0; simpl; try reflexivity.
-    intros H. now specialize (IHn0 _ _ H).
+    generalize #|mfix|. induction n0 in n, b |- *.
+    - simpl. destruct n; simpl; congruence.
+    - destruct n; simpl.
+      + intros [= <-]. f_equal.
+        destruct n0; simpl; reflexivity.
+      + intros H. now specialize (IHn0 _ _ H).
   Qed.
 
   Lemma pred_subst_rho_cofix (Γ Γ' : context) (mfix0 mfix1 : mfixpoint term) :
@@ -4110,39 +4120,42 @@ Section Confluence.
     intros predΓ predΓ' fctx eqf redr redl.
     intros x.
     destruct (leb_spec_Set (S x) #|cofix_subst mfix1|).
-    destruct (subst_consn_lt l) as [? [Hb Hb']].
-    rewrite Hb'.
-    eapply nth_error_cofix_subst in Hb. subst.
-    rewrite cofix_subst_length in l.
-    rewrite -(All2_length _ _ eqf) in l.
-    rewrite -(cofix_subst_length mfix0) in l.
-    destruct (subst_consn_lt l) as [b' [Hb0 Hb0']].
-    rewrite rho_cofix_subst.
-    pose proof (nth_error_map (rho (rho_ctx Γ)) x (cofix_subst mfix0)).
-    rewrite Hb0 in H. simpl in H.
-    rewrite /subst_consn H.
-    eapply nth_error_cofix_subst in Hb0. subst b'.
-    cbn. rewrite (All2_length _ _ eqf). constructor; auto.
-    rewrite -fold_fix_context_rho_ctx. constructor; auto.
-    + eapply All2_local_env_pred_fix_ctx. apply fctx.
-    + red. clear -wfΣ eqf redr redl.
-      eapply All2_sym. apply All2_map_left.
-      pose proof (All2_mix eqf (All2_mix redr redl)) as X; clear eqf redr redl.
-      eapply All2_impl; eauto. clear X.
-      unfold on_Trel in *. simpl. intros x y.
-      rewrite fix_context_map_fix rho_ctx_app. intuition auto.
-    + pose proof (fix_context_assumption_context mfix1).
-      rewrite cofix_subst_length (All2_length _ _ eqf) -(fix_context_length mfix1) in l.
-      rewrite nth_error_app_lt //.
-      destruct (nth_error (fix_context mfix1) x) eqn:Heq => // /=; auto.
-      destruct c as [na [?|] ty] => //.
-      move: (nth_error_assumption_context _ _ _ H0 Heq) => //.
-    + rewrite cofix_subst_length in l.
+    - destruct (subst_consn_lt l) as [? [Hb Hb']].
+      rewrite Hb'.
+      eapply nth_error_cofix_subst in Hb. subst.
+      rewrite cofix_subst_length in l.
+      rewrite -(All2_length _ _ eqf) in l.
+      rewrite -(cofix_subst_length mfix0) in l.
+      destruct (subst_consn_lt l) as [b' [Hb0 Hb0']].
+      rewrite rho_cofix_subst.
+      pose proof (nth_error_map (rho (rho_ctx Γ)) x (cofix_subst mfix0)).
+      rewrite Hb0 in H. simpl in H.
+      rewrite /subst_consn H.
+      eapply nth_error_cofix_subst in Hb0. subst b'.
+      cbn. rewrite (All2_length _ _ eqf). constructor; auto.
+      + rewrite -fold_fix_context_rho_ctx. constructor; auto.
+        * eapply All2_local_env_pred_fix_ctx. apply fctx.
+        * red. clear -wfΣ eqf redr redl.
+          eapply All2_sym. apply All2_map_left.
+          pose proof (All2_mix eqf (All2_mix redr redl)) as X.
+          clear eqf redr redl.
+          eapply All2_impl; eauto. clear X.
+          unfold on_Trel in *. simpl. intros x y.
+          rewrite fix_context_map_fix rho_ctx_app. intuition auto.
+      + pose proof (fix_context_assumption_context mfix1).
+        rewrite cofix_subst_length (All2_length _ _ eqf) -(fix_context_length mfix1) in l.
+        rewrite nth_error_app_lt //.
+        destruct (nth_error (fix_context mfix1) x) eqn:Heq => // /=; auto.
+        destruct c as [na [?|] ty] => //.
+        move: (nth_error_assumption_context _ _ _ H0 Heq) => //.
+    - rewrite cofix_subst_length in l.
       rewrite !subst_consn_ge; try rewrite ?cofix_subst_length ?map_length; try lia.
-      now rewrite (All2_length _ _ eqf).
-      split. rewrite (All2_length _ _ eqf); pcuic.
-      rewrite nth_error_app_ge ?fix_context_length //; try lia.
-      destruct option_map as [[o|]|]; auto. now rewrite (All2_length _ _ eqf).
+      + now rewrite (All2_length _ _ eqf).
+      + split.
+        * rewrite (All2_length _ _ eqf); pcuic.
+        * rewrite nth_error_app_ge ?fix_context_length //; try lia.
+          destruct option_map as [[o|]|]; auto.
+          now rewrite (All2_length _ _ eqf).
   Qed.
 
   Lemma pred_subst_rho_fix (Γ Γ' : context) (mfix0 mfix1 : mfixpoint term) :
@@ -4188,39 +4201,42 @@ Section Confluence.
     intros predΓ predΓ' fctx eqf redr redl.
     intros x.
     destruct (leb_spec_Set (S x) #|fix_subst mfix1|).
-    destruct (subst_consn_lt l) as [? [Hb Hb']].
-    rewrite Hb'.
-    eapply nth_error_fix_subst in Hb. subst.
-    rewrite fix_subst_length in l.
-    rewrite -(All2_length _ _ eqf) in l.
-    rewrite -(fix_subst_length mfix0) in l.
-    destruct (subst_consn_lt l) as [b' [Hb0 Hb0']].
-    rewrite rho_fix_subst.
-    pose proof (nth_error_map (rho (rho_ctx Γ)) x (fix_subst mfix0)).
-    rewrite Hb0 in H. simpl in H.
-    rewrite /subst_consn H.
-    eapply nth_error_fix_subst in Hb0. subst b'.
-    cbn. rewrite (All2_length _ _ eqf). constructor; auto.
-    rewrite -fold_fix_context_rho_ctx. constructor; auto.
-    + eapply All2_local_env_pred_fix_ctx. apply fctx.
-    + red. clear -wfΣ eqf redr redl.
-      eapply All2_sym. apply All2_map_left.
-      pose proof (All2_mix eqf (All2_mix redr redl)) as X; clear eqf redr redl.
-      eapply All2_impl; eauto. clear X.
-      unfold on_Trel in *. simpl. intros x y.
-      rewrite fix_context_map_fix rho_ctx_app. intuition auto.
-    + pose proof (fix_context_assumption_context mfix1).
-      rewrite fix_subst_length (All2_length _ _ eqf) -(fix_context_length mfix1) in l.
-      rewrite nth_error_app_lt //.
-      destruct (nth_error (fix_context mfix1) x) eqn:Heq => // /=; auto.
-      destruct c as [na [?|] ty] => //.
-      move: (nth_error_assumption_context _ _ _ H0 Heq) => //.
-    + rewrite fix_subst_length in l.
+    - destruct (subst_consn_lt l) as [? [Hb Hb']].
+      rewrite Hb'.
+      eapply nth_error_fix_subst in Hb. subst.
+      rewrite fix_subst_length in l.
+      rewrite -(All2_length _ _ eqf) in l.
+      rewrite -(fix_subst_length mfix0) in l.
+      destruct (subst_consn_lt l) as [b' [Hb0 Hb0']].
+      rewrite rho_fix_subst.
+      pose proof (nth_error_map (rho (rho_ctx Γ)) x (fix_subst mfix0)).
+      rewrite Hb0 in H. simpl in H.
+      rewrite /subst_consn H.
+      eapply nth_error_fix_subst in Hb0. subst b'.
+      cbn. rewrite (All2_length _ _ eqf). constructor; auto.
+      + rewrite -fold_fix_context_rho_ctx. constructor; auto.
+        * eapply All2_local_env_pred_fix_ctx. apply fctx.
+        * red. clear -wfΣ eqf redr redl.
+          eapply All2_sym. apply All2_map_left.
+          pose proof (All2_mix eqf (All2_mix redr redl)) as X.
+          clear eqf redr redl.
+          eapply All2_impl; eauto. clear X.
+          unfold on_Trel in *. simpl. intros x y.
+          rewrite fix_context_map_fix rho_ctx_app. intuition auto.
+      + pose proof (fix_context_assumption_context mfix1).
+        rewrite fix_subst_length (All2_length _ _ eqf) -(fix_context_length mfix1) in l.
+        rewrite nth_error_app_lt //.
+        destruct (nth_error (fix_context mfix1) x) eqn:Heq => // /=; auto.
+        destruct c as [na [?|] ty] => //.
+        move: (nth_error_assumption_context _ _ _ H0 Heq) => //.
+    - rewrite fix_subst_length in l.
       rewrite !subst_consn_ge; try rewrite ?fix_subst_length ?map_length; try lia.
-      now rewrite (All2_length _ _ eqf).
-      split. rewrite (All2_length _ _ eqf); pcuic.
-      rewrite nth_error_app_ge ?fix_context_length //; try lia.
-      destruct option_map as [[o|]|]; auto. now rewrite (All2_length _ _ eqf).
+      + now rewrite (All2_length _ _ eqf).
+      + split.
+        * rewrite (All2_length _ _ eqf); pcuic.
+        * rewrite nth_error_app_ge ?fix_context_length //; try lia.
+          destruct option_map as [[o|]|]; auto.
+          now rewrite (All2_length _ _ eqf).
   Qed.
 
   Lemma isConstruct_app_pred1 {Γ Δ a b} : pred1 Σ Γ Δ a b -> isConstruct_app a -> isConstruct_app b.
@@ -4237,11 +4253,11 @@ Section Confluence.
     ~~ isApp f -> isFix_app (tApp (mkApps f args) x) -> isFix f.
   Proof.
     move=> Hf.
-    revert f Hf. induction args using rev_ind. simpl.
-    induction f; simpl; try congruence.
-    intros f Hf. simpl.
-    rewrite -mkApps_nested. simpl. specialize (IHargs f Hf).
-    simpl in IHargs. auto.
+    revert f Hf. induction args using rev_ind.
+    - simpl. induction f; simpl; try congruence.
+    - intros f Hf. simpl.
+      rewrite -mkApps_nested. simpl. specialize (IHargs f Hf).
+      simpl in IHargs. auto.
   Qed.
 
 
@@ -4261,40 +4277,45 @@ Section Confluence.
     intros Hpred. remember (mkApps _ _) as fixt. revert na ty b args0 Heqfixt.
     induction Hpred; intros; solve_discr.
     - right. exists t1, b1, a1, []. intuition eauto.
+    - admit. (* TODO Rewrite rules *)
+    - admit. (* TODO Rewrite rules *)
     - clear IHHpred2.
-      -- left. exists M', N', []. intuition eauto.
+      left. exists M', N', []. intuition eauto.
     - destruct args0 using rev_ind; try discriminate. clear IHargs0.
       rewrite -mkApps_nested in Heqfixt. noconf Heqfixt.
       clear IHHpred2.
       specialize (IHHpred1 _ _ _ _ eq_refl).
       destruct IHHpred1 as [[? [? [? ?]]]|[? [? [? [? ?]]]]].
-      -- left. eexists x, x0, (x1 ++ [N1]). intuition eauto. subst M1.
-         now rewrite -mkApps_nested. subst M1.
-         eapply All2_app; eauto.
-      -- right. eexists x, x0.
-         destruct p as [[? ?] ?]. subst M1.
-         depelim a.
-         exists x1, (x2 ++ [N1]). intuition auto.
-         rewrite app_comm_cons.
-         eapply All2_app; auto.
-         now rewrite -mkApps_nested.
+      + left. eexists x, x0, (x1 ++ [N1]). intuition eauto.
+        * subst M1. now rewrite -mkApps_nested.
+        * subst M1. eapply All2_app; eauto.
+      + right. eexists x, x0.
+        destruct p as [[? ?] ?]. subst M1.
+        depelim a.
+        exists x1, (x2 ++ [N1]). intuition auto.
+        * rewrite app_comm_cons.
+          eapply All2_app; auto.
+        * now rewrite -mkApps_nested.
     - subst t. solve_discr.
-  Qed.
+  (* Qed. *)
+  Admitted.
 
   Lemma is_constructor_rho Γ n args :
     is_constructor n args -> is_constructor n (map (rho (rho_ctx Γ)) args).
   Proof.
     rewrite /is_constructor nth_error_map.
     case e: nth_error => [a|] /=.
-    apply isConstruct_app_rho. auto.
+    - apply isConstruct_app_rho.
+    - auto.
   Qed.
 
   Lemma mkApps_inj_args_length f f' l l' : #|l| = #|l'| -> mkApps f l = mkApps f' l' -> f = f' /\ l = l'.
   Proof.
-    revert l'. elim/@rev_ind: l => [|hd tl IH]. case => /= //.
-    elim/@rev_ind => [|hd' tl' _] => /= //; rewrite !app_length /= ?Nat.add_1_r //.
-    move=> [=] Htl. rewrite - !mkApps_nested /= => [=] Hf ->.
-    now case: (IH _ Htl Hf) => <- <-.
+    revert l'. elim/@rev_ind: l => [|hd tl IH].
+    - case => /= //.
+    - elim/@rev_ind => [|hd' tl' _] => /= //; rewrite !app_length /= ?Nat.add_1_r //.
+      move=> [=] Htl. rewrite - !mkApps_nested /= => [=] Hf ->.
+      now case: (IH _ Htl Hf) => <- <-.
   Qed.
 
   Lemma pred1_mkApps_Lambda_Fix_inv Γ Γ' f a u l a' l' :
@@ -4312,14 +4333,15 @@ Section Confluence.
     destruct f; try discriminate.
     eapply pred1_mkApps_tLambda_inv in Hpred.
     destruct Hpred as [(ty' & b' & args' & ((H' & ?) & ?) & H'')|(ty' & b' & hd & tl & (((?&?) & ?) & ?))].
-    depelim H''. destruct u; try discriminate.
-    eapply mkApps_eq_inj in H' as [He Hargs] => //.
-    exists na, f1, f2, ty', b', hd. destruct u; try discriminate.
-    depelim a0.
-    pose proof (All2_length _ _ a0).
-    simpl in e.
-    eapply mkApps_inj_args_length in e.
-    simpl. intuition auto. subst. auto. lia.
+    - depelim H''. destruct u; try discriminate.
+      eapply mkApps_eq_inj in H' as [He Hargs] => //.
+    - exists na, f1, f2, ty', b', hd. destruct u; try discriminate.
+      depelim a0.
+      pose proof (All2_length _ _ a0).
+      simpl in e.
+      eapply mkApps_inj_args_length in e.
+      + simpl. intuition auto. subst. auto.
+      + lia.
   Qed.
 
   Lemma triangle Γ Δ t u :
@@ -4328,8 +4350,9 @@ Section Confluence.
     pred1 Σ Γ Δ t u -> pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
       subst Pctx; intros *.
+    (* TODO intros by hand to avoid redoing everything *)
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;
         try solve [simpl; econstructor; simpl; eauto].
