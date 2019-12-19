@@ -2022,7 +2022,7 @@ Section Confluence.
       }
       rewrite inst_closed.
       1:{
-        apply All2_length in X0. rewrite <- X0.
+        apply All2_length in X1. rewrite <- X1.
         change #|s| with (0 + #|s|). eapply closedn_subst.
         - subst ss. unfold symbols_subst.
           generalize (#|symbols decl| - 0). clear.
@@ -2081,7 +2081,7 @@ Section Confluence.
       }
       rewrite inst_closed.
       1:{
-        apply All2_length in X0. rewrite <- X0.
+        apply All2_length in X1. rewrite <- X1.
         change #|s| with (0 + #|s|). eapply closedn_subst.
         - subst ss. unfold symbols_subst.
           generalize (#|symbols decl| - 0). clear.
