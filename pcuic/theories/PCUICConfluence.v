@@ -1481,7 +1481,38 @@ Section PredRed.
         eapply All2_impl. 1: eassumption.
         intros ? ? [? ?]. assumption.
 
-    - admit.
+    - subst lhs rhs.
+      (* TODO Could be a lemma
+          Or maybe red_red should be changed to avoid this useless requirement.
+      *)
+      assert (h : ∑ Δ, untyped_subslet Γ s (subst_context ss 0 Δ)).
+      { clear. induction s.
+        - exists []. constructor.
+        - destruct IHs as [Δ ?]. eexists (Δ,, vass nAnon (tRel 0)).
+          rewrite subst_context_snoc0.
+          econstructor. eassumption.
+      } destruct h as [Δ hu].
+      apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
+      + eapply untyped_substitution_red with (Γ'0 := []). all: eauto.
+        cbn.
+        apply untyped_substlet_length in hu as es.
+        rewrite subst_context_length in es.
+        rewrite es.
+        assert (h : ∑ Δ, untyped_subslet Γ ss Δ).
+        { clear. clearbody ss. induction ss.
+          - eexists. constructor.
+          - destruct IHss. eexists. econstructor. eassumption.
+        } destruct h as [? ?].
+        eapply untyped_substitution_red. all: eauto.
+        (* We will need to make explicit contexts and so the proofs above might
+           need to change.
+        *)
+        admit.
+      + generalize (subst ss #|s| (rhs r)). intro t.
+        eapply red_red with (Σ0 := empty_ext Σ) (Γ'0 := []).
+        all: cbn. all: eauto.
+        eapply All2_impl. 1: eassumption.
+        intros ? ? [? ?]. assumption.
 
     - eapply red1_red. econstructor; eauto.
 
