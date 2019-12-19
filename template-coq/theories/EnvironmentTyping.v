@@ -248,6 +248,8 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Parameter (ind_guard : mutual_inductive_body -> bool).
 
+  Parameter (red : global_env -> context -> term -> term -> Type).
+
   Parameter (typing : forall `{checker_flags}, global_env_ext -> context -> term -> term -> Type).
 
   Notation " Σ ;;; Γ |- t : T " :=

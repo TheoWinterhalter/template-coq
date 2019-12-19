@@ -923,6 +923,7 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
 Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTyping.
 
   Definition ind_guard := ind_guard.
+  Definition red := @red.
   Definition typing := @typing.
   Definition smash_context := smash_context.
   Definition elim_pattern (npat : nat) (e : elimination) := False.
