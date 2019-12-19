@@ -2827,7 +2827,8 @@ Section ConfluenceFacts.
   (* Qed. *)
 
   Lemma red_confluence {Γ t u v} :
-    red Σ Γ t u -> red Σ Γ t v ->
+    red Σ Γ t u ->
+    red Σ Γ t v ->
     ∑ v', red Σ Γ u v' * red Σ Γ v v'.
   Proof.
     move=> H H'. apply red_alt in H. apply red_alt in H'.
@@ -2835,6 +2836,8 @@ Section ConfluenceFacts.
     apply red_alt in redl; apply red_alt in redr.
     exists nf; intuition auto.
   Qed.
+
+  Print Assumptions red_confluence.
 
 End ConfluenceFacts.
 
