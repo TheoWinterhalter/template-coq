@@ -458,11 +458,26 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       onElims : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
     }.
 
+    (* Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
+    | or_left : forall x y, R x y -> or_rel R R' x y
+    | or_right : forall x y, R' x y -> or_rel R R' x y.
+
+    Inductive red_rules (rules : list rewrite_rule) :=
+
+    Definition red' Σ Γ rules :=
+      clos_trans (or_rel (red Σ Γ) (red_r rules)). *)
+
+    Definition prule_red Σ Δ (r : rewrite_rule) :=
+      red Σ (Δ ,,, r.(pat_context)) r.(lhs) r.(rhs).
+
     Definition on_rewrite_decl Σ d :=
       let Δ := map (vass nAnon) d.(symbols) in
       on_context Σ Δ ×
       All (on_rewrite_rule Σ Δ) d.(rules) ×
-      All (on_rewrite_rule Σ Δ) d.(prules).
+      All (on_rewrite_rule Σ Δ) d.(prules) ×
+      (* All (prule_red (RewriteDecl id d :: Σ.1) Δ) d.(prules). *)
+      (* TODO We need to account for the new rules. *)
+      All (prule_red Σ.1 Δ) d.(prules).
 
     Definition on_global_decl Σ decl :=
       match decl with

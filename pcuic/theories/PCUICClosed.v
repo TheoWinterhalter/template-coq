@@ -535,7 +535,7 @@ Proof.
        eapply All_local_env_impl. eauto.
        intros. now apply X.
   - red in o. simpl in *.
-    destruct o0 as [hctx [hr hpr]].
+    destruct o0 as [hctx [hr [hpr hprr]]].
     split. 2: split.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
@@ -546,13 +546,16 @@ Proof.
       * eapply X. all: eauto.
       * assumption.
       * assumption.
-    + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onelims].
-      exists T.
-      * eapply X. all: eauto.
-      * eapply X. all: eauto.
-      * assumption.
-      * assumption.
+    + split.
+      * eapply All_impl. 1: exact hpr.
+        intros rw [T onlhs onrhs onhead onelims].
+        exists T.
+        -- eapply X. all: eauto.
+        -- eapply X. all: eauto.
+        -- assumption.
+        -- assumption.
+      * cbn. eapply All_impl. 1: exact hprr.
+        cbn. intros x h. assumption.
 Qed.
 
 Lemma closed_declared_symbol_nth_error `{checker_flags} :
@@ -678,8 +681,8 @@ Proof.
   eapply lookup_on_global_env in isdecl. 2: eauto.
   destruct isdecl as [Σ' [wfΣ' decl']].
   red in decl'. red in decl'.
-  destruct decl' as [hctx [hr hpr]].
-  eapply nth_error_all in hn. 2: eassumption.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply nth_error_all in hn. 2: exact hpr.
   destruct hn as [T h _ _ _]. simpl in *.
   eapply typecheck_closed in h.
   2: assumption.
@@ -703,8 +706,8 @@ Proof.
   eapply lookup_on_global_env in isdecl. 2: eauto.
   destruct isdecl as [Σ' [wfΣ' decl']].
   red in decl'. red in decl'.
-  destruct decl' as [hctx [hr hpr]].
-  eapply nth_error_all in hn. 2: eassumption.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply nth_error_all in hn. 2: exact hpr.
   destruct hn as [T _ h _ _]. simpl in *.
   eapply typecheck_closed in h.
   2: assumption.

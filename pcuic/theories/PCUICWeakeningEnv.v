@@ -200,6 +200,19 @@ Proof.
     econstructor. all: eauto.
 Qed.
 
+Corollary weakening_env_red `{cf: checker_flags} :
+  forall Σ Σ' Γ u v,
+    wf Σ' ->
+    extends Σ Σ' ->
+    red Σ Γ u v ->
+    red Σ' Γ u v.
+Proof.
+  intros Σ Σ' Γ u v hΣ he h.
+  induction h. 1: constructor.
+  econstructor. 1: eassumption.
+  eapply weakening_env_red1. all: eassumption.
+Qed.
+
 Lemma weakening_env_cumul `{CF:checker_flags} Σ Σ' φ Γ M N :
   wf Σ' -> extends Σ Σ' ->
   cumul (Σ, φ) Γ M N -> cumul (Σ', φ) Γ M N.
@@ -294,9 +307,9 @@ Qed.
 
 Hint Resolve weakening_env_global_ext_levels : extends.
 
-Lemma weakening_env_consistent_instance {cf:checker_flags} Σ Σ' φ ctrs u (H : extends Σ Σ')
-  : consistent_instance_ext (Σ, φ) ctrs u
-    -> consistent_instance_ext (Σ', φ) ctrs u.
+Lemma weakening_env_consistent_instance {cf:checker_flags} Σ Σ' φ ctrs u (H : extends Σ Σ') :
+  consistent_instance_ext (Σ, φ) ctrs u ->
+  consistent_instance_ext (Σ', φ) ctrs u.
 Proof.
     unfold consistent_instance_ext, consistent_instance.
     intros X.
@@ -392,7 +405,7 @@ Proof.
               induction ind_indices; simpl in *; auto.
               destruct a as [na [b|] ty]; simpl in *; intuition eauto.
     + red in onP |- *. eapply All_local_env_impl; eauto.
-  - destruct Hdecl as [hctx [hr hpr]]. split. 2: split.
+  - destruct Hdecl as [hctx [hr [hpr hprr]]]. split. 2: split.
     + eapply All_local_env_impl; eauto.
     + eapply All_impl. 1: eassumption.
       intros rw [T onlhs onrhs onhead onelims].
@@ -401,18 +414,24 @@ Proof.
       * eapply HPΣ. all: eauto.
       * assumption.
       * assumption.
-    + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onelims].
-      exists T.
-      * eapply HPΣ. all: eauto.
-      * eapply HPΣ. all: eauto.
-      * assumption.
-      * assumption.
+    + split.
+      * eapply All_impl. 1: exact hpr.
+        intros rw [T onlhs onrhs onhead onelims].
+        exists T.
+        -- eapply HPΣ. all: eauto.
+        -- eapply HPΣ. all: eauto.
+        -- assumption.
+        -- assumption.
+      * eapply All_impl. 1: exact hprr.
+        unfold prule_red. cbn. intros rw h.
+        eapply weakening_env_red. 3: eauto. all: auto.
 Qed.
 
 Lemma weakening_env_lookup_on_global_env `{checker_flags} P Σ Σ' c decl :
   weaken_env_prop P ->
-  wf Σ' -> extends Σ Σ' -> on_global_env P Σ ->
+  wf Σ' ->
+  extends Σ Σ' ->
+  on_global_env P Σ ->
   lookup_env Σ c = Some decl ->
   on_global_decl P (Σ', universes_decl_of_decl decl) decl.
 Proof.
@@ -429,7 +448,8 @@ Qed.
 
 Lemma weaken_lookup_on_global_env `{checker_flags} P Σ c decl :
   weaken_env_prop P ->
-  wf Σ -> on_global_env P Σ ->
+  wf Σ ->
+  on_global_env P Σ ->
   lookup_env Σ c = Some decl ->
   on_global_decl P (Σ, universes_decl_of_decl decl) decl.
 Proof.
