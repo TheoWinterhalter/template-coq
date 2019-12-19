@@ -909,6 +909,7 @@ Section ParallelReduction.
           P Γ Γ' (tSymb c n u) (tSymb c n u)) ->
       (forall (Γ Γ' : context) k ui decl n r s s',
           All2_local_env (on_decl pred1) Γ Γ' ->
+          Pctx Γ Γ' ->
           declared_symbol Σ k decl ->
           nth_error decl.(rules) n = Some r ->
           All2 (P' Γ Γ') s s' ->
@@ -920,6 +921,7 @@ Section ParallelReduction.
       ) ->
       (forall (Γ Γ' : context) k ui decl n r s s',
           All2_local_env (on_decl pred1) Γ Γ' ->
+          Pctx Γ Γ' ->
           declared_symbol Σ k decl ->
           nth_error decl.(prules) n = Some r ->
           All2 (P' Γ Γ') s s' ->
@@ -1054,9 +1056,13 @@ Section ParallelReduction.
       + intros. exact a.
       + intros. apply (aux _ _ _ _ X21).
     - eapply Xrw. all: eauto.
-      eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
+      + apply Hctx. 1: auto.
+        apply (All2_local_env_impl a). intros. apply (aux _ _ _ _ X21).
+      + eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
     - eapply Xprw. all: eauto.
-      eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
+      + apply Hctx. 1: auto.
+        apply (All2_local_env_impl a). intros. apply (aux _ _ _ _ X21).
+      + eapply (All2_All2_prop (P:=pred1) (Q:=P') a0 ((extendP aux) Γ Γ')).
     - eapply X8; eauto.
       apply Hctx, (All2_local_env_impl a).
       + intros. exact a.
@@ -1421,7 +1427,8 @@ Section ParallelWeakening.
         simpl in H. simpl. f_equal. auto.
 
       + (* Local variable *)
-        pose proof (All2_local_env_length predΓ'). rewrite !app_context_length in H0.
+        pose proof (All2_local_env_length predΓ').
+        rewrite !app_context_length in H0.
         rewrite <- lift_simpl; pcuic.
         econstructor; auto.
         rewrite (weaken_nth_error_lt); try lia.
@@ -1510,7 +1517,7 @@ Section ParallelWeakening.
       assert (#|Γ'0| = #|Δ'|) by lia.
       unfold unfold_cofix in heq_unfold_cofix.
       destruct (nth_error mfix1 idx) eqn:Hnth; noconf heq_unfold_cofix. simpl.
-      econstructor; pcuic.
+      econstructor ; pcuic.
       + rewrite !lift_fix_context.
         erewrite lift_fix_context.
         eapply All2_local_env_weaken_pred_ctx'; pcuic.
@@ -1530,9 +1537,59 @@ Section ParallelWeakening.
         now rewrite (map_cofix_subst (fun k => lift #|Δ''| (k + #|Δ'|))).
       + eapply All2_map. solve_all.
 
-    - admit. (* TODO Rewrite rules *)
+    - assert (es : #|s| = #|s'|).
+      { eapply All2_length. eassumption. }
+      rewrite <- es.
+      rewrite 2!distr_lift_subst_rec.
+      assert (e : forall i j, map (lift i j) ss = ss).
+      { intros i j. subst ss. unfold symbols_subst.
+        rewrite list_make_map. simpl. reflexivity.
+      }
+      rewrite 2!e.
+      rewrite lift_closed.
+      1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_lhs.
+          all: eauto.
+          subst ss. rewrite symbols_subst_length. lia.
+      }
+      rewrite lift_closed.
+      1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_rhs.
+          all: eauto.
+          subst ss. rewrite symbols_subst_length. lia.
+      }
+      replace #|s| with #|map (lift #|Γ''| #|Γ'0|) s|
+        by (now rewrite map_length).
+      eapply pred_rewrite_rule. all: eauto.
+      + apply All2_map. eapply All2_impl. 1: eassumption.
+        cbn. intros ? ? [? ih].
+        apply ih. all: auto.
+      + rewrite map_length. assumption.
 
-    - admit. (* TODO Rewrite rules *)
+    - assert (es : #|s| = #|s'|).
+      { eapply All2_length. eassumption. }
+      rewrite <- es.
+      rewrite 2!distr_lift_subst_rec.
+      assert (e : forall i j, map (lift i j) ss = ss).
+      { intros i j. subst ss. unfold symbols_subst.
+        rewrite list_make_map. simpl. reflexivity.
+      }
+      rewrite 2!e.
+      rewrite lift_closed.
+      1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_lhs.
+          all: eauto.
+          subst ss. rewrite symbols_subst_length. lia.
+      }
+      rewrite lift_closed.
+      1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_rhs.
+          all: eauto.
+          subst ss. rewrite symbols_subst_length. lia.
+      }
+      replace #|s| with #|map (lift #|Γ''| #|Γ'0|) s|
+        by (now rewrite map_length).
+      eapply pred_par_rewrite_rule. all: eauto.
+      + apply All2_map. eapply All2_impl. 1: eassumption.
+        cbn. intros ? ? [? ih].
+        apply ih. all: auto.
+      + rewrite map_length. assumption.
 
     - assert(Hlen:#|Γ''| = #|Δ''|).
       { eapply All2_local_env_length in X1; pcuic. }
@@ -1590,8 +1647,7 @@ Section ParallelWeakening.
 
     - revert H. induction t; intros; try discriminate; try solve [ constructor; simpl; eauto ];
                   try solve [ apply (pred_atom); auto ].
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma weakening_pred1_pred1 Σ Γ Δ Γ' Δ' M N : wf Σ ->
     All2_local_env_over (pred1 Σ) Γ Δ Γ' Δ' ->
