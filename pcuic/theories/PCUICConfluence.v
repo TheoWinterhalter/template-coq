@@ -1386,7 +1386,10 @@ Section PredRed.
   Qed.
 
   (** Parallel reduction is included in the reflexive transitive closure of 1-step reduction *)
-  Lemma pred1_red Γ Γ' : forall M N, pred1 Σ Γ Γ' M N -> red Σ Γ M N.
+  Lemma pred1_red Γ Γ' :
+    forall M N,
+      pred1 Σ Γ Γ' M N ->
+      red Σ Γ M N.
   Proof.
     revert Γ Γ'. eapply (@pred1_ind_all_ctx Σ _
                                             (fun Γ Γ' =>
@@ -1460,7 +1463,23 @@ Section PredRed.
         * econstructor; eauto.
         * eauto.
 
-    - admit.
+    - subst lhs rhs.
+      apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
+      + econstructor. 1: constructor.
+        eapply red_rewrite_rule. all: eassumption.
+      + generalize (subst ss #|s| (rhs r)). intro t.
+        (* TODO Could be a lemma
+           Or maybe red_red should be changed to avoid this useless requirement.
+        *)
+        assert (h : ∑ Δ, untyped_subslet Γ s Δ).
+        { clear. induction s.
+          - eexists. constructor.
+          - destruct IHs. eexists. econstructor. eassumption.
+        } destruct h as [? ?].
+        eapply red_red with (Σ0 := empty_ext Σ) (Γ'0 := []).
+        all: cbn. all: eauto.
+        eapply All2_impl. 1: eassumption.
+        intros ? ? [? ?]. assumption.
 
     - admit.
 
