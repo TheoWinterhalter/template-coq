@@ -1203,8 +1203,9 @@ Section RedPred.
     induction 1 using red1_ind_all; intros; pcuic.
     - econstructor; pcuic. eauto.
     - econstructor; pcuic. eauto.
-    - (* TODO Need to extend pred1 *)
-      admit.
+    - eapply pred_rewrite_rule. all: eauto.
+      + pcuic.
+      + apply All2_same. intro. pcuic.
     - econstructor; pcuic. eauto.
       unfold on_Trel.
       (* TODO fix OnOne2 use in red1 to use onTrel_eq to have equality on annotation *)
@@ -1341,8 +1342,7 @@ Section RedPred.
              simpl in *. intuition pcuic.
              ++ noconf b; noconf H; rewrite H0; pcuic.
              ++ congruence.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
 End RedPred.
 
