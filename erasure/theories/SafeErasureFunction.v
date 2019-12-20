@@ -1,6 +1,7 @@
 
 From Coq Require Import Bool String List Program BinPos Compare_dec ZArith.
 From MetaCoq.Template Require Import config utils monad_utils BasicAst AstUtils.
+From Equations Require Import Equations.
 From MetaCoq.Checker Require Import uGraph.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
      PCUICTyping PCUICMetaTheory PCUICWcbvEval PCUICLiftSubst PCUICInversion
@@ -8,14 +9,16 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
      PCUICValidity PCUICPrincipality PCUICElimination PCUICSN.
 From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeChecker PCUICSafeRetyping.
 From MetaCoq.Erasure Require EAst ELiftSubst ETyping EWcbvEval Extract ErasureCorrectness.
-From Equations Require Import Equations.
 Require Import String.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import MonadNotation.
 Local Set Keyed Unification.
 
-Require Import EArities Extract Prelim.
+From MetaCoq.Erasure Require Import EArities Extract Prelim.
+
+Set Equations Transparent.
+
 Section fix_sigma.
 Local Existing Instance extraction_checker_flags.
 Variable Σ : global_env_ext.
@@ -31,13 +34,13 @@ Lemma wf_cod : WellFounded cod.
 Proof.
   clear HΣ.
   sq. intros ?. induction a; econstructor; cbn in *; intros; try tauto; subst. eauto.
-Qed.
+Defined.
 
 Lemma wf_cod' : WellFounded (Relation_Operators.clos_trans _ cod).
 Proof.
   clear HΣ.
   eapply Subterm.WellFounded_trans_clos. exact wf_cod.
-Qed.
+Defined.
 
 Lemma Acc_no_loop X (R : X -> X -> Prop) t : Acc R t -> R t t -> False.
 Proof.
@@ -49,7 +52,7 @@ Ltac sq' := try (destruct HΣ; clear HΣ);
          | H : ∥ _ ∥ |- _ => destruct H; try clear H
          end; try eapply sq.
 
-Instance wf_reduction : WellFounded term_rel.
+Definition wf_reduction_aux : WellFounded term_rel.
 Proof.
   intros (Γ & s & H). sq'.
   induction (normalisation' Σ Γ s X H) as [s _ IH].
@@ -88,6 +91,14 @@ Grab Existential Variables.
      rewrite destArity_app_aux. rewrite e. cbn. reflexivity.
 Qed.
 
+Instance wf_reduction : WellFounded term_rel.
+Proof.
+  refine (Wf.Acc_intro_generator 1000 _).
+  exact wf_reduction_aux.
+Defined.
+Opaque wf_reduction.
+Opaque Acc_intro_generator.
+Opaque Wf.Acc_intro_generator.
 Ltac sq := try (destruct HΣ as [wfΣ]; clear HΣ);
   repeat match goal with
          | H : ∥ _ ∥ |- _ => destruct H
@@ -149,7 +160,8 @@ Next Obligation.
   edestruct (red_confluence wfΣ X0 X) as (? & ? & ?); eauto.
   eapply invert_red_prod in r as (? & ? & [] & ?); eauto. subst.
 
-  eapply invert_cumul_arity_l in H2. 2: eapply PCUICCumulativity.red_cumul. 2:eauto.
+  eapply invert_cumul_arity_l in H2. 2: eauto.
+  2: eapply PCUICCumulativity.red_cumul. 2:eauto.
   destruct H2 as (? & ? & ?). sq.
 
   eapply invert_red_prod in X2 as (? & ? & [] & ?); eauto. subst. cbn in *.
@@ -186,10 +198,16 @@ Next Obligation.
 Admitted. (* reduce to prod, if it returns a TypeError (NotAProduct _) just means it is not an arity *)
 
 End fix_sigma.
-
+Transparent wf_reduction.
 Local Existing Instance extraction_checker_flags.
 Definition wf_ext_wf Σ : wf_ext Σ -> wf Σ := fst.
 Hint Resolve wf_ext_wf.
+
+(* Top.sq should be used but the behavior is a bit different *)
+Local Ltac sq :=
+  repeat match goal with
+         | H : ∥ _ ∥ |- _ => destruct H
+         end; try eapply sq.
 
 Program Definition is_erasable (Sigma : PCUICAst.global_env_ext) (HΣ : ∥wf_ext Sigma∥) (Gamma : context) (t : PCUICAst.term) (Ht : welltyped Sigma Gamma t) :
   typing_result ({∥isErasable Sigma Gamma t∥} +{∥(isErasable Sigma Gamma t -> False)∥}) :=
@@ -389,7 +407,7 @@ Section Erase.
       (* destruct X. econstructor. *)
     (*   sq'. eapply wf_local_local_rel. *)
     (*   eapply wf_local_rel_app_inv. eapply wf_local_rel_local. eauto. *)
-    (*   change fix_context with (fix_context_i #|@nil context_decl|). *)
+    (*   change fix_context with (fix_context_i #|nil context_decl|). *)
     (*   now rewrite app_context_nil_l. *)
     (*   sq. econstructor 2. exact t. *)
     (*   Unshelve. all:sq'; eauto. firstorder. *)
@@ -462,7 +480,9 @@ Section Erase.
 
 End Erase.
 
-Require Import ErasureCorrectness.
+From MetaCoq Require Import ErasureCorrectness.
+
+Opaque wf_reduction.
 Arguments iswelltyped {cf Σ Γ t A}.
 Lemma erases_erase (Σ : global_env_ext) Γ t T (wfΣ : ∥wf_ext Σ∥) t' :
   Σ ;;; Γ |- t : T ->
@@ -549,6 +569,8 @@ Proof.
   (* - clear E. inv t; discriminate. *)
 Admitted.
 
+Transparent wf_reduction.
+
 Lemma erase_Some_typed {Σ wfΣ Γ t wft r} :
   erase Σ wfΣ Γ t wft = Checked r -> exists T, ∥Σ ;;; Γ |- t : T∥.
 Proof.
@@ -624,14 +646,14 @@ Program Definition erase_mutual_inductive_body Σ wfΣ
 Program Fixpoint erase_global_decls Σ : ∥ wf Σ ∥ -> typing_result E.global_declarations := fun wfΣ =>
   match Σ with
   | [] => ret []
-  | ConstantDecl kn cb :: Σ =>
+  | (kn, ConstantDecl cb) :: Σ =>
     cb' <- erase_constant_body (Σ, cst_universes cb) _ cb _;;
     Σ' <- erase_global_decls Σ _;;
-    ret (E.ConstantDecl kn cb' :: Σ')
-  | InductiveDecl kn mib :: Σ =>
+    ret ((kn, E.ConstantDecl cb') :: Σ')
+  | (kn, InductiveDecl mib) :: Σ =>
     mib' <- erase_mutual_inductive_body (Σ, ind_universes mib) _ mib ;;
     Σ' <- erase_global_decls Σ _;;
-    ret (E.InductiveDecl kn mib' :: Σ')
+    ret ((kn, E.InductiveDecl mib') :: Σ')
   end.
 Next Obligation.
   sq. split. cbn.
@@ -670,9 +692,9 @@ Proof.
   - inv H. econstructor.
   - cbn in H. unfold bind in *. cbn in *. repeat destruct ?; try congruence.
     + inv H. inv E.
-      unfold erase_constant_body in E1.
-      unfold bind in E1. cbn in E1. repeat destruct ?; try congruence.
-      inv E1. econstructor.
+      unfold erase_constant_body in E2.
+      unfold bind in E2. cbn in E2. repeat destruct ?; try congruence.
+      inv E2. econstructor.
       all:todo "finish".
 (*    * unfold optM in E0. destruct ?; try congruence.
         -- unfold erases_constant_body.

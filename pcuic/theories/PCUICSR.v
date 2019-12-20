@@ -150,10 +150,10 @@ Proof.
     pose proof (nth_error_All_local_env_over heq_nth_error X); eauto.
     destruct lookup_wf_local_decl; cbn in *.
     rewrite <- (firstn_skipn (S n) Γ).
-    assert(S n = #|firstn (S n) Γ|).
+    eapply weakening_length; auto.
     { rewrite firstn_length_le; auto. apply nth_error_Some_length in heq_nth_error. auto with arith. }
-    rewrite {3 4}H. apply weakening; auto.
     now unfold app_context; rewrite firstn_skipn.
+    apply o.
 
   - (* Prod *)
     constructor; eauto.
@@ -527,7 +527,7 @@ Section SRContext.
              exists tu.π1. eauto. cbn. eauto.
     - econstructor; tea; eauto.
       eapply All2_impl; tea; cbn.
-      intros; utils.rdestruct; eauto.
+      intros; rdest; eauto.
     - assert (XX: red1_ctx Σ.1 (Γ ,,, fix_context mfix) (Γ' ,,, fix_context mfix))
         by now eapply red1_ctx_app.
       econstructor; tea.
@@ -550,7 +550,7 @@ Section SRContext.
             eauto. }
         eapply X with (Γ ,,, fix_context mfix) ZZ.π1; tea. exact ZZ.π2.
       + eapply All_impl; tea.
-        intros; utils.rdestruct; eauto.
+        intros; rdest; eauto.
     - assert (XX: red1_ctx Σ.1 (Γ ,,, fix_context mfix) (Γ' ,,, fix_context mfix))
         by now eapply red1_ctx_app.
       econstructor; tea.
@@ -573,14 +573,14 @@ Section SRContext.
             eauto. }
         eapply X with (Γ ,,, fix_context mfix) ZZ.π1; tea. exact ZZ.π2.
       + eapply All_impl; tea.
-        intros; utils.rdestruct; eauto.
+        intros; rdest; eauto.
     - econstructor.
       + now eapply X2.
       + destruct X3 as [[[ctx [s [H1 H2]]] X3]|X3]; [left|right].
         * cbn in *. exists ctx, s. split; eauto.
           eapply X; tea.
           now apply red1_ctx_app.
-        * utils.rdestruct; eauto.
+        * rdest; eauto.
       + eapply cumul_red_ctx; tea. now apply red1_red_ctx.
   Qed.
 

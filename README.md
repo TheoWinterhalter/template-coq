@@ -102,10 +102,10 @@ Examples of translations built on top of this:
 Documentation
 =============
 
-- You may want to start with a [demo](https://github.com/MetaCoq/metacoq/tree/coq-8.9/test-suite/demo.v).
+- You may want to start with a [demo](https://github.com/MetaCoq/metacoq/tree/coq-8.9/examples/demo.v).
 - The 8.9 branch [documentation (as light coqdoc files)](https://metacoq.github.io/metacoq/html/toc.html).
 - An example Coq plugin built on the Template Monad, which can be used to
-  add a constructor to any inductive type can be found in [test-suite/add_constructor.v](https://github.com/MetaCoq/metacoq/tree/coq-8.9/test-suite/add_constructor.v).
+  add a constructor to any inductive type can be found in [examples/add_constructor.v](https://github.com/MetaCoq/metacoq/tree/coq-8.9/examples/add_constructor.v).
 - The test-suite files [test-suite/erasure_test.v](https://github.com/MetaCoq/metacoq/tree/coq-8.9/test-suite/erasure_test.v)
   and [test-suite/safechecker_test.v](https://github.com/MetaCoq/metacoq/tree/coq-8.9/test-suite/safechecker_test.v) show example
   uses (and current limitations of) the verified checker and erasure.
@@ -135,8 +135,8 @@ Options
 the unquoting of a universe level fails if this level does not exists.
 Otherwise the level is added to the current context. It is on by default.
 
-There is also an "opaque" universe `fresh_universe` which is unquoted to
-a fresh level when `Strict Unquote Universe Mode` is off.
+There is also an "opaque" universe `fresh_universe` and an opaque level `fresh_level` which are unquoted to
+a fresh universe and a fresh level when `Strict Unquote Universe Mode` is off.
 
 Papers
 ======

@@ -341,7 +341,9 @@ Proof.
     eapply (nth_error_All_local_env_over H) in X0 as [HΓ Hdecl].
     destruct lookup_wf_local_decl; cbn in *.
     destruct decl as [na [b|] ty]; cbn in *.
-    -- move/andb_and: Hdecl => [] _.
+    -- rewrite andb_true_r in Hdecl.
+       destruct Hdecl as [Hdecl Hdecl']. 
+       move/andb_and: Hdecl => [] _.
        rewrite skipn_length; try lia.
        move/(closedn_lift (S n)).
        now have->: #|Γ| - S n + S n = #|Γ| by lia.
@@ -430,7 +432,7 @@ Proof.
     + solve_all. unfold test_snd. simpl in *.
       toProp; eauto.
     + apply closedn_mkApps; auto.
-      rewrite forallb_app. simpl. rewrite H3.
+      rewrite forallb_app. simpl. rewrite H1.
       rewrite forallb_skipn; auto.
       now apply closedn_mkApps_inv in H7.
 
@@ -723,7 +725,7 @@ Lemma declared_decl_closed `{checker_flags} (Σ : global_env) cst decl :
   wf Σ ->
   lookup_env Σ cst = Some decl ->
   on_global_decl (fun Σ Γ b t => closedn #|Γ| b && option_default (closedn #|Γ|) t true)
-                 (Σ, universes_decl_of_decl decl) decl.
+                 (Σ, universes_decl_of_decl decl) cst decl.
 Proof.
   intros.
   eapply weaken_lookup_on_global_env; try red; eauto.

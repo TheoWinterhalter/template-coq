@@ -25,20 +25,6 @@ Set Equations With UIP.
 
 Set Default Goal Selector "!".
 
-Arguments sq {_} _.
-
-Notation "( x ; y )" := (existT _ x y).
-
-Ltac rdestruct H :=
-  match type of H with
-  | _ /\ _ => let H' := fresh H in
-            destruct H as [H H']; rdestruct H; rdestruct H'
-  | _ × _ => let H' := fresh H in
-            destruct H as [H H']; rdestruct H; rdestruct H'
-  | sigT _ => let H' := fresh H in
-             destruct H as [H H']; rdestruct H; rdestruct H'
-  | _ => idtac
-  end.
 
 
 Definition nodelta_flags := RedFlags.mk true true true false true true.
@@ -68,6 +54,14 @@ Proof.
   intuition auto.
 Qed.
 
+Lemma strengthening `{cf : checker_flags} :
+  forall {Σ Γ Γ' Γ'' t T},
+    wf Σ.1 ->
+    Σ ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ'
+    |- lift #|Γ''| #|Γ'| t : lift #|Γ''| #|Γ'| T ->
+    Σ;;; Γ ,,, Γ' |- t : T.
+Admitted.
+
 Section Lemmata.
   Context {cf : checker_flags}.
   Context (flags : RedFlags.t).
@@ -83,14 +77,30 @@ Section Lemmata.
              simpl in h ; try apply IHπ in h ;
              cbn in h ; inversion h ; subst ; assumption
            ].
-    simpl in h. apply IHπ in h.
-    inversion h. subst.
-    match goal with
-    | h : All2 _ _ _ |- _ => rename h into a
-    end.
-    apply All2_app_inv_both in a. 2: reflexivity.
-    destruct a as [_ a]. inversion a. subst.
-    intuition eauto.
+    - simpl in h. apply IHπ in h.
+      inversion h. subst.
+      match goal with
+      | h : All2 _ _ _ |- _ => rename h into a
+      end.
+      apply All2_app_inv_both in a. 2: reflexivity.
+      destruct a as [_ a]. inversion a. subst.
+      intuition eauto.
+    - simpl in h. apply IHπ in h.
+      inversion h. subst.
+      match goal with
+      | h : All2 _ _ _ |- _ => rename h into a
+      end.
+      apply All2_app_inv_both in a. 2: reflexivity.
+      destruct a as [_ a]. inversion a. subst.
+      intuition eauto.
+    - simpl in h. apply IHπ in h.
+      inversion h. subst.
+      match goal with
+      | h : All2 _ _ _ |- _ => rename h into a
+      end.
+      apply All2_app_inv_both in a. 2: reflexivity.
+      destruct a as [_ a]. inversion a. subst.
+      intuition eauto.
   Qed.
 
   Lemma eq_term_zipx_inv :
@@ -117,6 +127,26 @@ Section Lemmata.
                cbn ; constructor ; try apply eq_term_upto_univ_refl ; assumption
              ].
     - assumption.
+    - simpl. apply IHπ. constructor.
+      apply All2_app.
+      + apply All2_same.
+        intros. split ; auto. split. all: apply eq_term_upto_univ_refl.
+        all: assumption.
+      + constructor.
+        * simpl. intuition eauto. reflexivity.
+        * apply All2_same.
+          intros. split ; auto. split. all: apply eq_term_upto_univ_refl.
+          all: assumption.
+    - simpl. apply IHπ. constructor.
+      apply All2_app.
+      + apply All2_same.
+        intros. split ; auto. split. all: apply eq_term_upto_univ_refl.
+        all: assumption.
+      + constructor.
+        * simpl. intuition eauto. reflexivity.
+        * apply All2_same.
+          intros. split ; auto. split. all: apply eq_term_upto_univ_refl.
+          all: assumption.
     - simpl. apply IHπ. destruct indn as [i n].
       constructor.
       + assumption.
@@ -213,24 +243,10 @@ Section Lemmata.
 
   Hint Resolve eq_term_upto_univ_refl : core.
 
-  Lemma lookup_env_ConstantDecl_inv :
-    forall Σ k k' ty bo uni,
-      Some (ConstantDecl k' {| cst_type := ty ; cst_body := bo; cst_universes := uni |})
-      = lookup_env Σ k ->
-      k = k'.
-  Proof.
-    intros Σ k k' ty bo uni h.
-    induction Σ in h |- *.
-    - cbn in h. discriminate.
-    - cbn in h. destruct (ident_eq_spec k (global_decl_ident a)).
-      + subst. inversion h. reflexivity.
-      + apply IHΣ in h. assumption.
-  Qed.
-
   Lemma fresh_global_nl :
     forall Σ k,
       fresh_global k Σ ->
-      fresh_global k (map nl_global_decl Σ).
+      fresh_global k (map (on_snd nl_global_decl) Σ).
   Proof.
     intros Σ k h. eapply Forall_map.
     eapply Forall_impl ; try eassumption.
@@ -428,6 +444,61 @@ Section Lemmata.
       eexists. eassumption.
     - simpl. cbn in h. cbn in IHπ. apply IHπ in h.
       destruct h as [B h].
+      apply inversion_Fix in h as hh. 2: assumption.
+      destruct hh as [decl [? [? [hw [? ?]]]]].
+      clear - hw wΣ.
+      rewrite fix_context_fix_context_alt in hw.
+      rewrite map_app in hw. simpl in hw.
+      unfold def_sig at 2 in hw. simpl in hw.
+      unfold fix_context_alt in hw.
+      rewrite mapi_app in hw.
+      rewrite rev_app_distr in hw.
+      simpl in hw.
+      rewrite !app_context_assoc in hw.
+      apply wf_local_app in hw.
+      match type of hw with
+      | context [ List.rev ?l ] =>
+        set (Δ := List.rev l) in *
+      end.
+      assert (e : #|Δ| = #|mfix1|).
+      { subst Δ. rewrite List.rev_length.
+        rewrite mapi_length. rewrite map_length.
+        reflexivity.
+      }
+      rewrite map_length in hw. rewrite <- e in hw.
+      clearbody Δ. clear e.
+      replace (#|Δ| + 0) with #|Δ| in hw by lia.
+      set (Γ' := Γ ,,, stack_context π) in *.
+      clearbody Γ'. clear Γ. rename Γ' into Γ.
+      rewrite <- app_context_assoc in hw.
+      inversion hw. subst.
+      match goal with
+      | hh : lift_typing _ _ _ _ _ |- _ => rename hh into h
+      end.
+      simpl in h. destruct h as [s h].
+      exists (tSort s).
+      eapply @strengthening with (Γ' := []). 1: assumption.
+      exact h.
+    - simpl. cbn in h. cbn in IHπ. apply IHπ in h.
+      destruct h as [B h].
+      apply inversion_Fix in h as hh. 2: assumption.
+      destruct hh as [decl [? [? [? [ha ?]]]]].
+      clear - ha wΣ.
+      apply All_app in ha as [_ ha].
+      inversion ha. subst.
+      intuition eauto. simpl in *.
+      match goal with
+      | hh : _ ;;; _ |- _ : _ |- _ => rename hh into h
+      end.
+      rewrite fix_context_length in h.
+      rewrite app_length in h. simpl in h.
+      rewrite fix_context_fix_context_alt in h.
+      rewrite map_app in h. simpl in h.
+      unfold def_sig at 2 in h. simpl in h.
+      rewrite <- app_context_assoc in h.
+      eexists. eassumption.
+    - simpl. cbn in h. cbn in IHπ. apply IHπ in h.
+      destruct h as [B h].
       apply inversion_App in h as hh ; auto.
       destruct hh as [na [A' [B' [? [? ?]]]]].
       eexists. eassumption.
@@ -435,22 +506,22 @@ Section Lemmata.
       destruct h as [B h].
       destruct indn.
       apply inversion_Case in h as hh ; auto.
-      destruct hh
-        as [uni [args [mdecl [idecl [pty [indctx [pctx [ps [btys [? [? [? [? [? [? [ht0 [? ?]]]]]]]]]]]]]]]]].
+      destruct hh as [uni [args [mdecl [idecl [ps [pty [btys
+                                 [? [? [? [? [? [? [ht0 [? ?]]]]]]]]]]]]]]].
       eexists. eassumption.
     - simpl. cbn in h. cbn in IHπ. apply IHπ in h.
       destruct h as [B h].
       destruct indn.
       apply inversion_Case in h as hh ; auto.
-      destruct hh
-        as [uni [args [mdecl [idecl [pty [indctx [pctx [ps [btys [? [? [? [? [? [? [ht0 [? ?]]]]]]]]]]]]]]]]].
+      destruct hh as [uni [args [mdecl [idecl [ps [pty [btys
+                                 [? [? [? [? [? [? [ht0 [? ?]]]]]]]]]]]]]]].
       eexists. eassumption.
     - simpl. cbn in h. cbn in IHπ. apply IHπ in h.
       destruct h as [B h].
       destruct indn.
       apply inversion_Case in h as hh ; auto.
-      destruct hh
-        as [uni [args [mdecl [idecl [pty [indctx [pctx [ps [btys [? [? [? [? [? [? [ht0 [a ?]]]]]]]]]]]]]]]]].
+      destruct hh as [uni [args [mdecl [idecl [ps [pty [btys
+                                 [? [? [? [? [? [? [ht0 [? ?]]]]]]]]]]]]]]].
       apply All2_app_inv in a as [[? ?] [[? ?] ha]].
       inversion ha. subst.
       intuition eauto. simpl in *.
@@ -481,6 +552,18 @@ Section Lemmata.
       destruct hh as [s1 [B [? [? ?]]]].
       eexists. eassumption.
     - cbn. cbn in h. cbn in IHπ. apply IHπ in h.
+      destruct h as [U h].
+      apply inversion_LetIn in h as [s [A [? [? [? ?]]]]]. 2: auto.
+      eexists. eassumption.
+    - cbn. cbn in h. cbn in IHπ. apply IHπ in h.
+      destruct h as [U h].
+      apply inversion_LetIn in h as [s [A [? [? [? ?]]]]]. 2: auto.
+      eexists. eassumption.
+    - cbn. cbn in h. cbn in IHπ. apply IHπ in h.
+      destruct h as [U h].
+      apply inversion_LetIn in h as [s [A [? [? [? ?]]]]]. 2: auto.
+      eexists. eassumption.
+    - cbn. cbn in h. cbn in IHπ. apply IHπ in h.
       destruct h as [B h].
       apply inversion_App in h as hh ; auto.
       destruct hh as [na [A' [B' [? [? ?]]]]].
@@ -496,7 +579,7 @@ Section Lemmata.
     intros Γ [t π] [[A h]|h].
     - destruct (welltyped_context Γ (t, π) (iswelltyped h)) as [? ?].
       left. econstructor. eassumption.
-    - induction π in t, h |- *.
+    - simpl. induction π in t, h |- *.
       all: try (specialize (IHπ _ h)).
       all: simpl in *.
       1: right ; assumption.
@@ -506,6 +589,57 @@ Section Lemmata.
         rdestruct h' ;
         left ; econstructor ; eassumption
       ].
+      + apply inversion_Fix in h'. 2: assumption.
+        destruct h' as [decl [? [? [hw [? ?]]]]].
+        clear - hw wΣ.
+        rewrite fix_context_fix_context_alt in hw.
+        rewrite map_app in hw. simpl in hw.
+        unfold def_sig at 2 in hw. simpl in hw.
+        unfold fix_context_alt in hw.
+        rewrite mapi_app in hw.
+        rewrite rev_app_distr in hw.
+        simpl in hw.
+        rewrite !app_context_assoc in hw.
+        apply wf_local_app in hw.
+        match type of hw with
+        | context [ List.rev ?l ] =>
+          set (Δ := List.rev l) in *
+        end.
+        assert (e : #|Δ| = #|mfix1|).
+        { subst Δ. rewrite List.rev_length.
+          rewrite mapi_length. rewrite map_length.
+          reflexivity.
+        }
+        rewrite map_length in hw. rewrite <- e in hw.
+        clearbody Δ. clear e.
+        replace (#|Δ| + 0) with #|Δ| in hw by lia.
+        set (Γ' := Γ ,,, stack_context π) in *.
+        clearbody Γ'. clear Γ. rename Γ' into Γ.
+        rewrite <- app_context_assoc in hw.
+        inversion hw. subst.
+        match goal with
+        | hh : lift_typing _ _ _ _ _ |- _ => rename hh into h
+        end.
+        simpl in h. destruct h as [s h].
+        left. exists (tSort s).
+        eapply @strengthening with (Γ' := []). 1: assumption.
+        exact h.
+      + apply inversion_Fix in h'. 2: assumption.
+        destruct h' as [decl [? [? [? [ha ?]]]]].
+        clear - ha wΣ.
+        apply All_app in ha as [_ ha].
+        inversion ha. subst.
+        intuition eauto. simpl in *.
+        match goal with
+        | hh : _ ;;; _ |- _ : _ |- _ => rename hh into h
+        end.
+        rewrite fix_context_length in h.
+        rewrite app_length in h. simpl in h.
+        rewrite fix_context_fix_context_alt in h.
+        rewrite map_app in h. simpl in h.
+        unfold def_sig at 2 in h. simpl in h.
+        rewrite <- app_context_assoc in h.
+        left. eexists. eassumption.
       + destruct indn.
         apply inversion_Case in h' ; auto. cbn in h'. rdestruct h'.
         left. econstructor. eassumption.
@@ -540,6 +674,30 @@ Section Lemmata.
         left. eexists. eassumption.
       + apply inversion_Lambda in h' ; auto. rdestruct h'.
         left. eexists. eassumption.
+      + apply inversion_LetIn in h'. 2: auto. rdestruct h'.
+        left. eexists. eassumption.
+      + cbn in h1. apply destArity_app_Some in h1 as [Δ' [h1 h1']].
+        subst. rewrite app_context_assoc in h2. simpl in h2.
+        left. apply wf_local_app in h2.
+        inversion h2. subst. cbn in *.
+        eexists. eassumption.
+      + apply inversion_LetIn in h'. 2: auto. rdestruct h'.
+        left. eexists. eassumption.
+      + cbn in h1. apply destArity_app_Some in h1 as [Δ' [h1 h1']].
+        subst. rewrite app_context_assoc in h2. simpl in h2.
+        left. apply wf_local_app in h2.
+        inversion h2. subst. cbn in *.
+        match goal with
+        | h : ∃ s : universe, _ |- _ =>
+          destruct h
+        end.
+        eexists. eassumption.
+      + apply inversion_LetIn in h'. 2: auto. rdestruct h'.
+        left. eexists. eassumption.
+      + cbn in h1. apply destArity_app_Some in h1 as [Δ' [h1 h1']].
+        subst. rewrite app_context_assoc in h2. simpl in h2.
+        right. constructor. exists Δ', s.
+        split. all: auto.
   Qed.
 
   Lemma cored_red :
@@ -599,6 +757,11 @@ Section Lemmata.
   Proof.
     intros Γ u v ρ h.
     induction ρ in u, v, h |- *.
+    all: try solve [
+      unfold zippx ; simpl ;
+      eapply cumul_it_mkLambda_or_LetIn ;
+      assumption
+    ].
     - cbn. assumption.
     - unfold zippx. simpl.
       case_eq (decompose_stack ρ). intros l π e.
@@ -606,55 +769,16 @@ Section Lemmata.
       apply IHρ.
       eapply cumul_App_l. assumption.
     - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
+      eapply cumul_it_mkLambda_or_LetIn. cbn.
+      eapply cumul_Lambda_r.
       assumption.
     - unfold zippx. simpl.
       eapply cumul_it_mkLambda_or_LetIn. cbn.
       eapply cumul_Lambda_r.
       assumption.
     - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
       eapply cumul_it_mkLambda_or_LetIn. cbn.
-      eapply cumul_Lambda_r.
-      assumption.
-    - unfold zippx. simpl.
-      eapply cumul_it_mkLambda_or_LetIn. assumption.
-  Qed.
-
-  Lemma conv_LetIn_bo :
-    forall Γ na ty t u u',
-      Σ ;;; Γ ,, vdef na ty t |- u == u' ->
-      Σ ;;; Γ |- tLetIn na ty t u == tLetIn na ty t u'.
-  Proof.
-    intros Γ na ty t u u' h.
-    induction h.
-    - eapply conv_alt_refl. constructor.
-      all: try eapply eq_term_refl.
-      assumption.
-    - eapply conv_alt_red_l ; try eassumption.
-      econstructor. assumption.
-    - eapply conv_alt_red_r ; try eassumption.
-      econstructor. assumption.
+      eapply cumul_LetIn_bo. assumption.
   Qed.
 
   Lemma conv_alt_it_mkLambda_or_LetIn :
@@ -729,6 +853,11 @@ Section Lemmata.
   Proof.
     intros Γ u v ρ h.
     revert u v h. induction ρ ; intros u v h.
+    all: try solve [
+      unfold zippx ; simpl ;
+      eapply conv_alt_it_mkLambda_or_LetIn ;
+      assumption
+    ].
     - cbn. assumption.
     - unfold zippx. simpl.
       case_eq (decompose_stack ρ). intros l π e.
@@ -736,39 +865,16 @@ Section Lemmata.
       apply IHρ.
       eapply conv_App_l. assumption.
     - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
+      eapply conv_alt_it_mkLambda_or_LetIn. cbn.
+      eapply conv_Lambda_r.
       assumption.
     - unfold zippx. simpl.
       eapply conv_alt_it_mkLambda_or_LetIn. cbn.
       eapply conv_Lambda_r.
       assumption.
     - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn.
-      assumption.
-    - unfold zippx. simpl.
       eapply conv_alt_it_mkLambda_or_LetIn. cbn.
-      eapply conv_Lambda_r.
-      assumption.
-    - unfold zippx. simpl.
-      eapply conv_alt_it_mkLambda_or_LetIn. assumption.
+      eapply conv_LetIn_bo. assumption.
   Qed.
 
   Lemma conv_zippx :
@@ -987,52 +1093,28 @@ Section Lemmata.
   (* Qed. *)
   Abort.
 
-  Lemma lookup_env_const_name :
-    forall {c c' d},
-      lookup_env Σ c' = Some (ConstantDecl c d) ->
-      c' = c.
-  Proof.
-    intros c c' d e. clear hΣ.
-    destruct Σ as [Σ' ?]. cbn in e.
-    induction Σ'.
-    - cbn in e. discriminate.
-    - destruct a.
-      + cbn in e. destruct (ident_eq_spec c' k).
-        * subst. inversion e. reflexivity.
-        * apply IHΣ'. assumption.
-      + cbn in e. destruct (ident_eq_spec c' k).
-        * inversion e.
-        * apply IHΣ'. assumption.
-      + cbn in e. destruct (ident_eq_spec c' k).
-        * inversion e.
-        * apply IHΣ'. assumption.
-  Qed.
-
   Lemma red_const :
-    forall {Γ n c u cty cb cu},
-      Some (ConstantDecl n {| cst_type := cty ; cst_body := Some cb ; cst_universes := cu |})
+    forall {Γ c u cty cb cu},
+      Some (ConstantDecl {| cst_type := cty ; cst_body := Some cb ; cst_universes := cu |})
       = lookup_env Σ c ->
       red (fst Σ) Γ (tConst c u) (subst_instance_constr u cb).
   Proof.
-    intros Γ n c u cty cb cu e.
-    symmetry in e.
-    pose proof (lookup_env_const_name e). subst.
+    intros Γ c u cty cb cu e.
     econstructor.
     - econstructor.
     - econstructor.
-      + exact e.
+      + symmetry in e.  exact e.
       + reflexivity.
   Qed.
 
   Lemma cored_const :
-    forall {Γ n c u cty cb cu},
-      Some (ConstantDecl n {| cst_type := cty ; cst_body := Some cb ; cst_universes := cu |})
+    forall {Γ c u cty cb cu},
+      Some (ConstantDecl {| cst_type := cty ; cst_body := Some cb ; cst_universes := cu |})
       = lookup_env Σ c ->
       cored (fst Σ) Γ (subst_instance_constr u cb) (tConst c u).
   Proof.
-    intros Γ n c u cty cb cu e.
+    intros Γ c u cty cb cu e.
     symmetry in e.
-    pose proof (lookup_env_const_name e). subst.
     econstructor.
     econstructor.
     - exact e.
@@ -1041,19 +1123,6 @@ Section Lemmata.
 
   Derive Signature for cumul.
   Derive Signature for red1.
-
-  Lemma app_reds_r :
-    forall Γ u v1 v2,
-      red Σ Γ v1 v2 ->
-      red Σ Γ (tApp u v1) (tApp u v2).
-  Proof.
-    intros Γ u v1 v2 h.
-    revert u. induction h ; intros u.
-    - constructor.
-    - econstructor.
-      + eapply IHh.
-      + constructor. assumption.
-  Qed.
 
   Lemma app_cored_r :
     forall Γ u v1 v2,
@@ -1261,6 +1330,8 @@ Section Lemmata.
   (* Let bindings are not injective, so it_mkLambda_or_LetIn is not either.
      However, when they are all lambdas they become injective for conversion.
      stack_contexts only produce lambdas so we can use this property on them.
+     It only applies to stacks manipulated by conversion/reduction which are
+     indeed let-free.
    *)
   Fixpoint let_free_context (Γ : context) :=
     match Γ with
@@ -1270,13 +1341,72 @@ Section Lemmata.
       let_free_context Γ
     end.
 
+  Lemma let_free_context_app :
+    forall Γ Δ,
+      let_free_context (Γ ,,, Δ) = let_free_context Δ && let_free_context Γ.
+  Proof.
+    intros Γ Δ.
+    induction Δ as [| [na [b|] B] Δ ih ] in Γ |- *.
+    - simpl. reflexivity.
+    - simpl. reflexivity.
+    - simpl. apply ih.
+  Qed.
+
+  Lemma let_free_context_rev :
+    forall Γ,
+      let_free_context (List.rev Γ) = let_free_context Γ.
+  Proof.
+    intros Γ.
+    induction Γ as [| [na [b|] B] Γ ih ].
+    - reflexivity.
+    - simpl. rewrite let_free_context_app. simpl.
+      apply andb_false_r.
+    - simpl. rewrite let_free_context_app. simpl.
+      rewrite ih. rewrite andb_true_r. reflexivity.
+  Qed.
+
+  Fixpoint let_free_stack (π : stack) :=
+    match π with
+    | ε => true
+    | App u ρ => let_free_stack ρ
+    | Fix f n args ρ => let_free_stack ρ
+    | Fix_mfix_ty na bo ra mfix1 mfix2 idx ρ => let_free_stack ρ
+    | Fix_mfix_bd na ty ra mfix1 mfix2 idx ρ => let_free_stack ρ
+    | CoFix f n args ρ => let_free_stack ρ
+    | Case_p indn c brs ρ => let_free_stack ρ
+    | Case indn p brs ρ => let_free_stack ρ
+    | Case_brs indn p c m brs1 brs2 ρ => let_free_stack ρ
+    | Proj p ρ => let_free_stack ρ
+    | Prod_l na B ρ => let_free_stack ρ
+    | Prod_r na A ρ => let_free_stack ρ
+    | Lambda_ty na u ρ => let_free_stack ρ
+    | Lambda_tm na A ρ => let_free_stack ρ
+    | LetIn_bd na B u ρ => let_free_stack ρ
+    | LetIn_ty na b u ρ => let_free_stack ρ
+    | LetIn_in na b B ρ => false
+    | coApp u ρ => let_free_stack ρ
+    end.
+
   Lemma let_free_stack_context :
     forall π,
+      let_free_stack π ->
       let_free_context (stack_context π).
   Proof.
-    intros π.
+    intros π h.
     induction π.
-    all: (simpl ; rewrite ?IHπ ; reflexivity).
+    all: try solve [ simpl ; rewrite ?IHπ by auto ; reflexivity ].
+    2: discriminate.
+    simpl. rewrite let_free_context_app.
+    rewrite IHπ by auto. rewrite andb_true_r. rewrite let_free_context_rev.
+    match goal with
+    | |- context [ mapi ?f ?l ] =>
+      generalize l
+    end.
+    intro l. unfold mapi.
+    generalize 0 at 2. intro n.
+    induction l in n |- *.
+    - simpl. reflexivity.
+    - simpl. apply IHl.
   Qed.
 
   Lemma cored_red_cored :
@@ -1442,9 +1572,9 @@ Section Lemmata.
     intros Γ ind ind' npar pred i u brs args [[A h]|[[ctx [s [e _]]]]];
       [|discriminate].
     apply inversion_Case in h as ih ; auto.
-    destruct ih
-      as [uni [args' [mdecl [idecl [pty [indctx [pctx [ps [btys [? [? [? [? [? [? [ht0 [? ?]]]]]]]]]]]]]]]]].
-    apply Construct_Ind_ind_eq in ht0. eauto.
+    destruct ih as [uni [args' [mdecl [idecl [ps [pty [btys
+                                 [? [? [? [? [? [X [ht0 [? ?]]]]]]]]]]]]]]].
+    apply Construct_Ind_ind_eq in X. eauto.
   Qed.
 
   Lemma Proj_Constuct_ind_eq :
@@ -1510,15 +1640,6 @@ Section Lemmata.
   Qed.
 
 End Lemmata.
-
-
-Lemma strengthening `{cf : checker_flags} :
-  forall {Σ Γ Γ' Γ'' t T},
-    wf Σ.1 ->
-    Σ ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ'
-    |- lift #|Γ''| #|Γ'| t : lift #|Γ''| #|Γ'| T ->
-    Σ;;; Γ ,,, Γ' |- t : T.
-Admitted.
 
 From MetaCoq.Checker Require Import uGraph.
 
@@ -1599,22 +1720,17 @@ Lemma type_Case_valid_btys {cf:checker_flags} Σ Γ ind u npar p (* c brs *) arg
     forall mdecl idecl (isdecl : declared_inductive Σ.1 mdecl ind idecl),
     mdecl.(ind_npars) = npar ->
     let pars := List.firstn npar args in
-    forall pty, Σ ;;; Γ |- p : pty ->
-    forall indctx pctx ps btys, types_of_case ind mdecl idecl pars u p pty
-                           = Some (indctx, pctx, ps, btys) ->
+    forall pty ps btys, Σ ;;; Γ |- p : pty ->
+    map_option_out (build_branches_type ind mdecl idecl pars u p) = Some btys ->
     (* check_correct_arity (global_ext_constraints Σ) idecl ind u indctx pars pctx -> *)
     (* List.Exists (fun sf => universe_family ps = sf) idecl.(ind_kelim) -> *)
     (* Σ ;;; Γ |- c : mkApps (tInd ind u) args -> *)
     (* All2 (fun x y => (fst x = fst y) × (Σ ;;; Γ |- snd x : snd y)) brs btys -> *)
     All (fun x => Σ ;;; Γ |- snd x : tSort ps) btys.
 Proof.
-  intros mdecl idecl isdecl H0 pars pty X indctx pctx ps btys toc.
-  apply types_of_case_spec in toc.
-  destruct toc as [s' [_ [H1 H2]]].
-  pose proof (PCUICClosed.destArity_spec [] pty) as Hpty; rewrite H1 in Hpty;
-    cbn in Hpty; subst; clear H1.
-  unfold build_branches_type in H2.
-  eapply map_option_out_All; tea. clear H2.
+  intros mdecl idecl isdecl H0 pars pty ps btys X Hbbt.
+  unfold build_branches_type in Hbbt.
+  eapply map_option_out_All; tea; clear Hbbt.
   apply All_mapi.
   apply PCUICWeakeningEnv.on_declared_inductive in isdecl as [oind oc].
   2: admit.
@@ -1632,23 +1748,25 @@ Proof.
     admit.
 Admitted.
 
-Lemma type_Case' {cf:checker_flags} Σ Γ ind u npar p c brs args :
+Lemma type_Case' {cf:checker_flags} Σ Γ indnpar u p c brs args :
+    let ind := indnpar.1 in
+    let npar := indnpar.2 in
     forall mdecl idecl (isdecl : declared_inductive Σ.1 mdecl ind idecl),
     mdecl.(ind_npars) = npar ->
-    let pars := List.firstn npar args in
-    forall pty, Σ ;;; Γ |- p : pty ->
-    forall indctx pctx ps btys, types_of_case ind mdecl idecl pars u p pty
-                           = Some (indctx, pctx, ps, btys) ->
-    check_correct_arity (global_ext_constraints Σ) idecl ind u indctx pars pctx ->
+    let params := List.firstn npar args in
+    forall ps pty, build_case_predicate_type ind mdecl idecl params u ps = Some pty ->
+    Σ ;;; Γ |- p : pty ->
     existsb (leb_sort_family (universe_family ps)) idecl.(ind_kelim) ->
     Σ ;;; Γ |- c : mkApps (tInd ind u) args ->
-    All2 (fun x y => (fst x = fst y) × (Σ ;;; Γ |- snd x : snd y)) brs btys ->
-    Σ ;;; Γ |- tCase (ind, npar) p c brs : mkApps p (List.skipn npar args ++ [c]).
+    forall btys, map_option_out (build_branches_type ind mdecl idecl params u p)
+            = Some btys ->
+    All2 (fun br bty => (br.1 = bty.1) × (Σ ;;; Γ |- br.2 : bty.2)) brs btys ->
+    Σ ;;; Γ |- tCase indnpar p c brs : mkApps p (skipn npar args ++ [c]).
 Proof.
-  intros mdecl idecl isdecl H pars pty X indctx pctx ps btys H0 X0 H1 X1 X2.
+  intros ind npar mdecl idecl isdecl H params ps pty H0 X H1 X0 btys H2 X1.
   econstructor; tea.
-  eapply type_Case_valid_btys in H0; tea.
-  eapply All2_All_mix_right; tas.
+  eapply type_Case_valid_btys in X; tea.
+  eapply All2_All_mix_right; tea.
 Qed.
 
 

@@ -99,7 +99,7 @@ Definition isAxiom Σ x :=
   match x with
   | tConst c u =>
     match lookup_env Σ c with
-    | Some (ConstantDecl _ {| cst_body := None |}) => true
+    | Some (ConstantDecl {| cst_body := None |}) => true
     | _ => false
     end
   | _ => false
@@ -446,8 +446,7 @@ Section Wcbv.
         destruct g eqn:Heq' => //.
         destruct c as [? [b|] ?] eqn:Heq'' => //. subst.
         eapply eval_axiom. red.
-        rewrite Heq.
-        move: (lookup_env_cst_inv Heq) => ->. reflexivity.
+        rewrite Heq. reflexivity.
         easy.
       * now eapply eval_atom.
       * now eapply eval_atom.
@@ -791,7 +790,7 @@ Proof.
     eapply red1_red. econstructor; eauto.
 
   - redt (tCase (ind, pars) p _ brs).
-    eapply reds_case; eauto.
+    eapply red_case; eauto.
     eapply All2_same. intros. split; auto.
     redt (iota_red _ _ _ _); eauto.
     eapply red1_red. econstructor.

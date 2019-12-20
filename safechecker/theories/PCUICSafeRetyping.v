@@ -51,12 +51,6 @@ Section TypeOf.
 
   End SortOf.
 
-  Ltac unsquash :=
-    repeat match goal with
-             [ H : ∥ _ ∥ |- _  ] => destruct H as [H]
-           | [ H : welltyped _ _ _ |- _ ] => let ty := fresh "ty" in destruct H as [ty H]
-         end; try apply sq.
-
   Program Definition option_or {A} (a : option A) (e : type_error) : typing_result (∑ x : A, a = Some x) :=
     match a with
     | Some d => ret (d; eq_refl)
@@ -95,7 +89,7 @@ Section TypeOf.
 
     | tConst cst u => fun wf =>
           match lookup_env (fst Σ) cst with
-          | Some (ConstantDecl _ d) =>
+          | Some (ConstantDecl d) =>
             let ty := subst_instance_constr u d.(cst_type) in
             ret (ty; _)
           |  _ => raise (UndeclaredConstant cst)
@@ -145,7 +139,7 @@ Section TypeOf.
     end.
 
   Next Obligation.
-    unsquash.
+    destruct wf. sq.
     destruct (nth_error Γ n) eqn:Heq; try discriminate. injection X. intros <-.
     econstructor; eauto using typing_wf_local.
   Defined.

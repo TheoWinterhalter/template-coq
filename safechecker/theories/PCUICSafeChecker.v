@@ -21,26 +21,6 @@ Open Scope list_scope.
 Local Set Keyed Unification.
 
 
-(* todo: move this *)
-Arguments All_nil {_ _}.
-Arguments All_cons {_ _ _ _}.
-
-Lemma All_sq {A} {P : A -> Type} {l}
-  : All (fun x => ∥ P x ∥) l -> ∥ All P l ∥.
-Proof.
-  induction 1.
-  - repeat constructor.
-  - sq; now constructor.
-Qed.
-
-Lemma All2_sq {A B} {R : A -> B -> Type} {l1 l2}
-  : All2 (fun x y => ∥ R x y ∥) l1 l2 -> ∥ All2 R l1 l2 ∥.
-Proof.
-  induction 1.
-  - repeat constructor.
-  - sq; now constructor.
-Qed.
-
 
 Lemma weakening_sq `{cf : checker_flags} {Σ Γ} Γ' {t T} :
   ∥ wf Σ.1 ∥ -> ∥ wf_local Σ (Γ ,,, Γ') ∥ ->
@@ -150,17 +130,6 @@ Inductive type_error :=
 | UnsatisfiedConstraints (c : ConstraintSet.t)
 | Msg (s : string).
 
-Lemma lookup_env_id Σ id decl
-  : lookup_env Σ id = Some decl -> id = global_decl_ident decl.
-Proof.
-  induction Σ; cbn. inversion 1.
-  destruct (ident_eq_spec id (global_decl_ident a)).
-  - inversion 1. now destruct H1.
-  - easy.
-Qed.
-
-
-
 Local Open Scope string_scope.
 Definition string_of_list_aux {A} (f : A -> string) (l : list A) : string :=
   let fix aux l :=
@@ -262,15 +231,29 @@ Fixpoint string_of_conv_error Σ (e : ConversionError) : string :=
       print_term Σ Γ br' ++
       "\nhas " ++ string_of_nat m' ++ "."
   | DistinctStuckProj Γ p c Γ' p' c' =>
-      "The two projections\n" ++
+      "The two stuck projections\n" ++
       print_term Σ Γ (tProj p c) ++
-      "\nand\n" ++ print_term Σ Γ' (tProj p' c') ++
-      "\ncorrespond to syntactically distinct stuck terms."
+      "\nand\n" ++
+      print_term Σ Γ' (tProj p' c') ++
+      "\nare syntactically different."
   | CannotUnfoldFix Γ mfix idx Γ' mfix' idx' =>
       "The two fixed-points\n" ++
       print_term Σ Γ (tFix mfix idx) ++
       "\nand\n" ++ print_term Σ Γ' (tFix mfix' idx') ++
       "\ncorrespond to syntactically distinct terms that can't be unfolded."
+  | FixRargMismatch idx Γ u mfix1 mfix2 Γ' v mfix1' mfix2' =>
+      "The two fixed-points\n" ++
+      print_term Σ Γ (tFix (mfix1 ++ u :: mfix2)%list idx) ++
+      "\nand\n" ++ print_term Σ Γ' (tFix (mfix1' ++ v :: mfix2')%list idx) ++
+      "\nhave a mismatch in the function number " ++ string_of_nat #|mfix1| ++
+      ": arguments " ++ string_of_nat u.(rarg) ++
+      " and " ++ string_of_nat v.(rarg) ++ "are different."
+  | FixMfixMismatch idx Γ mfix Γ' mfix' =>
+      "The two fixed-points\n" ++
+      print_term Σ Γ (tFix mfix idx) ++
+      "\nand\n" ++
+      print_term Σ Γ' (tFix mfix' idx) ++
+      "\nhave a different number of mutually defined functions."
   | DistinctCoFix Γ mfix idx Γ' mfix' idx' =>
       "The two cofixed-points\n" ++
       print_term Σ Γ (tCoFix mfix idx) ++
@@ -414,7 +397,6 @@ Proof.
   now apply le_n_S.
 Qed.
 
-
 Lemma wf_ext_gc_of_uctx {cf:checker_flags} {Σ : global_env_ext} (HΣ : ∥ wf_ext Σ ∥)
   : ∑ uctx', gc_of_uctx (global_ext_uctx Σ) = Some uctx'.
 Proof.
@@ -426,7 +408,7 @@ Proof.
   destruct (gc_of_constraints (global_ext_constraints (Σ, φ))).
   eexists; reflexivity.
   contradiction HC.
-Qed.
+Defined.
 
 Lemma wf_ext_is_graph {cf:checker_flags} {Σ : global_env_ext} (HΣ : ∥ wf_ext Σ ∥)
   : ∑ G, is_graph_of_uctx G (global_ext_uctx Σ).
@@ -439,6 +421,68 @@ Lemma map_squash {A B} (f : A -> B) : ∥ A ∥ -> ∥ B ∥.
 Proof.
   intros []; constructor; auto.
 Qed.
+
+(* From valid_btys *)
+Lemma inversion_WAT_indapp {cf:checker_flags} Σ Γ ind u args :
+    forall mdecl idecl (isdecl : declared_inductive Σ.1 mdecl ind idecl),
+    wf Σ.1 ->
+    isType Σ Γ (mkApps (tInd ind u) args) ->
+    mdecl.(ind_npars) <= #|args| /\ inductive_ind ind < #|ind_bodies mdecl| /\
+    consistent_instance_ext Σ (ind_universes mdecl) u.
+Proof.
+Admitted.
+
+
+Lemma wf_local_vass {cf:checker_flags} Σ {Γ na A} s :
+  Σ ;;; Γ |- A : tSort s -> wf_local Σ (Γ ,, vass na A).
+Proof.
+  intro X; apply typing_wf_local in X as Y.
+  constructor; tea. eexists; eassumption.
+Qed.
+
+Lemma WfArity_build_case_predicate_type {cf:checker_flags} Σ
+      Γ ind u args mdecl idecl ps pty :
+  wf Σ.1 ->
+  declared_inductive Σ.1 mdecl ind idecl ->
+  isType Σ Γ (mkApps (tInd ind u) args) ->
+  let params := firstn (ind_npars mdecl) args in
+  build_case_predicate_type ind mdecl idecl params u ps = Some pty ->
+  isWfArity typing Σ Γ pty.
+Proof.
+  intros wfΣ isdecl X params XX. unfold build_case_predicate_type in XX.
+  case_eq (instantiate_params
+             (subst_instance_context u (ind_params mdecl))
+             params (subst_instance_constr u (ind_type idecl)));
+    [|intro e; rewrite e in XX; discriminate].
+  intros ipars Hipars; rewrite Hipars in XX; simpl in XX.
+  case_eq (destArity [] ipars);
+    [|intro e; rewrite e in XX; discriminate].
+  intros [ictx is] Hictxs; rewrite Hictxs in XX; apply some_inj in XX.
+  subst pty. eexists _, _.
+  rewrite destArity_it_mkProd_or_LetIn. split. reflexivity.
+  simpl. eapply wf_local_vass.
+  eapply type_mkApps. econstructor; tea.
+  * admit.
+  * eapply inversion_WAT_indapp with (mdecl0:=mdecl) in X; tea.
+    apply X.
+  * eapply PCUICWeakeningEnv.on_declared_inductive in isdecl as oind; tea.
+    rewrite oind.2.(ind_arity_eq). cbn.
+    admit.
+Admitted.
+
+Lemma destArity_mkApps_None ctx t l :
+  destArity ctx t = None -> destArity ctx (mkApps t l) = None.
+Proof.
+  induction l in t |- *. trivial.
+  intros H. cbn. apply IHl. reflexivity.
+Qed.
+
+Lemma destArity_mkApps_Ind ctx ind u l :
+  destArity ctx (mkApps (tInd ind u) l) = None.
+Proof.
+    apply destArity_mkApps_None. reflexivity.
+Qed.
+
 
 Section Typecheck.
   Context {cf : checker_flags} {Σ : global_env_ext} (HΣ : ∥ wf Σ ∥)
@@ -618,7 +662,7 @@ Section Typecheck.
     : typing_result
         ({decl & {body & declared_inductive (fst Σ) decl ind body}}) :=
     match lookup_env (fst Σ) ind.(inductive_mind) with
-    | Some (InductiveDecl _ decl) =>
+    | Some (InductiveDecl decl) =>
       match nth_error decl.(ind_bodies) ind.(inductive_ind) with
       | Some body => ret (decl; body; _)
       | None => raise (UndeclaredInductive ind)
@@ -628,8 +672,7 @@ Section Typecheck.
   Next Obligation.
     split.
     - symmetry in Heq_anonymous0.
-      etransitivity. eassumption.
-      erewrite (lookup_env_id _ _ _ Heq_anonymous0); reflexivity.
+      etransitivity. eassumption. reflexivity.
     - now symmetry.
   Defined.
 
@@ -756,27 +799,10 @@ Section Typecheck.
     cbn. apply eqb_decl_spec.
   Qed.
 
-  Definition check_correct_arity decl ind u ctx pars pctx :=
-    let inddecl :=
-        {| decl_name := nNamed decl.(ind_name);
-           decl_body := None;
-           decl_type := mkApps (tInd ind u) (map (lift0 #|ctx|) pars ++ to_extended_list ctx) |}
-    in eqb_context (inddecl :: ctx) pctx.
-
-  Lemma check_correct_arity_spec decl ind u ctx pars pctx
-    : check_correct_arity decl ind u ctx pars pctx
-      -> PCUICTyping.check_correct_arity (global_ext_constraints Σ) decl ind u ctx pars pctx.
-  Proof.
-    apply eqb_context_spec.
-  Qed.
-
-
-  Ltac sq :=
-    repeat match goal with
-           | H : ∥ _ ∥ |- _ => case H; clear H; intro H
-           end; try eapply sq.
 
   Open Scope nat.
+
+  Obligation Tactic := program_simplify ; eauto.
 
   Program Fixpoint infer (Γ : context) (HΓ : ∥ wf_local Σ Γ ∥) (t : term) {struct t}
     : typing_result ({ A : term & ∥ Σ ;;; Γ |- t : A ∥ }) :=
@@ -793,7 +819,8 @@ Section Typecheck.
     | tSort u =>
           match u with
           | NEL.sing (l, false) =>
-            check_eq_true (LevelSet.mem l (global_ext_levels Σ)) (Msg ("undeclared level " ++ string_of_level l));;
+            check_eq_true (LevelSet.mem l (global_ext_levels Σ))
+                          (Msg ("undeclared level " ++ string_of_level l));;
             ret (tSort (Universe.super l); _)
           | _ => raise (Msg (string_of_sort u ++ " is not a level"))
           end
@@ -822,7 +849,7 @@ Section Typecheck.
 
     | tConst cst u =>
           match lookup_env (fst Σ) cst with
-          | Some (ConstantDecl _ d) =>
+          | Some (ConstantDecl d) =>
             check_consistent_instance d.(cst_universes) u ;;
             let ty := subst_instance_constr u d.(cst_type) in
             ret (ty; _)
@@ -849,37 +876,50 @@ Section Typecheck.
       I <- reduce_to_ind Γ cty.π1 _ ;;
       let '(ind'; I') := I in let '(u; I'') := I' in let '(args; H) := I'' in
       check_eq_true (eqb ind ind')
+                    (* bad case info *)
                     (NotConvertible G Γ (tInd ind u) (tInd ind' u)) ;;
       d <- lookup_ind_decl ind' ;;
       let '(decl; d') := d in let '(body; HH) := d' in
       check_eq_true (ind_npars decl =? par)
                     (Msg "not the right number of parameters") ;;
       pty <- infer Γ HΓ p ;;
-      match types_of_case ind decl body (firstn par args) u p pty.π1 with
-      | None => raise (Msg "not the type of a case")
-      | Some (indctx, pctx, ps, btys) =>
-        check_eq_true
-          (check_correct_arity body ind u indctx (firstn par args) pctx)
-          (Msg "not correct arity") ;;
+      match destArity [] pty.π1 with
+      | None => raise (Msg "the type of the return predicate of a Case is not an arity")
+      | Some (pctx, ps) =>
         check_eq_true
           (existsb (leb_sort_family (universe_family ps)) (ind_kelim body))
           (Msg "cannot eliminate over this sort") ;;
-        (fix check_branches (brs btys : list (nat * term))
-          (HH : Forall (squash ∘ (isType Σ Γ) ∘ snd) btys) {struct brs}
-            : typing_result
-              (All2 (fun x y => fst x = fst y /\ ∥ Σ ;;; Γ |- snd x : snd y ∥) brs btys)
-                    := match brs, btys with
-                       | [], [] => ret (All2_nil _)
-                       | (n, t) :: brs , (m, A) :: btys =>
-                         W <- check_dec (Msg "not nat eq")
-                                       (EqDecInstances.nat_eqdec n m) ;;
-                         Z <- infer_cumul infer Γ HΓ t A _ ;;
-                         X <- check_branches brs btys _ ;;
-                         ret (All2_cons _ _ _ _ _ (conj _ _) X)
-                       | [], _ :: _
-                       | _ :: _, [] => raise (Msg "wrong number of branches")
-                       end) brs btys _ ;;
-          ret (mkApps p (List.skipn par args ++ [c]); _)
+        let params := firstn par args in
+        match build_case_predicate_type ind decl body params u ps with
+        | None => raise (Msg "failure in build_case_predicate_type")
+        | Some pty' =>
+          (* We could avoid one useless sort comparison by only comparing *)
+          (* the contexts [pctx] and [indctx] (what is done in Coq). *)
+          match iscumul Γ pty.π1 _ pty' _ with
+          | Error e => raise (NotCumulSmaller G Γ pty.π1 pty' pty.π1 pty' e)
+          | Success _ =>
+            match map_option_out (build_branches_type ind decl body params u p) with
+            | None => raise (Msg "failure in build_branches_type")
+            | Some btys => 
+              (fix check_branches (brs btys : list (nat * term))
+                (HH : Forall (squash ∘ (isType Σ Γ) ∘ snd) btys) {struct brs}
+                  : typing_result
+                    (All2 (fun br bty => br.1 = bty.1 /\ ∥ Σ ;;; Γ |- br.2 : bty.2 ∥) brs btys)
+                          := match brs, btys with
+                             | [], [] => ret (All2_nil _)
+                             | (n, t) :: brs , (m, A) :: btys =>
+                               W <- check_dec (Msg "not nat eq")
+                                             (EqDecInstances.nat_eqdec n m) ;;
+                               Z <- infer_cumul infer Γ HΓ t A _ ;;
+                               X <- check_branches brs btys _ ;;
+                               ret (All2_cons _ _ _ _ _ (conj _ _) X)
+                             | [], _ :: _
+                             | _ :: _, [] => raise (Msg "wrong number of branches")
+                             end) brs btys _ ;;
+                ret (mkApps p (List.skipn par args ++ [c]); _)
+            end
+          end
+        end
       end
 
     | tProj (ind, n, k) c =>
@@ -939,7 +979,6 @@ Section Typecheck.
         ret (dtype decl; _)
       end
 
-
     | tCoFix mfix n =>
       (* to add when generalizing to all flags *)
       allowcofix <- check_eq_true allow_cofix (Msg "cofix not allowed") ;;
@@ -977,24 +1016,46 @@ Section Typecheck.
       end
     end.
 
-  Next Obligation. sq; now econstructor. Defined.
-  Next Obligation. sq; econstructor; tas.
+  Next Obligation. intros; sq; now econstructor. Defined.
+  Next Obligation. intros; sq; econstructor; tas.
                    now apply LevelSetFact.mem_2. Defined.
   (* tProd *)
-  Next Obligation. sq; econstructor; cbn; easy. Defined.
-  Next Obligation. sq; econstructor; eassumption. Defined.
+  Next Obligation.
+    (* intros Γ HΓ t na A B Heq_t [s ?];  *)
+      sq; econstructor; cbn; easy. Defined.
+  Next Obligation.
+    (* intros Γ HΓ t na A B Heq_t [s1 ?] [s2 ?]; *)
+    sq; econstructor; eassumption.
+  Defined.
   (* tLambda *)
-  Next Obligation. sq; econstructor; cbn; easy. Defined.
-  Next Obligation. sq; econstructor; eassumption. Defined.
+  Next Obligation.
+    (* intros Γ HΓ t0 na A t Heq_t [s ?]; *)
+      sq; econstructor; cbn; easy.
+  Defined.
+  Next Obligation.
+    (* intros Γ HΓ t0 na A t Heq_t [s ?] [B ?]; *)
+      sq; econstructor; eassumption.
+  Defined.
   (* tLetIn *)
-  Next Obligation. sq. right. econstructor; eauto. Defined.
-  Next Obligation. sq; econstructor; cbn; eauto. Defined.
-  Next Obligation. sq; now econstructor. Defined.
+  Next Obligation.
+    (* intros Γ HΓ t n b b_ty b' Heq_t [? ?]; *)
+      sq; right. econstructor; eauto.
+  Defined.
+  Next Obligation.
+    (* intros Γ HΓ t n b b_ty b' Heq_t [? ?] H0; *)
+    sq; econstructor; cbn; eauto.
+  Defined.
+  Next Obligation.
+    (* intros Γ HΓ t n b b_ty b' Heq_t [? ?] H0 [? ?]; *)
+    sq; econstructor; eassumption.
+  Defined.
 
   (* tApp *)
-  Next Obligation. now eapply validity_wf. Defined.
+  Next Obligation. simpl; eauto using validity_wf. Qed.
   Next Obligation.
-    sq. eapply type_reduction in X1 ; try eassumption.
+    (* intros Γ HΓ t0 t u Heq_t [A X1] [na [a [b hab]]]; *)
+    cbn in *; sq.
+    eapply type_reduction in X1 ; try eassumption.
     eapply validity_term in X1 ; try assumption. destruct X1.
     - destruct i as [ctx [s [H1 H2]]]. cbn in H1.
       apply destArity_app_Some in H1. destruct H1 as [ctx' [e1 e2]] ; subst.
@@ -1007,58 +1068,100 @@ Section Typecheck.
       right. eexists. eassumption.
   Defined.
   Next Obligation.
-    sq; econstructor. 2: eassumption.
+    (* intros Γ HΓ t0 t u Heq_t [A X1] [na [a [b hab]]] H; *)
+    cbn in *; sq; econstructor.
+    2: eassumption.
     eapply type_reduction; eassumption.
   Defined.
 
   (* tConst *)
   Next Obligation.
+    (* intros Γ HΓ t cst u Heq_t wildcard' d HH H.  *)
+    rename Heq_anonymous into HH.
     sq; constructor; try assumption.
-    symmetry in Heq_anonymous.
-    etransitivity. eassumption.
-    now rewrite (lookup_env_id _ _ _ Heq_anonymous).
+    symmetry in HH.
+    etransitivity. eassumption. reflexivity.
   Defined.
 
   (* tInd *)
-  Next Obligation. sq; econstructor; eassumption. Defined.
+  Next Obligation.
+    (* intros Γ HΓ t ind u Heq_t [? [? ?]] H; *)
+    sq; econstructor; eassumption.
+  Defined.
 
   (* tConstruct *)
-  Next Obligation. sq; econstructor; try eassumption. now split. Defined.
+  Next Obligation.
+    (* intros Γ HΓ t ind k u Heq_t [? [? ?]] cdecl HH H; *)
+    sq; econstructor; tea. now split.
+  Defined.
 
   (* tCase *)
-  Next Obligation. now eapply validity_wf. Defined.
-  Next Obligation. inversion HH; sq; right; assumption. Qed.
-  Next Obligation. inversion HH; assumption. Qed.
+  Next Obligation. simpl; eauto using validity_wf. Qed.
+  Next Obligation. simpl; eauto using validity_wf. Qed.
   Next Obligation.
-    destruct HΣ, HΓ, X.
+    right. destruct X, X9. sq.
     change (eqb ind I = true) in H0.
-    destruct (eqb_spec ind I) as [e|e]; [destruct e|discriminate H0].
+    destruct (eqb_spec ind I) as [e|e]; [destruct e|discriminate].
     change (eqb (ind_npars d) par = true) in H1.
-    destruct (eqb_spec (ind_npars d) par) as [e|e]; [|discriminate].
-    rename Heq_anonymous into HH. symmetry in HH.
-    eapply (type_Case_valid_btys Σ Γ) in HH; tea.
+    destruct (eqb_spec (ind_npars d) par) as [e|e]; [|discriminate]; subst.
+    eapply WfArity_build_case_predicate_type; tea.
+    2: symmetry; eassumption.
+    simpl in *. apply validity_term in t0; tea.
+    eapply isWfArity_or_Type_red in t0; tea.
+    destruct t0; [|assumption].
+    destruct i as [ctx [s [HH1 _]]]. cbn in HH1.
+    rewrite destArity_mkApps_Ind in HH1; discriminate.
+  Qed.
+  Next Obligation.
+    inversion HH; sq; right; assumption.
+  Qed.
+  Next Obligation.
+    inversion HH; assumption.
+  Qed.
+  Next Obligation.
+    rename Heq_anonymous into HH3.
+    clear Heq_anonymous2. destruct HΣ, HΓ, X.
+    change (eqb ind ind' = true) in H0.
+    destruct (eqb_spec ind ind') as [e|e]; [destruct e|discriminate].
+    change (eqb (ind_npars decl) par = true) in H1.
+    destruct (eqb_spec (ind_npars decl) par) as [e|e]; [|discriminate].
+    symmetry in HH3.
+    eapply (type_Case_valid_btys Σ Γ) in HH3; tea.
     eapply All_Forall, All_impl; tea. clear.
-    intros x X; constructor; now exists ps.
+    intros x XX; constructor; exists ps; exact XX.
   Defined.
   Next Obligation.
-    change (eqb ind I = true) in H0.
-    destruct (eqb_spec ind I) as [e|e]; [destruct e|discriminate H0].
+    rename Heq_anonymous2 into XX2. destruct wildcard'.
+    symmetry in XX2. simpl in *. eapply isconv_sound in XX2.
+    change (eqb ind ind' = true) in H0.
+    destruct (eqb_spec ind ind') as [e|e]; [destruct e|discriminate H0].
+    change (eqb (ind_npars decl) par = true) in H1.
+    destruct (eqb_spec (ind_npars decl) par) as [e|e]; [|discriminate]; subst.
     assert (∥ All2 (fun x y  => ((fst x = fst y) *
                               (Σ;;; Γ |- snd x : snd y))%type) brs btys ∥). {
       eapply All2_sq. eapply All2_impl. eassumption.
       cbn; intros ? ? []. now sq. }
-    destruct HΣ, HΓ, X9, X8, X5, X, H.
-    constructor. eapply type_Case'; tea.
-    - apply beq_nat_true; assumption.
+    destruct H as [H], X9, XX2 as [XX2]. sq.
+    eapply type_Case' with (pty0:=pty'); tea.
+    - reflexivity.
     - symmetry; eassumption.
-    - apply check_correct_arity_spec; assumption.
-    - eapply type_reduction; eassumption.
+    - econstructor; tea.
+      rename Heq_anonymous1 into XX. left.
+      eapply WfArity_build_case_predicate_type; tea.
+      2: symmetry; eassumption.
+      simpl in *. apply validity_term in X9; tea.
+      eapply isWfArity_or_Type_red in X9; tea.
+      destruct X9; [|assumption].
+      destruct i as [ctx [s [HH1 _]]]. cbn in HH1.
+      rewrite destArity_mkApps_Ind in HH1; discriminate.
+    - eapply type_reduction; tea.
+    - symmetry; eassumption.
   Defined.
 
   (* tProj *)
-  Next Obligation. now eapply validity_wf. Defined.
+  Next Obligation. simpl; eauto using validity_wf. Qed.
   Next Obligation.
-    sq; eapply type_Proj with (pdecl := (i, t0)).
+    simpl in *; sq; eapply type_Proj with (pdecl := (i, t0)).
     - split. eassumption. split. symmetry; eassumption. cbn in *.
       now apply beq_nat_true.
     - cbn. destruct (ssrbool.elimT (eqb_spec ind I)); [assumption|].
@@ -1170,7 +1273,7 @@ Section Typecheck.
     s' <- reduce_to_sort Γ s.π1 _ ;;
     ret _.
   Next Obligation. now eapply validity_wf. Defined.
-  Next Obligation. sq. eexists. eapply type_reduction; tea. Defined.
+  Next Obligation. destruct X0. sq. eexists. eapply type_reduction; tea. Defined.
 
 
   Lemma isType_isWAT_sq {Γ A} : ∥ isType Σ Γ A ∥ -> ∥ isWfArity_or_Type Σ Γ A ∥.
@@ -1243,8 +1346,8 @@ Section CheckEnv.
 
   Inductive EnvCheck (A : Type) :=
   | CorrectDecl (a : A)
-  | EnvError (e : env_error).
-  Global Arguments EnvError {A} e.
+  | EnvError (Σ : global_env_ext) (e : env_error).
+  Global Arguments EnvError {A} Σ e.
   Global Arguments CorrectDecl {A} a.
 
   Instance envcheck_monad : Monad EnvCheck :=
@@ -1252,50 +1355,50 @@ Section CheckEnv.
        bind A B m f :=
          match m with
          | CorrectDecl a => f a
-         | EnvError e => EnvError e
+         | EnvError g e => EnvError g e
          end
     |}.
 
-  Instance envcheck_monad_exc : MonadExc env_error EnvCheck :=
-    { raise A e := EnvError e;
+  Instance envcheck_monad_exc : MonadExc (global_env_ext * env_error) EnvCheck :=
+    { raise A '(g, e) := EnvError g e;
       catch A m f :=
         match m with
         | CorrectDecl a => m
-        | EnvError t => f t
+        | EnvError g t => f (g, t)
         end
     }.
 
-  Definition wrap_error {A} (id : string) (check : typing_result A) : EnvCheck A :=
+  Definition wrap_error {A} Σ (id : string) (check : typing_result A) : EnvCheck A :=
     match check with
     | Checked a => CorrectDecl a
-    | TypeError e => EnvError (IllFormedDecl id e)
+    | TypeError e => EnvError Σ (IllFormedDecl id e)
     end.
 
   Definition check_wf_type id Σ HΣ HΣ' G HG t
     : EnvCheck (∑ u, ∥ Σ;;; [] |- t : tSort u ∥)
-    := wrap_error id (@infer_type _ Σ HΣ (@infer _ Σ HΣ HΣ' G HG) [] sq_wfl_nil t).
+    := wrap_error Σ id (@infer_type _ Σ HΣ (@infer _ Σ HΣ HΣ' G HG) [] sq_wfl_nil t).
 
   Definition check_wf_judgement id Σ HΣ HΣ' G HG t ty
     : EnvCheck (∥ Σ;;; [] |- t : ty ∥)
-    := wrap_error id (@check _ Σ HΣ HΣ' G HG [] sq_wfl_nil t ty).
+    := wrap_error Σ id (@check _ Σ HΣ HΣ' G HG [] sq_wfl_nil t ty).
 
   Definition infer_term Σ HΣ HΣ' G HG t :=
-    wrap_error "toplevel term" (@infer _ Σ HΣ HΣ' G HG [] sq_wfl_nil t).
+    wrap_error Σ "toplevel term" (@infer _ Σ HΣ HΣ' G HG [] sq_wfl_nil t).
 
   Program Fixpoint check_fresh id env : EnvCheck (∥ fresh_global id env ∥) :=
     match env with
     | [] => ret (sq (Forall_nil _))
     | g :: env =>
       p <- check_fresh id env;;
-      match eq_constant id (global_decl_ident g) with
-      | true => EnvError (AlreadyDeclared id)
+      match eq_constant id g.1 with
+      | true => EnvError (empty_ext env) (AlreadyDeclared id)
       | false => ret _
       end
     end.
   Next Obligation.
-    sq. constructor; tas.
-    change (false = eqb id (global_decl_ident g)) in Heq_anonymous.
-    destruct (eqb_spec id (global_decl_ident g)); [discriminate|].
+    sq. constructor; tas. simpl.
+    change (false = eqb id k) in Heq_anonymous.
+    destruct (eqb_spec id k); [discriminate|].
     easy.
   Defined.
 
@@ -1363,21 +1466,21 @@ Section CheckEnv.
 
 
   Program Definition check_wf_decl (Σ : global_env_ext) HΣ HΣ' G HG
-             (d : global_decl)
-    : EnvCheck (∥ on_global_decl (lift_typing typing) Σ d ∥) :=
+             id (d : global_decl)
+    : EnvCheck (∥ on_global_decl (lift_typing typing) Σ id d ∥) :=
     match d with
-    | ConstantDecl id cst =>
+    | ConstantDecl cst =>
       match cst.(cst_body) with
       | Some term => check_wf_judgement id Σ HΣ HΣ' G HG term cst.(cst_type) ;; ret _
       | None => check_wf_type id Σ HΣ HΣ' G HG cst.(cst_type) ;; ret _
       end
-    | InductiveDecl id mdecl =>
+    | InductiveDecl mdecl =>
       X1 <- monad_Alli (check_one_ind_body Σ HΣ HΣ' G HG id mdecl) _ _ ;;
-      X2 <- wrap_error id (check_context HΣ HΣ' G HG (ind_params mdecl)) ;;
-      X3 <- wrap_error id (check_eq_nat (context_assumptions (ind_params mdecl))
+      X2 <- wrap_error Σ id (check_context HΣ HΣ' G HG (ind_params mdecl)) ;;
+      X3 <- wrap_error Σ id (check_eq_nat (context_assumptions (ind_params mdecl))
                                        (ind_npars mdecl)
                                        (Msg "wrong number of parameters")) ;;
-      X4 <- wrap_error id (check_eq_true (ind_guard mdecl) (Msg "guard"));;
+      X4 <- wrap_error Σ id (check_eq_true (ind_guard mdecl) (Msg "guard"));;
       ret (Build_on_inductive_sq X1 X2 X3 X4)
     end.
   Next Obligation.
@@ -1425,23 +1528,23 @@ Section CheckEnv.
     let levels := levels_of_udecl udecl in
     let global_levels := global_levels Σ in
     let all_levels := LevelSet.union levels global_levels in
-    check_eq_true (LevelSet.for_all (fun l => negb (LevelSet.mem l global_levels))
-                                    levels) (IllFormedDecl id (Msg ("non fresh level in " ++ Pretty.print_lset levels)));;
+    check_eq_true (LevelSet.for_all (fun l => negb (LevelSet.mem l global_levels)) levels) 
+       (empty_ext Σ, IllFormedDecl id (Msg ("non fresh level in " ++ Pretty.print_lset levels)));;
     check_eq_true (ConstraintSet.for_all (fun '(l1, _, l2) => LevelSet.mem l1 all_levels && LevelSet.mem l2 all_levels) (constraints_of_udecl udecl))
-                                    (IllFormedDecl id (Msg ("non declared level in " ++ Pretty.print_lset levels ++
+                                    (empty_ext Σ, IllFormedDecl id (Msg ("non declared level in " ++ Pretty.print_lset levels ++
                                     " |= " ++ Pretty.print_constraint_set (constraints_of_udecl udecl))));;
     check_eq_true match udecl with
                   | Monomorphic_ctx ctx
                     => LevelSet.for_all (negb ∘ Level.is_var) ctx.1
                   | _ => true
-                  end (IllFormedDecl id (Msg "Var level in monomorphic context")) ;;
+                  end (empty_ext Σ, IllFormedDecl id (Msg "Var level in monomorphic context")) ;;
     (* TODO: could be optimized by reusing G *)
     match gc_of_uctx (uctx_of_udecl udecl) as X' return (X' = _ -> EnvCheck _) with
     | None => fun _ =>
-      raise (IllFormedDecl id (Msg "constraints trivially not satisfiable"))
+      raise (empty_ext Σ, IllFormedDecl id (Msg "constraints trivially not satisfiable"))
     | Some uctx' => fun Huctx =>
       check_eq_true (wGraph.is_acyclic (add_uctx uctx' G))
-                    (IllFormedDecl id (Msg "constraints not satisfiable"));;
+                    (empty_ext Σ, IllFormedDecl id (Msg "constraints not satisfiable"));;
                                  ret (uctx'; (conj _ _))
     end eq_refl.
   Next Obligation.
@@ -1505,11 +1608,11 @@ Section CheckEnv.
     | [] => ret (init_graph; _)
     | d :: Σ =>
         G <- check_wf_env Σ ;;
-        check_fresh (global_decl_ident d) Σ ;;
-        let udecl := universes_decl_of_decl d in
-        uctx <- check_udecl (global_decl_ident d) Σ _ G.π1 (proj1 G.π2) udecl ;;
+        check_fresh d.1 Σ ;;
+        let udecl := universes_decl_of_decl d.2 in
+        uctx <- check_udecl d.1 Σ _ G.π1 (proj1 G.π2) udecl ;;
         let G' := add_uctx uctx.π1 G.π1 in
-        check_wf_decl (Σ, udecl) _ _ G' _ d ;;
+        check_wf_decl (Σ, udecl) _ _ G' _ d.1 d.2 ;;
         match udecl with
         | Monomorphic_ctx _ => ret (G'; _)
         | Polymorphic_ctx _ => ret (G.π1; _)
@@ -1523,7 +1626,7 @@ Section CheckEnv.
   Next Obligation.
     sq. unfold is_graph_of_uctx, gc_of_uctx; simpl.
     unfold gc_of_uctx in e. simpl in e.
-    case_eq (gc_of_constraints (constraints_of_udecl (universes_decl_of_decl d)));
+    case_eq (gc_of_constraints (constraints_of_udecl (universes_decl_of_decl g)));
       [|intro HH; rewrite HH in e; discriminate e].
     intros ctrs' Hctrs'. rewrite Hctrs' in *.
     cbn in e. inversion e; subst; clear e.
@@ -1540,15 +1643,15 @@ Section CheckEnv.
     split; sq. 2: constructor; tas.
     unfold is_graph_of_uctx, gc_of_uctx; simpl.
     unfold gc_of_uctx in e. simpl in e.
-    case_eq (gc_of_constraints (constraints_of_udecl (universes_decl_of_decl d)));
+    case_eq (gc_of_constraints (constraints_of_udecl (universes_decl_of_decl g)));
       [|intro HH; rewrite HH in e; discriminate e].
     intros ctrs' Hctrs'. rewrite Hctrs' in *.
     cbn in e. inversion e; subst; clear e.
     unfold global_ext_constraints; simpl.
     rewrite gc_of_constraints_union.
-    assert (eq: monomorphic_constraints_decl d
-                = constraints_of_udecl (universes_decl_of_decl d)). {
-      destruct d. destruct c, cst_universes; try discriminate; reflexivity.
+    assert (eq: monomorphic_constraints_decl g
+                = constraints_of_udecl (universes_decl_of_decl g)). {
+      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
       destruct m, ind_universes; try discriminate; reflexivity. }
     rewrite eq; clear eq. rewrite Hctrs'.
     red in i. unfold gc_of_uctx in i; simpl in i.
@@ -1556,21 +1659,21 @@ Section CheckEnv.
       [|intro HH; rewrite HH in i; cbn in i; contradiction i].
     intros Σctrs HΣctrs; rewrite HΣctrs in *; simpl in *.
     subst G. unfold global_ext_levels; simpl. rewrite no_prop_levels_union.
-    assert (eq: monomorphic_levels_decl d
-                = levels_of_udecl (universes_decl_of_decl d)). {
-      destruct d. destruct c, cst_universes; try discriminate; reflexivity.
+    assert (eq: monomorphic_levels_decl g
+                = levels_of_udecl (universes_decl_of_decl g)). {
+      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
       destruct m, ind_universes; try discriminate; reflexivity. }
     rewrite eq. symmetry; apply add_uctx_make_graph.
   Qed.
   Next Obligation.
     split; sq. 2: constructor; tas.
     unfold global_uctx; simpl.
-    assert (eq1: monomorphic_levels_decl d = LevelSet.empty). {
-      destruct d. destruct c, cst_universes; try discriminate; reflexivity.
+    assert (eq1: monomorphic_levels_decl g = LevelSet.empty). {
+      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
       destruct m, ind_universes; try discriminate; reflexivity. }
     rewrite eq1; clear eq1.
-    assert (eq1: monomorphic_constraints_decl d = ConstraintSet.empty). {
-      destruct d. destruct c, cst_universes; try discriminate; reflexivity.
+    assert (eq1: monomorphic_constraints_decl g = ConstraintSet.empty). {
+      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
       destruct m, ind_universes; try discriminate; reflexivity. }
     rewrite eq1; clear eq1.
     assumption.
@@ -1578,12 +1681,12 @@ Section CheckEnv.
   Next Obligation.
     split; sq. 2: constructor; tas.
     unfold global_uctx; simpl.
-    assert (eq1: monomorphic_levels_decl d = LevelSet.empty). {
-      destruct d. destruct c, cst_universes; try discriminate; reflexivity.
+    assert (eq1: monomorphic_levels_decl g = LevelSet.empty). {
+      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
       destruct m, ind_universes; try discriminate; reflexivity. }
     rewrite eq1; clear eq1.
-    assert (eq1: monomorphic_constraints_decl d = ConstraintSet.empty). {
-      destruct d. destruct c, cst_universes; try discriminate; reflexivity.
+    assert (eq1: monomorphic_constraints_decl g = ConstraintSet.empty). {
+      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
       destruct m, ind_universes; try discriminate; reflexivity. }
     rewrite eq1; clear eq1.
     assumption.
@@ -1600,7 +1703,7 @@ Section CheckEnv.
       exists v. intros ct Hc. apply Hv. simpl in *.
       apply ConstraintSet.union_spec in Hc. destruct Hc.
       apply ConstraintSet.union_spec; simpl.
-      + left. destruct g.
+      + left. destruct d.
         destruct c, cst_universes. assumption.
         1-2: apply ConstraintSetFact.empty_iff in H; contradiction.
         destruct m, ind_universes. assumption.

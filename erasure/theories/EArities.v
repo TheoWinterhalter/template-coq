@@ -10,7 +10,7 @@ Require Import String.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import MonadNotation.
-
+Set Keyed Unification.
 Require Import Extract.
 
 Local Existing Instance extraction_checker_flags.
@@ -75,19 +75,19 @@ Proof.
   intros.
   depind X1.
   - destruct H as (? & ? & ?). sq.
-    eapply PCUICCumulativity.red_cumul_inv in X1.
+    eapply PCUICCumulativity.red_cumul_inv in H.
     eapply (cumul_trans _ _ _ _ _) in c; tea.
     eapply invert_cumul_arity_l in c; eauto.
   - eapply IHX1.
     destruct H as (? & ? & ?). sq.
-    eapply PCUICCumulativity.red_cumul_inv in X2.
+    eapply PCUICCumulativity.red_cumul_inv in H.
     eapply (cumul_trans _ _ _ _ _) in c; tea.
     eapply invert_cumul_arity_l in c; eauto.
-    destruct c as (? & ? & ?). sq.
-    eapply invert_red_prod in X3 as (? & ? & [] & ?); eauto; subst.
+    destruct c as (? & H1 & H2). sq.
+    eapply invert_red_prod in H1 as (? & ? & [] & ?); eauto; subst.
     exists (x2 {0 := hd}). split; sq.
     eapply (PCUICSubstitution.substitution_red Σ Γ [_] [] [_]). eauto. econstructor. econstructor.
-    rewrite subst_empty. eassumption. eauto. cbn. eassumption. cbn in H1.
+    rewrite subst_empty. eassumption. eauto. cbn. eassumption. cbn in H2.
     now eapply isArity_subst.
 Qed.
 
@@ -341,12 +341,12 @@ Proof.
   -
     eapply PCUICReduction.red_letin; eauto. eapply IHX0; eauto.
     econstructor. eauto. econstructor.
-  -     eapply PCUICReduction.reds_case; eauto. clear.
+  -     eapply PCUICReduction.red_case; eauto. clear.
     eapply PCUICCumulativity.All_All2_refl. induction brs; eauto.
-  -     eapply PCUICReduction.reds_case; eauto. clear.
+  -     eapply PCUICReduction.red_case; eauto. clear.
     eapply PCUICCumulativity.All_All2_refl. induction brs; eauto.
   - destruct ind.
-    eapply PCUICReduction.reds_case; eauto.
+    eapply PCUICReduction.red_case; eauto.
     clear - HΣ X HT.
     induction X.
     + econstructor. destruct p. destruct p.
@@ -467,7 +467,7 @@ Lemma arity_type_inv (Σ : global_env_ext) Γ t T1 T2 : wf Σ -> wf_local Σ Γ 
 Proof.
   intros wfΣ wfΓ. intros. eapply principal_typing in X as (? & ? & ? & ?). 2:eauto. 2:exact X0.
 
-  eapply invert_cumul_arity_r in c0 as (? & ? & ?); eauto. sq.
+  eapply invert_cumul_arity_r in c0 as (? & X & ?); eauto. sq.
   eapply PCUICCumulativity.red_cumul_inv in X.
   eapply (cumul_trans _ _ _ _ _) in c; tea.
 
@@ -491,7 +491,8 @@ Proof.
     destruct c1 as (? & ? & ?). destruct H as [].
     eapply PCUICCumulativity.red_cumul_inv in X.
 
-    eapply invert_cumul_arity_l in H0 as (? & ? & ?). 2: eapply PCUICConversion.cumul_trans; eauto.
+    eapply invert_cumul_arity_l in H0 as (? & ? & ?). 2: eauto.
+    2: eapply PCUICConversion.cumul_trans; eauto.
     destruct H.
     eapply typing_spine_red in t1. 2:{ eapply PCUICCumulativity.All_All2_refl.
                                                   clear. induction L; eauto. }

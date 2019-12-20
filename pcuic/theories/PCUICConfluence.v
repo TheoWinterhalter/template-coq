@@ -1524,7 +1524,7 @@ Section PredRed.
     - now eapply red_abs_alt.
     - now eapply red_app.
     - now eapply red_letin_alt => //.
-    - eapply reds_case => //. red in X3; solve_all.
+    - eapply red_case => //. red in X3; solve_all.
     - now eapply red_proj_c.
     - eapply red_fix_congr. red in X3; solve_all. eapply a.
     - eapply red_cofix_congr. red in X3; solve_all. eapply a.
@@ -1582,7 +1582,7 @@ Section PredRed.
 
   (*   - (* Iota *) *)
   (*     transitivity (tCase (ind, pars) p (mkApps (tConstruct ind c u) args1) brs1). *)
-  (*     eapply reds_case; auto. *)
+  (*     eapply red_case; auto. *)
   (*     eapply red_mkApps. auto. solve_all. red in X2; solve_all. *)
   (*     eapply red1_red. constructor. *)
 
@@ -1594,7 +1594,7 @@ Section PredRed.
   (*     eapply red_step. econstructor; eauto. eauto. *)
 
   (*   - transitivity (tCase ip p1 (mkApps (tCoFix mfix1 idx) args1) brs1). *)
-  (*     eapply reds_case; eauto. *)
+  (*     eapply red_case; eauto. *)
   (*     eapply red_mkApps; [|solve_all]. *)
   (*     eapply red_cofix_congr_alt. red in X3; solve_all. eapply a0. *)
   (*     red in X7; solve_all. *)
@@ -1616,7 +1616,7 @@ Section PredRed.
   (*   - now eapply red_abs. *)
   (*   - now eapply red_app. *)
   (*   - now eapply red_letin => //. *)
-  (*   - eapply reds_case => //. red in X3; solve_all. *)
+  (*   - eapply red_case => //. red in X3; solve_all. *)
   (*   - now eapply red_proj_c. *)
   (*   - eapply red_fix_congr_alt. red in X3; solve_all. eapply a. *)
   (*   - eapply red_cofix_congr_alt. red in X3; solve_all. eapply a. *)

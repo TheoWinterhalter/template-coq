@@ -1458,7 +1458,7 @@ Proof.
   intros ref hRe t.
   induction t using term_forall_list_ind; intros u1 u2 hu.
   all: cbn; try constructor; eauto using subst_equal_inst_inst.
-  all: eapply All2_map, All_All2; tea; cbn; intros; rdestruct; eauto.
+  all: eapply All2_map, All_All2; tea; cbn; intros; rdest; eauto.
 Qed.
 
 Instance leq_term_SubstUnivPreserving {cf:checker_flags} φ :
@@ -1613,4 +1613,19 @@ Proof.
   - eapply All2_sym. solve_all.
     now eapply eq_term_upto_univ_sym.
     now eapply eq_term_upto_univ_sym.
+Qed.
+
+Lemma eq_univ_make :
+  forall u u',
+    Forall2 eq (map Universe.make u) (map Universe.make u') ->
+    u = u'.
+Proof.
+  intros u u' h.
+  revert u' h.
+  induction u ; intros u' h.
+  - destruct u' ; inversion h. reflexivity.
+  - destruct u' ; inversion h. subst.
+    f_equal.
+    + inversion H2. reflexivity.
+    + eapply IHu. assumption.
 Qed.

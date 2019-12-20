@@ -124,11 +124,11 @@ Module Environment (T : Term).
     mkElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims).
 
   Inductive global_decl :=
-  | ConstantDecl : kername -> constant_body -> global_decl
-  | InductiveDecl : kername -> mutual_inductive_body -> global_decl
-  | RewriteDecl : kername -> rewrite_decl -> global_decl.
+  | ConstantDecl : constant_body -> global_decl
+  | InductiveDecl : mutual_inductive_body -> global_decl.
+  | RewriteDecl : rewrite_decl -> global_decl.
 
-  Definition global_env := list global_decl.
+  Definition global_env := list (kername * global_decl).
 
   (** A context of global declarations + global universe constraints,
       i.e. a global environment *)

@@ -172,7 +172,7 @@ Program Fixpoint normal_dec Γ t : typing_result (forall t', red1 Σ Γ t t' -> 
                       H2 <- normal_dec (Γ,, vass na A) B;;
                       ret _
   | tLetIn _ _ _ _ => err
-  | tConst c u => match lookup_env Σ c  with Some (ConstantDecl _ (Build_constant_body _ (Some _) _)) => err
+  | tConst c u => match lookup_env Σ c  with Some (ConstantDecl (Build_constant_body _ (Some _) _)) => err
                                        | _ => ret _
                  end
   | tInd _ _ => ret _
@@ -337,7 +337,8 @@ Next Obligation.
   edestruct (red_confluence wfΣ X X0) as (? & ? & ?); eauto.
   eapply invert_red_prod in r0 as (? & ? & [] & ?); eauto. subst.
 
-  eapply invert_cumul_arity_l in H2. 2: eapply PCUICCumulativity.red_cumul. 2:eauto.
+  eapply invert_cumul_arity_l in H2. 2: eauto.
+  2: eapply PCUICCumulativity.red_cumul. 2:eauto.
   destruct H2 as (? & ? & ?). sq.
 
   eapply invert_red_prod in X2 as (? & ? & [] & ?); eauto. subst. cbn in *.
@@ -373,6 +374,12 @@ End fix_sigma.
 Local Existing Instance extraction_checker_flags.
 Definition wf_ext_wf Σ : wf_ext Σ -> wf Σ := fst.
 Hint Resolve wf_ext_wf.
+
+(* Top.sq should be used but the behavior is a bit different *)
+Local Ltac sq :=
+  repeat match goal with
+         | H : ∥ _ ∥ |- _ => destruct H
+         end; try eapply sq.
 
 Program Definition is_erasable (Sigma : PCUICAst.global_env_ext) (HΣ : ∥wf_ext Sigma∥) (Gamma : context) (HΓ : ∥wf_local Sigma Gamma∥) (t : PCUICAst.term) :
   typing_result ({∥isErasable Sigma Gamma t∥} +{∥(isErasable Sigma Gamma t -> False) × welltyped Sigma Gamma t∥}) :=
@@ -490,7 +497,7 @@ Section Erase.
 
       sq'. eapply wf_local_local_rel.
       eapply wf_local_rel_app_inv. eapply wf_local_rel_local. eauto.
-      change fix_context with (fix_context_i #|@nil context_decl|).
+      change fix_context with (fix_context_i #|nil context_decl|).
       now rewrite app_context_nil_l.
       sq. econstructor 2. exact t.
       Unshelve. all:sq'; eauto. firstorder.
@@ -691,14 +698,14 @@ Program Definition erase_mutual_inductive_body Σ wfΣ
 Program Fixpoint erase_global_decls Σ : ∥ wf Σ ∥ -> typing_result E.global_declarations := fun wfΣ =>
   match Σ with
   | [] => ret []
-  | ConstantDecl kn cb :: Σ =>
+  | (kn, ConstantDecl cb) :: Σ =>
     cb' <- erase_constant_body (Σ, cst_universes cb) _ cb;;
     Σ' <- erase_global_decls Σ _;;
-    ret (E.ConstantDecl kn cb' :: Σ')
-  | InductiveDecl kn mib :: Σ =>
+    ret ((kn, E.ConstantDecl cb') :: Σ')
+  | (kn, InductiveDecl mib) :: Σ =>
     mib' <- erase_mutual_inductive_body (Σ, ind_universes mib) _ mib _ ;;
     Σ' <- erase_global_decls Σ _;;
-    ret (E.InductiveDecl kn mib' :: Σ')
+    ret ((kn, E.InductiveDecl mib') :: Σ')
   end.
 Next Obligation.
   sq. split. cbn.
@@ -735,14 +742,14 @@ Proof.
   - inv H. econstructor.
   - cbn in H. unfold bind in *. cbn in *. repeat destruct ?; try congruence.
     + inv H. inv E.
-      unfold erase_constant_body in E1.
-      unfold bind in E1. cbn in E1. repeat destruct ?; try congruence.
-      inv E1. econstructor.
+      unfold erase_constant_body in E2.
+      unfold bind in E2. cbn in E2. repeat destruct ?; try congruence.
+      inv E2. econstructor.
       * unfold optM in E0. destruct ?; try congruence.
         -- unfold erases_constant_body.
           cbn. cbn in *.
            destruct ( erase (Σ, _)
-           (erase_global_decls_obligation_1 (ConstantDecl k c :: Σ)
+           (erase_global_decls_obligation_1 ((k, ConstantDecl c) :: Σ)
               (sq w) k c Σ eq_refl) [] wf_local_nil t) eqn:E5;
              rewrite E5 in E0; inv E0.
            rewrite E1.
@@ -755,8 +762,8 @@ Proof.
            rewrite E1 in X0. cbn in X0. eassumption.
         -- cbn. inv E0. unfold erases_constant_body.
            rewrite E1. cbn. econstructor.
-      * eapply IHΣ. unfold erase_global. rewrite E2. reflexivity.
-    + inv H. inv E. inv E1.
+      * eapply IHΣ. unfold erase_global. rewrite E3. reflexivity.
+    + inv H. inv E. inv E2.
       unfold erase_mutual_inductive_body, bind in H0. cbn in H0.
       destruct ?; try congruence. inv H0.
       econstructor.
@@ -795,6 +802,6 @@ Proof.
 
            eapply erases_erase.
            2:{ eauto. } eauto.
-  * eapply IHΣ. unfold erase_global. rewrite E2. reflexivity.
+  * eapply IHΣ. unfold erase_global. rewrite E3. reflexivity.
 Qed.
 

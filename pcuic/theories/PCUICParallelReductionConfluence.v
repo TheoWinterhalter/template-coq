@@ -867,17 +867,6 @@ Section Confluence.
           rewrite !app_context_assoc. cbn. intuition.
   Qed.
 
-  Lemma lookup_env_cst_inv {Σ c k cst} :
-    lookup_env Σ c = Some (ConstantDecl k cst) -> c = k.
-  Proof.
-    induction Σ.
-    - simpl. discriminate.
-    - simpl. destruct AstUtils.ident_eq eqn:Heq.
-      + intros [= ->]. simpl in Heq.
-        now destruct (AstUtils.ident_eq_spec c k).
-      + auto.
-  Qed.
-
   Definition isLambda_or_Fix_app t :=
     match fst (decompose_app t) with
     | tLambda _ _ _ => true
@@ -896,7 +885,7 @@ Section Confluence.
     ~~ isLambda_or_Fix_app t ->
     forall l', ~~ isLambda_or_Fix_app (fst (decompose_app_rec t l')).
   Proof.
-    unfold isLambda_or_Fix_app, decompose_app. generalize (@nil term).
+    unfold isLambda_or_Fix_app, decompose_app. generalize (nil term).
     induction t; simpl;
       try intros ? H ? [= <- <-]; simpl; try congruence.
     intros. rewrite !fst_decompose_app_rec. rewrite fst_decompose_app_rec in H.
@@ -1038,7 +1027,7 @@ Section Confluence.
       | tSymb k n u => (* TODO *) tSymb k n u
       | tConst c u =>
         match lookup_env Σ c with
-        | Some (ConstantDecl id decl) =>
+        | Some (ConstantDecl decl) =>
           match decl.(cst_body) with
           | Some body => subst_instance_constr u body
           | None => tConst c u
@@ -2813,7 +2802,7 @@ Section Confluence.
     apply decompose_app_rec_inv in eapp. rewrite - !mkApps_nested in eapp.
     simpl in eapp. noconf eapp. simpl in H0. noconf H0.
     apply mkApps_eq_inj in H0 => //. destruct H0; subst.
-    replace (decompose_app hd) with (hd, @nil term).
+    replace (decompose_app hd) with (hd, nil term).
     - rewrite -Heq'. rewrite !map_app - !mkApps_nested. simpl map.
       destruct hd; auto.
       + simpl in Hlam. discriminate.
@@ -2931,8 +2920,8 @@ Section Confluence.
   Lemma isConstruct_app_rename r t :
     isConstruct_app t = isConstruct_app (rename r t).
   Proof.
-    unfold isConstruct_app. unfold decompose_app. generalize (@nil term) at 1.
-    change (@nil term) with (map (rename r) []). generalize (@nil term).
+    unfold isConstruct_app. unfold decompose_app. generalize (nil term) at 1.
+    change (nil term) with (map (rename r) []). generalize (nil term).
     induction t; simpl; auto.
     intros l l0. specialize (IHt1 (t2 :: l) (t2 :: l0)).
     now rewrite IHt1.
@@ -3299,7 +3288,7 @@ Section Confluence.
 
     - (* Constant unfolding *)
       simpl.
-      case e: lookup_env => [[kn decl|kn decl|kn decl]|] //.
+      case e: lookup_env => [[decl|decl|decl]|] //.
       case eb: cst_body => [b|] //.
       rewrite rename_inst inst_closed0 //.
       apply declared_decl_closed in e => //.
@@ -4518,14 +4507,9 @@ Section Confluence.
 
     - admit.
 
-    - simpl. simpl in X0. red in H.
-      rewrite H heq_cst_body. now eapply pred1_refl_gen.
-
-    - simpl in *. destruct (lookup_env Σ c) eqn:Heq; pcuic.
-      destruct g; pcuic.
-      destruct cst_body eqn:Heq'; pcuic. econstructor; eauto. red.
-      pose proof (lookup_env_cst_inv Heq). subst. eapply Heq.
-
+    - simpl in *. destruct (lookup_env Σ c) eqn:Heq; pcuic. destruct g; pcuic.
+      destruct cst_body eqn:Heq'; pcuic.
+      
     - simpl in *. rewrite decompose_app_mkApps; auto.
       rewrite rho_mkApps; auto.
       rewrite decompose_app_mkApps; auto.

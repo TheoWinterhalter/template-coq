@@ -7,7 +7,7 @@ Require Import config Universes monad_utils utils BasicAst AstUtils UnivSubst.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
      PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICPosition
      PCUICNormal PCUICInversion PCUICCumulativity PCUICSafeLemmata
-     PCUICGeneration PCUICValidity PCUICSR PCUICSN PCUICUtils.
+     PCUICGeneration PCUICValidity PCUICSR PCUICSN PCUICUtils PCUICReduction.
 From Equations Require Import Equations.
 Require Import Equations.Prop.DepElim.
 
@@ -15,6 +15,8 @@ Import MonadNotation.
 Open Scope type_scope.
 
 Set Default Goal Selector "!".
+
+Set Equations Transparent.
 
 (** * Reduction machine for PCUIC without fuel
 
@@ -171,6 +173,26 @@ Section Measure.
   Qed.
 
 End Measure.
+
+(* Added by Julien Forest on 13/11/20 in Coq stdlib, adapted to subset case by M. Sozeau *)
+Section Acc_sidecond_generator.
+  Context {A : Type} {R : A -> A -> Prop} {P : A -> Prop}.
+  Variable Pimpl : forall x y, P x -> R y x -> P y.
+  (* *Lazily* add 2^n - 1 Acc_intro on top of wf.
+     Needed for fast reductions using Function and Program Fixpoint
+     and probably using Fix and Fix_F_2
+   *)
+  Fixpoint Acc_intro_generator n (acc : forall t, P t -> Acc R t) : forall t, P t -> Acc R t :=
+    match n with
+        | O => acc
+        | S n => fun x Px =>
+                   Acc_intro x (fun y Hy => Acc_intro_generator n (Acc_intro_generator n acc) y (Pimpl _ _ Px Hy))
+    end.
+End Acc_sidecond_generator.
+(** We leave it opaque for now, as some simplification tactics
+  might otherwise unfold the large Acc proof. Don't forget to make it transparent
+  when computing. *)
+Opaque Acc_intro_generator.
 
 Section Reduce.
 
@@ -335,10 +357,10 @@ Section Reduce.
 
     | red_view_Const c u π with RedFlags.delta flags := {
       | true with inspect (lookup_env (fst Σ) c) := {
-        | @exist (Some (ConstantDecl _ {| cst_body := Some body |})) eq :=
+        | @exist (Some (ConstantDecl {| cst_body := Some body |})) eq :=
           let body' := subst_instance_constr u body in
           rec reduce body' π ;
-        | @exist (Some (InductiveDecl _ _)) eq := False_rect _ _ ;
+        | @exist (Some (InductiveDecl _)) eq := False_rect _ _ ;
         | @exist (Some _) eq := give (tConst c u) π ;
         | @exist None eq := False_rect _ _
         } ;
@@ -361,7 +383,10 @@ Section Reduce.
                 | @exist (l, θ) eq4 :=
                   rec reduce fn (appstack args (App (mkApps (tConstruct ind n ui) l) ρ))
                 } ;
-              | view_other t ht := give (tFix mfix idx) π
+              | view_other t ht with inspect (decompose_stack ρ') := {
+                | @exist (l, θ) eq4 :=
+                  give (tFix mfix idx) (appstack args (App (mkApps t l) ρ))
+                }
               }
             } ;
           | _ := give (tFix mfix idx) π
@@ -455,20 +480,10 @@ Section Reduce.
   Next Obligation.
     left. econstructor. eapply red1_context.
     econstructor.
-    (* Should be a lemma! *)
-    - unfold declared_constant. rewrite <- eq. f_equal.
-      f_equal. clear - eq.
-      revert c wildcard0 body wildcard1 wildcard2 eq.
-      set (Σ' := fst Σ). clearbody Σ'. clear Σ. rename Σ' into Σ.
-      induction Σ ; intros c na t body univ eq.
-      + cbn in eq. discriminate.
-      + cbn in eq. revert eq.
-        case_eq (ident_eq c (global_decl_ident a)).
-        * intros e eq. inversion eq. subst. clear eq.
-          cbn in e. revert e. destruct (ident_eq_spec c na) ; easy.
-        * intros e eq. eapply IHg. eassumption.
+    - unfold declared_constant. rewrite <- eq. reflexivity.
     - cbn. reflexivity.
   Qed.
+
   Next Obligation.
     destruct hΣ as [wΣ].
     eapply wellformed_context in h ; auto. simpl in h.
@@ -535,7 +550,7 @@ Section Reduce.
     case_eq (decompose_stack ρ). intros l' θ' e'.
     pose proof (decompose_stack_eq _ _ _ e'). subst.
     rewrite H in e. rewrite decompose_stack_appstack in e.
-    cbn in e. rewrite e' in e. inversion e. subst. clear e.
+    cbn in e. rewrite e' in e. cbn in e. inversion e. subst. clear e.
 
     case_eq (decompose_stack ρ'). intros ll s e1.
     pose proof (decompose_stack_eq _ _ _ e1). subst.
@@ -625,6 +640,54 @@ Section Reduce.
     rewrite decompose_stack_appstack. cbn.
     rewrite e. cbn. reflexivity.
   Qed.
+  Next Obligation.
+    case_eq (decompose_stack π). intros ll π' e.
+    pose proof (decompose_stack_eq _ _ _ e). subst.
+    clear eq3. symmetry in eq2.
+    pose proof (decompose_stack_at_eq _ _ _ _ _ eq2) as e2.
+    pose proof (decompose_stack_at_length _ _ _ _ _ eq2).
+    case_eq (decompose_stack ρ). intros l' θ' e'.
+    pose proof (decompose_stack_eq _ _ _ e'). subst.
+    rewrite e2 in e. rewrite decompose_stack_appstack in e.
+    cbn in e. rewrite e' in e. cbn in e. inversion e. subst. clear e.
+    symmetry in eq4. apply decompose_stack_eq in eq4 as ?. subst.
+
+    rewrite e2.
+    destruct r as [r | r].
+    - inversion r. subst.
+      destruct l. 2: discriminate.
+      cbn in *. subst.
+      left. reflexivity.
+    - unfold Pr in p. cbn in p.
+      rewrite eq4 in p. simpl in p. subst.
+      dependent destruction r.
+      + cbn in H. rewrite zipc_appstack in H.
+        cbn in H. rewrite !zipc_appstack in H.
+        right. left. cbn. rewrite !zipc_appstack. cbn.
+        rewrite !zipc_appstack. assumption.
+      + cbn in H0. inversion H0.
+        rewrite !zipc_appstack in H2. cbn in H2.
+        rewrite zipc_appstack in H2.
+        apply zipc_inj in H2. apply PCUICAstUtils.mkApps_inj in H2.
+        inversion H2. subst.
+        left. reflexivity.
+  Qed.
+  Next Obligation.
+    symmetry in eq4. clear eq3.
+    unfold Pr in p. cbn in p.
+    rewrite eq4 in p. simpl in p. subst.
+    unfold Pr. cbn.
+    rewrite decompose_stack_appstack. cbn.
+    case_eq (decompose_stack π). intros ll π' e. cbn.
+    pose proof (decompose_stack_eq _ _ _ e). subst.
+    symmetry in eq2.
+    pose proof (decompose_stack_at_eq _ _ _ _ _ eq2) as e2.
+    pose proof (decompose_stack_at_length _ _ _ _ _ eq2).
+    case_eq (decompose_stack ρ). intros l' θ' e'. cbn.
+    pose proof (decompose_stack_eq _ _ _ e'). subst.
+    rewrite e2 in e. rewrite decompose_stack_appstack in e.
+    cbn in e. rewrite e' in e. cbn in e. inversion e. reflexivity.
+  Qed.
 
   (* tCase *)
   Next Obligation.
@@ -639,7 +702,7 @@ Section Reduce.
     - econstructor. econstructor. eapply red1_context.
       eapply red_iota.
     - instantiate (4 := ind'). instantiate (2 := p).
-      instantiate (1 := wildcard9).
+      instantiate (1 := wildcard7).
       destruct r.
       + inversion e.
         subst.
@@ -898,24 +961,6 @@ Section Reduce.
     apply_funelim (red_discr t π). all: easy.
   Qed.
 
-(* Added by Julien Forest on 13/11/20 in Coq stdlib, adapted to subset case by M. Sozeau *)
-Section Acc_sidecond_generator.
-  Context {A : Type} {R : A -> A -> Prop} {P : A -> Prop}.
-  Variable Pimpl : forall x y, P x -> R y x -> P y.
-  (* *Lazily* add 2^n - 1 Acc_intro on top of wf.
-     Needed for fast reductions using Function and Program Fixpoint
-     and probably using Fix and Fix_F_2
-   *)
-  Fixpoint Acc_intro_generator n (acc : forall t, P t -> Acc R t) : forall t, P t -> Acc R t :=
-    match n with
-        | O => acc
-        | S n => fun x Px =>
-                   Acc_intro x (fun y Hy => Acc_intro_generator n (Acc_intro_generator n acc) y (Pimpl _ _ Px Hy))
-    end.
-
-
-End Acc_sidecond_generator.
-
   Lemma wellformed_R_pres Γ :
     forall x y : term × stack, wellformed Σ Γ (zip x) -> R Σ Γ y x -> wellformed Σ Γ (zip y).
   Proof. intros. todo "wellformed_R_pres proof"%string. Admitted.
@@ -942,20 +987,20 @@ End Acc_sidecond_generator.
           inversion H1. subst. inversion H2. subst. clear H1 H2.
           intros. cbn. rewrite H3. assumption.
   Defined.
-  Next Obligation.
+(*   Next Obligation.
     destruct hΣ.
     eapply R_Acc. all: assumption.
   Defined.
+ *)
   (* Replace the last obligation by the following to run inside Coq. *)
-  (* Next Obligation.
-    destruct hΣ.
+  Next Obligation.
     revert h. generalize (t, π).
     refine (Acc_intro_generator
               (R:=fun x y => R Σ Γ x y)
-              (P:=fun x => wellformed Σ Γ (zip x)) (fun x y Px Hy => _) 12 _).
-    simpl in *. eapply wellformed_R_pres; eauto.
-    intros; eapply R_Acc; eassumption.
-  Defined. *)
+              (P:=fun x => wellformed Σ Γ (zip x)) (fun x y Px Hy => _) 1000 _).
+    - simpl in *. eapply wellformed_R_pres; eauto.
+    - destruct hΣ. intros; eapply R_Acc; eassumption.
+  Defined.
 
   Definition reduce_stack Γ t π h :=
     let '(exist ts _) := reduce_stack_full Γ t π h in ts.
