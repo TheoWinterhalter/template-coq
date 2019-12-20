@@ -115,7 +115,7 @@ Section lookups.
 
   Definition lookup_symbol_type Σ k n u :=
     match lookup_env Σ k with
-    | Some (RewriteDecl _ rd) =>
+    | Some (RewriteDecl rd) =>
       match nth_error rd.(symbols) n with
       | Some ty => ret (subst_instance_constr u (subst (symbols_subst k n u #|rd.(symbols)|) 0 ty))
       | None => raise (UndeclaredSymbol k n)

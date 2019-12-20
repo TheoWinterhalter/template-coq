@@ -304,20 +304,24 @@ Lemma levels_global_constraint Σ (hΣ : wf Σ) c :
 Proof.
   induction hΣ as [|Σ kn d hΣ IH HH univs Hu Hd].
   - intro H; now apply CS.empty_spec in H.
-  - subst univs. intro Hc. simpl in *; apply CS.union_spec in Hc.
-    destruct Hc as [Hc|Hc]; auto. clear -Hu Hc.
-    + destruct d as [[? ? [φ|?|?]] | [? ? ? ? [φ|?|?]] | [? ? ? [φ|?|?]]]; cbn in *;
-        unfold monomorphic_levels_decl, monomorphic_constraints_decl in *; cbn in *;
-          try now apply CS.empty_spec in Hc.
+  - subst univs. intro Hc.
+    simpl in *. apply CS.union_spec in Hc.
+    destruct Hc as [Hc|Hc].
+    + clear - Hu Hc.
+      destruct d as [[? ? [φ|?|?]] | [? ? ? ? [φ|?|?]] | [? ? ? [φ|?|?]]] ;
+      cbn in * ;
+      unfold monomorphic_levels_decl, monomorphic_constraints_decl in * ;
+      cbn in * ;
+      try now apply CS.empty_spec in Hc.
       all: destruct Hu as [_ [Hu [_ _]]].
       all: destruct c as [[l1 c] l2]; exact (Hu _ Hc).
     + split; apply LS.union_spec; now right.
 Qed.
 
 Lemma levels_global_ext_constraint Σ φ (hΣ : wf_ext_wk (Σ, φ)) c :
-  CS.In c (global_ext_constraints (Σ, φ))
-  -> LS.In c.1.1 (global_ext_levels (Σ, φ))
-    /\ LS.In c.2 (global_ext_levels (Σ, φ)).
+  CS.In c (global_ext_constraints (Σ, φ)) ->
+  LS.In c.1.1 (global_ext_levels (Σ, φ)) /\
+  LS.In c.2 (global_ext_levels (Σ, φ)).
 Proof.
   intro H. apply CS.union_spec in H; simpl in H.
   destruct hΣ as [hΣ Hφ], H as [Hc|H]; simpl in *.

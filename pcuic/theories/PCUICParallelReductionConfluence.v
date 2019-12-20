@@ -4507,9 +4507,12 @@ Section Confluence.
 
     - admit.
 
+    - simpl. simpl in X0. red in H. rewrite H heq_cst_body.
+      now eapply pred1_refl_gen.
+
     - simpl in *. destruct (lookup_env Σ c) eqn:Heq; pcuic. destruct g; pcuic.
       destruct cst_body eqn:Heq'; pcuic.
-      
+
     - simpl in *. rewrite decompose_app_mkApps; auto.
       rewrite rho_mkApps; auto.
       rewrite decompose_app_mkApps; auto.

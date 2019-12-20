@@ -1100,8 +1100,8 @@ Section Checker.
       List.fold_left (fun acc body =>
                         acc ;; check_wf_type body.(ind_name) Σ G body.(ind_type))
                      inds.(ind_bodies) (ret ())
-    | RewriteDecl id rew =>
-      EnvError (AlreadyDeclared id)
+    | RewriteDecl rew =>
+      EnvError (AlreadyDeclared "todo"%string)
     end.
 
   Fixpoint check_fresh id (env : global_env) : EnvCheck () :=

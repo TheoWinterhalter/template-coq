@@ -1431,7 +1431,7 @@ Section PredRed.
 
     - (* Iota *)
       transitivity (tCase (ind, pars) p (mkApps (tConstruct ind c u) args1) brs1).
-      + eapply reds_case; auto.
+      + eapply red_case; auto.
         * eapply red_mkApps. 1: auto. solve_all.
         * red in X2; solve_all.
       + eapply red1_red. constructor.
@@ -1447,7 +1447,7 @@ Section PredRed.
         * eauto.
 
     - transitivity (tCase ip p1 (mkApps (tCoFix mfix1 idx) args1) brs1).
-      + eapply reds_case; eauto.
+      + eapply red_case; eauto.
         * eapply red_mkApps; [|solve_all].
           eapply red_cofix_congr. red in X3; solve_all. eapply a0.
         * red in X7; solve_all.
@@ -2384,9 +2384,9 @@ Section RedConfluence.
       + eapply red_letin_alt; eauto.
         eapply (IHr (Δ ,, vdef na b t)). constructor; eauto.
         red. split; eauto.
-      + eapply reds_case; eauto. unfold on_Trel; pcuic.
-      + eapply reds_case; eauto. unfold on_Trel; pcuic.
-      + eapply reds_case; eauto. unfold on_Trel; pcuic.
+      + eapply red_case; eauto. unfold on_Trel; pcuic.
+      + eapply red_case; eauto. unfold on_Trel; pcuic.
+      + eapply red_case; eauto. unfold on_Trel; pcuic.
         eapply OnOne2_All2; eauto. simpl. intuition eauto.
       + eapply red_proj_c; eauto.
       + eapply red_app; eauto.

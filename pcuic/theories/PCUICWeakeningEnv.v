@@ -360,52 +360,77 @@ Qed.
 
 Definition weaken_env_prop `{checker_flags}
            (P : global_env_ext -> context -> term -> option term -> Type) :=
-  forall Σ Σ' φ, wf Σ' -> extends Σ Σ' -> forall Γ t T, P (Σ, φ) Γ t T -> P (Σ', φ) Γ t T.
+  forall Σ Σ' φ,
+    wf Σ' ->
+    extends Σ Σ' ->
+    forall Γ t T,
+      P (Σ, φ) Γ t T ->
+      P (Σ', φ) Γ t T.
 
 Lemma weakening_on_global_decl `{checker_flags} P Σ Σ' φ kn decl :
   weaken_env_prop P ->
+  wf Σ' ->
+  extends Σ Σ' ->
   on_global_decl P (Σ, φ) kn decl ->
   on_global_decl P (Σ', φ) kn decl.
 Proof.
   unfold weaken_env_prop.
   intros HPΣ wfΣ' Hext Hdecl.
   destruct decl.
-  1:{
-    destruct c. destruct cst_body.
-    - simpl in *.
+  - destruct c. destruct cst_body.
+    + simpl in *.
       red in Hdecl |- *. simpl in *.
       eapply HPΣ; eauto.
-    - eapply HPΣ; eauto.
-  }
-  simpl in *.
-  destruct Hdecl as [onI onP onnP]; constructor; eauto.
-  - eapply Alli_impl; eauto. intros.
-    destruct X. unshelve econstructor; eauto.
-    + unfold on_type in *; intuition eauto.
-    + unfold on_constructors in *. eapply All2_impl; eauto.
-      intros. unfold on_constructor, on_type in *; intuition eauto.
-      destruct b as [cs Hcs]. exists cs.
-      induction (cshape_args cs); simpl in *; auto.
-      destruct a0 as [na [b|] ty]; simpl in *; intuition eauto.
-    + intros Hprojs; destruct onProjections; try constructor; auto.
-      eapply Alli_impl; eauto. intros ip [id trm].
-      unfold on_projection, on_type; eauto.
-    + unfold check_ind_sorts in *. destruct universe_family; auto.
-      * split; [apply fst in ind_sorts|apply snd in ind_sorts].
-        -- eapply Forall_impl; tea; cbn.
-           intros. eapply leq_universe_subset; tea.
-           apply weakening_env_global_ext_constraints; tea.
-        -- destruct indices_matter; [|trivial]. clear -ind_sorts HPΣ wfΣ' Hext.
-           induction ind_indices; simpl in *; auto.
-           destruct a as [na [b|] ty]; simpl in *; intuition eauto.
-      * split; [apply fst in ind_sorts|apply snd in ind_sorts].
-        -- eapply Forall_impl; tea; cbn.
-           intros. eapply leq_universe_subset; tea.
-           apply weakening_env_global_ext_constraints; tea.
-        -- destruct indices_matter; [|trivial]. clear -ind_sorts HPΣ wfΣ' Hext.
-           induction ind_indices; simpl in *; auto.
-           destruct a as [na [b|] ty]; simpl in *; intuition eauto.
-  - red in onP |- *. eapply All_local_env_impl; eauto.
+    + eapply HPΣ; eauto.
+  - simpl in *.
+    destruct Hdecl as [onI onP onnP]; constructor; eauto.
+    + eapply Alli_impl; eauto. intros.
+      destruct X. unshelve econstructor; eauto.
+      * unfold on_type in *; intuition eauto.
+      * unfold on_constructors in *. eapply All2_impl; eauto.
+        intros. unfold on_constructor, on_type in *; intuition eauto.
+        destruct b as [cs Hcs]. exists cs.
+        induction (cshape_args cs); simpl in *; auto.
+        destruct a0 as [na [b|] ty]; simpl in *; intuition eauto.
+      * intros Hprojs; destruct onProjections; try constructor; auto.
+        eapply Alli_impl; eauto. intros ip [id trm].
+        unfold on_projection, on_type; eauto.
+      * unfold check_ind_sorts in *. destruct universe_family; auto.
+        -- split; [apply fst in ind_sorts|apply snd in ind_sorts].
+           ++ eapply Forall_impl; tea; cbn.
+              intros. eapply leq_universe_subset; tea.
+              apply weakening_env_global_ext_constraints; tea.
+           ++ destruct indices_matter; [|trivial]. clear -ind_sorts HPΣ wfΣ' Hext.
+              induction ind_indices; simpl in *; auto.
+              destruct a as [na [b|] ty]; simpl in *; intuition eauto.
+         -- split; [apply fst in ind_sorts|apply snd in ind_sorts].
+           ++ eapply Forall_impl; tea; cbn.
+              intros. eapply leq_universe_subset; tea.
+              apply weakening_env_global_ext_constraints; tea.
+           ++ destruct indices_matter; [|trivial]. clear -ind_sorts HPΣ wfΣ' Hext.
+              induction ind_indices; simpl in *; auto.
+              destruct a as [na [b|] ty]; simpl in *; intuition eauto.
+    + red in onP |- *. eapply All_local_env_impl; eauto.
+  - simpl in *. destruct Hdecl as [hctx [hr [hpr hprr]]].
+    split. 2: split. 3: split.
+    + eapply All_local_env_impl; eauto.
+    + eapply All_impl. 1: eassumption.
+      intros rw [T onlhs onrhs onhead onelims].
+      exists T.
+      * eapply HPΣ. all: eauto.
+      * eapply HPΣ. all: eauto.
+      * assumption.
+      * assumption.
+    + eapply All_impl. 1: exact hpr.
+      intros rw [T onlhs onrhs onhead onelims].
+      exists T.
+      * eapply HPΣ. all: eauto.
+      * eapply HPΣ. all: eauto.
+      * assumption.
+      * assumption.
+    + eapply All_impl. 1: exact hprr.
+      unfold prule_red. cbn. intros rw h.
+      eapply weakening_env_red. 3: eauto. all: auto.
 Qed.
 
 Lemma weakening_env_lookup_on_global_env `{checker_flags} P Σ Σ' c decl :

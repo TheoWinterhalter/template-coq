@@ -129,7 +129,6 @@ Proof.
   induction Σ => //; try discriminate.
   case: a => // /= k b; case: (ident_eq cst k); auto.
   - by move => [=] ->.
-  - todo "rewrite rules"%string.
 Qed.
 
 Lemma forall_decls_declared_minductive Σ cst decl :
@@ -140,7 +139,6 @@ Proof.
   induction Σ => //; try discriminate.
   case: a => // /= k b; case: (ident_eq cst k); auto.
   - by move => [=] ->.
-  - todo "rewrite rules"%string.
 Qed.
 
 Lemma forall_decls_declared_inductive Σ mdecl ind decl :
@@ -1194,8 +1192,8 @@ Proof.
   induction g.
   - reflexivity.
   - simpl. rewrite IHg. f_equal. clear.
-    todo "rewrite rules"%string.
-    destruct a. all: try reflexivity.
+    destruct a. cbn.
+    todo "rewrite rules".
 Qed.
 
 Lemma trans_cumul (Σ : Ast.global_env_ext) Γ T U :

@@ -21,7 +21,7 @@ Module Lookup (T : Term) (E : EnvironmentSig T).
     end.
 
   Definition declared_symbol (Σ : global_env) (k : ident) decl : Prop :=
-    lookup_env Σ k = Some (RewriteDecl k decl).
+    lookup_env Σ k = Some (RewriteDecl decl).
 
   Definition declared_constant (Σ : global_env) (id : ident) decl : Prop :=
     lookup_env Σ id = Some (ConstantDecl decl).

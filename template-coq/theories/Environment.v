@@ -125,7 +125,7 @@ Module Environment (T : Term).
 
   Inductive global_decl :=
   | ConstantDecl : constant_body -> global_decl
-  | InductiveDecl : mutual_inductive_body -> global_decl.
+  | InductiveDecl : mutual_inductive_body -> global_decl
   | RewriteDecl : rewrite_decl -> global_decl.
 
   Definition global_env := list (kername * global_decl).
