@@ -459,7 +459,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       on_context Σ Δ ×
       All (on_rewrite_rule Σ Δ) d.(rules) ×
       All (on_rewrite_rule Σ Δ) d.(prules) ×
-      (* All (prule_red (RewriteDecl id d :: Σ.1) Δ) d.(prules). *)
+      (* All (prule_red ((kn, RewriteDecl d) :: Σ.1) Δ) d.(prules). *)
       (* TODO We need to account for the new rules. *)
       All (prule_red Σ.1 Δ) d.(prules).
 
@@ -573,21 +573,23 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
   (** ** Induction principle for typing up-to a global environment *)
 
-  Lemma refine_type `{checker_flags} Σ Γ t T U : Σ ;;; Γ |- t : T -> T = U -> Σ ;;; Γ |- t : U.
+  Lemma refine_type `{checker_flags} Σ Γ t T U :
+    Σ ;;; Γ |- t : T -> T = U -> Σ ;;; Γ |- t : U.
   Proof. now intros Ht ->. Qed.
 
   Section wf_local.
     Context `{checker_flags}.
 
-    Definition wf_local_rel Σ Γ Γ'
-      := (All_local_env (lift_typing (fun Σ0 Γ0 t T => Σ0 ;;; Γ ,,, Γ0 |- t : T) Σ) Γ').
+    Definition wf_local_rel Σ Γ Γ' :=
+      All_local_env (lift_typing (fun Σ0 Γ0 t T => Σ0 ;;; Γ ,,, Γ0 |- t : T) Σ) Γ'.
 
-    Definition wf_local_rel_nil {Σ Γ} : wf_local_rel Σ Γ []
-      := localenv_nil.
+    Definition wf_local_rel_nil {Σ Γ} : wf_local_rel Σ Γ [] :=
+      localenv_nil.
 
     Definition wf_local_rel_abs {Σ Γ Γ' A na} :
-      wf_local_rel Σ Γ Γ' -> {u & Σ ;;; Γ ,,, Γ' |- A : tSort u }
-      -> wf_local_rel Σ Γ (Γ',, vass na A)
+      wf_local_rel Σ Γ Γ' ->
+      {u & Σ ;;; Γ ,,, Γ' |- A : tSort u } ->
+      wf_local_rel Σ Γ (Γ',, vass na A)
       := localenv_cons_abs.
 
     Definition wf_local_rel_def {Σ Γ Γ' t A na} :
