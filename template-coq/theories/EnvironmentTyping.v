@@ -232,6 +232,8 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Parameter (subst : list term -> nat -> term -> term).
 
+  Parameter (subst_context : list term -> nat -> context -> context).
+
   Parameter (symbols_subst :
     kername -> nat -> universe_instance -> nat -> list term
   ).
@@ -466,8 +468,8 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       : term -> term -> Type :=
     | red1_rules_rewrite_rule k ui n r s :
         nth_error rules n = Some r ->
-        untyped_subslet Γ s r.(pat_context) ->
         let ss := symbols_subst k 0 ui #|symbols| in
+        untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
         let lhs := subst s 0 (subst ss #|s| r.(lhs)) in
         let rhs := subst s 0 (subst ss #|s| r.(rhs)) in
         red1_rules symbols rules Γ lhs rhs.

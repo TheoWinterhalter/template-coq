@@ -703,6 +703,116 @@ Proof.
     rewrite hd. reflexivity.
 Qed.
 
+Definition subst_decl s k (d : context_decl) := map_decl (subst s k) d.
+
+Lemma subst_context_snoc s k Γ d : subst_context s k (d :: Γ) = subst_context s k Γ ,, subst_decl s (#|Γ| + k) d.
+Proof.
+  unfold subst_context, fold_context.
+  rewrite !rev_mapi !rev_involutive /mapi mapi_rec_eqn /snoc.
+  f_equal. 1: now rewrite Nat.sub_0_r List.rev_length.
+  rewrite mapi_rec_Sk. simpl. apply mapi_rec_ext. intros.
+  rewrite app_length !List.rev_length. simpl. f_equal. f_equal. lia.
+Qed.
+Hint Rewrite subst_context_snoc : subst.
+
+Lemma subst_context_snoc0 s Γ d : subst_context s 0 (Γ ,, d) = subst_context s 0 Γ ,, subst_decl s #|Γ| d.
+Proof.
+  unfold snoc. now rewrite subst_context_snoc Nat.add_0_r.
+Qed.
+Hint Rewrite subst_context_snoc : subst.
+
+Lemma distr_lift_context_subst_context :
+  forall n k p s Γ,
+    lift_context n (p+ k) (subst_context s p Γ) =
+    subst_context (map (lift n k) s) p (lift_context n (p + #|s| + k) Γ).
+Proof.
+  intros n k p s Γ.
+  induction Γ as [| [na [b|] A] Γ ih ] in n, k, p, s |- *.
+  - reflexivity.
+  - rewrite lift_context_snoc subst_context_snoc.
+    rewrite lift_context_snoc subst_context_snoc.
+    rewrite ih. f_equal.
+    unfold lift_decl, subst_decl. unfold map_decl. cbn.
+    rewrite subst_context_length lift_context_length.
+    replace (#|Γ| + (p + k)) with (#|Γ| + p + k) by lia.
+    rewrite -> 2!distr_lift_subst_rec.
+    f_equal. all: f_equal. all: f_equal.
+    + f_equal. lia.
+    + lia.
+  - rewrite lift_context_snoc subst_context_snoc.
+    rewrite lift_context_snoc subst_context_snoc.
+    rewrite ih. f_equal.
+    unfold lift_decl, subst_decl. unfold map_decl. cbn.
+    rewrite subst_context_length lift_context_length.
+    replace (#|Γ| + (p + k)) with (#|Γ| + p + k) by lia.
+    rewrite distr_lift_subst_rec.
+    f_equal. f_equal. f_equal. lia.
+Qed.
+
+(*
+  |- Γ, Δ, Ξ, Θ
+  Γ |- s : Δ
+  |- Γ, subst_context s #|Θ| Δ, subst_context s 0 Θ
+*)
+
+(* TODO MOVE *)
+Lemma closedn_ctx_subst_context :
+  forall s k p Γ,
+    forallb (closedn k) s ->
+    closedn_ctx (k + p + #|s|) Γ ->
+    closedn_ctx (k + p) (subst_context s p Γ).
+Proof.
+  intros s k p Γ hs h.
+  induction Γ as [| [na [b|] A] Γ ih ] in s, k, p, h, hs |- *.
+  - constructor.
+  - rewrite subst_context_snoc. cbn.
+    rewrite mapi_rec_app. rewrite forallb_app. cbn.
+    apply closedn_ctx_cons in h.
+    apply utils.andP in h as [h1 h2].
+    unfold closed_decl in h2. cbn in h2.
+    apply utils.andP in h2 as [h2 h3].
+    eapply ih in h1 as h1'. 2: auto.
+    unfold closedn_ctx in h1'. rewrite h1'. cbn.
+    unfold subst_decl, map_decl, closed_decl. cbn.
+    rewrite List.rev_length. rewrite subst_context_length.
+    unfold id.
+    replace (#|Γ| + 0) with #|Γ| by lia.
+    replace (k + p + #|s| + #|Γ|) with (k + (p + #|Γ|) + #|s|) in h2 by lia.
+    replace (k + p + #|s| + #|Γ|) with (k + (p + #|Γ|) + #|s|) in h3 by lia.
+    apply closedn_subst in h2. 2: auto.
+    apply closedn_subst in h3. 2: auto.
+    replace (#|Γ| + p) with (p + #|Γ|) by lia.
+    replace (k + p + #|Γ|) with (k + (p + #|Γ|)) by lia.
+    rewrite h2 h3. reflexivity.
+  - rewrite subst_context_snoc. cbn.
+    rewrite mapi_rec_app. rewrite forallb_app. cbn.
+    apply closedn_ctx_cons in h.
+    apply utils.andP in h as [h1 h2].
+    unfold closed_decl in h2. cbn in h2.
+    eapply ih in h1 as h1'. 2: auto.
+    unfold closedn_ctx in h1'. rewrite h1'. cbn.
+    rewrite List.rev_length. rewrite subst_context_length.
+    replace (#|Γ| + 0) with #|Γ| by lia.
+    replace (k + p + #|s| + #|Γ|) with (k + (p + #|Γ|) + #|s|) in h2 by lia.
+    apply closedn_subst in h2. 2: auto.
+    replace (#|Γ| + p) with (p + #|Γ|) by lia.
+    replace (k + p + #|Γ|) with (k + (p + #|Γ|)) by lia.
+    rewrite h2. reflexivity.
+Qed.
+
+Corollary closedn_ctx_subst_context0 :
+  forall s k Γ,
+    forallb (closedn k) s ->
+    closedn_ctx (k + #|s|) Γ ->
+    closedn_ctx k (subst_context s 0 Γ).
+Proof.
+  intros s k Γ hs h.
+  replace k with (k + 0) by lia.
+  eapply closedn_ctx_subst_context.
+  - assumption.
+  - replace (k + 0) with k by lia. assumption.
+Qed.
+
 Lemma weakening_red1 `{CF:checker_flags} Σ Γ Γ' Γ'' M N :
   wf Σ ->
   red1 Σ (Γ ,,, Γ') M N ->
@@ -753,6 +863,7 @@ Proof.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
         apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
         lia.
     }
     rewrite lift_closed.
@@ -760,17 +871,26 @@ Proof.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
         apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
         lia.
     }
     replace #|s| with #|map (lift #|Γ''| #|Γ'|) s| by (now rewrite map_length).
     eapply red_rewrite_rule. all: eauto.
-    replace r.(pat_context) with (lift_context #|Γ''| #|Γ'| r.(pat_context)).
-    + eapply untyped_subslet_lift. assumption.
-    + eapply closed_declared_symbol_pat_context in H. 2-3: eassumption.
-      eapply closedn_ctx_lift.
-      eapply closedn_ctx_upwards. 1: eassumption.
-      (* TODO Maybe this isn't the right untyped_subslet... *)
-      admit.
+    eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
+    eapply closed_declared_symbol_pat_context in H as hcl. 2-3: eassumption.
+    rewrite -> (closed_ctx_lift _ #|Γ'|) in h.
+    + assumption.
+    + eapply closedn_ctx_subst_context0.
+      * subst ss. unfold symbols_subst. clear.
+        generalize (#|symbols decl| - 0). intro m.
+        generalize 0 at 2. intro n.
+        induction m in n |- *.
+        1: reflexivity.
+        cbn. apply IHm.
+      * cbn. clear - hcl. subst ss.
+        rewrite symbols_subst_length.
+        replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+        assumption.
 
   - constructor.
     specialize (IHred1 Γ0 (Γ' ,, vass na N) Γ'' eq_refl).
@@ -822,8 +942,7 @@ Proof.
     rewrite -> lift_context_app in *.
     rewrite -> app_context_assoc, Nat.add_0_r in *.
     auto.
-(* Qed. *)
-Admitted.
+Qed.
 
 Lemma weakening_red `{CF:checker_flags} Σ Γ Γ' Γ'' M N :
   wf Σ ->

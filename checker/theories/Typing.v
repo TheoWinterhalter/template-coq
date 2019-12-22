@@ -903,6 +903,7 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
 Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTyping.
 
   Definition subst := @subst.
+  Definition subst_context := @subst_context.
   Definition symbols_subst (k : kername) (n : nat) (ui : universe_instance)
     (m : nat) :=
     @nil term.

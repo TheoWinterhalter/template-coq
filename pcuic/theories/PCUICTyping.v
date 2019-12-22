@@ -283,8 +283,8 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 | red_rewrite_rule k ui decl n r s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
-    untyped_subslet Γ s r.(pat_context) ->
     let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+    untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
     let lhs := subst0 s (subst ss #|s| (lhs r)) in
     let rhs := subst0 s (subst ss #|s| (rhs r)) in
     red1 Σ Γ lhs rhs
@@ -371,8 +371,8 @@ Lemma red1_ind_all :
        (forall Γ k ui decl n r s,
           declared_symbol Σ k decl ->
           nth_error decl.(rules) n = Some r ->
-          untyped_subslet Γ s r.(pat_context) ->
           let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+          untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
           let lhs := subst0 s (subst ss #|s| (lhs r)) in
           let rhs := subst0 s (subst ss #|s| (rhs r)) in
           P Γ lhs rhs) ->
@@ -946,6 +946,7 @@ Inductive elim_pattern (npat : nat) : elimination -> Prop :=
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
   Definition subst := @subst.
+  Definition subst_context := @subst_context.
   Definition symbols_subst := @symbols_subst.
   Definition context_env_clos := @context_env_clos.
   Definition untyped_subslet := @untyped_subslet.

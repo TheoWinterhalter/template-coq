@@ -24,8 +24,6 @@ Hint Rewrite @app_context_length : wf.
 
 Generalizable Variables Σ Γ t T.
 
-Definition subst_decl s k (d : context_decl) := map_decl (subst s k) d.
-
 (** Well-typed substitution into a context with *no* let-ins *)
 
 Inductive subs {cf:checker_flags} (Σ : global_env_ext) (Γ : context) : list term -> context -> Type :=
@@ -131,22 +129,6 @@ Proof.
   unfold subst_context. apply fold_context_length.
 Qed.
 Hint Rewrite subst_context_length : subst wf.
-
-Lemma subst_context_snoc s k Γ d : subst_context s k (d :: Γ) = subst_context s k Γ ,, subst_decl s (#|Γ| + k) d.
-Proof.
-  unfold subst_context, fold_context.
-  rewrite !rev_mapi !rev_involutive /mapi mapi_rec_eqn /snoc.
-  f_equal. 1: now rewrite Nat.sub_0_r List.rev_length.
-  rewrite mapi_rec_Sk. simpl. apply mapi_rec_ext. intros.
-  rewrite app_length !List.rev_length. simpl. f_equal. f_equal. lia.
-Qed.
-Hint Rewrite subst_context_snoc : subst.
-
-Lemma subst_context_snoc0 s Γ d : subst_context s 0 (Γ ,, d) = subst_context s 0 Γ ,, subst_decl s #|Γ| d.
-Proof.
-  unfold snoc. now rewrite subst_context_snoc Nat.add_0_r.
-Qed.
-Hint Rewrite subst_context_snoc : subst.
 
 Lemma subst_context_alt s k Γ :
   subst_context s k Γ =
@@ -1219,6 +1201,7 @@ Proof.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
         apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
         lia.
     }
     rewrite (subst_closedn _ _ (PCUICAst.rhs r)).
@@ -1226,6 +1209,7 @@ Proof.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
         apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
         lia.
     }
     assert (e : forall s n, map (subst s n) ss = ss).
@@ -1235,7 +1219,25 @@ Proof.
     rewrite e.
     replace #|s0| with #|map (subst s #|Γ''|) s0| by (now rewrite map_length).
     eapply red_rewrite_rule. all: eauto.
-    admit.
+    (* TODO We have to do something similar to this
+       but using subst instead of lift...
+    *)
+
+    eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
+    eapply closed_declared_symbol_pat_context in H as hcl. 2-3: eassumption.
+    rewrite -> (closed_ctx_lift _ #|Γ'|) in h.
+    + assumption.
+    + eapply closedn_ctx_subst_context0.
+      * subst ss. unfold symbols_subst. clear.
+        generalize (#|symbols decl| - 0). intro m.
+        generalize 0 at 2. intro n.
+        induction m in n |- *.
+        1: reflexivity.
+        cbn. apply IHm.
+      * cbn. clear - hcl. subst ss.
+        rewrite symbols_subst_length.
+        replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+        assumption.
 
   - constructor.
     specialize (IHred1 Γ0 Γ' (Γ'' ,, vass na N) eq_refl).
