@@ -236,7 +236,11 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
     kername -> nat -> universe_instance -> nat -> list term
   ).
 
-  Parameter (context_clos : (term -> term -> Type) -> term -> term -> Type).
+  Parameter (context_env_clos :
+    (context -> term -> term -> Type) -> context -> term -> term -> Type
+  ).
+
+  Parameter (untyped_subslet : context -> list term -> context -> Set).
 
   Parameter (ind_guard : mutual_inductive_body -> bool).
 
@@ -457,18 +461,19 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     | or_left : forall x y, R x y -> or_rel R R' x y
     | or_right : forall x y, R' x y -> or_rel R R' x y.
 
-    Inductive red1_rules (symbols : list term) (rules : list rewrite_rule)
+    Inductive red1_rules
+      (symbols : list term) (rules : list rewrite_rule) (Γ : context)
       : term -> term -> Type :=
     | red1_rules_rewrite_rule k ui n r s :
         nth_error rules n = Some r ->
-        #|s| = #|r.(pat_context)| ->
+        untyped_subslet Γ s r.(pat_context) ->
         let ss := symbols_subst k 0 ui #|symbols| in
         let lhs := subst s 0 (subst ss #|s| r.(lhs)) in
         let rhs := subst s 0 (subst ss #|s| r.(rhs)) in
-        red1_rules symbols rules lhs rhs.
+        red1_rules symbols rules Γ lhs rhs.
 
     Definition red_rules symbols rules :=
-      context_clos (red1_rules symbols rules).
+      context_env_clos (red1_rules symbols rules).
 
     (* TODO MOVE *)
     Inductive clos_trans {A : Type} (R : A -> A -> Type) (x : A) : A -> Type :=
@@ -484,7 +489,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
           clos_trans R x z.
 
     Definition red' Σ Γ symbols rules :=
-      clos_trans (or_rel (red Σ Γ) (red_rules symbols rules)).
+      clos_trans (or_rel (red Σ Γ) (red_rules symbols rules Γ)).
 
     Definition prule_red Σ Δ symbols rules (r : rewrite_rule) :=
       red' Σ (Δ ,,, r.(pat_context)) symbols rules r.(lhs) r.(rhs).

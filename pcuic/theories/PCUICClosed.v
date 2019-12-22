@@ -342,7 +342,7 @@ Proof.
     destruct lookup_wf_local_decl; cbn in *.
     destruct decl as [na [b|] ty]; cbn in *.
     -- rewrite andb_true_r in Hdecl.
-       destruct Hdecl as [Hdecl Hdecl']. 
+       destruct Hdecl as [Hdecl Hdecl'].
        move/andb_and: Hdecl => [] _.
        rewrite skipn_length; try lia.
        move/(closedn_lift (S n)).
@@ -619,6 +619,59 @@ Proof.
     rewrite symbols_subst_length. simpl.
     eapply closed_declared_symbol_nth_error. all: eauto.
   - reflexivity.
+Qed.
+
+Lemma wf_local_closed_ctx `{cf : checker_flags} :
+  forall Σ Γ,
+    wf Σ.1 ->
+    wf_local Σ Γ ->
+    closed_ctx Γ.
+Proof.
+  intros Σ Γ hΣ h.
+  induction h.
+  - constructor.
+  - cbn. rewrite mapi_rec_app. cbn.
+    rewrite forallb_app. cbn.
+    unfold closed_ctx in IHh.
+    rewrite IHh. cbn.
+    destruct t0 as [s ht].
+    eapply typecheck_closed in ht. 2-3: auto.
+    destruct ht as [? e].
+    rewrite List.rev_length. replace (#|Γ| + 0) with #|Γ| by lia.
+    apply utils.andP in e as [e ?].
+    rewrite e. cbn. reflexivity.
+  - cbn. rewrite mapi_rec_app. cbn.
+    rewrite forallb_app. cbn.
+    unfold closed_ctx in IHh.
+    rewrite IHh. cbn.
+    rewrite List.rev_length. replace (#|Γ| + 0) with #|Γ| by lia.
+    unfold closed_decl. cbn.
+    cbn in t1.
+    eapply typecheck_closed in t1. 2-3: auto.
+    destruct t1 as [? e]. rewrite e.
+    reflexivity.
+Qed.
+
+Lemma closed_declared_symbol_pat_context `{checker_flags} :
+  forall Σ k n decl r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    closedn_ctx #|decl.(symbols)| r.(pat_context).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hr. 2: eassumption.
+  destruct hr as [T hl hr hh he]. clear - wfΣ' hl.
+  eapply typing_wf_local in hl.
+  apply wf_local_closed_ctx in hl. 2: auto.
+  rewrite closedn_ctx_app in hl.
+  apply utils.andP in hl as [? h]. cbn in h.
+  rewrite map_length in h. assumption.
 Qed.
 
 Lemma closed_rule_lhs `{checker_flags} :

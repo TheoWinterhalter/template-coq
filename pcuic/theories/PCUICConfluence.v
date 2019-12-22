@@ -1502,7 +1502,7 @@ Section PredRed.
         { clear. clearbody ss. induction ss.
           - eexists. constructor.
           - destruct IHss. eexists. econstructor. eassumption.
-        } destruct h as [? ?].
+        } destruct h as [Ξ ?].
         eapply untyped_substitution_red. all: eauto.
         (* We will need to make explicit contexts and so the proofs above might
            need to change.

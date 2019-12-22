@@ -559,7 +559,7 @@ Section ParallelReduction.
       declared_symbol Σ k decl ->
       nth_error decl.(rules) n = Some r ->
       All2 (pred1 Γ Γ') s s' ->
-      #|s| = #|r.(pat_context)| ->
+      untyped_subslet Γ s r.(pat_context) ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       let lhs := subst0 s (subst ss #|s| (lhs r)) in
       let rhs := subst0 s' (subst ss #|s| (rhs r)) in
@@ -570,7 +570,7 @@ Section ParallelReduction.
       declared_symbol Σ k decl ->
       nth_error decl.(prules) n = Some r ->
       All2 (pred1 Γ Γ') s s' ->
-      #|s| = #|r.(pat_context)| ->
+      untyped_subslet Γ s r.(pat_context) ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       let lhs := subst0 s (subst ss #|s| (lhs r)) in
       let rhs := subst0 s' (subst ss #|s| (rhs r)) in

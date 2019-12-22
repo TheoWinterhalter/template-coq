@@ -906,8 +906,11 @@ Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTypi
   Definition symbols_subst (k : kername) (n : nat) (ui : universe_instance)
     (m : nat) :=
     @nil term.
-  Definition context_clos : (term -> term -> Type) -> term -> term -> Type :=
-    fun R x y => False.
+  Definition context_env_clos :
+    (context -> term -> term -> Type) -> context -> term -> term -> Type :=
+    fun R Γ x y => False.
+  Definition untyped_subslet : context -> list term -> context -> Set :=
+    fun Γ l Δ => unit.
   Definition ind_guard := ind_guard.
   Definition red := @red.
   Definition typing := @typing.

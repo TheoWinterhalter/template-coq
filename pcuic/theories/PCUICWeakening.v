@@ -511,6 +511,35 @@ Proof.
   - move=> cty k' lek'; rewrite (@closed_upwards k) //.
 Qed.
 
+Lemma closedn_ctx_lift :
+  forall n k Γ,
+    closedn_ctx k Γ ->
+    lift_context n k Γ = Γ.
+Proof.
+  intros n k Γ h.
+  induction Γ as [| [na [b|] A] Γ ih ] in n, k, h |- *.
+  - reflexivity.
+  - apply closedn_ctx_cons in h. apply utils.andP in h as [hΓ hd].
+    unfold closed_decl in hd. cbn in hd.
+    apply utils.andP in hd as [? ?].
+    rewrite lift_context_snoc. rewrite -> ih by auto.
+    unfold ",,". f_equal.
+    unfold lift_decl, map_decl. cbn.
+    rewrite -> 2!lift_closed.
+    1: reflexivity.
+    all: replace (#|Γ| + k) with (k + #|Γ|) by lia.
+    all: assumption.
+  - apply closedn_ctx_cons in h. apply utils.andP in h as [hΓ hd].
+    unfold closed_decl in hd. cbn in hd.
+    rewrite lift_context_snoc. rewrite -> ih by auto.
+    unfold ",,". f_equal.
+    unfold lift_decl, map_decl. cbn. f_equal.
+    rewrite -> lift_closed.
+    1: reflexivity.
+    replace (#|Γ| + k) with (k + #|Γ|) by lia.
+    assumption.
+Qed.
+
 Lemma closed_ctx_lift n k ctx : closed_ctx ctx -> lift_context n k ctx = ctx.
 Proof.
   induction ctx in n, k |- *; auto.
@@ -610,10 +639,75 @@ Proof.
   - reflexivity.
 Qed.
 
+Lemma lift_decl_vdef :
+  forall n k na t T,
+    lift_decl n k (vdef na t T) =
+    vdef na (lift n k t) (lift n k T).
+Proof.
+  intros n k na t T. reflexivity.
+Qed.
+
+Lemma untyped_subslet_lift :
+  forall Γ1 Γ2 Γ3 s Δ,
+    untyped_subslet (Γ1 ,,, Γ3) s Δ ->
+    untyped_subslet
+      (Γ1 ,,, Γ2 ,,, lift_context #|Γ2| 0 Γ3)
+      (map (lift #|Γ2| #|Γ3|) s)
+      (lift_context #|Γ2| #|Γ3| Δ).
+Proof.
+  intros Γ1 Γ2 Γ3 s Δ h.
+  induction h.
+  - constructor.
+  - rewrite lift_context_snoc. cbn.
+    econstructor. eapply IHh.
+  - rewrite lift_context_snoc. cbn.
+    rewrite distr_lift_subst.
+    rewrite lift_decl_vdef.
+    apply untyped_subslet_length in h. rewrite h.
+    eapply untyped_cons_let_def.
+    eassumption.
+Qed.
+
+Lemma closedn_ctx_upwards :
+  forall n m Γ,
+    closedn_ctx m Γ ->
+    n >= m ->
+    closedn_ctx n Γ.
+Proof.
+  intros n m Γ c e.
+  induction Γ as [| [na [b|] A] Γ ih ] in n, m, e, c |- *.
+  - constructor.
+  - apply closedn_ctx_cons in c.
+    apply utils.andP in c as [hΓ hd].
+    unfold closed_decl in hd. cbn in hd.
+    apply utils.andP in hd as [hb hA].
+    cbn. rewrite mapi_rec_app. cbn.
+    rewrite forallb_app. cbn.
+    eapply ih in hΓ. 2: eassumption.
+    unfold closedn_ctx in hΓ. rewrite hΓ. cbn.
+    unfold closed_decl. cbn.
+    rewrite List.rev_length.
+    eapply closed_upwards with (k' := n + (#|Γ| + 0)) in hb. 2: lia.
+    rewrite hb. cbn.
+    eapply closed_upwards with (k' := n + (#|Γ| + 0)) in hA. 2: lia.
+    rewrite hA. reflexivity.
+  - apply closedn_ctx_cons in c.
+    apply utils.andP in c as [hΓ hd].
+    unfold closed_decl in hd. cbn in hd.
+    cbn. rewrite mapi_rec_app. cbn.
+    rewrite forallb_app. cbn.
+    eapply ih in hΓ. 2: eassumption.
+    unfold closedn_ctx in hΓ. rewrite hΓ. cbn.
+    rewrite List.rev_length.
+    eapply closed_upwards with (k' := n + (#|Γ| + 0)) in hd. 2: lia.
+    rewrite hd. reflexivity.
+Qed.
+
 Lemma weakening_red1 `{CF:checker_flags} Σ Γ Γ' Γ'' M N :
   wf Σ ->
   red1 Σ (Γ ,,, Γ') M N ->
-  red1 Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ') (lift #|Γ''| #|Γ'| M) (lift #|Γ''| #|Γ'| N).
+  red1 Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ')
+    (lift #|Γ''| #|Γ'| M) (lift #|Γ''| #|Γ'| N).
 Proof.
   intros wfΣ H.
   remember (Γ ,,, Γ') as Γ0. revert Γ Γ' Γ'' HeqΓ0.
@@ -657,16 +751,26 @@ Proof.
     rewrite lift_closed.
     1:{ eapply closed_upwards. 1: eapply closed_rule_lhs.
         all: eauto.
-        subst ss. rewrite symbols_subst_length. lia.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        lia.
     }
     rewrite lift_closed.
     1:{ eapply closed_upwards. 1: eapply closed_rule_rhs.
         all: eauto.
-        subst ss. rewrite symbols_subst_length. lia.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        lia.
     }
     replace #|s| with #|map (lift #|Γ''| #|Γ'|) s| by (now rewrite map_length).
     eapply red_rewrite_rule. all: eauto.
-    rewrite map_length. assumption.
+    replace r.(pat_context) with (lift_context #|Γ''| #|Γ'| r.(pat_context)).
+    + eapply untyped_subslet_lift. assumption.
+    + eapply closed_declared_symbol_pat_context in H. 2-3: eassumption.
+      eapply closedn_ctx_lift.
+      eapply closedn_ctx_upwards. 1: eassumption.
+      (* TODO Maybe this isn't the right untyped_subslet... *)
+      admit.
 
   - constructor.
     specialize (IHred1 Γ0 (Γ' ,, vass na N) Γ'' eq_refl).
@@ -718,7 +822,8 @@ Proof.
     rewrite -> lift_context_app in *.
     rewrite -> app_context_assoc, Nat.add_0_r in *.
     auto.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma weakening_red `{CF:checker_flags} Σ Γ Γ' Γ'' M N :
   wf Σ ->

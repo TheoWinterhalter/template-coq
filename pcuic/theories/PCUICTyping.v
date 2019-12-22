@@ -212,6 +212,26 @@ Proof.
   apply list_make_length.
 Qed.
 
+(* MOVED from PCUICSubtitution *)
+Inductive untyped_subslet (Γ : context) : list term -> context -> Type :=
+| untyped_emptyslet : untyped_subslet Γ [] []
+| untyped_cons_let_ass Δ s na t T :
+    untyped_subslet Γ s Δ ->
+    untyped_subslet Γ (t :: s) (Δ ,, vass na T)
+| untyped_cons_let_def Δ s na t T :
+    untyped_subslet Γ s Δ ->
+    untyped_subslet Γ (subst0 s t :: s) (Δ ,, vdef na t T).
+
+Lemma untyped_subslet_length :
+  forall Γ s Δ,
+    untyped_subslet Γ s Δ ->
+    #|s| = #|Δ|.
+Proof.
+  intros Γ s Δ h.
+  induction h.
+  all: cbn ; eauto.
+Qed.
+
 Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 (** Reductions *)
 (** Beta *)
@@ -263,7 +283,7 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 | red_rewrite_rule k ui decl n r s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
-    #|s| = #|r.(pat_context)| ->
+    untyped_subslet Γ s r.(pat_context) ->
     let ss := symbols_subst k 0 ui #|decl.(symbols)| in
     let lhs := subst0 s (subst ss #|s| (lhs r)) in
     let rhs := subst0 s (subst ss #|s| (rhs r)) in
@@ -351,7 +371,7 @@ Lemma red1_ind_all :
        (forall Γ k ui decl n r s,
           declared_symbol Σ k decl ->
           nth_error decl.(rules) n = Some r ->
-          #|s| = #|r.(pat_context)| ->
+          untyped_subslet Γ s r.(pat_context) ->
           let ss := symbols_subst k 0 ui #|decl.(symbols)| in
           let lhs := subst0 s (subst ss #|s| (lhs r)) in
           let rhs := subst0 s (subst ss #|s| (rhs r)) in
@@ -927,7 +947,8 @@ Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
   Definition subst := @subst.
   Definition symbols_subst := @symbols_subst.
-  Definition context_clos := @context_clos.
+  Definition context_env_clos := @context_env_clos.
+  Definition untyped_subslet := @untyped_subslet.
   Definition ind_guard := ind_guard.
   Definition red := @red.
   Definition typing := @typing.

@@ -1074,15 +1074,6 @@ Qed.
 Hint Unfold subst1 : subst.
 Hint Rewrite subst_mkApps distr_subst: subst.
 
-Inductive untyped_subslet (Γ : context) : list term -> context -> Type :=
-| untyped_emptyslet : untyped_subslet Γ [] []
-| untyped_cons_let_ass Δ s na t T :
-    untyped_subslet Γ s Δ ->
-    untyped_subslet Γ (t :: s) (Δ ,, vass na T)
-| untyped_cons_let_def Δ s na t T :
-    untyped_subslet Γ s Δ ->
-    untyped_subslet Γ (subst0 s t :: s) (Δ ,, vdef na t T).
-
 Lemma subs_nth_error {cf:checker_flags} Σ Γ s Δ decl n t :
   subs Σ Γ s Δ ->
   nth_error Δ n = Some decl ->
@@ -1226,12 +1217,16 @@ Proof.
     rewrite (subst_closedn _ _ (PCUICAst.lhs r)).
     1:{ eapply closed_upwards. 1: eapply closed_rule_lhs.
         all: eauto.
-        subst ss. rewrite symbols_subst_length. lia.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        lia.
     }
     rewrite (subst_closedn _ _ (PCUICAst.rhs r)).
     1:{ eapply closed_upwards. 1: eapply closed_rule_rhs.
         all: eauto.
-        subst ss. rewrite symbols_subst_length. lia.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        lia.
     }
     assert (e : forall s n, map (subst s n) ss = ss).
     { intros s' n'. subst ss. unfold symbols_subst.
@@ -1240,7 +1235,7 @@ Proof.
     rewrite e.
     replace #|s0| with #|map (subst s #|Γ''|) s0| by (now rewrite map_length).
     eapply red_rewrite_rule. all: eauto.
-    rewrite map_length. assumption.
+    admit.
 
   - constructor.
     specialize (IHred1 Γ0 Γ' (Γ'' ,, vass na N) eq_refl).
@@ -1299,7 +1294,8 @@ Proof.
       rewrite -> app_context_assoc, Nat.add_0_r in *.
       auto.
     + congruence.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma subst_skipn n s k t : n <= #|s| -> subst (skipn n s) k t = subst s k (lift n k t).
 Proof.
@@ -1379,12 +1375,16 @@ Proof.
     rewrite (subst_closedn _ _ (PCUICAst.lhs r)).
     1:{ eapply closed_upwards. 1: eapply closed_rule_lhs.
         all: eauto.
-        subst ss. rewrite symbols_subst_length. lia.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        lia.
     }
     rewrite (subst_closedn _ _ (PCUICAst.rhs r)).
     1:{ eapply closed_upwards. 1: eapply closed_rule_rhs.
         all: eauto.
-        subst ss. rewrite symbols_subst_length. lia.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        lia.
     }
     assert (e : forall s n, map (subst s n) ss = ss).
     { intros s' n'. subst ss. unfold symbols_subst.
@@ -1394,7 +1394,7 @@ Proof.
     replace #|s0| with #|map (subst s #|Γ'|) s0| by (now rewrite map_length).
     econstructor. 1: constructor.
     eapply red_rewrite_rule. all: eauto.
-    rewrite map_length. assumption.
+    admit.
 
   - specialize (IHred1 Γ0 Δ Γ' eq_refl wfΓ Hs).
     apply red_abs. 1: auto. constructor.
@@ -1493,12 +1493,8 @@ Proof.
       rewrite <- (OnOne2_length X).
       eapply ih ; eauto.
     + cbn. f_equal.
-Qed.
-
-Lemma untyped_substlet_length  {Γ s Δ} : untyped_subslet Γ s Δ -> #|s| = #|Δ|.
-Proof.
-  induction 1; simpl; auto with arith.
-Qed.
+(* Qed. *)
+Admitted.
 
 Lemma substitution_untyped_let_red {cf:checker_flags} Σ Γ Δ Γ' s M N :
   wf Σ -> untyped_subslet Γ s Δ ->
