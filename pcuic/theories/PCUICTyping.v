@@ -925,6 +925,9 @@ Inductive elim_pattern (npat : nat) : elimination -> Prop :=
 
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
+  Definition subst := @subst.
+  Definition symbols_subst := @symbols_subst.
+  Definition context_clos := @context_clos.
   Definition ind_guard := ind_guard.
   Definition red := @red.
   Definition typing := @typing.

@@ -902,6 +902,12 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
 
 Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTyping.
 
+  Definition subst := @subst.
+  Definition symbols_subst (k : kername) (n : nat) (ui : universe_instance)
+    (m : nat) :=
+    @nil term.
+  Definition context_clos : (term -> term -> Type) -> term -> term -> Type :=
+    fun R x y => False.
   Definition ind_guard := ind_guard.
   Definition red := @red.
   Definition typing := @typing.

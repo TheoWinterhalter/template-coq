@@ -199,7 +199,7 @@ Proof.
     econstructor. all: eauto.
 Qed.
 
-Corollary weakening_env_red `{cf: checker_flags} :
+Corollary weakening_env_red `{cf : checker_flags} :
   forall Σ Σ' Γ u v,
     wf Σ' ->
     extends Σ Σ' ->
@@ -210,6 +210,21 @@ Proof.
   induction h. 1: constructor.
   econstructor. 1: eassumption.
   eapply weakening_env_red1. all: eassumption.
+Qed.
+
+Lemma weakening_env_red' `{cf : checker_flags} :
+  forall Σ Σ' Γ symbols rules u v,
+    wf Σ' ->
+    extends Σ Σ' ->
+    red' Σ Γ symbols rules u v ->
+    red' Σ' Γ symbols rules u v.
+Proof.
+  intros Σ Σ' Γ symbols rules u v hΣ he h.
+  induction h.
+  - constructor. destruct r.
+    + left. eapply weakening_env_red. all: eassumption.
+    + right. assumption.
+  - econstructor 2. all: eauto.
 Qed.
 
 Lemma weakening_env_cumul `{CF:checker_flags} Σ Σ' φ Γ M N :
@@ -428,9 +443,9 @@ Proof.
       * eapply HPΣ. all: eauto.
       * assumption.
       * assumption.
-    + eapply All_impl. 1: exact hprr.
-      unfold prule_red. cbn. intros rw h.
-      eapply weakening_env_red. 3: eauto. all: auto.
+    + cbn in *. eapply All_impl. 1: exact hprr.
+      unfold prule_red. intros rw h.
+      eapply weakening_env_red'. 3: eauto. all: auto.
 Qed.
 
 Lemma weakening_env_lookup_on_global_env `{checker_flags} P Σ Σ' c decl :

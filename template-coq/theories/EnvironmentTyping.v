@@ -230,11 +230,21 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Import T E ET.
 
+  Parameter (subst : list term -> nat -> term -> term).
+
+  Parameter (symbols_subst :
+    kername -> nat -> universe_instance -> nat -> list term
+  ).
+
+  Parameter (context_clos : (term -> term -> Type) -> term -> term -> Type).
+
   Parameter (ind_guard : mutual_inductive_body -> bool).
 
   Parameter (red : global_env -> context -> term -> term -> Type).
 
-  Parameter (typing : forall `{checker_flags}, global_env_ext -> context -> term -> term -> Type).
+  Parameter (typing :
+    forall `{checker_flags}, global_env_ext -> context -> term -> term -> Type
+  ).
 
   Notation " Σ ;;; Γ |- t : T " :=
     (typing Σ Γ t T) (at level 50, Γ, t, T at next level) : type_scope.
@@ -252,7 +262,8 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
   Import T E Ty L ET.
 
-  Definition isType `{checker_flags} (Σ : global_env_ext) (Γ : context) (t : term) :=
+  Definition isType `{checker_flags}
+    (Σ : global_env_ext) (Γ : context) (t : term) :=
     { s : _ & Σ ;;; Γ |- t : tSort s }.
 
   (** *** Typing of inductive declarations *)
@@ -442,26 +453,48 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       onElims : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
     }.
 
-    (* Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
+    Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
     | or_left : forall x y, R x y -> or_rel R R' x y
     | or_right : forall x y, R' x y -> or_rel R R' x y.
 
-    Inductive red_rules (rules : list rewrite_rule) :=
+    Inductive red1_rules (symbols : list term) (rules : list rewrite_rule)
+      : term -> term -> Type :=
+    | red1_rules_rewrite_rule k ui n r s :
+        nth_error rules n = Some r ->
+        #|s| = #|r.(pat_context)| ->
+        let ss := symbols_subst k 0 ui #|symbols| in
+        let lhs := subst s 0 (subst ss #|s| r.(lhs)) in
+        let rhs := subst s 0 (subst ss #|s| r.(rhs)) in
+        red1_rules symbols rules lhs rhs.
 
-    Definition red' Σ Γ rules :=
-      clos_trans (or_rel (red Σ Γ) (red_r rules)). *)
+    Definition red_rules symbols rules :=
+      context_clos (red1_rules symbols rules).
 
-    Definition prule_red Σ Δ (r : rewrite_rule) :=
-      red Σ (Δ ,,, r.(pat_context)) r.(lhs) r.(rhs).
+    (* TODO MOVE *)
+    Inductive clos_trans {A : Type} (R : A -> A -> Type) (x : A) : A -> Type :=
+    | trans_step :
+        forall y,
+          R x y ->
+          clos_trans R x y
+
+    | trans_trans :
+        forall y z,
+          clos_trans R x y ->
+          clos_trans R y z ->
+          clos_trans R x z.
+
+    Definition red' Σ Γ symbols rules :=
+      clos_trans (or_rel (red Σ Γ) (red_rules symbols rules)).
+
+    Definition prule_red Σ Δ symbols rules (r : rewrite_rule) :=
+      red' Σ (Δ ,,, r.(pat_context)) symbols rules r.(lhs) r.(rhs).
 
     Definition on_rewrite_decl Σ d :=
       let Δ := map (vass nAnon) d.(symbols) in
       on_context Σ Δ ×
       All (on_rewrite_rule Σ Δ) d.(rules) ×
       All (on_rewrite_rule Σ Δ) d.(prules) ×
-      (* All (prule_red ((kn, RewriteDecl d) :: Σ.1) Δ) d.(prules). *)
-      (* TODO We need to account for the new rules. *)
-      All (prule_red Σ.1 Δ) d.(prules).
+      All (prule_red Σ.1 Δ d.(symbols) d.(rules)) d.(prules).
 
     Definition on_global_decl Σ kn decl :=
       match decl with
