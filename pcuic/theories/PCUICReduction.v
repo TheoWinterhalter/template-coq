@@ -1332,7 +1332,8 @@ Inductive tred1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 Definition ctred1 Σ :=
   context_env_clos (tred1 Σ).
 
-(* TODO Prove context_clos_impl using subrelation *)
+Definition ctred Σ Γ :=
+  clos_refl_trans (ctred1 Σ Γ).
 
 Lemma tred1_red1 :
   forall Σ Γ u v,
@@ -1380,4 +1381,17 @@ Proof.
     rewrite app_context_nil_l in h.
     econstructor. eapply OnOne2_app. constructor. cbn.
     intuition auto.
+Qed.
+
+Lemma ctred_red :
+  forall Σ Γ u v,
+    ctred Σ Γ u v ->
+    red Σ Γ u v.
+Proof.
+  intros Σ Γ u v h.
+  induction h.
+  - econstructor. 1: constructor.
+    eapply ctred1_red1. assumption.
+  - constructor.
+  - eapply red_trans. all: eauto.
 Qed.
