@@ -1484,32 +1484,59 @@ Section PredRed.
         intros ? ? [? ?]. assumption.
 
     - subst lhs rhs.
-      (* TODO Could be a lemma
-          Or maybe red_red should be changed to avoid this useless requirement.
-      *)
-      assert (h : ∑ Δ, untyped_subslet Γ s (subst_context ss 0 Δ)).
-      { clear. induction s.
-        - exists []. constructor.
-        - destruct IHs as [Δ ?]. eexists (Δ,, vass nAnon (tRel 0)).
-          rewrite subst_context_snoc0.
-          econstructor. eassumption.
-      } destruct h as [Δ hu].
+      pose proof H as h. unfold declared_symbol in h.
+      eapply PCUICWeakeningEnv.weaken_lookup_on_global_env in h. all: eauto.
+      2: apply PCUICWeakeningEnv.weaken_env_prop_typing.
+      red in h. red in h.
+      destruct h as [hctx [hr [hpr hprr]]].
+      eapply All_nth_error in hprr as h. 2: eassumption.
+      red in h. cbn in h.
+      assert (r' : red Σ (map (vass nAnon) decl.(symbols) ,,, r.(pat_context)) r.(lhs) r.(rhs)).
+      { induction h as [x y h|x y z h].
+        - destruct h as [|x y h].
+          + assumption.
+          + eapply PCUICReduction.ctred_red.
+            constructor.
+            destruct h as [u [v [π [r' [? ?]]]]]. subst.
+            eexists _, _, _. intuition eauto.
+            induction r'.
+            (* TODO add rewrite rules to tred1 *)
+            admit.
+        - eapply red_trans. all: eauto.
+      }
       apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
       + eapply untyped_substitution_red with (Γ'0 := []). all: eauto.
         cbn.
-        apply untyped_subslet_length in hu as es.
+        assert (hu : untyped_subslet Γ ss (map (vass nAnon) decl.(symbols))).
+        { subst ss. clear.
+          unfold symbols_subst.
+          generalize 0 at 1. intro n.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          generalize decl.(symbols). intro l.
+          induction l in n |- *.
+          - cbn. constructor.
+          - cbn. constructor. eapply IHl.
+        }
+        apply untyped_subslet_length in H1 as es.
         rewrite subst_context_length in es.
         rewrite es.
-        assert (h : ∑ Δ, untyped_subslet Γ ss Δ).
-        { clear. clearbody ss. induction ss.
-          - eexists. constructor.
-          - destruct IHss. eexists. econstructor. eassumption.
-        } destruct h as [Ξ ?].
         eapply untyped_substitution_red. all: eauto.
-        (* We will need to make explicit contexts and so the proofs above might
-           need to change.
-        *)
-        admit.
+        match type of r' with
+        | red _ ?Δ _ _ =>
+          replace Δ with ([] ,,, Δ) in r' by eauto using app_context_nil_l
+        end.
+        eapply weakening_red with (Γ0 := []) (Γ'' := Γ) in r'. 2: auto.
+        rewrite app_context_nil_l in r'.
+        rewrite closed_ctx_lift in r'.
+        { (* TODO Prove in PCUICClosed *) admit. }
+        rewrite app_context_assoc in r'.
+        rewrite app_length in r'.
+        rewrite map_length in r'.
+        rewrite lift_closed in r'.
+        { eapply closed_prule_lhs. all: eauto. }
+        rewrite lift_closed in r'.
+        { eapply closed_prule_rhs. all: eauto. }
+        assumption.
       + generalize (subst ss #|s| (rhs r)). intro t.
         eapply red_red with (Σ0 := empty_ext Σ) (Γ'0 := []).
         all: cbn. all: eauto.
