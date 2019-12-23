@@ -213,13 +213,13 @@ Proof.
 Qed.
 
 Lemma weakening_env_red' `{cf : checker_flags} :
-  forall Σ Σ' Γ symbols rules u v,
+  forall Σ Σ' Γ k symbols rules u v,
     wf Σ' ->
     extends Σ Σ' ->
-    red' Σ Γ symbols rules u v ->
-    red' Σ' Γ symbols rules u v.
+    red' Σ Γ k symbols rules u v ->
+    red' Σ' Γ k symbols rules u v.
 Proof.
-  intros Σ Σ' Γ symbols rules u v hΣ he h.
+  intros Σ Σ' Γ k symbols rules u v hΣ he h.
   induction h.
   - constructor. destruct r.
     + left. eapply weakening_env_red. all: eassumption.

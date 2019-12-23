@@ -464,18 +464,18 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     | or_right : forall x y, R' x y -> or_rel R R' x y.
 
     Inductive red1_rules
-      (symbols : list term) (rules : list rewrite_rule) (Γ : context)
+      (k : kername) (symbols : list term) (rules : list rewrite_rule) (Γ : context)
       : term -> term -> Type :=
-    | red1_rules_rewrite_rule k ui n r s :
+    | red1_rules_rewrite_rule ui n r s :
         nth_error rules n = Some r ->
         let ss := symbols_subst k 0 ui #|symbols| in
         untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
         let lhs := subst s 0 (subst ss #|s| r.(lhs)) in
         let rhs := subst s 0 (subst ss #|s| r.(rhs)) in
-        red1_rules symbols rules Γ lhs rhs.
+        red1_rules k symbols rules Γ lhs rhs.
 
-    Definition red_rules symbols rules :=
-      context_env_clos (red1_rules symbols rules).
+    Definition red_rules k symbols rules :=
+      context_env_clos (red1_rules k symbols rules).
 
     (* TODO MOVE *)
     Inductive clos_trans {A : Type} (R : A -> A -> Type) (x : A) : A -> Type :=
@@ -490,24 +490,24 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
           clos_trans R y z ->
           clos_trans R x z.
 
-    Definition red' Σ Γ symbols rules :=
-      clos_trans (or_rel (red Σ Γ) (red_rules symbols rules Γ)).
+    Definition red' Σ Γ k symbols rules :=
+      clos_trans (or_rel (red Σ Γ) (red_rules k symbols rules Γ)).
 
-    Definition prule_red Σ Δ symbols rules (r : rewrite_rule) :=
-      red' Σ (Δ ,,, r.(pat_context)) symbols rules r.(lhs) r.(rhs).
+    Definition prule_red Σ Δ kn symbols rules (r : rewrite_rule) :=
+      red' Σ (Δ ,,, r.(pat_context)) kn symbols rules r.(lhs) r.(rhs).
 
-    Definition on_rewrite_decl Σ d :=
+    Definition on_rewrite_decl Σ kn d :=
       let Δ := map (vass nAnon) d.(symbols) in
       on_context Σ Δ ×
       All (on_rewrite_rule Σ Δ) d.(rules) ×
       All (on_rewrite_rule Σ Δ) d.(prules) ×
-      All (prule_red Σ.1 Δ d.(symbols) d.(rules)) d.(prules).
+      All (prule_red Σ.1 Δ kn d.(symbols) d.(rules)) d.(prules).
 
     Definition on_global_decl Σ kn decl :=
       match decl with
       | ConstantDecl d => on_constant_decl Σ d
       | InductiveDecl inds => on_inductive Σ kn inds
-      | RewriteDecl rew => on_rewrite_decl Σ rew
+      | RewriteDecl rew => on_rewrite_decl Σ kn rew
       end.
 
     (** *** Typing of global environment

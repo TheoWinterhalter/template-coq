@@ -1500,8 +1500,7 @@ Section PredRed.
             destruct h as [u [v [π [r' [? ?]]]]]. subst.
             eexists _, _, _. intuition eauto.
             induction r'.
-            (* TODO add rewrite rules to tred1 *)
-            admit.
+            econstructor. all: eauto.
         - eapply red_trans. all: eauto.
       }
       apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
@@ -1559,8 +1558,10 @@ Section PredRed.
     - eapply red_cofix_congr. red in X3; solve_all. eapply a.
     - eapply red_prod; auto.
     - eapply red_evar; auto. solve_all.
-  (* Qed. *)
-  Admitted.
+  Unshelve.
+  1: constructor.
+  1: exact (tRel 0).
+  Qed.
 
 (* Unused *)
 
