@@ -559,8 +559,8 @@ Section ParallelReduction.
       declared_symbol Σ k decl ->
       nth_error decl.(rules) n = Some r ->
       All2 (pred1 Γ Γ') s s' ->
-      untyped_subslet Γ s r.(pat_context) ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
       let lhs := subst0 s (subst ss #|s| (lhs r)) in
       let rhs := subst0 s' (subst ss #|s| (rhs r)) in
       pred1 Γ Γ' lhs rhs
@@ -570,8 +570,8 @@ Section ParallelReduction.
       declared_symbol Σ k decl ->
       nth_error decl.(prules) n = Some r ->
       All2 (pred1 Γ Γ') s s' ->
-      untyped_subslet Γ s r.(pat_context) ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
       let lhs := subst0 s (subst ss #|s| (lhs r)) in
       let rhs := subst0 s' (subst ss #|s| (rhs r)) in
       pred1 Γ Γ' lhs rhs
@@ -913,8 +913,8 @@ Section ParallelReduction.
           declared_symbol Σ k decl ->
           nth_error decl.(rules) n = Some r ->
           All2 (P' Γ Γ') s s' ->
-          #|s| = #|r.(pat_context)| ->
           let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+          untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
           let lhs := subst0 s (subst ss #|s| (lhs r)) in
           let rhs := subst0 s' (subst ss #|s| (rhs r)) in
           P Γ Γ' lhs rhs
@@ -925,8 +925,8 @@ Section ParallelReduction.
           declared_symbol Σ k decl ->
           nth_error decl.(prules) n = Some r ->
           All2 (P' Γ Γ') s s' ->
-          #|s| = #|r.(pat_context)| ->
           let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+          untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
           let lhs := subst0 s (subst ss #|s| (lhs r)) in
           let rhs := subst0 s' (subst ss #|s| (rhs r)) in
           P Γ Γ' lhs rhs
@@ -1549,12 +1549,18 @@ Section ParallelWeakening.
       rewrite lift_closed.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_lhs.
           all: eauto.
-          subst ss. rewrite symbols_subst_length. lia.
+          subst ss. rewrite symbols_subst_length.
+          eapply untyped_subslet_length in H1.
+          rewrite subst_context_length in H1.
+          lia.
       }
       rewrite lift_closed.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_rhs.
           all: eauto.
-          subst ss. rewrite symbols_subst_length. lia.
+          subst ss. rewrite symbols_subst_length.
+          eapply untyped_subslet_length in H1.
+          rewrite subst_context_length in H1.
+          lia.
       }
       replace #|s| with #|map (lift #|Γ''| #|Γ'0|) s|
         by (now rewrite map_length).
@@ -1562,7 +1568,22 @@ Section ParallelWeakening.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros ? ? [? ih].
         apply ih. all: auto.
-      + rewrite map_length. assumption.
+      + eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
+        eapply PCUICClosed.closed_declared_symbol_pat_context in H as hcl.
+        2-3: eassumption.
+        rewrite -> (closed_ctx_lift _ #|Γ'0|) in h.
+        1: assumption.
+        eapply closedn_ctx_subst_context0.
+        * subst ss. unfold symbols_subst. clear.
+          generalize (#|symbols decl| - 0). intro m.
+          generalize 0 at 2. intro n.
+          induction m in n |- *.
+          1: reflexivity.
+          cbn. apply IHm.
+        * cbn. clear - hcl. subst ss.
+          rewrite symbols_subst_length.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          assumption.
 
     - assert (es : #|s| = #|s'|).
       { eapply All2_length. eassumption. }
@@ -1576,12 +1597,18 @@ Section ParallelWeakening.
       rewrite lift_closed.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_lhs.
           all: eauto.
-          subst ss. rewrite symbols_subst_length. lia.
+          subst ss. rewrite symbols_subst_length.
+          eapply untyped_subslet_length in H1.
+          rewrite subst_context_length in H1.
+          lia.
       }
       rewrite lift_closed.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_rhs.
           all: eauto.
-          subst ss. rewrite symbols_subst_length. lia.
+          subst ss. rewrite symbols_subst_length.
+          eapply untyped_subslet_length in H1.
+          rewrite subst_context_length in H1.
+          lia.
       }
       replace #|s| with #|map (lift #|Γ''| #|Γ'0|) s|
         by (now rewrite map_length).
@@ -1589,7 +1616,22 @@ Section ParallelWeakening.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros ? ? [? ih].
         apply ih. all: auto.
-      + rewrite map_length. assumption.
+      + eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
+        eapply PCUICClosed.closed_declared_symbol_par_pat_context in H as hcl.
+        2-3: eassumption.
+        rewrite -> (closed_ctx_lift _ #|Γ'0|) in h.
+        1: assumption.
+        eapply closedn_ctx_subst_context0.
+        * subst ss. unfold symbols_subst. clear.
+          generalize (#|symbols decl| - 0). intro m.
+          generalize 0 at 2. intro n.
+          induction m in n |- *.
+          1: reflexivity.
+          cbn. apply IHm.
+        * cbn. clear - hcl. subst ss.
+          rewrite symbols_subst_length.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          assumption.
 
     - assert(Hlen:#|Γ''| = #|Δ''|).
       { eapply All2_local_env_length in X1; pcuic. }

@@ -1773,6 +1773,79 @@ Section Confluence.
   Lemma isLambda_subst t s : isLambda t -> isLambda (subst0 s t).
   Proof. destruct t; auto. Qed.
 
+  Lemma inst_subst0 :
+    forall σ s t,
+      (subst0 s t).[σ] = (subst0 (map (inst σ) s) t.[⇑^#|s| σ]).
+  Proof.
+    intros σ s t. autorewrite with sigma. eapply inst_ext.
+    intro i. unfold subst_compose, Upn, subst_consn.
+    destruct (nth_error s i) eqn:e.
+    - rewrite nth_error_idsn_Some.
+      1:{ apply nth_error_Some_length in e. assumption. }
+      cbn. rewrite nth_error_map. rewrite e. cbn. reflexivity.
+    - rewrite nth_error_idsn_None.
+      1:{ apply nth_error_None in e. lia. }
+      cbn. rewrite idsn_length.
+      unfold subst_compose, shiftk.
+      autorewrite with sigma.
+      rewrite <- (subst_ids (σ (i - #|s|))) at 1.
+      eapply inst_ext. intro j.
+      unfold subst_compose. cbn.
+      rewrite nth_error_map.
+      pose proof (nth_error_None s (#|s| + j)) as [_ h].
+      rewrite -> h by lia. cbn.
+      rewrite map_length. f_equal. lia.
+  Qed.
+
+  Lemma map_decl_vdef :
+    forall f na t T,
+      map_decl f (vdef na t T) = vdef na (f t) (f T).
+  Proof.
+    intros f na t T. reflexivity.
+  Qed.
+
+  Lemma untyped_subslet_inst :
+    forall Γ Δ Θ s σ,
+      untyped_subslet Γ s Δ ->
+      ctxmap Γ Θ σ ->
+      untyped_subslet Θ (map (inst σ) s) (inst_context σ Δ).
+  Proof.
+    intros Γ Δ Θ s σ hs hσ.
+    induction hs in Θ, σ, hσ |- *.
+    - constructor.
+    - rewrite inst_context_snoc. cbn.
+      econstructor. eapply IHhs. assumption.
+    - rewrite inst_context_snoc. cbn.
+      rewrite inst_subst0. rewrite map_decl_vdef.
+      apply untyped_subslet_length in hs. rewrite hs.
+      eapply untyped_cons_let_def.
+      eapply IHhs. assumption.
+  Qed.
+
+  Lemma closed_ctx_inst :
+    forall σ Γ,
+      closed_ctx Γ ->
+      inst_context σ Γ = Γ.
+  Proof.
+    intros σ Γ h.
+    induction Γ as [| [na [b|] A] Γ ih ] in σ, h |- *.
+    - reflexivity.
+    - rewrite inst_context_snoc. unfold map_decl. cbn.
+      apply closedn_ctx_cons in h. apply utils.andP in h as [h1 h2].
+      unfold closed_decl in h2. cbn in h2.
+      apply utils.andP in h2 as [h2 h3].
+      rewrite -> ih by assumption.
+      rewrite -> inst_closed by assumption.
+      rewrite -> inst_closed by assumption.
+      reflexivity.
+    - rewrite inst_context_snoc. unfold map_decl. cbn.
+      apply closedn_ctx_cons in h. apply utils.andP in h as [h1 h2].
+      unfold closed_decl in h2. cbn in h2.
+      rewrite -> ih by assumption.
+      rewrite -> inst_closed by assumption.
+      reflexivity.
+  Qed.
+
   Lemma strong_substitutivity Γ Γ' Δ Δ' s t σ τ :
     pred1 Σ Γ Γ' s t ->
     ctxmap Γ Δ σ ->
@@ -1972,31 +2045,8 @@ Section Confluence.
       + solve_all. (* args *)
 
     - (* Rewrite rules *)
-      (* TODO Make a lemma *)
-      assert (h : forall σ s t,
-        (subst0 s t).[σ] = (subst0 (map (inst σ) s) t.[⇑^#|s| σ])
-      ).
-      { clear. intros σ s t. autorewrite with sigma. eapply inst_ext.
-        intro i. unfold subst_compose, Upn, subst_consn.
-        destruct (nth_error s i) eqn:e.
-        - rewrite nth_error_idsn_Some.
-          1:{ apply nth_error_Some_length in e. assumption. }
-          cbn. rewrite nth_error_map. rewrite e. cbn. reflexivity.
-        - rewrite nth_error_idsn_None.
-          1:{ apply nth_error_None in e. lia. }
-          cbn. rewrite idsn_length.
-          unfold subst_compose, shiftk.
-          autorewrite with sigma.
-          rewrite <- (subst_ids (σ (i - #|s|))) at 1.
-          eapply inst_ext. intro j.
-          unfold subst_compose. cbn.
-          rewrite nth_error_map.
-          pose proof (nth_error_None s (#|s| + j)) as [_ h].
-          rewrite -> h by lia. cbn.
-          rewrite map_length. f_equal. lia.
-      }
       subst lhs rhs.
-      rewrite 2!h.
+      rewrite 2!inst_subst0.
       rewrite inst_closed.
       1:{
         change #|s| with (0 + #|s|). eapply closedn_subst.
@@ -2005,8 +2055,10 @@ Section Confluence.
           generalize 0 at 2.
           intros m n. induction n in m |- *. 1: reflexivity.
           cbn. rewrite IHn. reflexivity.
-        - cbn. rewrite H1. subst ss. rewrite symbols_subst_length.
+        - cbn. apply untyped_subslet_length in H1.
+          rewrite H1. subst ss. rewrite symbols_subst_length.
           replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          rewrite subst_context_length.
           eapply closed_rule_lhs. all: eauto.
       }
       rewrite inst_closed.
@@ -2018,8 +2070,10 @@ Section Confluence.
           generalize 0 at 2.
           intros m n. induction n in m |- *. 1: reflexivity.
           cbn. rewrite IHn. reflexivity.
-        - cbn. rewrite H1. subst ss. rewrite symbols_subst_length.
+        - cbn. apply untyped_subslet_length in H1.
+          rewrite H1. subst ss. rewrite symbols_subst_length.
           replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          rewrite subst_context_length.
           eapply closed_rule_rhs. all: eauto.
       }
       erewrite <- map_length.
@@ -2028,34 +2082,25 @@ Section Confluence.
       + auto with pcuic.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros x y [? ih]. eapply ih. all: auto.
-      + rewrite map_length. assumption.
+      + eapply untyped_subslet_inst with (σ := σ) in H1 as h. 2: eassumption.
+        eapply closed_declared_symbol_pat_context in H as hcl. 2-3: eassumption.
+        rewrite -> closed_ctx_inst in h.
+        1: assumption.
+        eapply closedn_ctx_subst_context0.
+        * subst ss. unfold symbols_subst. clear.
+          generalize (#|symbols decl| - 0). intro m.
+          generalize 0 at 2. intro n.
+          induction m in n |- *.
+          1: reflexivity.
+          cbn. apply IHm.
+        * cbn. clear - hcl. subst ss.
+          rewrite symbols_subst_length.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          assumption.
 
     - (* Parallel rewrite rules *)
-      (* TODO Make a lemma *)
-      assert (h : forall σ s t,
-        (subst0 s t).[σ] = (subst0 (map (inst σ) s) t.[⇑^#|s| σ])
-      ).
-      { clear. intros σ s t. autorewrite with sigma. eapply inst_ext.
-        intro i. unfold subst_compose, Upn, subst_consn.
-        destruct (nth_error s i) eqn:e.
-        - rewrite nth_error_idsn_Some.
-          1:{ apply nth_error_Some_length in e. assumption. }
-          cbn. rewrite nth_error_map. rewrite e. cbn. reflexivity.
-        - rewrite nth_error_idsn_None.
-          1:{ apply nth_error_None in e. lia. }
-          cbn. rewrite idsn_length.
-          unfold subst_compose, shiftk.
-          autorewrite with sigma.
-          rewrite <- (subst_ids (σ (i - #|s|))) at 1.
-          eapply inst_ext. intro j.
-          unfold subst_compose. cbn.
-          rewrite nth_error_map.
-          pose proof (nth_error_None s (#|s| + j)) as [_ h].
-          rewrite -> h by lia. cbn.
-          rewrite map_length. f_equal. lia.
-      }
       subst lhs rhs.
-      rewrite 2!h.
+      rewrite 2!inst_subst0.
       rewrite inst_closed.
       1:{
         change #|s| with (0 + #|s|). eapply closedn_subst.
@@ -2064,8 +2109,10 @@ Section Confluence.
           generalize 0 at 2.
           intros m n. induction n in m |- *. 1: reflexivity.
           cbn. rewrite IHn. reflexivity.
-        - cbn. rewrite H1. subst ss. rewrite symbols_subst_length.
+        - cbn. apply untyped_subslet_length in H1. rewrite H1.
+          subst ss. rewrite symbols_subst_length.
           replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          rewrite subst_context_length.
           eapply closed_prule_lhs. all: eauto.
       }
       rewrite inst_closed.
@@ -2077,8 +2124,10 @@ Section Confluence.
           generalize 0 at 2.
           intros m n. induction n in m |- *. 1: reflexivity.
           cbn. rewrite IHn. reflexivity.
-        - cbn. rewrite H1. subst ss. rewrite symbols_subst_length.
+        - cbn. apply untyped_subslet_length in H1. rewrite H1.
+          subst ss. rewrite symbols_subst_length.
           replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          rewrite subst_context_length.
           eapply closed_prule_rhs. all: eauto.
       }
       erewrite <- map_length.
@@ -2087,7 +2136,21 @@ Section Confluence.
       + auto with pcuic.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros x y [? ih]. eapply ih. all: auto.
-      + rewrite map_length. assumption.
+      + eapply untyped_subslet_inst with (σ := σ) in H1 as h. 2: eassumption.
+        eapply closed_declared_symbol_par_pat_context in H as hcl. 2-3: eassumption.
+        rewrite -> closed_ctx_inst in h.
+        1: assumption.
+        eapply closedn_ctx_subst_context0.
+        * subst ss. unfold symbols_subst. clear.
+          generalize (#|symbols decl| - 0). intro m.
+          generalize 0 at 2. intro n.
+          induction m in n |- *.
+          1: reflexivity.
+          cbn. apply IHm.
+        * cbn. clear - hcl. subst ss.
+          rewrite symbols_subst_length.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          assumption.
 
     - simpl. rewrite inst_closed0.
       + rewrite closedn_subst_instance_constr.

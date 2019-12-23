@@ -674,6 +674,28 @@ Proof.
   rewrite map_length in h. assumption.
 Qed.
 
+Lemma closed_declared_symbol_par_pat_context `{checker_flags} :
+  forall Σ k n decl r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closedn_ctx #|decl.(symbols)| r.(pat_context).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hpr. 2: eassumption.
+  destruct hpr as [T hl hpr hh he]. clear - wfΣ' hl.
+  eapply typing_wf_local in hl.
+  apply wf_local_closed_ctx in hl. 2: auto.
+  rewrite closedn_ctx_app in hl.
+  apply utils.andP in hl as [? h]. cbn in h.
+  rewrite map_length in h. assumption.
+Qed.
+
 Lemma closed_rule_lhs `{checker_flags} :
   forall Σ k decl n r,
     wf Σ ->

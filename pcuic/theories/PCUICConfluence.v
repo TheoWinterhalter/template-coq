@@ -81,6 +81,7 @@ Proof.
     eexists. split.
     + constructor. eassumption.
     + eapply eq_term_upto_univ_lift ; eauto.
+  - admit.
   - destruct (IHh _ e) as [? [? ?]].
     eexists. split.
     + solve [ econstructor ; eauto ].
@@ -375,7 +376,8 @@ Proof.
     eexists. split.
     + eapply cofix_red_body. eassumption.
     + constructor. assumption.
-Qed.
+(* Qed. *)
+Admitted.
 
 
 Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' :
@@ -1495,7 +1497,7 @@ Section PredRed.
       apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
       + eapply untyped_substitution_red with (Γ'0 := []). all: eauto.
         cbn.
-        apply untyped_substlet_length in hu as es.
+        apply untyped_subslet_length in hu as es.
         rewrite subst_context_length in es.
         rewrite es.
         assert (h : ∑ Δ, untyped_subslet Γ ss Δ).
@@ -2350,6 +2352,19 @@ Section RedConfluence.
     - econstructor 3; eauto.
   Qed.
 
+  Lemma untyped_subslet_red_ctx :
+    forall Γ Γ' Δ s,
+      red_ctx Γ Γ' ->
+      untyped_subslet Γ' s Δ ->
+      untyped_subslet Γ s Δ.
+  Proof.
+    intros Γ Γ' Δ s r h.
+    induction h in Γ, r |- *.
+    - constructor.
+    - constructor. eapply IHh. assumption.
+    - constructor. eapply IHh. assumption.
+  Qed.
+
   Lemma red_red_ctx Γ Δ t u :
     red Σ Γ t u ->
     red_ctx Δ Γ ->
@@ -2375,6 +2390,7 @@ Section RedConfluence.
       + eapply red_step; repeat (econstructor; eauto).
       + econstructor. 1: constructor.
         eapply red_rewrite_rule. all: eauto.
+        eapply untyped_subslet_red_ctx. all: eauto.
       + eapply red_abs_alt. all: eauto.
       + eapply red_abs_alt. 1: eauto.
         apply (IHr (Δ ,, vass na N)).
@@ -2590,7 +2606,9 @@ Section RedConfluence.
     induction H using red1_ind_all; intros Δ Hctx; try solve [repeat (econstructor; eauto)].
     - constructor.
       now eapply decl_body_eq_context_upto_names.
-    - constructor. apply (IHred1 (Δ ,, vass na N)). constructor; auto.
+    - admit.
+    - admit.
+    (* - constructor. apply (IHred1 (Δ ,, vass na N)). constructor; auto.
     - constructor. apply (IHred1 (Δ ,, vdef na b t)). constructor; auto.
     - constructor. solve_all.
     - constructor. apply (IHred1 (Δ ,, vass na M1)). constructor; auto.
@@ -2603,7 +2621,8 @@ Section RedConfluence.
     - eapply cofix_red_body; solve_all.
       eapply (b0 (Δ ,,, fix_context mfix0)).
       now apply eq_context_upto_names_app.
-  Qed.
+  Qed. *)
+  Admitted.
 
   Lemma clos_rt_red1_eq_context_upto_names Γ Γ' t u :
     eq_context_upto_names Γ Γ' ->
