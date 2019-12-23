@@ -2596,6 +2596,19 @@ Section RedConfluence.
     induction Δ; auto. constructor; auto.
   Qed.
 
+  Lemma untyped_subslet_eq_context_upto_names :
+    forall Γ Γ' Δ s,
+      eq_context_upto_names Γ Γ' ->
+      untyped_subslet Γ s Δ ->
+      untyped_subslet Γ' s Δ.
+  Proof.
+    intros Γ Γ' Δ s r h.
+    induction h in Γ', r |- *.
+    - constructor.
+    - constructor. eapply IHh. assumption.
+    - constructor. eapply IHh. assumption.
+  Qed.
+
   Lemma red1_eq_context_upto_names Γ Γ' t u :
     eq_context_upto_names Γ Γ' ->
     red1 Σ Γ t u ->
@@ -2606,9 +2619,9 @@ Section RedConfluence.
     induction H using red1_ind_all; intros Δ Hctx; try solve [repeat (econstructor; eauto)].
     - constructor.
       now eapply decl_body_eq_context_upto_names.
-    - admit.
-    - admit.
-    (* - constructor. apply (IHred1 (Δ ,, vass na N)). constructor; auto.
+    - econstructor. all: eauto.
+      eapply untyped_subslet_eq_context_upto_names. all: eauto.
+    - constructor. apply (IHred1 (Δ ,, vass na N)). constructor; auto.
     - constructor. apply (IHred1 (Δ ,, vdef na b t)). constructor; auto.
     - constructor. solve_all.
     - constructor. apply (IHred1 (Δ ,, vass na M1)). constructor; auto.
@@ -2621,8 +2634,7 @@ Section RedConfluence.
     - eapply cofix_red_body; solve_all.
       eapply (b0 (Δ ,,, fix_context mfix0)).
       now apply eq_context_upto_names_app.
-  Qed. *)
-  Admitted.
+  Qed.
 
   Lemma clos_rt_red1_eq_context_upto_names Γ Γ' t u :
     eq_context_upto_names Γ Γ' ->
