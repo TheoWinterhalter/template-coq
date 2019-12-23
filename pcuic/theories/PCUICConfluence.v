@@ -1528,7 +1528,7 @@ Section PredRed.
         eapply weakening_red with (Γ0 := []) (Γ'' := Γ) in r'. 2: auto.
         rewrite app_context_nil_l in r'.
         rewrite closed_ctx_lift in r'.
-        { (* TODO Prove in PCUICClosed *) admit. }
+        { eapply closed_declared_symbol_par_context. all: eauto. }
         rewrite app_context_assoc in r'.
         rewrite app_length in r'.
         rewrite map_length in r'.
