@@ -1327,7 +1327,17 @@ Inductive tred1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 (** Proj *)
 | tred_proj i pars narg args k u arg:
     nth_error args (pars + narg) = Some arg ->
-    tred1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg.
+    tred1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg
+
+(** Rewrite rule *)
+| tred_rewrite_rule k ui decl n r s :
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+    untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+    let lhs := subst0 s (subst ss #|s| (lhs r)) in
+    let rhs := subst0 s (subst ss #|s| (rhs r)) in
+    tred1 Σ Γ lhs rhs.
 
 Definition ctred1 Σ :=
   context_env_clos (tred1 Σ).
