@@ -923,8 +923,10 @@ Inductive pattern (npat : nat) (nb : nat) : term -> Prop :=
       Forall (pattern npat nb) args ->
       pattern npat nb (mkApps (tConstruct ind n ui) args)
 
-(* | pattern_symbol : *)
-(* When we have symbols in the syntax *)
+| pattern_symbol :
+    forall k n ui args,
+      Forall (pattern npat nb) args ->
+      pattern npat nb (mkApps (tSymb k n ui) args)
 .
 
 Inductive elim_pattern (npat : nat) : elimination -> Prop :=
