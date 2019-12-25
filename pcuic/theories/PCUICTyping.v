@@ -975,6 +975,18 @@ Definition subs_add x t (l : list (option term)) : option (list (option term)) :
 Definition subs_flatten (l : list (option term)) : option (list term) :=
   map_option_out l.
 
+(** Sometimes we only have a partial substitution and still want to apply it.
+    It's alright, it merely means whatever we plug in there, the variable
+    doesn't appear so might as well default to [tRel 0] or so.
+*)
+
+Fixpoint subs_flatten_default (l : list (option term)) : list term :=
+  match l with
+  | [] => []
+  | None :: l => tRel 0 :: subs_flatten_default l
+  | Some t :: l => t :: subs_flatten_default l
+  end.
+
 Definition subs_init npat x t :=
   subs_add x t (subs_empty npat).
 
