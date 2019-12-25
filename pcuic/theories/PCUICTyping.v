@@ -945,6 +945,354 @@ Inductive elim_pattern (npat : nat) : elimination -> Prop :=
     forall p,
       elim_pattern npat (eProj p).
 
+(** Recognising pattern eliminations
+
+  The goal is to know when some t is actually of the form
+  subst0 s lhs.
+
+  We assume the ss subst is already done in the elimination list.
+*)
+
+Definition option_assert (b : bool) : option () :=
+  if b then ret tt else None.
+
+(* Structure to build a substitution *)
+Definition subs_empty npat : list (option term) :=
+  list_make (fun _ => None) 0 npat.
+
+(* Why do I need it again? *)
+Import PCUICReflect.
+
+Open Scope list_scope.
+
+Definition subs_add x t (l : list (option term)) : option (list (option term)) :=
+  match nth_error l x with
+  | None => None
+  | Some None => Some (firstn x l ++ Some t :: skipn (S x) l)
+  | Some (Some t') => if eqb t t' then Some l else None
+  end.
+
+Definition subs_flatten (l : list (option term)) : option (list term) :=
+  map_option_out l.
+
+Definition subs_init npat x t :=
+  subs_add x t (subs_empty npat).
+
+Fixpoint subs_merge (s1 s2 : list (option term)) : option (list (option term)) :=
+  match s1, s2 with
+  | [], [] => ret []
+  | None :: s1, d :: s2
+  | d :: s1, None :: s2 => s <- subs_merge s1 s2 ;; ret (d :: s)
+  | Some t1 :: s1, Some t2 :: s2 =>
+    option_assert (eqb t1 t2) ;;
+    s <- subs_merge s1 s2 ;;
+    ret (Some t1 :: s)
+  | _, _ => None
+  end.
+
+
+(* Can't typecheck for some reason *)
+(* Definition monad_map_def {T} {Monad T} {A B : Set}
+  (tf bf : A -> T B) (d : def A) : T (def B) :=
+  ty <- tf d.(dtype) ;;
+  bo <- bf d.(dbody) ;;
+  ret {|
+    dname := d.(dname) ;
+    dtype := ty ;
+    dbody := bo ;
+    rarg := d.(rarg)
+  |}. *)
+
+Definition option_map_def {A B : Set}
+  (tf bf : A -> option B) (d : def A) : option (def B) :=
+  ty <- tf d.(dtype) ;;
+  bo <- bf d.(dbody) ;;
+  ret {|
+    dname := d.(dname) ;
+    dtype := ty ;
+    dbody := bo ;
+    rarg := d.(rarg)
+  |}.
+
+(* Definition monad_on_snd {T} {Monad T} {A B C : Type}
+  (f : B -> T C) (p : A × B) : T (A × C) :=
+  c <- f p.2 ;;
+  ret (p.1, c). *)
+
+Definition option_on_snd {A B C : Type}
+  (f : B -> option C) (p : A × B) : option (A × C) :=
+  c <- f p.2 ;;
+  ret (p.1, c).
+
+Fixpoint strengthen n k t : option term :=
+  match t with
+  | tRel i =>
+      if k <=? i + n then ret (tRel (i - n))
+      else if k <=? i then None
+      else ret (tRel i)
+  | tEvar ev args =>
+      args' <- monad_map (strengthen n k) args ;;
+      ret (tEvar ev args')
+  | tLambda na A t =>
+      A' <- strengthen n k A ;;
+      t' <- strengthen n (S k) t ;;
+      ret (tLambda na A' t')
+
+  | tApp u v =>
+      u' <- strengthen n k u ;;
+      v' <- strengthen n k v ;;
+      ret (tApp u' v')
+
+  | tProd na A B =>
+      A' <- strengthen n k A ;;
+      B' <- strengthen n (S k) B ;;
+      ret (tProd na A' B')
+
+  | tLetIn na b B t =>
+      b' <- strengthen n k b ;;
+      B' <- strengthen n k B ;;
+      t' <- strengthen n (S k) t ;;
+      ret (tLetIn na b' B' t')
+
+  | tCase ind p c brs =>
+      brs' <- monad_map (option_on_snd (strengthen n k)) brs ;;
+      p' <- strengthen n k p ;;
+      c' <- strengthen n k c ;;
+      ret (tCase ind p' c' brs')
+
+  | tProj p c =>
+      c' <- strengthen n k c ;;
+      ret (tProj p c')
+
+  | tFix mfix idx =>
+      let k' := (#|mfix| + k)%nat in
+      mfix' <- monad_map (option_map_def (strengthen n k) (strengthen n k')) mfix ;;
+      ret (tFix mfix' idx)
+
+  | tCoFix mfix idx =>
+      let k' := (#|mfix| + k)%nat in
+      mfix' <- monad_map (option_map_def (strengthen n k) (strengthen n k')) mfix ;;
+      ret (tCoFix mfix' idx)
+
+  | x => ret x
+  end.
+
+Require PCUICSize.
+
+(* Program Fixpoint rec_pattern npat nb (p : term) (t : term) {measure (PCUICSize.size p)} :=
+  match decompose_app p, decompose_app t with
+  | (tRel n, args), (u, args') =>
+    if n <? nb then
+      match args with
+      | [] => if eqb t (tRel n) then ret (subs_empty npat) else None
+      | _ => None
+      end
+    else if n <? npat + nb then
+      let nargs := #|args'| - #|args| in
+      let l := skipn nargs args' in
+      if eqb args l then
+        t' <- strengthen nb 0 (mkApps u (firstn nargs args')) ;;
+        subs_init npat (n - nb) t'
+      else None
+    else None
+
+  | (tLambda na A t, []), (tLambda na' A' t', []) =>
+    option_assert (eqb na na') ;;
+    s1 <- rec_pattern npat nb A A' ;;
+    s2 <- rec_pattern npat (S nb) t t' ;;
+    subs_merge s1 s2
+
+  | _, _ => None (* TODO Some missing cases *)
+  end. *)
+(* Next Obligation.
+  rename Heq_anonymous into e1.
+  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
+  cbn. lia.
+Qed.
+Next Obligation.
+  rename Heq_anonymous into e1.
+  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
+  cbn. lia.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+  intuition eauto.
+  - discriminate.
+  - discriminate.
+Qed.
+Next Obligation.
+Abort. *)
+
+(* TODO To state rec_pattern_spec we might need some maysubst
+   to do partial substitutions. It may be that not all pattern variables
+   are found in a pattern.
+   We only want completeness at toplevel.
+*)
+
+(* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
+  match e, t with
+  | eApp p, tApp u v =>
+
+Fixpoint rec_lhs
+  (npat : nat) (k : kername) (n : nat) (ui : universe_instance)
+  (l : list elimination) (t : term) : option (list term) :=
+
+
+Lemma rec_lhs_spec :
+  forall npat k n ui l t,
+    Forall (elim_pattern npat) l ->
+    rec_lhs npat k n ui l t = Some s <->
+    t = subst0 s (mkElims (tSymb k n ui) l). *)
+
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
   Definition subst := @subst.
