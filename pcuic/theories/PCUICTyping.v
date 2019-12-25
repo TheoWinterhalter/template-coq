@@ -1027,7 +1027,7 @@ Definition option_on_snd {A B C : Type}
 Fixpoint strengthen n k t : option term :=
   match t with
   | tRel i =>
-      if k <=? i + n then ret (tRel (i - n))
+      if k + n <=? i then ret (tRel (i - n))
       else if k <=? i then None
       else ret (tRel i)
   | tEvar ev args =>
@@ -1076,6 +1076,59 @@ Fixpoint strengthen n k t : option term :=
 
   | x => ret x
   end.
+
+Lemma strengthen_lift :
+  forall n k t,
+    strengthen n k (lift n k t) = Some t.
+Proof.
+  intros n k t.
+  induction t using term_forall_list_ind in n, k |- *.
+  all: simpl.
+  all: rewrite ?IHt ?IHt1 ?IHt2 ?IHt3.
+  all: try reflexivity.
+  - destruct (Nat.leb_spec k n0).
+    + simpl. destruct (Nat.leb_spec (k + n) (n + n0)). 2: lia.
+      f_equal. f_equal. lia.
+    + simpl. destruct (Nat.leb_spec (k + n) n0). 1: lia.
+      destruct (Nat.leb_spec k n0). 1: lia.
+      reflexivity.
+  - match goal with
+    | |- context [ monad_map ?f ?a ] =>
+      assert (e : monad_map f a = Some l)
+    end.
+    { induction H. 1: reflexivity.
+      cbn. rewrite p. rewrite IHAll. reflexivity.
+    }
+    rewrite e. reflexivity.
+  - match goal with
+    | |- context [ monad_map ?f ?a ] =>
+      assert (e : monad_map f a = Some l)
+    end.
+    { induction X. 1: reflexivity.
+      cbn. rewrite p0. rewrite IHX. destruct x. reflexivity.
+    }
+    rewrite e. reflexivity.
+  - match goal with
+    | |- context [ monad_map ?f ?a ] =>
+      assert (e : monad_map f a = Some m)
+    end.
+    { rewrite map_length. generalize #|m|. intro p.
+      induction X. 1: reflexivity.
+      cbn. destruct p0 as [h1 h2].
+      rewrite h1. rewrite h2. rewrite IHX. destruct x. reflexivity.
+    }
+    rewrite e. reflexivity.
+  - match goal with
+    | |- context [ monad_map ?f ?a ] =>
+      assert (e : monad_map f a = Some m)
+    end.
+    { rewrite map_length. generalize #|m|. intro p.
+      induction X. 1: reflexivity.
+      cbn. destruct p0 as [h1 h2].
+      rewrite h1. rewrite h2. rewrite IHX. destruct x. reflexivity.
+    }
+    rewrite e. reflexivity.
+Qed.
 
 Require PCUICSize.
 
