@@ -1239,7 +1239,7 @@ Next Obligation.
   - intro. intuition auto. discriminate.
 Qed.
 
-Print Assumptions wf_option_map2.
+(* Print Assumptions wf_option_map2. *)
 
 Equations(noind) rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
@@ -1308,6 +1308,8 @@ Next Obligation.
   - eapply Forall_impl. 1: eassumption.
     intros. lia.
 Qed.
+
+(* Print Assumptions rec_pattern. *)
 
 (* Fixpoint rec_pattern npat nb (p : term) (t : term) := *)
 (* Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size p) } :=
