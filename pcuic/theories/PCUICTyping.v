@@ -1210,7 +1210,38 @@ Equations rec_pattern_viewc p pl t tl : rec_pattern_view p pl t tl :=
 (* TODO Duplicate *)
 Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
 
-Fail Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
+Program Fixpoint wf_option_map2 {A B C} {m : A -> nat} {y}
+  (f : forall x : A, B -> m x < y -> option C) (l1 : list A) (l2 : list B)
+  {h : Forall (fun x => m x < y) l1}
+  : option (list C) :=
+  match l1, l2 with
+  | [], [] => ret []
+  | x :: l1, y :: l2 =>
+      z <- f x y _ ;;
+      l <- wf_option_map2 f l1 l2 ;;
+      ret (z :: l)
+  | _, _ => None
+  end.
+Next Obligation.
+  inversion h. assumption.
+Qed.
+Next Obligation.
+  inversion h. assumption.
+Qed.
+Next Obligation.
+  split.
+  - intros. intro. intuition auto. discriminate.
+  - intro. intuition auto. discriminate.
+Qed.
+Next Obligation.
+  split.
+  - intros. intro. intuition auto. discriminate.
+  - intro. intuition auto. discriminate.
+Qed.
+
+Print Assumptions wf_option_map2.
+
+Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
 
   rec_pattern npat nb p t with inspect (decompose_app p) := {
@@ -1222,7 +1253,9 @@ Fail Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option t
 
       | rec_pattern_construct ind n ui args ind' n' ui' args' :=
           option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
-          sl <- option_map2 (rec_pattern npat nb) args args' ;;
+          (* sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p) (rec_pattern npat nb) args args' ;; *)
+          sl <- @wf_option_map2 term term (list (option term))
+                PCUICSize.size (PCUICSize.size p) (fun p t h => rec_pattern npat nb p t) args args' _ ;;
           monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_symb k n ui args k' n' ui' args' := None ;
@@ -1231,6 +1264,14 @@ Fail Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option t
       }
     }
   }.
+Next Obligation.
+  symmetry in e1. apply decompose_app_inv in e1. subst. clear.
+  rewrite mkApps_size. cbn. induction args. 1: constructor.
+  cbn. constructor.
+  - lia.
+  - eapply Forall_impl. 1: eassumption.
+    intros. lia.
+Qed.
 
 (* Fixpoint rec_pattern npat nb (p : term) (t : term) := *)
 Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size p) } :=
