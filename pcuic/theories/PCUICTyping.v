@@ -1165,8 +1165,75 @@ Fixpoint option_map2 {A B C}
 
 Require PCUICSize.
 
+Equations rec_pattern_discr
+  (p : term) (pl : list term) (t : term) (tl : list term) : Prop :=
+  rec_pattern_discr (tRel n) pl t tl := False ;
+  rec_pattern_discr (tLambda na A t) [] (tLambda na' A' t') [] := False ;
+  rec_pattern_discr (tConstruct ind n ui) pl (tConstruct ind' n' ui') tl := False ;
+  rec_pattern_discr (tSymb k n ui) pl (tSymb k' n' ui') tl := False ;
+  rec_pattern_discr _ _ _ _ := True.
+
+Inductive rec_pattern_view : term -> list term -> term -> list term -> Set :=
+| rec_pattern_rel n pl t tl :
+    rec_pattern_view (tRel n) pl t tl
+
+| rec_pattern_lam na A t na' A' t' :
+    rec_pattern_view (tLambda na A t) [] (tLambda na' A' t') []
+
+| rec_pattern_construct ind n ui args ind' n' ui' args' :
+    rec_pattern_view (tConstruct ind n ui) args (tConstruct ind' n' ui') args'
+
+| rec_pattern_symb k n ui args k' n' ui' args' :
+    rec_pattern_view (tSymb k n ui) args (tSymb k' n' ui') args'
+
+| rec_pattern_other :
+    forall p pl t tl,
+      rec_pattern_discr p pl t tl ->
+      rec_pattern_view p pl t tl.
+
+Equations rec_pattern_viewc p pl t tl : rec_pattern_view p pl t tl :=
+  rec_pattern_viewc (tRel n) pl t tl :=
+    rec_pattern_rel n pl t tl ;
+
+  rec_pattern_viewc (tLambda na A t) [] (tLambda na' A' t') [] :=
+    rec_pattern_lam na A t na' A' t' ;
+
+  rec_pattern_viewc (tConstruct ind n ui) args (tConstruct ind' n' ui') args' :=
+    rec_pattern_construct ind n ui args ind' n' ui' args' ;
+
+  rec_pattern_viewc (tSymb k n ui) args (tSymb k' n' ui') args' :=
+    rec_pattern_symb k n ui args k' n' ui' args' ;
+
+  rec_pattern_viewc p pl t tl :=
+    rec_pattern_other p pl t tl I.
+
+(* TODO Duplicate *)
+Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
+
+Fail Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
+  by wf (PCUICSize.size p) lt :=
+
+  rec_pattern npat nb p t with inspect (decompose_app p) := {
+  | @exist (u, args) e1 with inspect (decompose_app t) := {
+    | @exist (v, args') e2 with rec_pattern_viewc u args v args' := {
+      | rec_pattern_rel n pl t tl := None ;
+
+      | rec_pattern_lam na A t na' A' t' := None ;
+
+      | rec_pattern_construct ind n ui args ind' n' ui' args' :=
+          option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
+          sl <- option_map2 (rec_pattern npat nb) args args' ;;
+          monad_fold_left (subs_merge) sl (subs_empty npat) ;
+
+      | rec_pattern_symb k n ui args k' n' ui' args' := None ;
+
+      | rec_pattern_other p pl t tl _ := None
+      }
+    }
+  }.
+
 (* Fixpoint rec_pattern npat nb (p : term) (t : term) := *)
-Fail Program Fixpoint rec_pattern npat nb (p : term) (t : term) {measure (PCUICSize.size p) } :=
+Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size p) } :=
   match decompose_app p, decompose_app t with
   | (tRel n, args), (u, args') =>
     if n <? nb then
