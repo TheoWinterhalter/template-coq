@@ -1142,9 +1142,31 @@ Proof.
     rewrite e. reflexivity.
 Qed.
 
+(* Fixpoint monad_map2 {T} {M : Monad T} {A B C}
+  (f : A -> B -> T C) (l1 : list A) (l2 : list B) : T (list C) :=
+  match l1, l2 with
+  | [], [] => ret []
+  | x :: l1, y :: l2 =>
+      z <- f x y ;;
+      l <- monad_map2 f l1 l2 ;;
+      ret (z :: l)
+  | _, _ =>  *)
+
+Fixpoint option_map2 {A B C}
+  (f : A -> B -> option C) (l1 : list A) (l2 : list B) : option (list C) :=
+  match l1, l2 with
+  | [], [] => ret []
+  | x :: l1, y :: l2 =>
+      z <- f x y ;;
+      l <- option_map2 f l1 l2 ;;
+      ret (z :: l)
+  | _, _ => None
+  end.
+
 Require PCUICSize.
 
-(* Program Fixpoint rec_pattern npat nb (p : term) (t : term) {measure (PCUICSize.size p)} :=
+(* Fixpoint rec_pattern npat nb (p : term) (t : term) := *)
+Fail Program Fixpoint rec_pattern npat nb (p : term) (t : term) {measure (PCUICSize.size p) } :=
   match decompose_app p, decompose_app t with
   | (tRel n, args), (u, args') =>
     if n <? nb then
@@ -1167,8 +1189,18 @@ Require PCUICSize.
     s2 <- rec_pattern npat (S nb) t t' ;;
     subs_merge s1 s2
 
-  | _, _ => None (* TODO Some missing cases *)
-  end. *)
+  | (tConstruct ind n ui, args), (tConstruct ind' n' ui', args') =>
+    option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
+    sl <- option_map2 (rec_pattern npat nb) args args' ;;
+    monad_fold_left (subs_merge) sl (subs_empty npat)
+
+  | (tSymb k n ui, args), (tSymb k' n' ui', args') =>
+    option_assert (eqb k k' && eqb n n' && eqb ui ui') ;;
+    sl <- option_map2 (rec_pattern npat nb) args args' ;;
+    monad_fold_left (subs_merge) sl (subs_empty npat)
+
+  | _, _ => None
+  end.
 (* Next Obligation.
   rename Heq_anonymous into e1.
   symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
