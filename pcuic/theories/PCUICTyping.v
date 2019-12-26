@@ -1357,6 +1357,9 @@ Proof.
   intros npat nb p t s hp. split.
   - intro h. induction hp in t, s, h |- *.
     + simp rec_pattern in h. simpl in h.
+      case_eq (decompose_app (mkApps (tRel n) (map tRel l))).
+      intros u args e1. revert h. (* rewrite -> e1.
+      rewrite -> decompose_app_mkApps in e1 by auto. *)
       (* Not convenient to work with. *)
 Abort.
 
