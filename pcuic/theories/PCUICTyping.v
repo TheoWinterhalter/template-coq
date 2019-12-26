@@ -1352,7 +1352,7 @@ Lemma rec_pattern_spec :
   forall npat nb p t s,
     pattern npat nb p ->
     rec_pattern npat nb p t = Some s <->
-    t = subst0 (subs_flatten_default s) p.
+    t = subst (subs_flatten_default s) nb p.
 Proof.
   intros npat nb p t s hp. split.
   - intro h. induction hp in t, s, h |- *.
