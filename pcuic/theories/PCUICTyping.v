@@ -1241,15 +1241,32 @@ Qed.
 
 Print Assumptions wf_option_map2.
 
-Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
+Equations(noind) rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
 
   rec_pattern npat nb p t with inspect (decompose_app p) := {
   | @exist (u, args) e1 with inspect (decompose_app t) := {
     | @exist (v, args') e2 with rec_pattern_viewc u args v args' := {
-      | rec_pattern_rel n pl t tl := None ;
+      | rec_pattern_rel n pl t tl :=
+          if n <? nb then
+            match pl with
+            | [] => if eqb t (tRel n) then ret (subs_empty npat) else None
+            | _ => None
+            end
+          else if n <? npat + nb then
+            let nargs := #|tl| - #|pl| in
+            let l := skipn nargs tl in
+            if eqb pl l then
+              t' <- strengthen nb 0 (mkApps t (firstn nargs tl)) ;;
+              subs_init npat (n - nb) t'
+            else None
+          else None ;
 
-      | rec_pattern_lam na A t na' A' t' := None ;
+      | rec_pattern_lam na A b na' A' b' :=
+          option_assert (eqb na na') ;;
+          s1 <- rec_pattern npat nb A A' ;;
+          s2 <- rec_pattern npat (S nb) b b' ;;
+          subs_merge s1 s2 ;
 
       | rec_pattern_construct ind n ui args ind' n' ui' args' :=
           option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
@@ -1258,12 +1275,33 @@ Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
                 PCUICSize.size (PCUICSize.size p) (fun p t h => rec_pattern npat nb p t) args args' _ ;;
           monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
-      | rec_pattern_symb k n ui args k' n' ui' args' := None ;
+      | rec_pattern_symb k n ui args k' n' ui' args' :=
+          option_assert (eqb k k' && eqb n n' && eqb ui ui') ;;
+          (* sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p) (rec_pattern npat nb) args args' ;; *)
+          sl <- @wf_option_map2 term term (list (option term))
+                PCUICSize.size (PCUICSize.size p) (fun p t h => rec_pattern npat nb p t) args args' _ ;;
+          monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_other p pl t tl _ := None
       }
     }
   }.
+Next Obligation.
+  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
+  cbn. lia.
+Qed.
+Next Obligation.
+  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
+  cbn. lia.
+Qed.
+Next Obligation.
+  symmetry in e1. apply decompose_app_inv in e1. subst. clear.
+  rewrite mkApps_size. cbn. induction args. 1: constructor.
+  cbn. constructor.
+  - lia.
+  - eapply Forall_impl. 1: eassumption.
+    intros. lia.
+Qed.
 Next Obligation.
   symmetry in e1. apply decompose_app_inv in e1. subst. clear.
   rewrite mkApps_size. cbn. induction args. 1: constructor.
@@ -1274,7 +1312,7 @@ Next Obligation.
 Qed.
 
 (* Fixpoint rec_pattern npat nb (p : term) (t : term) := *)
-Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size p) } :=
+(* Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size p) } :=
   match decompose_app p, decompose_app t with
   | (tRel n, args), (u, args') =>
     if n <? nb then
@@ -1308,174 +1346,7 @@ Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size 
     monad_fold_left (subs_merge) sl (subs_empty npat)
 
   | _, _ => None
-  end.
-(* Next Obligation.
-  rename Heq_anonymous into e1.
-  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
-  cbn. lia.
-Qed.
-Next Obligation.
-  rename Heq_anonymous into e1.
-  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
-  cbn. lia.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-  intuition eauto.
-  - discriminate.
-  - discriminate.
-Qed.
-Next Obligation.
-Abort. *)
+  end. *)
 
 (* TODO To state rec_pattern_spec we might need some maysubst
    to do partial substitutions. It may be that not all pattern variables
