@@ -1348,6 +1348,18 @@ Qed.
   | _, _ => None
   end. *)
 
+Lemma rec_pattern_spec :
+  forall npat nb p t s,
+    pattern npat nb p ->
+    rec_pattern npat nb p t = Some s <->
+    t = subst0 (subs_flatten_default s) p.
+Proof.
+  intros npat nb p t s hp. split.
+  - intro h. induction hp in t, s, h |- *.
+    + simp rec_pattern in h. simpl in h.
+      (* Not convenient to work with. *)
+Abort.
+
 (* TODO To state rec_pattern_spec we might need some maysubst
    to do partial substitutions. It may be that not all pattern variables
    are found in a pattern.
