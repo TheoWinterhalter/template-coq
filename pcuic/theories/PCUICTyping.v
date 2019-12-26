@@ -1270,16 +1270,14 @@ Equations(noind) rec_pattern (npat nb : nat) (p t : term) : option (list (option
 
       | rec_pattern_construct ind n ui args ind' n' ui' args' :=
           option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
-          (* sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p) (rec_pattern npat nb) args args' ;; *)
-          sl <- @wf_option_map2 term term (list (option term))
-                PCUICSize.size (PCUICSize.size p) (fun p t h => rec_pattern npat nb p t) args args' _ ;;
+          sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p)
+                (fun p t h => rec_pattern npat nb p t) args args' ;;
           monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_symb k n ui args k' n' ui' args' :=
           option_assert (eqb k k' && eqb n n' && eqb ui ui') ;;
-          (* sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p) (rec_pattern npat nb) args args' ;; *)
-          sl <- @wf_option_map2 term term (list (option term))
-                PCUICSize.size (PCUICSize.size p) (fun p t h => rec_pattern npat nb p t) args args' _ ;;
+          sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p)
+                (fun p t h => rec_pattern npat nb p t) args args' ;;
           monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_other p pl t tl _ := None
