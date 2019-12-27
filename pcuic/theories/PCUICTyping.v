@@ -1255,12 +1255,12 @@ Qed.
 
 (* Print Assumptions wf_option_map2. *)
 
-Equations(noind) rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
+Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
 
-  rec_pattern npat nb p t with inspect (decompose_app p) := {
-  | @exist (u, args) e1 with inspect (decompose_app t) := {
-    | @exist (v, args') e2 with rec_pattern_viewc u args v args' := {
+  rec_pattern npat nb p t with decompose_app_viewc p := {
+  | is_apps u args e1 with decompose_app_viewc t := {
+    | is_apps v args' e2 with rec_pattern_viewc u args v args' := {
       | rec_pattern_rel n pl t tl :=
           if n <? nb then
             match pl with
@@ -1284,30 +1284,33 @@ Equations(noind) rec_pattern (npat nb : nat) (p t : term) : option (list (option
 
       | rec_pattern_construct ind n ui args ind' n' ui' args' :=
           option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
-          sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p)
-                (fun p t h => rec_pattern npat nb p t) args args' ;;
+          sl <- wf_option_map2
+                  (m := PCUICSize.size)
+                  (y := PCUICSize.size (mkApps (tConstruct ind n ui) args))
+                  (fun p t h => rec_pattern npat nb p t) args args' ;;
           monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_symb k n ui args k' n' ui' args' :=
           option_assert (eqb k k' && eqb n n' && eqb ui ui') ;;
-          sl <- wf_option_map2 (m := PCUICSize.size) (y := PCUICSize.size p)
-                (fun p t h => rec_pattern npat nb p t) args args' ;;
+          sl <- wf_option_map2
+                  (m := PCUICSize.size)
+                  (y := PCUICSize.size (mkApps (tSymb k n ui) args))
+                  (fun p t h => rec_pattern npat nb p t) args args' ;;
           monad_fold_left (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_other p pl t tl _ := None
       }
     }
   }.
+(* Solve All Obligations with lia. *)
 Next Obligation.
-  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
-  cbn. lia.
+  lia.
 Qed.
 Next Obligation.
-  symmetry in e1. apply decompose_app_inv in e1. cbn in e1. subst.
-  cbn. lia.
+  lia.
 Qed.
 Next Obligation.
-  symmetry in e1. apply decompose_app_inv in e1. subst. clear.
+  clear.
   rewrite mkApps_size. cbn. induction args. 1: constructor.
   cbn. constructor.
   - lia.
@@ -1315,7 +1318,7 @@ Next Obligation.
     intros. lia.
 Qed.
 Next Obligation.
-  symmetry in e1. apply decompose_app_inv in e1. subst. clear.
+  clear.
   rewrite mkApps_size. cbn. induction args. 1: constructor.
   cbn. constructor.
   - lia.
@@ -1362,6 +1365,40 @@ Qed.
   | _, _ => None
   end. *)
 
+Fixpoint isAppRel (t : term) : bool :=
+  match t with
+  | tRel n => true
+  | tApp t u => isAppRel t
+  | _ => false
+  end.
+
+Lemma isAppRel_mkApps :
+  forall t l,
+    isAppRel (mkApps t l) = isAppRel t.
+Proof.
+  intros t l. induction l in t |- *. 1: reflexivity.
+  cbn. rewrite IHl. reflexivity.
+Qed.
+
+Lemma mkApps_Rel_inj :
+  forall n m l l',
+    mkApps (tRel n) l = mkApps (tRel m) l' ->
+    n = m /\ l = l'.
+Proof.
+  intros n m l l' e.
+  induction l in n, m, l', e |- * using list_ind_rev.
+  - destruct l'.
+    + cbn in e. inversion e. auto.
+    + cbn in e. apply (f_equal nApp) in e. cbn in e.
+      rewrite nApp_mkApps in e. cbn in e. discriminate.
+  - rewrite <- mkApps_nested in e. cbn in e.
+    destruct l' using list_ind_rev.
+    + cbn in e. discriminate.
+    + rewrite <- mkApps_nested in e. cbn in e.
+      inversion e. eapply IHl in H0. intuition auto.
+      subst. reflexivity.
+Qed.
+
 Lemma rec_pattern_spec :
   forall npat nb p t s,
     pattern npat nb p ->
@@ -1369,12 +1406,31 @@ Lemma rec_pattern_spec :
     t = subst (subs_flatten_default s) nb p.
 Proof.
   intros npat nb p t s hp. split.
-  - intro h. induction hp in t, s, h |- *.
-    + simp rec_pattern in h. simpl in h.
-      case_eq (decompose_app (mkApps (tRel n) (map tRel l))).
-      intros u args e1. revert h. (* rewrite -> e1.
-      rewrite -> decompose_app_mkApps in e1 by auto. *)
-      (* Not convenient to work with. *)
+  - funelim (rec_pattern npat nb p t).
+    + inversion hp.
+      all: try solve [
+        apply (f_equal isAppRel) in H ;
+        rewrite !isAppRel_mkApps in H ;
+        discriminate
+      ].
+      * apply mkApps_Rel_inj in H as [? ?]. subst.
+        destruct (Nat.ltb_spec n nb). 1: lia.
+        destruct (Nat.ltb_spec n (npat + nb)). 2: lia.
+        match goal with
+        | |- context [ eqb ?u ?v ] =>
+          destruct (eqb_spec u v)
+        end.
+        2: discriminate.
+        match goal with
+        | |- context [ strengthen ?n ?k ?t ] =>
+          destruct (strengthen n k t) eqn:es
+        end.
+        2: discriminate.
+        cbn. intro h.
+        rewrite subst_mkApps.
+        (* NEED inversion on strengthen and probably on subs_init
+          BEFORE doing f_equal
+        *)
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
