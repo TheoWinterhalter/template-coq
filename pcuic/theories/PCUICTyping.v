@@ -1142,6 +1142,157 @@ Proof.
     rewrite e. reflexivity.
 Qed.
 
+(* Lemma monad_map_length :
+  forall T M A B f l l',
+    @monad_map T M A B f l = ret l' ->
+    #|l| = #|l'|.
+Proof.
+  intros T M A B f l l' e.
+  induction l in l', e |- *.
+  - cbn in e. inversion e. *)
+
+Lemma option_monad_map_length :
+  forall A B f l l',
+    @monad_map option _ A B f l = ret l' ->
+    #|l| = #|l'|.
+Proof.
+  intros A B f l l' e.
+  induction l in l', e |- *.
+  - cbn in e. apply some_inj in e. subst. reflexivity.
+  - cbn in e. destruct (f a) eqn: e1. 2: discriminate.
+    destruct (monad_map f l) eqn: e2. 2: discriminate.
+    apply some_inj in e. subst. cbn. f_equal.
+    eapply IHl. reflexivity.
+Qed.
+
+Lemma strengthen_inv :
+  forall n k t u,
+    strengthen n k t = Some u ->
+    t = lift n k u.
+Proof.
+  intros n k t u h.
+  induction t using term_forall_list_ind in n, k, u, h |- *.
+  all: simpl in h.
+  all:
+    repeat match type of h with
+    | context [ monad_map ?f ?l ] =>
+      let e := fresh "e" in
+      destruct (monad_map f l) eqn: e ; [| discriminate ]
+    end.
+  all:
+    repeat match type of h with
+    | context [ strengthen ?n ?k ?t ] =>
+      let e := fresh "e" in
+      destruct (strengthen n k t) eqn:e ; [
+        idtac
+      | discriminate
+      ]
+    end.
+  all: try (apply some_inj in h ; subst ; cbn).
+  all:
+    repeat match goal with
+    | ih : _ -> _ -> _ -> _ -> ?t = _, e : strengthen ?k ?n ?t = _ |- _ =>
+      eapply ih in e ; subst
+    end.
+  all: try reflexivity.
+  - destruct (Nat.leb_spec (k + n) n0).
+    + apply some_inj in h. subst. cbn.
+      destruct (Nat.leb_spec k (n0 - n)). 2: lia.
+      f_equal. lia.
+    + destruct (Nat.leb_spec k n0). 1: discriminate.
+      apply some_inj in h. subst. cbn.
+      destruct (Nat.leb_spec k n0). 1: lia.
+      reflexivity.
+  - f_equal.
+    induction H in l0, e |- *.
+    + cbn in e. apply some_inj in e. subst. reflexivity.
+    + cbn in e. destruct (strengthen n k x) eqn:ex. 2: discriminate.
+      destruct (monad_map (strengthen n k) l) eqn:el. 2: discriminate.
+      eapply p in ex. subst.
+      specialize (IHAll _ eq_refl). subst.
+      apply some_inj in e. subst. reflexivity.
+  - f_equal. induction X in l0, e |- *.
+    + cbn in e. apply some_inj in e. subst. reflexivity.
+    + cbn in e. destruct x. simpl in *.
+      repeat match type of e with
+      | context [ strengthen ?n ?k ?t ] =>
+        let e := fresh "e" in
+        destruct (strengthen n k t) eqn:e ; [
+          idtac
+        | discriminate
+        ]
+      end.
+      repeat match type of e with
+      | context [ monad_map ?f ?l ] =>
+        let e := fresh "e" in
+        destruct (monad_map f l) eqn: e ; [| discriminate ]
+      end.
+      apply some_inj in e. subst. cbn.
+      repeat match goal with
+      | ih : _ -> _ -> _ -> _ -> ?t = _, e : strengthen ?k ?n ?t = _ |- _ =>
+        eapply ih in e ; subst
+      end.
+      unfold on_snd. cbn. f_equal.
+      eapply IHX.
+      reflexivity.
+  - f_equal.
+    apply option_monad_map_length in e as el. rewrite <- el. clear el.
+    revert e.
+    generalize #|m|. intros q e.
+    induction X in q, l, e |- *.
+    + cbn in e. apply some_inj in e. subst. reflexivity.
+    + cbn in e.
+      repeat match type of e with
+      | context [ strengthen ?n ?k ?t ] =>
+        let e := fresh "e" in
+        destruct (strengthen n k t) eqn:e ; [
+          idtac
+        | discriminate
+        ]
+      end.
+      repeat match type of e with
+      | context [ monad_map ?f ?l ] =>
+        let e := fresh "e" in
+        destruct (monad_map f l) eqn: e ; [| discriminate ]
+      end.
+      apply some_inj in e. subst. cbn.
+      destruct p. destruct x. simpl in *.
+      repeat match goal with
+      | ih : _ -> _ -> _ -> _ -> ?t = _, e : strengthen ?k ?n ?t = _ |- _ =>
+        eapply ih in e ; subst
+      end.
+      unfold map_def. cbn. f_equal.
+      eapply IHX. assumption.
+  - f_equal.
+    apply option_monad_map_length in e as el. rewrite <- el. clear el.
+    revert e.
+    generalize #|m|. intros q e.
+    induction X in q, l, e |- *.
+    + cbn in e. apply some_inj in e. subst. reflexivity.
+    + cbn in e.
+      repeat match type of e with
+      | context [ strengthen ?n ?k ?t ] =>
+        let e := fresh "e" in
+        destruct (strengthen n k t) eqn:e ; [
+          idtac
+        | discriminate
+        ]
+      end.
+      repeat match type of e with
+      | context [ monad_map ?f ?l ] =>
+        let e := fresh "e" in
+        destruct (monad_map f l) eqn: e ; [| discriminate ]
+      end.
+      apply some_inj in e. subst. cbn.
+      destruct p. destruct x. simpl in *.
+      repeat match goal with
+      | ih : _ -> _ -> _ -> _ -> ?t = _, e : strengthen ?k ?n ?t = _ |- _ =>
+        eapply ih in e ; subst
+      end.
+      unfold map_def. cbn. f_equal.
+      eapply IHX. assumption.
+Qed.
+
 (* Fixpoint monad_map2 {T} {M : Monad T} {A B C}
   (f : A -> B -> T C) (l1 : list A) (l2 : list B) : T (list C) :=
   match l1, l2 with
