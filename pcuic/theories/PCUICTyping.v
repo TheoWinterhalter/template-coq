@@ -1550,6 +1550,29 @@ Proof.
       subst. reflexivity.
 Qed.
 
+Lemma mkApps_lift_inv :
+  forall t l n k u,
+    mkApps t l = lift n k u ->
+    ∑ t' l',
+      u = mkApps t' l' /\
+      t = lift n k t' /\
+      l = map (lift n k) l'.
+Proof.
+  intros t l n k u e.
+  induction l in t, n, k, u, e |- * using list_rect_rev.
+  - cbn in e. subst. exists u, []. intuition auto.
+  - rewrite <- mkApps_nested in e. cbn in e.
+    destruct u. all: cbn in e. all: try discriminate.
+    1:{ destruct (k <=? n0). all: discriminate. }
+    inversion e. subst.
+    eapply IHl in H0 as [t' [l' ?]].
+    intuition eauto. subst.
+    eexists _, (_ ++ [_]).
+    rewrite <- mkApps_nested. cbn.
+    rewrite map_app. cbn.
+    intuition eauto.
+Qed.
+
 Lemma rec_pattern_spec :
   forall npat nb p t s,
     pattern npat nb p ->
@@ -1579,9 +1602,11 @@ Proof.
         2: discriminate.
         cbn. intro h.
         rewrite subst_mkApps.
-        (* NEED inversion on strengthen and probably on subs_init
-          BEFORE doing f_equal
-        *)
+        apply strengthen_inv in es.
+        apply mkApps_lift_inv in es as [t' [l' [? [? el]]]]. subst.
+        f_equal.
+        -- admit.
+        -- (* It should be using H2, but is it right? Or did I mess up with the lists? *)
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
