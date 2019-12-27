@@ -1210,6 +1210,20 @@ Equations rec_pattern_viewc p pl t tl : rec_pattern_view p pl t tl :=
 (* TODO Duplicate *)
 Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
 
+Inductive decompose_app_view : term -> Set :=
+| is_apps t l (e : isApp t = false) : decompose_app_view (mkApps t l).
+
+Equations decompose_app_viewc t : decompose_app_view t :=
+  decompose_app_viewc t with inspect (decompose_app t) := {
+  | @exist (u,l) e := _
+  }.
+Next Obligation.
+  symmetry in e.
+  apply decompose_app_inv in e as e'.
+  apply decompose_app_notApp in e as h. subst.
+  constructor. assumption.
+Defined.
+
 Program Fixpoint wf_option_map2 {A B C} {m : A -> nat} {y}
   (f : forall x : A, B -> m x < y -> option C) (l1 : list A) (l2 : list B)
   {h : Forall (fun x => m x < y) l1}
