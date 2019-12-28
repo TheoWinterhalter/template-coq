@@ -1460,7 +1460,10 @@ Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
       | rec_pattern_rel n pl t tl :=
           if n <? nb then
             match pl with
-            | [] => if eqb t (tRel n) then ret (subs_empty npat) else None
+            | [] =>
+              if eqb (mkApps t tl) (tRel n)
+              then ret (subs_empty npat)
+              else None
             | _ => None
             end
           else if n <? npat + nb then
@@ -1649,14 +1652,27 @@ Proof.
         rewrite subst_mkApps.
         apply strengthen_inv in es.
         apply mkApps_lift_inv in es as [t' [l' [? [? el]]]]. subst.
-        f_equal.
-        -- cbn. destruct (Nat.leb_spec nb n). 2: lia.
-           apply subs_init_nth_error in h.
-           apply subs_flatten_default_nth_error in h.
-           rewrite h.
-           (* Something's wrong! *)
-           give_up.
-        -- (* It should be using H2, but is it right? Or did I mess up with the lists? *)
+        cbn. destruct (Nat.leb_spec nb n). 2: lia.
+        apply subs_init_nth_error in h as h'.
+        apply subs_flatten_default_nth_error in h'.
+        rewrite h'.
+        rewrite lift_mkApps. rewrite mkApps_nested. f_equal.
+        rewrite <- el. erewrite <- (firstn_skipn _ tl0) at 1.
+        f_equal. rewrite <- e1. clear - H2.
+        induction H2 in |- *. 1: reflexivity.
+        cbn. destruct (Nat.leb_spec nb x). 1: lia.
+        f_equal. assumption.
+      * destruct pl using list_rect_rev.
+        2:{ rewrite <- mkApps_nested in H. cbn in H. discriminate. }
+        cbn in H. inversion H. subst. clear H.
+        destruct (Nat.ltb_spec n nb). 2: lia.
+        destruct (eqb_spec (mkApps t tl0) (tRel n)). 2: discriminate.
+        destruct tl0 using list_rect_rev.
+        2:{ rewrite <- mkApps_nested in e1. cbn in e1. discriminate. }
+        cbn in e1. subst. cbn.
+        intro e1. apply some_inj in e1. subst.
+        destruct (Nat.leb_spec nb n). 1: lia.
+        reflexivity.
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
