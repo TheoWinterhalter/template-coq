@@ -1002,6 +1002,51 @@ Fixpoint subs_merge (s1 s2 : list (option term)) : option (list (option term)) :
   | _, _ => None
   end.
 
+Lemma subs_init_nth_error :
+  forall npat n t s,
+    subs_init npat n t = Some s ->
+    nth_error s n = Some (Some t).
+Proof.
+  intros npat n t s.
+  unfold subs_init. unfold subs_add.
+  destruct nth_error eqn:e1. 2: discriminate.
+  destruct o.
+  - exfalso.
+    unfold subs_empty in e1. revert e1.
+    generalize 0. intros m e.
+    induction n in m, npat, e |- *.
+    + cbn in e. destruct npat.
+      * cbn in e. discriminate.
+      * cbn in e. discriminate.
+    + cbn in e. destruct npat.
+      * cbn in e. discriminate.
+      * cbn in e. eapply IHn. eassumption.
+  - intro e. apply some_inj in e. subst.
+    rewrite nth_error_app_ge.
+    { eapply firstn_le_length. }
+    assert (e : #|firstn n (subs_empty npat)| = n).
+    { apply nth_error_Some_length in e1.
+      rewrite -> firstn_length. lia.
+    }
+    rewrite e. replace (n - n) with 0 by lia. cbn. reflexivity.
+Qed.
+
+Lemma subs_flatten_default_nth_error :
+  forall s n t,
+    nth_error s n = Some (Some t) ->
+    nth_error (subs_flatten_default s) n = Some t.
+Proof.
+  intros s n t e.
+  induction s in n, t, e |- *.
+  - destruct n. all: discriminate.
+  - destruct n.
+    + cbn in e. apply some_inj in e. subst.
+      cbn. reflexivity.
+    + cbn in e. eapply IHs in e.
+      cbn. destruct a.
+      * assumption.
+      * assumption.
+Qed.
 
 (* Can't typecheck for some reason *)
 (* Definition monad_map_def {T} {Monad T} {A B : Set}
@@ -1605,7 +1650,12 @@ Proof.
         apply strengthen_inv in es.
         apply mkApps_lift_inv in es as [t' [l' [? [? el]]]]. subst.
         f_equal.
-        -- admit.
+        -- cbn. destruct (Nat.leb_spec nb n). 2: lia.
+           apply subs_init_nth_error in h.
+           apply subs_flatten_default_nth_error in h.
+           rewrite h.
+           (* Something's wrong! *)
+           give_up.
         -- (* It should be using H2, but is it right? Or did I mess up with the lists? *)
 Abort.
 
