@@ -1048,6 +1048,11 @@ Proof.
       * assumption.
 Qed.
 
+(* Lemma subs_merge_subst_left :
+  forall s1 s2 s,
+    subs_merge s1 s2 = Some s ->
+    subst  *)
+
 (* Can't typecheck for some reason *)
 (* Definition monad_map_def {T} {Monad T} {A B : Set}
   (tf bf : A -> T B) (d : def A) : T (def B) :=
@@ -1598,6 +1603,21 @@ Proof.
       subst. reflexivity.
 Qed.
 
+Fixpoint isAppLambda (t : term) : bool :=
+  match t with
+  | tLambda na A t => true
+  | tApp t u => isAppLambda t
+  | _ => false
+  end.
+
+Lemma isAppLambda_mkApps :
+  forall t l,
+    isAppLambda (mkApps t l) = isAppLambda t.
+Proof.
+  intros t l. induction l in t |- *. 1: reflexivity.
+  cbn. rewrite IHl. reflexivity.
+Qed.
+
 Lemma mkApps_lift_inv :
   forall t l n k u,
     mkApps t l = lift n k u ->
@@ -1673,6 +1693,21 @@ Proof.
         intro e1. apply some_inj in e1. subst.
         destruct (Nat.leb_spec nb n). 1: lia.
         reflexivity.
+    + cbn in hp. inversion hp.
+      all: try solve [
+        apply (f_equal isAppLambda) in H1 ;
+        rewrite !isAppLambda_mkApps in H1 ;
+        discriminate
+      ]. subst.
+      destruct (eqb_spec na na'). 2: discriminate.
+      subst. simpl.
+      destruct (rec_pattern npat nb A A') eqn:eA. 2: discriminate.
+      eapply H in H3. 3: eauto. 2: constructor.
+      subst.
+      destruct (rec_pattern npat (S nb) t2 t') eqn:et. 2: discriminate.
+      eapply H0 in H5. 4: reflexivity. 2: constructor. 2: auto.
+      subst.
+      intro es.
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
