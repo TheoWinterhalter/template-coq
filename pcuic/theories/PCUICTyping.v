@@ -1028,6 +1028,15 @@ Proof.
         eapply h. assumption.
 Qed.
 
+Lemma subs_complete_length :
+  forall s s',
+    subs_complete s s' ->
+    #|s| = #|s'|.
+Proof.
+  intros s s' h.
+  apply subs_complete_spec in h. apply h.
+Qed.
+
 Definition subs_init npat x t :=
   subs_add x t (subs_empty npat).
 
@@ -1059,6 +1068,16 @@ Proof.
   - constructor.
   - cbn. constructor. assumption.
   - cbn. constructor. assumption.
+Qed.
+
+Lemma subs_flatten_default_length :
+  forall s,
+    #|subs_flatten_default s| = #|s|.
+Proof.
+  intro s. induction s as [| [t|] s ih].
+  - reflexivity.
+  - cbn. f_equal. assumption.
+  - cbn. f_equal. assumption.
 Qed.
 
 Lemma subs_merge_complete :
@@ -1121,8 +1140,20 @@ Proof.
         intuition (constructor ; auto).
   - intro h. induction s1 in s2, s, h |- *.
     + assert (s = []).
-      { destruct s. 1: reflexivity.
-        exfalso.
+      { specialize (h (subs_flatten_default s)).
+        forward h.
+        { apply subs_flatten_default_complete. }
+        destruct h as [h _].
+        apply subs_complete_length in h.
+        destruct s. 1: reflexivity.
+        rewrite subs_flatten_default_length in h.
+        cbn in h. discriminate.
+      } subst.
+      specialize (h []). forward h by constructor.
+      destruct h as [_ h].
+      destruct s2. 1: reflexivity.
+      apply subs_complete_length in h. discriminate.
+    +
 Admitted.
 
 Lemma subs_init_nth_error :
