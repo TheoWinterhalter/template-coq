@@ -1082,63 +1082,65 @@ Qed.
 
 Lemma subs_merge_complete :
   forall s1 s2 s,
-    subs_merge s1 s2 = Some s <->
+    subs_merge s1 s2 = Some s ->
     forall s',
       subs_complete s s' ->
       subs_complete s1 s' /\ subs_complete s2 s'.
 Proof.
-  intros s1 s2 s. split.
-  - intros e s' hs. induction hs in s1, s2, e |- *.
-    + assert (h : s1 = [] /\ s2 = []).
-      { induction s1 in s2, e |- *.
-        - destruct s2.
-          + intuition auto.
-          + cbn in e. discriminate.
-        - destruct a.
-          + destruct s2. 1: discriminate.
-            destruct o.
-            * cbn in e. unfold eq_dec_to_bool in e.
-              destruct eq_dec.
-              2: discriminate.
-              subst. cbn in e. destruct (subs_merge s1 s2) eqn: es.
-              all: discriminate.
-            * cbn in e. destruct (subs_merge s1 s2) eqn: es.
-              all: discriminate.
-          + cbn in e. destruct s2. 1: discriminate.
-            destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-       }
-       destruct h. subst. intuition constructor.
-    + destruct s1, s2. all: try discriminate.
-      1:{ cbn in e. destruct o. all: discriminate. }
-      destruct o, o0.
-      * cbn in e. unfold eq_dec_to_bool in e.
-        destruct eq_dec. 2: discriminate.
-        subst. cbn in e.
-        destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-        apply some_inj in e. inversion e. subst. clear e.
-        eapply IHhs in es as [h1 h2].
-        intuition (constructor ; auto).
-      * cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-        apply some_inj in e. inversion e. subst. clear e.
-        eapply IHhs in es as [h1 h2].
-        intuition (constructor ; auto).
-      * cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-        apply some_inj in e. inversion e. subst. clear e.
-        eapply IHhs in es as [h1 h2].
-        intuition (constructor ; auto).
-      * cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-    + destruct s1, s2. all: try discriminate.
-      1:{ cbn in e. destruct o. all: discriminate. }
-      destruct o, o0.
-      * cbn in e. unfold eq_dec_to_bool in e. destruct eq_dec. 2: discriminate.
-        cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-      * cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-      * cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-      * cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-        inversion e. subst.
-        eapply IHhs in es as [h1 h2].
-        intuition (constructor ; auto).
-  - intro h. induction s1 in s2, s, h |- *.
+  intros s1 s2 s e s' hs. induction hs in s1, s2, e |- *.
+  - assert (h : s1 = [] /\ s2 = []).
+    { induction s1 in s2, e |- *.
+      - destruct s2.
+        + intuition auto.
+        + cbn in e. discriminate.
+      - destruct a.
+        + destruct s2. 1: discriminate.
+          destruct o.
+          * cbn in e. unfold eq_dec_to_bool in e.
+            destruct eq_dec.
+            2: discriminate.
+            subst. cbn in e. destruct (subs_merge s1 s2) eqn: es.
+            all: discriminate.
+          * cbn in e. destruct (subs_merge s1 s2) eqn: es.
+            all: discriminate.
+        + cbn in e. destruct s2. 1: discriminate.
+          destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+      }
+      destruct h. subst. intuition constructor.
+  - destruct s1, s2. all: try discriminate.
+    1:{ cbn in e. destruct o. all: discriminate. }
+    destruct o, o0.
+    + cbn in e. unfold eq_dec_to_bool in e.
+      destruct eq_dec. 2: discriminate.
+      subst. cbn in e.
+      destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      apply some_inj in e. inversion e. subst. clear e.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      apply some_inj in e. inversion e. subst. clear e.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      apply some_inj in e. inversion e. subst. clear e.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+  - destruct s1, s2. all: try discriminate.
+    1:{ cbn in e. destruct o. all: discriminate. }
+    destruct o, o0.
+    + cbn in e. unfold eq_dec_to_bool in e. destruct eq_dec. 2: discriminate.
+      cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      inversion e. subst.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
+Qed.
+
+  (* Other direction *)
+  (* - intro h. induction s1 in s2, s, h |- *.
     + assert (s = []).
       { specialize (h (subs_flatten_default s)).
         forward h.
@@ -1154,7 +1156,7 @@ Proof.
       destruct s2. 1: reflexivity.
       apply subs_complete_length in h. discriminate.
     +
-Admitted.
+Admitted. *)
 
 Lemma subs_init_nth_error :
   forall npat n t s,
@@ -1798,7 +1800,7 @@ Proof.
       destruct (rec_pattern npat (S nb) t2 t') eqn:et. 2: discriminate.
       specialize (H0 tt [] _ H5 eq_refl).
       intros es s' hs.
-      eapply (iffLR (subs_merge_complete _ _ _)) in es as es'.
+      eapply subs_merge_complete in es as es'.
       2: eassumption.
       destruct es' as [h1 h2].
       eapply H in h1. eapply H0 in h2. subst.
