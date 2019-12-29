@@ -1043,6 +1043,24 @@ Fixpoint subs_merge (s1 s2 : list (option term)) : option (list (option term)) :
   | _, _ => None
   end.
 
+(* Particular case of completion *)
+Fixpoint subs_flatten_default (l : list (option term)) : list term :=
+  match l with
+  | [] => []
+  | None :: l => tRel 0 :: subs_flatten_default l
+  | Some t :: l => t :: subs_flatten_default l
+  end.
+
+Lemma subs_flatten_default_complete :
+  forall s,
+    subs_complete s (subs_flatten_default s).
+Proof.
+  intro s. induction s as [| [t|] s ih].
+  - constructor.
+  - cbn. constructor. assumption.
+  - cbn. constructor. assumption.
+Qed.
+
 Lemma subs_merge_complete :
   forall s1 s2 s,
     subs_merge s1 s2 = Some s <->
