@@ -1136,23 +1136,6 @@ Proof.
     rewrite e. replace (n - n) with 0 by lia. cbn. reflexivity.
 Qed.
 
-(* Lemma subs_merge_subst_left :
-  forall s1 s2 s,
-    subs_merge s1 s2 = Some s ->
-    subst  *)
-
-(* Can't typecheck for some reason *)
-(* Definition monad_map_def {T} {Monad T} {A B : Set}
-  (tf bf : A -> T B) (d : def A) : T (def B) :=
-  ty <- tf d.(dtype) ;;
-  bo <- bf d.(dbody) ;;
-  ret {|
-    dname := d.(dname) ;
-    dtype := ty ;
-    dbody := bo ;
-    rarg := d.(rarg)
-  |}. *)
-
 Definition option_map_def {A B : Set}
   (tf bf : A -> option B) (d : def A) : option (def B) :=
   ty <- tf d.(dtype) ;;
@@ -1163,11 +1146,6 @@ Definition option_map_def {A B : Set}
     dbody := bo ;
     rarg := d.(rarg)
   |}.
-
-(* Definition monad_on_snd {T} {Monad T} {A B C : Type}
-  (f : B -> T C) (p : A × B) : T (A × C) :=
-  c <- f p.2 ;;
-  ret (p.1, c). *)
 
 Definition option_on_snd {A B C : Type}
   (f : B -> option C) (p : A × B) : option (A × C) :=
@@ -1279,15 +1257,6 @@ Proof.
     }
     rewrite e. reflexivity.
 Qed.
-
-(* Lemma monad_map_length :
-  forall T M A B f l l',
-    @monad_map T M A B f l = ret l' ->
-    #|l| = #|l'|.
-Proof.
-  intros T M A B f l l' e.
-  induction l in l', e |- *.
-  - cbn in e. inversion e. *)
 
 Lemma option_monad_map_length :
   forall A B f l l',
@@ -1430,16 +1399,6 @@ Proof.
       unfold map_def. cbn. f_equal.
       eapply IHX. assumption.
 Qed.
-
-(* Fixpoint monad_map2 {T} {M : Monad T} {A B C}
-  (f : A -> B -> T C) (l1 : list A) (l2 : list B) : T (list C) :=
-  match l1, l2 with
-  | [], [] => ret []
-  | x :: l1, y :: l2 =>
-      z <- f x y ;;
-      l <- monad_map2 f l1 l2 ;;
-      ret (z :: l)
-  | _, _ =>  *)
 
 Fixpoint option_map2 {A B C}
   (f : A -> B -> option C) (l1 : list A) (l2 : list B) : option (list C) :=
@@ -1617,45 +1576,6 @@ Next Obligation.
   - eapply Forall_impl. 1: eassumption.
     intros. lia.
 Qed.
-
-(* Print Assumptions rec_pattern. *)
-
-(* Fixpoint rec_pattern npat nb (p : term) (t : term) := *)
-(* Fail Program Fixpoint rec_pattern npat nb (p t : term) {measure (PCUICSize.size p) } :=
-  match decompose_app p, decompose_app t with
-  | (tRel n, args), (u, args') =>
-    if n <? nb then
-      match args with
-      | [] => if eqb t (tRel n) then ret (subs_empty npat) else None
-      | _ => None
-      end
-    else if n <? npat + nb then
-      let nargs := #|args'| - #|args| in
-      let l := skipn nargs args' in
-      if eqb args l then
-        t' <- strengthen nb 0 (mkApps u (firstn nargs args')) ;;
-        subs_init npat (n - nb) t'
-      else None
-    else None
-
-  | (tLambda na A t, []), (tLambda na' A' t', []) =>
-    option_assert (eqb na na') ;;
-    s1 <- rec_pattern npat nb A A' ;;
-    s2 <- rec_pattern npat (S nb) t t' ;;
-    subs_merge s1 s2
-
-  | (tConstruct ind n ui, args), (tConstruct ind' n' ui', args') =>
-    option_assert (eqb ind ind' && eqb n n' && eqb ui ui') ;;
-    sl <- option_map2 (rec_pattern npat nb) args args' ;;
-    monad_fold_left (subs_merge) sl (subs_empty npat)
-
-  | (tSymb k n ui, args), (tSymb k' n' ui', args') =>
-    option_assert (eqb k k' && eqb n n' && eqb ui ui') ;;
-    sl <- option_map2 (rec_pattern npat nb) args args' ;;
-    monad_fold_left (subs_merge) sl (subs_empty npat)
-
-  | _, _ => None
-  end. *)
 
 Fixpoint isAppRel (t : term) : bool :=
   match t with
