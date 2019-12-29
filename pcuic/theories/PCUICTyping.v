@@ -1795,6 +1795,12 @@ Proof.
       destruct (rec_pattern npat (S nb) t2 t') eqn:et. 2: discriminate.
       specialize (H0 tt [] _ H5 eq_refl).
       intros es s' hs.
+      eapply (iffLR (subs_merge_complete _ _ _)) in es as es'.
+      2: eassumption.
+      destruct es' as [h1 h2].
+      eapply H in h1. eapply H0 in h2. subst.
+      reflexivity.
+    +
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
