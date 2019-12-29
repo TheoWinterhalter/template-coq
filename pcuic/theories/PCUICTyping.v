@@ -1706,6 +1706,40 @@ Proof.
   cbn. rewrite IHl. reflexivity.
 Qed.
 
+Fixpoint isAppConstruct (t : term) : bool :=
+  match t with
+  | tConstruct ind n ui => true
+  | tApp t u => isAppConstruct t
+  | _ => false
+  end.
+
+Lemma isAppConstruct_mkApps :
+  forall t l,
+    isAppConstruct (mkApps t l) = isAppConstruct t.
+Proof.
+  intros t l. induction l in t |- *. 1: reflexivity.
+  cbn. rewrite IHl. reflexivity.
+Qed.
+
+Lemma mkApps_Construct_inj :
+  forall ind n ui ind' n' ui' l l',
+    mkApps (tConstruct ind n ui) l = mkApps (tConstruct ind' n' ui') l' ->
+    ind = ind' /\ n = n' /\ ui = ui' /\ l = l'.
+Proof.
+  intros ind n ui ind' n' ui' l l' e.
+  induction l in ind, n, ui, ind', n', ui', l', e |- * using list_ind_rev.
+  - destruct l'.
+    + cbn in e. inversion e. auto.
+    + cbn in e. apply (f_equal nApp) in e. cbn in e.
+      rewrite nApp_mkApps in e. cbn in e. discriminate.
+  - rewrite <- mkApps_nested in e. cbn in e.
+    destruct l' using list_ind_rev.
+    + cbn in e. discriminate.
+    + rewrite <- mkApps_nested in e. cbn in e.
+      inversion e. eapply IHl in H0. intuition auto.
+      subst. reflexivity.
+Qed.
+
 Lemma mkApps_lift_inv :
   forall t l n k u,
     mkApps t l = lift n k u ->
@@ -1800,14 +1834,24 @@ Proof.
       destruct es' as [h1 h2].
       eapply H in h1. eapply H0 in h2. subst.
       reflexivity.
-    +
+    + inversion hp.
+      all: try solve [
+        apply (f_equal isAppConstruct) in H1 ;
+        rewrite !isAppConstruct_mkApps in H1 ;
+        discriminate
+      ].
+      apply mkApps_Construct_inj in H1 as [? [? [? ?]]]. subst.
+      repeat match goal with
+      | |- context [ eqb ?x ?y ] =>
+        destruct (eqb_spec x y) ; [| discriminate]
+      end. subst.
+      cbn.
+      match goal with
+      | |- context [ wf_option_map2 ?f ?l1 ?l2 ] =>
+        destruct (wf_option_map2 f l1 l2) eqn:e2 ; [| discriminate]
+      end.
+      intros e3 s' hs.
 Abort.
-
-(* TODO To state rec_pattern_spec we might need some maysubst
-   to do partial substitutions. It may be that not all pattern variables
-   are found in a pattern.
-   We only want completeness at toplevel.
-*)
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
   match e, t with
