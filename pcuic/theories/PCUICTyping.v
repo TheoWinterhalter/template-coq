@@ -1028,13 +1028,6 @@ Proof.
         eapply h. assumption.
 Qed.
 
-Fixpoint subs_flatten_default (l : list (option term)) : list term :=
-  match l with
-  | [] => []
-  | None :: l => tRel 0 :: subs_flatten_default l
-  | Some t :: l => t :: subs_flatten_default l
-  end.
-
 Definition subs_init npat x t :=
   subs_add x t (subs_empty npat).
 
@@ -1077,23 +1070,6 @@ Proof.
       rewrite -> firstn_length. lia.
     }
     rewrite e. replace (n - n) with 0 by lia. cbn. reflexivity.
-Qed.
-
-Lemma subs_flatten_default_nth_error :
-  forall s n t,
-    nth_error s n = Some (Some t) ->
-    nth_error (subs_flatten_default s) n = Some t.
-Proof.
-  intros s n t e.
-  induction s in n, t, e |- *.
-  - destruct n. all: discriminate.
-  - destruct n.
-    + cbn in e. apply some_inj in e. subst.
-      cbn. reflexivity.
-    + cbn in e. eapply IHs in e.
-      cbn. destruct a.
-      * assumption.
-      * assumption.
 Qed.
 
 (* Lemma subs_merge_subst_left :
@@ -1693,7 +1669,7 @@ Lemma rec_pattern_spec :
   forall npat nb p t s,
     pattern npat nb p ->
     rec_pattern npat nb p t = Some s <->
-    t = subst (subs_flatten_default s) nb p.
+    forall s', subs_complete s s' -> t = subst s' nb p.
 Proof.
   intros npat nb p t s hp. split.
   - funelim (rec_pattern npat nb p t).
@@ -1716,13 +1692,14 @@ Proof.
           destruct (strengthen n k t) eqn:es
         end.
         2: discriminate.
-        cbn. intro h.
+        cbn. intros h s' hs.
         rewrite subst_mkApps.
         apply strengthen_inv in es.
         apply mkApps_lift_inv in es as [t' [l' [? [? el]]]]. subst.
         cbn. destruct (Nat.leb_spec nb n). 2: lia.
         apply subs_init_nth_error in h as h'.
-        apply subs_flatten_default_nth_error in h'.
+        apply subs_complete_spec in hs as [sl hs'].
+        apply hs' in h'.
         rewrite h'.
         rewrite lift_mkApps. rewrite mkApps_nested. f_equal.
         rewrite <- el. erewrite <- (firstn_skipn _ tl0) at 1.
@@ -1750,19 +1727,10 @@ Proof.
       destruct (eqb_spec na na'). 2: discriminate.
       subst. simpl.
       destruct (rec_pattern npat nb A A') eqn:eA. 2: discriminate.
-      eapply H in H3. 3: eauto. 2: constructor.
-      subst.
+      specialize (H tt _ H3 eq_refl).
       destruct (rec_pattern npat (S nb) t2 t') eqn:et. 2: discriminate.
-      eapply H0 in H5. 4: reflexivity. 2: constructor. 2: auto.
-      subst.
-      intro es.
-      (* Maybe express that the unused/defaulted substitutions are not present
-         or maybe just some closedness?
-
-         ACTUALLY: We don't want to use subs_default thingy
-         but we want to say for any extension of s that is complete
-         and then an extension of a merge is an extension of both components.
-      *)
+      specialize (H0 tt [] _ H5 eq_refl).
+      intros es s' hs.
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
