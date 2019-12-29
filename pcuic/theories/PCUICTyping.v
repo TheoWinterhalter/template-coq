@@ -975,10 +975,58 @@ Definition subs_add x t (l : list (option term)) : option (list (option term)) :
 Definition subs_flatten (l : list (option term)) : option (list term) :=
   map_option_out l.
 
-(** Sometimes we only have a partial substitution and still want to apply it.
-    It's alright, it merely means whatever we plug in there, the variable
-    doesn't appear so might as well default to [tRel 0] or so.
+(** To deal with a partial substitution we consider all its complete extensions.
 *)
+
+Inductive subs_complete : list (option term) -> list term -> Prop :=
+| subs_complete_nil : subs_complete [] []
+| subs_complete_Some :
+    forall a s s',
+      subs_complete s s' ->
+      subs_complete (Some a :: s) (a :: s')
+| subs_complete_None :
+    forall a s s',
+      subs_complete s s' ->
+      subs_complete (None :: s) (a :: s').
+
+Lemma subs_complete_spec :
+  forall s s',
+    subs_complete s s' <->
+    (#|s| = #|s'| /\
+     forall n t, nth_error s n = Some (Some t) -> nth_error s' n = Some t).
+Proof.
+  intros s s'. split.
+  - intro h. induction h.
+    + split. 1: reflexivity.
+      intros [] t e. all: discriminate.
+    + cbn. destruct IHh as [el ih].
+      split. 1: auto.
+      intros [|n] t e.
+      * cbn in *. apply some_inj in e. assumption.
+      * cbn in *. eapply ih. assumption.
+    + cbn. destruct IHh as [el ih].
+      split. 1: auto.
+      intros [|n] t e.
+      * cbn in *. discriminate.
+      * cbn in *. eapply ih. assumption.
+  - intros [e h]. induction s in s', e, h |- *.
+    + destruct s'. 2: discriminate.
+      constructor.
+    + destruct s'. 1: discriminate.
+      cbn in e. destruct a.
+      * specialize h with (n := 0) as h'.
+        cbn in h'. specialize h' with (1 := eq_refl).
+        apply some_inj in h'. subst.
+        constructor.
+        eapply IHs. 1: lia.
+        intros n t hn.
+        specialize h with (n := S n). cbn in h.
+        eapply h. assumption.
+      * constructor. eapply IHs. 1: lia.
+        intros n ? hn.
+        specialize h with (n := S n). cbn in h.
+        eapply h. assumption.
+Qed.
 
 Fixpoint subs_flatten_default (l : list (option term)) : list term :=
   match l with
@@ -1708,6 +1756,13 @@ Proof.
       eapply H0 in H5. 4: reflexivity. 2: constructor. 2: auto.
       subst.
       intro es.
+      (* Maybe express that the unused/defaulted substitutions are not present
+         or maybe just some closedness?
+
+         ACTUALLY: We don't want to use subs_default thingy
+         but we want to say for any extension of s that is complete
+         and then an extension of a merge is an extension of both components.
+      *)
 Abort.
 
 (* TODO To state rec_pattern_spec we might need some maysubst
