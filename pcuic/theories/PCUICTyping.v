@@ -1554,6 +1554,15 @@ Qed.
 
 (* Print Assumptions wf_option_map2. *)
 
+Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
+  (l : list B) (x : A) : T A :=
+  match l with
+  | [] => ret x
+  | y :: l =>
+      a <- monad_fold_right g l x ;;
+      g a y
+  end.
+
 Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
 
@@ -1590,7 +1599,7 @@ Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
                   (m := PCUICSize.size)
                   (y := PCUICSize.size (mkApps (tConstruct ind n ui) args))
                   (fun p t h => rec_pattern npat nb p t) args args' ;;
-          monad_fold_left (subs_merge) sl (subs_empty npat) ;
+          monad_fold_right (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_symb k n ui args k' n' ui' args' :=
           option_assert (eqb k k' && eqb n n' && eqb ui ui') ;;
@@ -1598,7 +1607,7 @@ Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
                   (m := PCUICSize.size)
                   (y := PCUICSize.size (mkApps (tSymb k n ui) args))
                   (fun p t h => rec_pattern npat nb p t) args args' ;;
-          monad_fold_left (subs_merge) sl (subs_empty npat) ;
+          monad_fold_right (subs_merge) sl (subs_empty npat) ;
 
       | rec_pattern_other p pl t tl _ := None
       }
@@ -1881,15 +1890,12 @@ Proof.
       end.
       apply some_inj in e2. subst.
       cbn in e3.
-      match type of e3 with
-      | context [ subs_merge ?s1 ?s2 ] =>
-        destruct (subs_merge s1 s2) eqn:e6 ; [| discriminate]
-      end.
+      destruct monad_fold_right eqn:e6. 2: discriminate.
       cbn in ih.
       f_equal.
       * admit.
       * eapply IHForall. all: eauto.
-        (* We probably want fold_right instead! *)
+        (* Some problem with the s generalisation maybe? *)
 Abort.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
