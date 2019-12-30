@@ -1734,6 +1734,30 @@ Proof.
     intuition eauto.
 Qed.
 
+Lemma wf_option_map2_option_map2 :
+  forall A B C m y f l1 l2 h l g,
+    @wf_option_map2 A B C m y f l1 l2 h = Some l ->
+    (forall x y h, f x y h = g x y) ->
+    option_map2 g l1 l2 = Some l.
+Proof.
+  intros A B C m y f l1 l2 h l g e ext.
+  induction l1 in h, l2, e, l |- *.
+  - destruct l2. 2: discriminate.
+    cbn in e. apply some_inj in e. subst.
+    cbn. reflexivity.
+  - destruct l2. 1: discriminate.
+    cbn in e.
+    match type of e with
+    | context [ f ?x ?y ?h ] =>
+      destruct (f x y h) eqn:ef ; [| discriminate]
+    end.
+    destruct wf_option_map2 eqn:ew. 2: discriminate.
+    apply some_inj in e. subst.
+    cbn. erewrite <- ext. erewrite ef.
+    erewrite IHl1. 1: reflexivity.
+    eassumption.
+Qed.
+
 Lemma rec_pattern_sound :
   forall npat nb p t s,
     pattern npat nb p ->
