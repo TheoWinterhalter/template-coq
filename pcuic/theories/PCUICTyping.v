@@ -1734,94 +1734,94 @@ Proof.
     intuition eauto.
 Qed.
 
-Lemma rec_pattern_spec :
+Lemma rec_pattern_sound :
   forall npat nb p t s,
     pattern npat nb p ->
-    rec_pattern npat nb p t = Some s <->
+    rec_pattern npat nb p t = Some s ->
     forall s', subs_complete s s' -> t = subst s' nb p.
 Proof.
-  intros npat nb p t s hp. split.
-  - funelim (rec_pattern npat nb p t).
-    + inversion hp.
-      all: try solve [
-        apply (f_equal isAppRel) in H ;
-        rewrite !isAppRel_mkApps in H ;
-        discriminate
-      ].
-      * apply mkApps_Rel_inj in H as [? ?]. subst.
-        destruct (Nat.ltb_spec n nb). 1: lia.
-        destruct (Nat.ltb_spec n (npat + nb)). 2: lia.
-        match goal with
-        | |- context [ eqb ?u ?v ] =>
-          destruct (eqb_spec u v)
-        end.
-        2: discriminate.
-        match goal with
-        | |- context [ strengthen ?n ?k ?t ] =>
-          destruct (strengthen n k t) eqn:es
-        end.
-        2: discriminate.
-        cbn. intros h s' hs.
-        rewrite subst_mkApps.
-        apply strengthen_inv in es.
-        apply mkApps_lift_inv in es as [t' [l' [? [? el]]]]. subst.
-        cbn. destruct (Nat.leb_spec nb n). 2: lia.
-        apply subs_init_nth_error in h as h'.
-        apply subs_complete_spec in hs as [sl hs'].
-        apply hs' in h'.
-        rewrite h'.
-        rewrite lift_mkApps. rewrite mkApps_nested. f_equal.
-        rewrite <- el. erewrite <- (firstn_skipn _ tl0) at 1.
-        f_equal. rewrite <- e1. clear - H2.
-        induction H2 in |- *. 1: reflexivity.
-        cbn. destruct (Nat.leb_spec nb x). 1: lia.
-        f_equal. assumption.
-      * destruct pl using list_rect_rev.
-        2:{ rewrite <- mkApps_nested in H. cbn in H. discriminate. }
-        cbn in H. inversion H. subst. clear H.
-        destruct (Nat.ltb_spec n nb). 2: lia.
-        destruct (eqb_spec (mkApps t tl0) (tRel n)). 2: discriminate.
-        destruct tl0 using list_rect_rev.
-        2:{ rewrite <- mkApps_nested in e1. cbn in e1. discriminate. }
-        cbn in e1. subst. cbn.
-        intro e1. apply some_inj in e1. subst.
-        destruct (Nat.leb_spec nb n). 1: lia.
-        reflexivity.
-    + cbn in hp. inversion hp.
-      all: try solve [
-        apply (f_equal isAppLambda) in H1 ;
-        rewrite !isAppLambda_mkApps in H1 ;
-        discriminate
-      ]. subst.
-      destruct (eqb_spec na na'). 2: discriminate.
-      subst. simpl.
-      destruct (rec_pattern npat nb A A') eqn:eA. 2: discriminate.
-      specialize (H tt _ H3 eq_refl).
-      destruct (rec_pattern npat (S nb) t2 t') eqn:et. 2: discriminate.
-      specialize (H0 tt [] _ H5 eq_refl).
-      intros es s' hs.
-      eapply subs_merge_complete in es as es'.
-      2: eassumption.
-      destruct es' as [h1 h2].
-      eapply H in h1. eapply H0 in h2. subst.
-      reflexivity.
-    + inversion hp.
-      all: try solve [
-        apply (f_equal isAppConstruct) in H1 ;
-        rewrite !isAppConstruct_mkApps in H1 ;
-        discriminate
-      ].
-      apply mkApps_Construct_inj in H1 as [? [? [? ?]]]. subst.
-      repeat match goal with
-      | |- context [ eqb ?x ?y ] =>
-        destruct (eqb_spec x y) ; [| discriminate]
-      end. subst.
-      cbn.
+  intros npat nb p t s hp.
+  funelim (rec_pattern npat nb p t).
+  - inversion hp.
+    all: try solve [
+      apply (f_equal isAppRel) in H ;
+      rewrite !isAppRel_mkApps in H ;
+      discriminate
+    ].
+    + apply mkApps_Rel_inj in H as [? ?]. subst.
+      destruct (Nat.ltb_spec n nb). 1: lia.
+      destruct (Nat.ltb_spec n (npat + nb)). 2: lia.
       match goal with
-      | |- context [ wf_option_map2 ?f ?l1 ?l2 ] =>
-        destruct (wf_option_map2 f l1 l2) eqn:e2 ; [| discriminate]
+      | |- context [ eqb ?u ?v ] =>
+        destruct (eqb_spec u v)
       end.
-      intros e3 s' hs.
+      2: discriminate.
+      match goal with
+      | |- context [ strengthen ?n ?k ?t ] =>
+        destruct (strengthen n k t) eqn:es
+      end.
+      2: discriminate.
+      cbn. intros h s' hs.
+      rewrite subst_mkApps.
+      apply strengthen_inv in es.
+      apply mkApps_lift_inv in es as [t' [l' [? [? el]]]]. subst.
+      cbn. destruct (Nat.leb_spec nb n). 2: lia.
+      apply subs_init_nth_error in h as h'.
+      apply subs_complete_spec in hs as [sl hs'].
+      apply hs' in h'.
+      rewrite h'.
+      rewrite lift_mkApps. rewrite mkApps_nested. f_equal.
+      rewrite <- el. erewrite <- (firstn_skipn _ tl0) at 1.
+      f_equal. rewrite <- e1. clear - H2.
+      induction H2 in |- *. 1: reflexivity.
+      cbn. destruct (Nat.leb_spec nb x). 1: lia.
+      f_equal. assumption.
+    + destruct pl using list_rect_rev.
+      2:{ rewrite <- mkApps_nested in H. cbn in H. discriminate. }
+      cbn in H. inversion H. subst. clear H.
+      destruct (Nat.ltb_spec n nb). 2: lia.
+      destruct (eqb_spec (mkApps t tl0) (tRel n)). 2: discriminate.
+      destruct tl0 using list_rect_rev.
+      2:{ rewrite <- mkApps_nested in e1. cbn in e1. discriminate. }
+      cbn in e1. subst. cbn.
+      intro e1. apply some_inj in e1. subst.
+      destruct (Nat.leb_spec nb n). 1: lia.
+      reflexivity.
+  - cbn in hp. inversion hp.
+    all: try solve [
+      apply (f_equal isAppLambda) in H1 ;
+      rewrite !isAppLambda_mkApps in H1 ;
+      discriminate
+    ]. subst.
+    destruct (eqb_spec na na'). 2: discriminate.
+    subst. simpl.
+    destruct (rec_pattern npat nb A A') eqn:eA. 2: discriminate.
+    specialize (H tt _ H3 eq_refl).
+    destruct (rec_pattern npat (S nb) t2 t') eqn:et. 2: discriminate.
+    specialize (H0 tt [] _ H5 eq_refl).
+    intros es s' hs.
+    eapply subs_merge_complete in es as es'.
+    2: eassumption.
+    destruct es' as [h1 h2].
+    eapply H in h1. eapply H0 in h2. subst.
+    reflexivity.
+  - inversion hp.
+    all: try solve [
+      apply (f_equal isAppConstruct) in H1 ;
+      rewrite !isAppConstruct_mkApps in H1 ;
+      discriminate
+    ].
+    apply mkApps_Construct_inj in H1 as [? [? [? ?]]]. subst.
+    repeat match goal with
+    | |- context [ eqb ?x ?y ] =>
+      destruct (eqb_spec x y) ; [| discriminate]
+    end. subst.
+    cbn.
+    match goal with
+    | |- context [ wf_option_map2 ?f ?l1 ?l2 ] =>
+      destruct (wf_option_map2 f l1 l2) eqn:e2 ; [| discriminate]
+    end.
+    intros e3 s' hs.
 Abort.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
