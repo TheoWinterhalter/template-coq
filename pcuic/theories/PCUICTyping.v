@@ -1822,6 +1822,47 @@ Proof.
       destruct (wf_option_map2 f l1 l2) eqn:e2 ; [| discriminate]
     end.
     intros e3 s' hs.
+    rewrite subst_mkApps. cbn. f_equal.
+    rewrite mkApps_size in H. cbn in H.
+    assert (ih :
+      forall p t,
+        PCUICSize.size p < S (list_size PCUICSize.size args) ->
+        forall s,
+          pattern npat nb p ->
+          rec_pattern npat nb p t = Some s ->
+          forall s',
+            subs_complete s s' ->
+            t = subst s' nb p
+    ).
+    { clear - H.
+      intros p t si s hp e s' hs.
+      specialize H with (1 := tt) (4 := eq_refl).
+      eapply H. all: eauto.
+    }
+    clear H H0.
+    induction H2 in args', l, e2, e3, s', hs, ih |- *.
+    + destruct args'. 1: reflexivity.
+      cbn in e2. discriminate.
+    + cbn. destruct args'. 1: discriminate.
+      cbn in e2.
+      match type of e2 with
+      | context [ rec_pattern ?npat ?nb ?p ?t ] =>
+        destruct (rec_pattern npat nb p t) eqn:e4 ; [| discriminate]
+      end.
+      match type of e2 with
+      | context [ wf_option_map2 ?f ?l1 ?l2 ] =>
+        destruct (wf_option_map2 f l1 l2) eqn:e5 ; [| discriminate]
+      end.
+      apply some_inj in e2. subst.
+      cbn in e3.
+      match type of e3 with
+      | context [ subs_merge ?s1 ?s2 ] =>
+        destruct (subs_merge s1 s2) eqn:e6 ; [| discriminate]
+      end.
+      cbn in ih.
+      f_equal.
+      * admit.
+      * eapply IHForall. all: eauto.
 Abort.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
