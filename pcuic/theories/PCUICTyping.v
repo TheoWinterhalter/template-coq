@@ -1864,6 +1864,8 @@ Proof.
       eapply H. all: eauto.
     }
     clear H H0.
+    apply wf_option_map2_option_map2 with (g := rec_pattern npat nb) in e2.
+    2:{ clear. intros. reflexivity. }
     induction H2 in args', l, e2, e3, s', hs, ih |- *.
     + destruct args'. 1: reflexivity.
       cbn in e2. discriminate.
@@ -1874,8 +1876,8 @@ Proof.
         destruct (rec_pattern npat nb p t) eqn:e4 ; [| discriminate]
       end.
       match type of e2 with
-      | context [ wf_option_map2 ?f ?l1 ?l2 ] =>
-        destruct (wf_option_map2 f l1 l2) eqn:e5 ; [| discriminate]
+      | context [ option_map2 ?f ?l1 ?l2 ] =>
+        destruct (option_map2 f l1 l2) eqn:e5 ; [| discriminate]
       end.
       apply some_inj in e2. subst.
       cbn in e3.
@@ -1887,6 +1889,7 @@ Proof.
       f_equal.
       * admit.
       * eapply IHForall. all: eauto.
+        (* We probably want fold_right instead! *)
 Abort.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
