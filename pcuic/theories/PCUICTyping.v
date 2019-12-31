@@ -2139,7 +2139,15 @@ Proof.
         -- eapply IHbrs. all: eauto.
            eapply subs_merge_complete in e3. 2: eassumption.
            apply e3.
-Abort.
+  - simpl in e. cbn.
+    destruct t. all: try discriminate.
+    change (eq_prod (eq_prod eq_inductive Nat.eqb) Nat.eqb p p0)
+    with (eqb p p0) in e.
+    destruct (eqb_spec p p0). 2: discriminate.
+    subst. cbn in e. f_equal.
+    eapply ih. all: eauto.
+    inversion h. assumption.
+Qed.
 
 (* Lemma rec_lhs_spec :
   forall npat k n ui l t,
