@@ -2034,8 +2034,10 @@ Fixpoint rec_lhs_rec
       | tCase ind' p' c brs' =>
           option_assert (eqb ind ind') ;;
           s1 <- rec_pattern npat 0 p p' ;;
-          sl <- option_map2
-                  (fun br br' => rec_pattern npat 0 br.2 br'.2) brs brs' ;;
+          sl <- option_map2 (fun br br' =>
+                  option_assert (eqb br.1 br'.1) ;;
+                  rec_pattern npat 0 br.2 br'.2
+                ) brs brs' ;;
           s2 <- monad_fold_right (subs_merge) sl (subs_empty npat) ;;
           s3 <- rec_lhs_rec npat k n ui l c ;;
           s4 <- subs_merge s1 s2 ;;
@@ -2086,6 +2088,58 @@ Proof.
     + eapply rec_pattern_sound in e1. all: eauto.
       eapply subs_merge_complete in e. 2: eassumption.
       apply e.
+  - simpl in e. cbn.
+    destruct t. all: try discriminate.
+    change (eq_prod eq_inductive Nat.eqb indn indn0)
+    with (eqb indn indn0) in e.
+    destruct (eqb_spec indn indn0). 2: discriminate.
+    subst. cbn in e.
+    destruct rec_pattern eqn:e1. 2: discriminate.
+    destruct option_map2 eqn:e2. 2: discriminate.
+    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct rec_lhs_rec eqn:e4. 2: discriminate.
+    destruct subs_merge eqn:e5. 2: discriminate.
+    inversion h. subst.
+    match goal with
+    | h : elim_pattern _ _ |- _ =>
+      inversion h
+    end. subst.
+    f_equal.
+    + eapply rec_pattern_sound in e1. all: eauto.
+      eapply subs_merge_complete in e as [h1 h2]. 2: eassumption.
+      eapply subs_merge_complete in e5. 2: eassumption.
+      apply e5.
+    + eapply ih. all: eauto.
+      eapply subs_merge_complete in e. 2: eassumption.
+      apply e.
+    + rename brs0 into brs'.
+      clear - brs' e2 H5 hs e5 e e3.
+      rename H5 into h.
+      induction brs in brs', l1, h, e2, s, s', l2, e3, hs, l3, l4, e5, e |- *.
+      * destruct brs'. 2: discriminate.
+        reflexivity.
+      * destruct brs'. 1: discriminate.
+        cbn in e2.
+        destruct p as [n u], a as [m v]. cbn in *.
+        change (m =? n)%nat with (eqb m n) in e2.
+        destruct (eqb_spec m n). 2: discriminate.
+        cbn in e2. subst.
+        destruct rec_pattern eqn:e0. 2: discriminate.
+        destruct option_map2 eqn:e1. 2: discriminate.
+        apply some_inj in e2. subst.
+        unfold on_snd at 1. cbn in *.
+        destruct monad_fold_right eqn:e4. 2: discriminate.
+        inversion h. subst. cbn in *.
+        f_equal.
+        -- f_equal. eapply rec_pattern_sound in e0. all: eauto.
+           eapply subs_merge_complete in e as [? _]. 2: eassumption.
+           eapply subs_merge_complete in e5 as [_ ?]. 2: eassumption.
+           eapply subs_merge_complete in e3 as [_ ?]. 2: eassumption.
+           assumption.
+        -- eapply IHbrs. all: eauto.
+           (* Almost there, all those subs_merge should not appear before
+              induction.
+           *)
 Abort.
 
 (* Lemma rec_lhs_spec :
