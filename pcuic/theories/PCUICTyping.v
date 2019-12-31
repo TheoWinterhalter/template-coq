@@ -1720,6 +1720,40 @@ Proof.
       subst. reflexivity.
 Qed.
 
+Fixpoint isAppSymb (t : term) : bool :=
+  match t with
+  | tSymb k n ui => true
+  | tApp t u => isAppSymb t
+  | _ => false
+  end.
+
+Lemma isAppSymb_mkApps :
+  forall t l,
+    isAppSymb (mkApps t l) = isAppSymb t.
+Proof.
+  intros t l. induction l in t |- *. 1: reflexivity.
+  cbn. rewrite IHl. reflexivity.
+Qed.
+
+Lemma mkApps_Symb_inj :
+  forall k n ui k' n' ui' l l',
+    mkApps (tSymb k n ui) l = mkApps (tSymb k' n' ui') l' ->
+    k = k' /\ n = n' /\ ui = ui' /\ l = l'.
+Proof.
+  intros k n ui k' n' ui' l l' e.
+  induction l in k, n, ui, k', n', ui', l', e |- * using list_ind_rev.
+  - destruct l'.
+    + cbn in e. inversion e. auto.
+    + cbn in e. apply (f_equal nApp) in e. cbn in e.
+      rewrite nApp_mkApps in e. cbn in e. discriminate.
+  - rewrite <- mkApps_nested in e. cbn in e.
+    destruct l' using list_ind_rev.
+    + cbn in e. discriminate.
+    + rewrite <- mkApps_nested in e. cbn in e.
+      inversion e. eapply IHl in H0. intuition auto.
+      subst. reflexivity.
+Qed.
+
 Lemma mkApps_lift_inv :
   forall t l n k u,
     mkApps t l = lift n k u ->
@@ -1903,6 +1937,73 @@ Proof.
         -- intros p u h s0 hp' he s'0 hs'.
            eapply ih. all: eauto.
            lia.
+  - inversion hp.
+    all: try solve [
+      apply (f_equal isAppSymb) in H1 ;
+      rewrite !isAppSymb_mkApps in H1 ;
+      discriminate
+    ].
+    apply mkApps_Symb_inj in H1 as [? [? [? ?]]]. subst.
+    repeat match goal with
+    | |- context [ eqb ?x ?y ] =>
+      destruct (eqb_spec x y) ; [| discriminate]
+    end. subst.
+    cbn.
+    match goal with
+    | |- context [ wf_option_map2 ?f ?l1 ?l2 ] =>
+      destruct (wf_option_map2 f l1 l2) eqn:e2 ; [| discriminate]
+    end.
+    intros e3 s' hs.
+    rewrite subst_mkApps. cbn. f_equal.
+    rewrite mkApps_size in H. cbn in H.
+    rename args'0 into args', args0 into args.
+    assert (ih :
+      forall p t,
+        PCUICSize.size p < S (list_size PCUICSize.size args) ->
+        forall s,
+          pattern npat nb p ->
+          rec_pattern npat nb p t = Some s ->
+          forall s',
+            subs_complete s s' ->
+            t = subst s' nb p
+    ).
+    { clear - H.
+      intros p t si s hp e s' hs.
+      specialize H with (1 := tt) (4 := eq_refl).
+      eapply H. all: eauto.
+    }
+    clear H H0.
+    apply wf_option_map2_option_map2 with (g := rec_pattern npat nb) in e2.
+    2:{ clear. intros. reflexivity. }
+    induction H2 in args', s, l, e2, e3, s', hs, ih |- *.
+    + destruct args'. 1: reflexivity.
+      cbn in e2. discriminate.
+    + cbn. destruct args'. 1: discriminate.
+      cbn in e2.
+      match type of e2 with
+      | context [ rec_pattern ?npat ?nb ?p ?t ] =>
+        destruct (rec_pattern npat nb p t) eqn:e4 ; [| discriminate]
+      end.
+      match type of e2 with
+      | context [ option_map2 ?f ?l1 ?l2 ] =>
+        destruct (option_map2 f l1 l2) eqn:e5 ; [| discriminate]
+      end.
+      apply some_inj in e2. subst.
+      cbn in e3.
+      destruct monad_fold_right eqn:e6. 2: discriminate.
+      cbn in ih.
+      f_equal.
+      * eapply ih in H. 1: eassumption. all: eauto.
+        -- lia.
+        -- eapply subs_merge_complete in e3. 2: eassumption.
+          apply e3.
+      * eapply IHForall. all: eauto.
+        -- eapply subs_merge_complete in e3. 2: eassumption.
+          apply e3.
+        -- intros p u h s0 hp' he s'0 hs'.
+          eapply ih. all: eauto.
+          lia.
+  -
 Abort.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
