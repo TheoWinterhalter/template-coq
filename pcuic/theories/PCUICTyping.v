@@ -2113,9 +2113,11 @@ Proof.
       eapply subs_merge_complete in e. 2: eassumption.
       apply e.
     + rename brs0 into brs'.
-      clear - brs' e2 H5 hs e5 e e3.
-      rename H5 into h.
-      induction brs in brs', l1, h, e2, s, s', l2, e3, hs, l3, l4, e5, e |- *.
+      eapply subs_merge_complete in e as [? _]. 2: eassumption.
+      eapply subs_merge_complete in e5 as [_ hs']. 2: eassumption.
+      clear - brs' e2 H5 e3 hs'.
+      rename H5 into h, hs' into hs, l2 into s.
+      induction brs in brs', l1, h, e2, s, s', e3, hs |- *.
       * destruct brs'. 2: discriminate.
         reflexivity.
       * destruct brs'. 1: discriminate.
@@ -2132,14 +2134,11 @@ Proof.
         inversion h. subst. cbn in *.
         f_equal.
         -- f_equal. eapply rec_pattern_sound in e0. all: eauto.
-           eapply subs_merge_complete in e as [? _]. 2: eassumption.
-           eapply subs_merge_complete in e5 as [_ ?]. 2: eassumption.
-           eapply subs_merge_complete in e3 as [_ ?]. 2: eassumption.
-           assumption.
+           eapply subs_merge_complete in e3. 2: eassumption.
+           apply e3.
         -- eapply IHbrs. all: eauto.
-           (* Almost there, all those subs_merge should not appear before
-              induction.
-           *)
+           eapply subs_merge_complete in e3. 2: eassumption.
+           apply e3.
 Abort.
 
 (* Lemma rec_lhs_spec :
