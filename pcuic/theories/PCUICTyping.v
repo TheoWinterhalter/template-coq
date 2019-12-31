@@ -1875,7 +1875,7 @@ Proof.
     clear H H0.
     apply wf_option_map2_option_map2 with (g := rec_pattern npat nb) in e2.
     2:{ clear. intros. reflexivity. }
-    induction H2 in args', l, e2, e3, s', hs, ih |- *.
+    induction H2 in args', s, l, e2, e3, s', hs, ih |- *.
     + destruct args'. 1: reflexivity.
       cbn in e2. discriminate.
     + cbn. destruct args'. 1: discriminate.
@@ -1895,7 +1895,11 @@ Proof.
       f_equal.
       * admit.
       * eapply IHForall. all: eauto.
-        (* Some problem with the s generalisation maybe? *)
+        -- eapply subs_merge_complete in e3. 2: eassumption.
+           apply e3.
+        -- intros p u h s0 hp' he s'0 hs'.
+           eapply ih. all: eauto.
+           lia.
 Abort.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
