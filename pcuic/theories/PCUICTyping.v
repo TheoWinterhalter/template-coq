@@ -1893,7 +1893,10 @@ Proof.
       destruct monad_fold_right eqn:e6. 2: discriminate.
       cbn in ih.
       f_equal.
-      * admit.
+      * eapply ih in H. 1: eassumption. all: eauto.
+        -- lia.
+        -- eapply subs_merge_complete in e3. 2: eassumption.
+           apply e3.
       * eapply IHForall. all: eauto.
         -- eapply subs_merge_complete in e3. 2: eassumption.
            apply e3.
