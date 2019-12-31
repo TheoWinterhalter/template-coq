@@ -2149,11 +2149,43 @@ Proof.
     inversion h. assumption.
 Qed.
 
-(* Lemma rec_lhs_spec :
-  forall npat k n ui l t,
+Lemma map_option_out_subs_complete :
+  forall s s',
+    map_option_out s = Some s' ->
+    subs_complete s s'.
+Proof.
+  intros s s' e.
+  induction s in s', e |- *.
+  - cbn in e. apply some_inj in e. subst. constructor.
+  - cbn in e. destruct a. 2: discriminate.
+    destruct map_option_out eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    constructor. eapply IHs. reflexivity.
+Qed.
+
+(* TODO Maybe we don't want to do map_option_out in case some
+   pattern variables aren't used.
+   Or maybe we want to enforce all to appear at least once, which would make
+   sense.
+*)
+Lemma rec_lhs_sound :
+  forall npat k n ui l t s,
     Forall (elim_pattern npat) l ->
-    rec_lhs npat k n ui l t = Some s <->
-    t = subst0 s (mkElims (tSymb k n ui) l). *)
+    rec_lhs npat k n ui l t = Some s ->
+    t = subst0 s (mkElims (tSymb k n ui) l).
+Proof.
+  intros npat k n ui l t s h e.
+  unfold rec_lhs in e.
+  destruct rec_lhs_rec eqn:e1. 2: discriminate.
+  cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+  apply some_inj in e. subst.
+  apply map_option_out_subs_complete in e2 as hs.
+  eapply rec_lhs_rec_sound in e1. 3: eauto.
+  - rewrite fold_left_rev_right in e1. assumption.
+  - eapply rev_Forall. assumption.
+Qed.
+
+(* TODO Prove the it is complete. *)
 
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
