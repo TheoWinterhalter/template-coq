@@ -2011,16 +2011,6 @@ Qed.
    rec_pattern p t = Some s with subs_complete s s'.
 *)
 
-(* Fixpoint rec_elim npat (e : elimination) (t : term) : option (list (option term)) :=
-  match e, t with
-  | eApp p, tApp u v =>
-
-Lemma rec_elim_sound :
-  forall npat e t,
-    elim_pattern npat e ->
-    rec_elim npat e t = Some (u,s) ->
-    forall s', subs_complete s s' -> t = subst0 s' (mkElim u e). *)
-
 (* Is assumes the eliminaion list is reversed *)
 Fixpoint rec_lhs_rec
   (npat : nat) (k : kername) (n : nat) (ui : universe_instance)
@@ -2066,6 +2056,37 @@ Definition rec_lhs npat k n ui l t : option (list term) :=
   s <- rec_lhs_rec npat k n ui (List.rev l) t ;;
   s <- map_option_out s ;;
   ret s.
+
+Lemma rec_lhs_rec_sound :
+  forall npat k n ui l t s,
+    Forall (elim_pattern npat) l ->
+    rec_lhs_rec npat k n ui l t = Some s ->
+    forall s',
+      subs_complete s s' ->
+      t = subst0 s' (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
+Proof.
+  intros npat k n ui l t s h e s' hs.
+  induction l as [| [] l ih] in t, s, h, e, s', hs |- *.
+  - cbn. unfold rec_lhs_rec in e.
+    destruct (eqb_spec (tSymb k n ui) t). 2: discriminate.
+    auto.
+  - simpl in e. cbn.
+    destruct t. all: try discriminate.
+    destruct rec_pattern eqn:e1. 2: discriminate.
+    destruct rec_lhs_rec eqn:e2. 2: discriminate.
+    inversion h. subst.
+    match goal with
+    | h : elim_pattern _ _ |- _ =>
+      inversion h
+    end. subst.
+    f_equal.
+    + eapply ih. all: eauto.
+      eapply subs_merge_complete in e. 2: eassumption.
+      apply e.
+    + eapply rec_pattern_sound in e1. all: eauto.
+      eapply subs_merge_complete in e. 2: eassumption.
+      apply e.
+Abort.
 
 (* Lemma rec_lhs_spec :
   forall npat k n ui l t,
