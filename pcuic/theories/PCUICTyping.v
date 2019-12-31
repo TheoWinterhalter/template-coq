@@ -2003,8 +2003,8 @@ Proof.
         -- intros p u h s0 hp' he s'0 hs'.
           eapply ih. all: eauto.
           lia.
-  -
-Abort.
+  - discriminate.
+Qed.
 
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
   match e, t with
