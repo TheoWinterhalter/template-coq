@@ -2006,6 +2006,11 @@ Proof.
   - discriminate.
 Qed.
 
+(* TODO
+   Completeness will be stated as subst s' nb t = p implies that
+   rec_pattern p t = Some s with subs_complete s s'.
+*)
+
 (* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
   match e, t with
   | eApp p, tApp u v =>
