@@ -2011,16 +2011,63 @@ Qed.
    rec_pattern p t = Some s with subs_complete s s'.
 *)
 
-(* Fixpoint rec_elim (e : elimination) (t : term) : option ? :=
+(* Fixpoint rec_elim npat (e : elimination) (t : term) : option (list (option term)) :=
   match e, t with
   | eApp p, tApp u v =>
 
-Fixpoint rec_lhs
+Lemma rec_elim_sound :
+  forall npat e t,
+    elim_pattern npat e ->
+    rec_elim npat e t = Some (u,s) ->
+    forall s', subs_complete s s' -> t = subst0 s' (mkElim u e). *)
+
+(* Is assumes the eliminaion list is reversed *)
+Fixpoint rec_lhs_rec
   (npat : nat) (k : kername) (n : nat) (ui : universe_instance)
-  (l : list elimination) (t : term) : option (list term) :=
+  (l : list elimination) (t : term) : option (list (option term)) :=
+  match l with
+  | [] =>
+      option_assert (eqb (tSymb k n ui) t) ;;
+      ret (subs_empty npat)
 
+  | eApp p :: l =>
+      match t with
+      | tApp u v =>
+          s1 <- rec_pattern npat 0 p v ;;
+          s2 <- rec_lhs_rec npat k n ui l u ;;
+          subs_merge s1 s2
+      | _ => None
+      end
 
-Lemma rec_lhs_spec :
+  | eCase ind p brs :: l =>
+      match t with
+      | tCase ind' p' c brs' =>
+          option_assert (eqb ind ind') ;;
+          s1 <- rec_pattern npat 0 p p' ;;
+          sl <- option_map2
+                  (fun br br' => rec_pattern npat 0 br.2 br'.2) brs brs' ;;
+          s2 <- monad_fold_right (subs_merge) sl (subs_empty npat) ;;
+          s3 <- rec_lhs_rec npat k n ui l c ;;
+          s4 <- subs_merge s1 s2 ;;
+          subs_merge s4 s3
+      | _ => None
+      end
+
+  | eProj p :: l =>
+      match t with
+      | tProj p' u =>
+          option_assert (eqb p p') ;;
+          rec_lhs_rec npat k n ui l u
+      | _ => None
+      end
+  end.
+
+Definition rec_lhs npat k n ui l t : option (list term) :=
+  s <- rec_lhs_rec npat k n ui (List.rev l) t ;;
+  s <- map_option_out s ;;
+  ret s.
+
+(* Lemma rec_lhs_spec :
   forall npat k n ui l t,
     Forall (elim_pattern npat) l ->
     rec_lhs npat k n ui l t = Some s <->
