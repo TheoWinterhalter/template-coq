@@ -1064,6 +1064,27 @@ Section Confluence.
       constructor 2. symmetry. assumption.
     Defined.
 
+    Definition is_rewrite_rule k r :=
+      ∑ d,
+        lookup_env Σ k = Some (RewriteDecl d) ×
+        ((∑ n, nth_error d.(rules) n = Some r) +
+        (∑ n, nth_error d.(prules) n = Some r)).
+
+    (* Equations lhs_discr (t : term) : Prop :=
+      lhs_discr t with decompose_symb_viewc t := {
+      | is_symb k n ui l := ? ;
+      | is_not_symb t h := True
+      }
+
+    Inductive decompose_lhs_view : term -> Type :=
+    | is_lhs s k n ui l r
+        (h : is_rewrite_rule k r)
+      : decompose_lhs_view (subst0 s (mkElims (tSymb k n ui) l))
+    | is_not_lhs t :
+    (e : rec_lhs #|r.(pat_context)| k n ui l t = Some s)
+      decompose_lhs_view t. *)
+
+
     (* NOTE
 
       For the triangle property we want to ask for pred1 and pred1_subst/list
