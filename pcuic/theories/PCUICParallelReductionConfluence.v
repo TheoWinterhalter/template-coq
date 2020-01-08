@@ -1000,6 +1000,8 @@ Section Confluence.
       | tCase ind p u brs =>
         '(kn, n, ui, l) <- decompose_symb u ;;
         ret (kn, n, ui, l ++ [ eCase ind p brs ])
+      | tSymb kn n ui =>
+        ret (kn, n, ui, [])
       | _ => None
       end.
 
@@ -1023,6 +1025,7 @@ Section Confluence.
         destruct p as [[[? ?] ?] ?]. inversion e. subst. clear e.
         rewrite mkElims_app. cbn. f_equal.
         eapply IHt1. reflexivity.
+      - cbn in e. inversion e. cbn. reflexivity.
       - cbn in e. destruct decompose_symb eqn:e1. 2: discriminate.
         destruct p as [[[? ?] ?] ?]. inversion e. subst. clear e.
         rewrite mkElims_app. cbn. change PCUICTerm.tCase with tCase. f_equal.
