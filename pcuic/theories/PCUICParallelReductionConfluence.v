@@ -1036,6 +1036,15 @@ Section Confluence.
         eapply IHt. reflexivity.
     Qed.
 
+    Lemma decompose_symb_mkElims :
+      forall kn n ui l,
+        decompose_symb (mkElims (tSymb kn n ui) l) = Some (kn, n, ui, l).
+    Proof.
+      intros kn n ui l.
+      induction l in kn, n, ui |- * using list_ind_rev. 1: reflexivity.
+      unfold mkElims. rewrite fold_left_app. cbn.
+      destruct a. all: cbn. all: rewrite IHl. all: reflexivity.
+    Qed.
 
     (* NOTE
 
