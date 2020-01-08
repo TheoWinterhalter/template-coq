@@ -1046,6 +1046,24 @@ Section Confluence.
       destruct a. all: cbn. all: rewrite IHl. all: reflexivity.
     Qed.
 
+    Inductive decompose_symb_view : term -> Set :=
+    | is_symb k n ui l : decompose_symb_view (mkElims (tSymb k n ui) l)
+    | is_not_symb t : decompose_symb t = None -> decompose_symb_view t.
+
+    Equations decompose_symb_viewc t : decompose_symb_view t :=
+      decompose_symb_viewc t with inspect (decompose_symb t) := {
+      | @exist (Some (k,n,ui,l)) e := _ ;
+      | @exist None e := _
+      }.
+    Next Obligation.
+      symmetry in e.
+      apply decompose_symb_eq in e as e'. subst.
+      constructor.
+    Defined.
+    Next Obligation.
+      constructor 2. symmetry. assumption.
+    Defined.
+
     (* NOTE
 
       For the triangle property we want to ask for pred1 and pred1_subst/list
