@@ -10,6 +10,9 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICSiz
      PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICReduction PCUICWeakening PCUICSubstitution
      PCUICReflect PCUICClosed PCUICParallelReduction.
 
+Require Import monad_utils.
+Import MonadNotation.
+
 (* Type-valued relations. *)
 Require Import CRelationClasses.
 Require CMorphisms.
@@ -979,9 +982,74 @@ Section Confluence.
     (* Proof. induction l; simpl; rewrite ?IHl; auto. Qed. *)
     (* Hint Rewrite map_terms_map : rho. *)
 
+    (* We will need to change rho entirely for termination purposes...
+      We want to look the head to see it is a symbol, look it up
+      and then try successively the rewrite rules that apply.
+    *)
+
+    Fixpoint decompose_symb (t : term) :
+      option (kername * nat * universe_instance * list elimination)
+    :=
+      match t with
+      | tApp u v =>
+        '(kn, n, ui, l) <- decompose_symb u ;;
+        ret (kn, n, ui, l ++ [ eApp v ])
+      | tProj p u =>
+        '(kn, n, ui, l) <- decompose_symb u ;;
+        ret (kn, n, ui, l ++ [ eProj p ])
+      | tCase ind p u brs =>
+        '(kn, n, ui, l) <- decompose_symb u ;;
+        ret (kn, n, ui, l ++ [ eCase ind p brs ])
+      | _ => None
+      end.
+
+    Lemma mkElims_app :
+      forall t l1 l2,
+        mkElims t (l1 ++ l2) = mkElims (mkElims t l1) l2.
+    Proof.
+      intros t l1 l2.
+      unfold mkElims. rewrite fold_left_app. reflexivity.
+    Qed.
+
+    Lemma decompose_symb_eq :
+      forall t kn n ui l,
+        decompose_symb t = Some (kn, n, ui, l) ->
+        t = mkElims (tSymb kn n ui) l.
+    Proof.
+      intros t kn n ui l e.
+      induction t in kn, n, ui, l, e |- *.
+      all: try discriminate.
+      - cbn in e. destruct decompose_symb eqn:e1. 2: discriminate.
+        destruct p as [[[? ?] ?] ?]. inversion e. subst. clear e.
+        rewrite mkElims_app. cbn. f_equal.
+        eapply IHt1. reflexivity.
+      - cbn in e. destruct decompose_symb eqn:e1. 2: discriminate.
+        destruct p as [[[? ?] ?] ?]. inversion e. subst. clear e.
+        rewrite mkElims_app. cbn. change PCUICTerm.tCase with tCase. f_equal.
+        eapply IHt2. reflexivity.
+      - cbn in e. destruct decompose_symb eqn:e1. 2: discriminate.
+        destruct p0 as [[[? ?] ?] ?]. inversion e. subst. clear e.
+        rewrite mkElims_app. cbn. change PCUICTerm.tProj with tProj. f_equal.
+        eapply IHt. reflexivity.
+    Qed.
+
+
+    (* NOTE
+
+      For the triangle property we want to ask for pred1 and pred1_subst/list
+      and show that for every l -> r (rule or prule) r => rho l
+      (not really rho, merely trying all of the rewrite rules currently
+      being added, maybe it means we need to ask for rho as well)
+      where => is par. reduction but using pred1 + some context closure
+      of one of the (p)rules pred1 version.
+
+    *)
+
 
     Fixpoint rho Γ t : term :=
-      match t with
+      (* if isAppSymb t then *)
+
+      (* else *) match t with
       | tApp (tLambda na T b) u => (rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ u}
       | tLetIn na d t b => (subst10 (rho Γ d) (rho (vdef na (rho Γ d) (rho Γ t) :: Γ) b))
       | tRel i =>
