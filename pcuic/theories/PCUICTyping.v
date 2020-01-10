@@ -2006,10 +2006,86 @@ Proof.
   - discriminate.
 Qed.
 
-(* TODO
-   Completeness will be stated as subst s' nb t = p implies that
-   rec_pattern p t = Some s with subs_complete s s'.
-*)
+Lemma skipn_skipn :
+  forall {A} n m (l : list A),
+    skipn (n + m) l = skipn m (skipn n l).
+Proof.
+  intros A n m l.
+  induction n in m, l |- *.
+  - cbn. reflexivity.
+  - cbn. destruct l.
+    + cbn. rewrite skipn_nil. reflexivity.
+    + cbn. apply IHn.
+Qed.
+
+Lemma mkApps_skip_eq :
+  forall t t' l l',
+    mkApps t l = mkApps t' l' ->
+    skipn (nApp t') l = skipn (nApp t) l'.
+Proof.
+  intros t t' l l' e.
+  case_eq (decompose_app t). intros u args1 e1.
+  apply decompose_app_inv in e1 as ?.
+  apply decompose_app_notApp in e1. subst.
+  rewrite nApp_mkApps. rewrite mkApps_nested in e.
+  case_eq (decompose_app t'). intros v args2 e2.
+  apply decompose_app_inv in e2 as ?.
+  apply decompose_app_notApp in e2. subst.
+  rewrite nApp_mkApps. rewrite mkApps_nested in e.
+  apply isApp_false_nApp in e1. apply isApp_false_nApp in e2.
+  rewrite e1 e2. cbn.
+  apply mkApps_nApp_inj in e as [? e]. 2: lia.
+  subst.
+  apply (f_equal (skipn #|args2|)) in e as e'.
+  rewrite skipn_all_app in e'. subst.
+  rewrite <- skipn_skipn.
+  replace (#|args2| + #|args1|)%nat with (#|args1| + #|args2|)%nat by lia.
+  rewrite skipn_skipn.
+  rewrite skipn_all_app. reflexivity.
+Qed.
+
+Lemma mkApps_eq_full :
+  forall t t' l l',
+    isApp t = false ->
+    mkApps t l = mkApps t' l' ->
+    l' = skipn (#|l| - #|l'|) l.
+Proof.
+  intros t t' l l' h e.
+  apply mkApps_skip_eq in e as el.
+  apply (f_equal nApp) in e as en.
+  rewrite 2!nApp_mkApps in en.
+  apply isApp_false_nApp in h as h'. rewrite h' in en. cbn in en.
+  rewrite h' in el. cbn in el.
+  subst. f_equal. lia.
+Qed.
+
+Lemma rec_pattern_complete :
+  forall npat nb p s',
+    pattern npat nb p ->
+    exists s,
+      rec_pattern npat nb p (subst s' nb p) = Some s /\
+      subs_complete s s'.
+Proof.
+  intros npat nb p s' hp.
+  funelim (rec_pattern npat nb p (subst s' nb p)).
+  - rewrite subst_mkApps in H. cbn in H.
+    inversion hp.
+    all: try solve [
+      apply (f_equal isAppRel) in H0 ;
+      rewrite !isAppRel_mkApps in H0 ;
+      discriminate
+    ].
+    (* + apply mkApps_Rel_inj in H0 as [? ?]. subst.
+      destruct (Nat.leb_spec nb n). 2: lia.
+      destruct (Nat.ltb_spec n nb). 1: lia.
+      destruct (Nat.ltb_spec n (npat + nb)). 2: lia.
+      destruct nth_error eqn:en.
+      *
+      * cbn in H.
+
+  induction hp in s' |- *.
+  - simp rec_pattern. *)
+Abort.
 
 (* Is assumes the eliminaion list is reversed *)
 Fixpoint rec_lhs_rec
