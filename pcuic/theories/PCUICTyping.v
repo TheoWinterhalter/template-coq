@@ -2075,16 +2075,26 @@ Proof.
       rewrite !isAppRel_mkApps in H0 ;
       discriminate
     ].
-    (* + apply mkApps_Rel_inj in H0 as [? ?]. subst.
+    + apply mkApps_Rel_inj in H0 as [? ?]. subst.
       destruct (Nat.leb_spec nb n). 2: lia.
       destruct (Nat.ltb_spec n nb). 1: lia.
       destruct (Nat.ltb_spec n (npat + nb)). 2: lia.
-      destruct nth_error eqn:en.
-      *
-      * cbn in H.
-
-  induction hp in s' |- *.
-  - simp rec_pattern. *)
+      apply mkApps_eq_full in H as e1. 2: assumption.
+      rewrite map_length in e1. rewrite <- e1.
+      match goal with
+      | |- context [ eqb ?x ?y ] =>
+        destruct (eqb_spec x y)
+      end.
+      2:{
+        exfalso. apply n0.
+        clear - H3. induction H3. 1: reflexivity.
+        cbn. rewrite <- IHForall. f_equal.
+        destruct (Nat.leb_spec nb x). 1: lia.
+        reflexivity.
+      }
+      (* strengthen_mkApps and then some property to say firstn tl0
+         is related in H
+      *)
 Abort.
 
 (* Is assumes the eliminaion list is reversed *)
