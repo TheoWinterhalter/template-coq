@@ -2059,6 +2059,43 @@ Proof.
   subst. f_equal. lia.
 Qed.
 
+Lemma mkApps_firstn_eq :
+  forall t t' l l',
+    mkApps t l = mkApps t' l' ->
+    mkApps t (firstn (nApp t') l) = mkApps t' (firstn (nApp t) l').
+Proof.
+  intros t t' l l' e.
+  case_eq (decompose_app t). intros u args1 e1.
+  apply decompose_app_inv in e1 as ?.
+  apply decompose_app_notApp in e1. subst.
+  rewrite nApp_mkApps. rewrite mkApps_nested in e.
+  case_eq (decompose_app t'). intros v args2 e2.
+  apply decompose_app_inv in e2 as ?.
+  apply decompose_app_notApp in e2. subst.
+  rewrite nApp_mkApps. rewrite mkApps_nested in e.
+  apply isApp_false_nApp in e1. apply isApp_false_nApp in e2.
+  rewrite e1 e2. cbn.
+  apply mkApps_nApp_inj in e as [? e]. 2: lia.
+  subst.
+  rewrite 2!mkApps_nested. f_equal.
+  rewrite <- 2!firstn_app_2. rewrite e. f_equal. lia.
+Qed.
+
+Lemma mkApps_eq_full_left :
+  forall t t' l l',
+    isApp t = false ->
+    mkApps t l = mkApps t' l' ->
+    t' = mkApps t (firstn (#|l| - #|l'|) l).
+Proof.
+  intros t t' l l' h e.
+  apply mkApps_firstn_eq in e as e'.
+  apply (f_equal nApp) in e as en.
+  rewrite 2!nApp_mkApps in en.
+  apply isApp_false_nApp in h as h'. rewrite h' in en. cbn in en.
+  rewrite h' in e'. cbn in e'.
+  rewrite <- e'. f_equal. f_equal. lia.
+Qed.
+
 Lemma rec_pattern_complete :
   forall npat nb p s',
     pattern npat nb p ->
