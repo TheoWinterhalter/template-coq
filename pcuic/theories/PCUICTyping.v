@@ -2129,9 +2129,17 @@ Proof.
         destruct (Nat.leb_spec nb x). 1: lia.
         reflexivity.
       }
-      (* strengthen_mkApps and then some property to say firstn tl0
-         is related in H
-      *)
+      apply mkApps_eq_full_left in H as e3. 2: assumption.
+      rewrite map_length in e3. rewrite <- e3.
+      destruct nth_error eqn:e4.
+      * rewrite strengthen_lift. cbn.
+        (* Validity of subs_init basically thanks to e4 *)
+        admit.
+      * cbn. apply nth_error_None in e4 as ?.
+        destruct (Nat.leb_spec nb (n - #|s'|)). 2: lia.
+        (* We should reach a contradiction here because s' doesn't have
+           the right size.
+        *)
 Abort.
 
 (* Is assumes the eliminaion list is reversed *)
