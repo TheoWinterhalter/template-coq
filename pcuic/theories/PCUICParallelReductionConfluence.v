@@ -4627,8 +4627,8 @@ Section Confluence.
           destruct dbody0; try discriminate.
           clear -wfΣ Hreleq1 e. depelim Hreleq1.
           -- solve_discr.
-          -- admit.
-          -- admit.
+          -- todo "rewrite rules"%string.
+          -- todo "rewrite rules"%string.
           -- rewrite rho_ctx_app in H. rewrite /rho_fix_context in e.
              rewrite -fold_fix_context_rho_ctx in e. rewrite H in e.
              discriminate.
@@ -4685,9 +4685,9 @@ Section Confluence.
         now eapply All2_length in X3.
       + eapply All2_sym, All2_map_left, All2_impl; eauto; simpl; intuition eauto.
 
-    - admit.
+    - todo "rewrite rules"%string.
 
-    - admit.
+    - todo "rewrite rules"%string.
 
     - simpl. simpl in X0. red in H. rewrite H heq_cst_body.
       now eapply pred1_refl_gen.
@@ -4806,11 +4806,11 @@ Section Confluence.
           (* Beta at top *)
           depelim X.
           -- solve_discr.
-          -- admit.
-          -- admit.
+          -- todo "rewrite rules"%string.
+          -- todo "rewrite rules"%string.
           -- depelim X0...
-             ++ admit.
-             ++ admit.
+             ++ todo "rewrite rules"%string.
+             ++ todo "rewrite rules"%string.
              ++ econstructor; eauto.
           -- discriminate.
         * rewrite rho_tApp_discr => //.
@@ -5022,8 +5022,7 @@ Section Confluence.
       eapply All2_sym, All2_map_left, All2_impl. 1: eauto.
       intros. simpl in X. intuition.
     - destruct t; noconf H; simpl; constructor; eauto.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   End TriangleFn.
 

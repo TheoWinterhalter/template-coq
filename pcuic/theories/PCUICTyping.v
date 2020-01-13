@@ -2139,6 +2139,8 @@ Proof.
         destruct (Nat.leb_spec nb (n - #|s'|)). 2: lia.
         (* We should reach a contradiction here because s' doesn't have
            the right size.
+
+           The lemma isn't true because s' can be longer
         *)
 Abort.
 
