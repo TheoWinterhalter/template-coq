@@ -1183,7 +1183,9 @@ Arguments iota_red : simpl never.
 From Equations Require Import Equations.
 
 Lemma substitution_red1 {cf:checker_flags} (Σ : global_env_ext) Γ Γ' Γ'' s M N :
-  wf Σ -> subs Σ Γ s Γ' -> wf_local Σ Γ ->
+  wf Σ ->
+  subs Σ Γ s Γ' ->
+  wf_local Σ Γ ->
   red1 Σ (Γ ,,, Γ' ,,, Γ'') M N ->
   red1 Σ (Γ ,,, subst_context s 0 Γ'') (subst s #|Γ''| M) (subst s #|Γ''| N).
 Proof.

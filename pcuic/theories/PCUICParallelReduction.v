@@ -1917,13 +1917,29 @@ Section ParallelSubstitution.
       simpl in *. split; congruence.
   Qed.
 
+  Lemma psubst_untyped_subslet :
+    forall Σ Γ Δ s Γ' Δ' s',
+      psubst Σ Γ Γ' s s' Δ Δ' ->
+      untyped_subslet Γ s Δ.
+  Proof.
+    intros Σ Γ Δ s Γ' Δ' s' h.
+    induction h.
+    - constructor.
+    - constructor. assumption.
+    - constructor. assumption.
+  Qed.
+
   (** Parallel reduction is substitutive. *)
-  Lemma substitution_let_pred1 Σ Γ Δ Γ' Γ1 Δ1 Γ'1 s s' M N : wf Σ ->
+  Lemma substitution_let_pred1 Σ Γ Δ Γ' Γ1 Δ1 Γ'1 s s' M N :
+    wf Σ ->
     psubst Σ Γ Γ1 s s' Δ Δ1 ->
-    #|Γ| = #|Γ1| -> #|Γ'| = #|Γ'1| ->
+    #|Γ| = #|Γ1| ->
+    #|Γ'| = #|Γ'1| ->
     All2_local_env_over (pred1 Σ) Γ Γ1 Δ Δ1 ->
     pred1 Σ (Γ ,,, Δ ,,, Γ') (Γ1 ,,, Δ1 ,,, Γ'1) M N ->
-    pred1 Σ (Γ ,,, subst_context s 0 Γ') (Γ1 ,,, subst_context s' 0 Γ'1) (subst s #|Γ'| M) (subst s' #|Γ'1| N).
+    pred1 Σ
+      (Γ ,,, subst_context s 0 Γ') (Γ1 ,,, subst_context s' 0 Γ'1)
+      (subst s #|Γ'| M) (subst s' #|Γ'1| N).
   Proof.
     intros wfΣ Hs.
     remember (Γ ,,, Δ ,,, Γ') as Γl.
@@ -2188,9 +2204,113 @@ Section ParallelSubstitution.
         * simpl. now rewrite (distr_subst_rec _ _ _ _ 0) cofix_subst_length.
       + eapply All2_map. solve_all.
 
-    - admit. (* TODO Rewrite rules *)
+    - (* Rewrite rules *)
+      subst lhs rhs.
+      apply psubst_length in Hs as es. destruct es as [? [? ?]].
+      apply All2_length in X1 as es.
+      rewrite 2!distr_subst. rewrite <- es.
+      rewrite 2!distr_subst_rec.
+      rewrite (PCUICClosed.subst_closedn _ _ (lhs r)).
+      1:{
+        eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_lhs.
+        all: eauto.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
+        lia.
+      }
+      rewrite (PCUICClosed.subst_closedn _ _ (rhs r)).
+      1:{
+        eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_rhs.
+        all: eauto.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
+        lia.
+      }
+      assert (e : forall s n, map (subst s n) ss = ss).
+      { intros. subst ss. unfold symbols_subst.
+        rewrite list_make_map. simpl. reflexivity.
+      }
+      rewrite 2!e.
+      replace #|s| with #|map (subst s0 #|Γ'0|) s|
+        by (now rewrite map_length).
+      eapply pred_rewrite_rule.
+      all: try eassumption.
+      + eapply X0. all: eauto.
+      + apply All2_map. eapply All2_impl. 1: eassumption.
+        cbn. intros x y [? ih]. eapply ih. all: eauto.
+      + eapply untyped_subslet_subst with (s' := s0) in H1 as h.
+        2:{ eapply psubst_untyped_subslet. eassumption. }
+        eapply PCUICClosed.closed_declared_symbol_pat_context in H as hcl.
+        2-3: eassumption.
+        rewrite -> (closed_ctx_subst _ #|Γ'0|) in h.
+        1: exact h.
+        eapply closedn_ctx_subst_context0.
+        * subst ss. unfold symbols_subst. clear.
+          generalize (#|symbols decl| - 0). intro m.
+          generalize 0 at 2. intro n.
+          induction m in n |- *.
+          1: reflexivity.
+          cbn. apply IHm.
+        * cbn. clear - hcl. subst ss.
+          rewrite symbols_subst_length.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          assumption.
 
-    - admit. (* TODO Rewrite rules *)
+    - (* Parallel rewrite rules *)
+      subst lhs rhs.
+      apply psubst_length in Hs as es. destruct es as [? [? ?]].
+      apply All2_length in X1 as es.
+      rewrite 2!distr_subst. rewrite <- es.
+      rewrite 2!distr_subst_rec.
+      rewrite (PCUICClosed.subst_closedn _ _ (lhs r)).
+      1:{
+        eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_lhs.
+        all: eauto.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
+        lia.
+      }
+      rewrite (PCUICClosed.subst_closedn _ _ (rhs r)).
+      1:{
+        eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_rhs.
+        all: eauto.
+        subst ss. rewrite symbols_subst_length.
+        apply untyped_subslet_length in H1.
+        rewrite subst_context_length in H1.
+        lia.
+      }
+      assert (e : forall s n, map (subst s n) ss = ss).
+      { intros. subst ss. unfold symbols_subst.
+        rewrite list_make_map. simpl. reflexivity.
+      }
+      rewrite 2!e.
+      replace #|s| with #|map (subst s0 #|Γ'0|) s|
+        by (now rewrite map_length).
+      eapply pred_par_rewrite_rule.
+      all: try eassumption.
+      + eapply X0. all: eauto.
+      + apply All2_map. eapply All2_impl. 1: eassumption.
+        cbn. intros x y [? ih]. eapply ih. all: eauto.
+      + eapply untyped_subslet_subst with (s' := s0) in H1 as h.
+        2:{ eapply psubst_untyped_subslet. eassumption. }
+        eapply PCUICClosed.closed_declared_symbol_par_pat_context in H as hcl.
+        2-3: eassumption.
+        rewrite -> (closed_ctx_subst _ #|Γ'0|) in h.
+        1: exact h.
+        eapply closedn_ctx_subst_context0.
+        * subst ss. unfold symbols_subst. clear.
+          generalize (#|symbols decl| - 0). intro m.
+          generalize 0 at 2. intro n.
+          induction m in n |- *.
+          1: reflexivity.
+          cbn. apply IHm.
+        * cbn. clear - hcl. subst ss.
+          rewrite symbols_subst_length.
+          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+          assumption.
 
     - pose proof (subst_declared_constant _ _ _ s' #|Γ'0| u wfΣ H).
       apply (f_equal cst_body) in H0.
@@ -2258,8 +2378,7 @@ Section ParallelSubstitution.
 
     - revert H. induction t; intros; try discriminate; try solve [ constructor; simpl; eauto ];
                   try solve [ apply (pred_atom); auto ].
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Hint Constructors psubst : pcuic.
   Hint Transparent vass vdef : pcuic.
