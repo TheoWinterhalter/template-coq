@@ -477,6 +477,103 @@ Section Confluence.
   (* Qed. *)
   Admitted.
 
+  Fixpoint isElimSymb (t : term) :=
+    match t with
+    | tSymb k n u => true
+    | tApp u v => isElimSymb u
+    | tCase ind p c brs => isElimSymb c
+    | tProj p u => isElimSymb u
+    | _ => false
+    end.
+
+  Lemma isElimSymb_mkElims :
+    forall t l,
+      isElimSymb (mkElims t l) = isElimSymb t.
+  Proof.
+    intros t l.
+    induction l in t |- * using list_ind_rev. 1: reflexivity.
+    unfold mkElims. rewrite fold_left_app. cbn.
+    destruct a. all: cbn. all: apply IHl.
+  Qed.
+
+  Lemma isElimSymb_mkApps :
+    forall t l,
+      isElimSymb (mkApps t l) = isElimSymb t.
+  Proof.
+    intros t l.
+    induction l in t |- * using list_ind_rev. 1: reflexivity.
+    rewrite <- mkApps_nested. cbn. apply IHl.
+  Qed.
+
+  Lemma isElimSymb_subst :
+    forall t s k,
+      isElimSymb t ->
+      isElimSymb (subst s k t).
+  Proof.
+    intros t s k h.
+    induction t. all: try discriminate.
+    - cbn in *. eapply IHt1. assumption.
+    - cbn. reflexivity.
+    - cbn in *. eapply IHt2. assumption.
+    - cbn in *. eapply IHt. assumption.
+  Qed.
+
+  Fixpoint isElimRel (t : term) :=
+    match t with
+    | tRel n => true
+    | tApp u v => isElimRel u
+    | tCase ind p c brs => isElimRel c
+    | tProj p u => isElimRel u
+    | _ => false
+    end.
+
+  Lemma isElimRel_mkElims :
+    forall t l,
+      isElimRel (mkElims t l) = isElimRel t.
+  Proof.
+    intros t l.
+    induction l in t |- * using list_ind_rev. 1: reflexivity.
+    unfold mkElims. rewrite fold_left_app. cbn.
+    destruct a. all: cbn. all: apply IHl.
+  Qed.
+
+  Lemma isElimRel_mkApps :
+    forall t l,
+      isElimRel (mkApps t l) = isElimRel t.
+  Proof.
+    intros t l.
+    induction l in t |- * using list_ind_rev. 1: reflexivity.
+    rewrite <- mkApps_nested. cbn. apply IHl.
+  Qed.
+
+  (* I have to go back to old idea! :(
+     Using subst ss in isElimSymb_lhs
+  *)
+  Lemma isElimRel_subst :
+    forall t s k,
+      isElimRel t ->
+      isElimRel (subst s k t).
+  Admitted.
+
+  Lemma isElimRel_lhs :
+    forall r,
+      isElimRel (PCUICAst.lhs r).
+  Proof.
+    intro r. unfold PCUICAst.lhs.
+    rewrite isElimRel_mkElims. reflexivity.
+  Qed.
+
+  Lemma isAppSymb_subst :
+    forall t s k,
+      isAppSymb t ->
+      isAppSymb (subst s k t).
+  Proof.
+    intros t s k h.
+    induction t. all: try discriminate.
+    - cbn in *. eapply IHt1. assumption.
+    - cbn. reflexivity.
+  Qed.
+
   Lemma pred1_mkApps_tFix_inv (Σ : global_env) (Γ Δ : context)
         mfix0 idx (args0 : list term) c :
     pred1 Σ Γ Δ (mkApps (tFix mfix0 idx) args0) c ->
@@ -502,8 +599,16 @@ Section Confluence.
     intros pred. remember (mkApps _ _) as fixt. revert mfix0 idx args0 Heqfixt.
     induction pred; intros; solve_discr.
     - right. exists mfix1, args1, narg, fn. intuition eauto.
-    - (* TODO Rewrite rules *) admit.
-    - (* TODO Rewrite rules *) admit.
+    - exfalso. apply (f_equal isElimRel) in Heqfixt.
+      rewrite isElimRel_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite <- Heqfixt.
+      eapply isElimRel_subst. eapply isElimRel_subst.
+      apply isElimRel_lhs.
+    - exfalso. apply (f_equal isElimRel) in Heqfixt.
+      rewrite isElimRel_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite <- Heqfixt.
+      eapply isElimRel_subst. eapply isElimRel_subst.
+      apply isElimRel_lhs.
     - destruct args0 using rev_ind. 1: noconf Heqfixt.
       clear IHargs0.
       rewrite <- mkApps_nested in Heqfixt. noconf Heqfixt.
@@ -526,8 +631,7 @@ Section Confluence.
     - left.
       eexists mfix1, []. intuition auto.
     - subst t. solve_discr.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma pred1_mkApps_tFix_refl_inv (Σ : global_env) (Γ Δ : context)
         mfix0 mfix1 idx0 idx1 (args0 args1 : list term) :
