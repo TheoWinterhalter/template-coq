@@ -391,92 +391,6 @@ Section Confluence.
     - intros H. apply (IHl _ _ _ H).
   Qed.
 
-  Lemma pred1_mkApps_tConstruct (Σ : global_env) (Γ Δ : context)
-        ind pars k (args : list term) c :
-    pred1 Σ Γ Δ (mkApps (tConstruct ind pars k) args) c ->
-    {args' : list term & (c = mkApps (tConstruct ind pars k) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
-  Proof with solve_discr.
-    revert c. induction args using rev_ind; intros; simpl in *.
-    - depelim X...
-      + (* TODO Rewrite rules *)
-        (* Somehow it forgets information. *)
-        admit.
-      + admit.
-      + exists []. intuition auto.
-    - intros. rewrite <- mkApps_nested in X.
-      depelim X...
-      + simpl in H; noconf H. solve_discr.
-      + prepare_discr. apply mkApps_eq_decompose_app in H.
-        rewrite !decompose_app_rec_mkApps in H. noconf H.
-      + admit.
-      + admit.
-      + destruct (IHargs _ X1) as [args' [-> Hargs']].
-        exists (args' ++ [N1])%list.
-        rewrite <- mkApps_nested. intuition auto.
-        eapply All2_app; auto.
-  (* Qed. *)
-  Admitted.
-
-  Lemma pred1_mkApps_refl_tConstruct (Σ : global_env) Γ Δ i k u l l' :
-    pred1 Σ Γ Δ (mkApps (tConstruct i k u) l) (mkApps (tConstruct i k u) l') ->
-    All2 (pred1 Σ Γ Δ) l l'.
-  Proof.
-    intros.
-    eapply pred1_mkApps_tConstruct in X. destruct X.
-    destruct p. now eapply mkApps_eq_inj in e as [_ <-].
-  Qed.
-
-  Lemma pred1_mkApps_tInd (Σ : global_env) (Γ Δ : context)
-        ind u (args : list term) c :
-    pred1 Σ Γ Δ (mkApps (tInd ind u) args) c ->
-    {args' : list term & (c = mkApps (tInd ind u) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
-  Proof with solve_discr.
-    revert c. induction args using rev_ind; intros; simpl in *.
-    - depelim X...
-      + (* TODO Rewrite rules *) admit.
-      + (* TODO Rewrite rules *) admit.
-      + exists []. intuition auto.
-    - intros. rewrite <- mkApps_nested in X.
-      depelim X...
-      + simpl in H; noconf H. solve_discr.
-      + prepare_discr. apply mkApps_eq_decompose_app in H.
-        rewrite !decompose_app_rec_mkApps in H. noconf H.
-      + admit.
-      + admit.
-      + destruct (IHargs _ X1) as [args' [-> Hargs']].
-        exists (args' ++ [N1])%list.
-        rewrite <- mkApps_nested. intuition auto.
-        eapply All2_app; auto.
-  (* Qed. *)
-  Admitted.
-
-  Lemma pred1_mkApps_tConst_axiom (Σ : global_env) (Γ Δ : context)
-        cst u (args : list term) cb c :
-    declared_constant Σ cst cb -> cst_body cb = None ->
-    pred1 Σ Γ Δ (mkApps (tConst cst u) args) c ->
-    {args' : list term & (c = mkApps (tConst cst u) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
-  Proof with solve_discr.
-    revert c. induction args using rev_ind; intros; simpl in *.
-    - depelim X...
-      + (* TODO Rewrite rules *) admit.
-      + (* TODO Rewrite rules *) admit.
-      + red in H, isdecl. rewrite isdecl in H; noconf H.
-        simpl in H. injection H. intros. subst. congruence.
-      + exists []. intuition auto.
-    - rewrite <- mkApps_nested in X.
-      depelim X...
-      + simpl in H1; noconf H1. solve_discr.
-      + prepare_discr. apply mkApps_eq_decompose_app in H1.
-        rewrite !decompose_app_rec_mkApps in H1. noconf H1.
-      + (* TODO Rewrite rules *) admit.
-      + (* TODO Rewrite rules *) admit.
-      + destruct (IHargs _ H H0 X1) as [args' [-> Hargs']].
-        exists (args' ++ [N1])%list.
-        rewrite <- mkApps_nested. intuition auto.
-        eapply All2_app; auto.
-  (* Qed. *)
-  Admitted.
-
   Fixpoint isElimSymb (t : term) :=
     match t with
     | tSymb k n u => true
@@ -629,6 +543,120 @@ Section Confluence.
     destruct hpr as [T hl hpr hh he].
     rewrite map_length in hh. assumption.
   Qed.
+
+  Lemma pred1_mkApps_tConstruct `{cf : checker_flags} (Σ : global_env) (Γ Δ : context)
+        ind pars k (args : list term) c :
+    wf Σ ->
+    pred1 Σ Γ Δ (mkApps (tConstruct ind pars k) args) c ->
+    {args' : list term & (c = mkApps (tConstruct ind pars k) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
+  Proof with solve_discr.
+    intro wfΣ.
+    revert c.
+    induction args using rev_ind; intros; simpl in *.
+    - remember (tConstruct _ _ _) as lt. revert Heqlt.
+      induction X. all: try discriminate. all: intros et. all: solve_discr.
+      + exfalso. apply (f_equal isElimSymb) in et.
+        cbn in et.
+        eapply diff_false_true. rewrite <- et.
+        eapply isElimSymb_subst. apply untyped_subslet_length in u.
+        rewrite subst_context_length in u. rewrite u.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_head in d. all: eauto.
+      + exfalso. apply (f_equal isElimSymb) in et.
+        cbn in et.
+        eapply diff_false_true. rewrite <- et.
+        eapply isElimSymb_subst. apply untyped_subslet_length in u.
+        rewrite subst_context_length in u. rewrite u.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_par_head in d. all: eauto.
+      + exists []. intuition auto.
+    - intros. rewrite <- mkApps_nested in X. cbn in X.
+      remember (tApp _ _) as lt. revert Heqlt.
+      induction X. all: try discriminate. all: intros et. all: solve_discr.
+      + simpl in et. noconf et. hnf in H. noconf H. solve_discr.
+      + prepare_discr. apply mkApps_eq_decompose_app in et.
+        rewrite !decompose_app_rec_mkApps in et. noconf et.
+      + exfalso. apply (f_equal isElimSymb) in et.
+        cbn in et. rewrite isElimSymb_mkApps in et. cbn in et.
+        eapply diff_false_true. rewrite <- et.
+        eapply isElimSymb_subst. apply untyped_subslet_length in u.
+        rewrite subst_context_length in u. rewrite u.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_head in d. all: eauto.
+      + exfalso. apply (f_equal isElimSymb) in et.
+        cbn in et. rewrite isElimSymb_mkApps in et. cbn in et.
+        eapply diff_false_true. rewrite <- et.
+        eapply isElimSymb_subst. apply untyped_subslet_length in u.
+        rewrite subst_context_length in u. rewrite u.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_par_head in d. all: eauto.
+      + noconf et.
+        destruct (IHargs _ X1) as [args' [-> Hargs']].
+        exists (args' ++ [N1])%list.
+        rewrite <- mkApps_nested. intuition auto.
+        eapply All2_app; auto.
+      + subst. solve_discr.
+  Qed.
+
+  Lemma pred1_mkApps_refl_tConstruct (Σ : global_env) Γ Δ i k u l l' :
+    pred1 Σ Γ Δ (mkApps (tConstruct i k u) l) (mkApps (tConstruct i k u) l') ->
+    All2 (pred1 Σ Γ Δ) l l'.
+  Proof.
+    intros.
+    eapply pred1_mkApps_tConstruct in X. destruct X.
+    destruct p. now eapply mkApps_eq_inj in e as [_ <-].
+  Qed.
+
+  Lemma pred1_mkApps_tInd (Σ : global_env) (Γ Δ : context)
+        ind u (args : list term) c :
+    pred1 Σ Γ Δ (mkApps (tInd ind u) args) c ->
+    {args' : list term & (c = mkApps (tInd ind u) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
+  Proof with solve_discr.
+    revert c. induction args using rev_ind; intros; simpl in *.
+    - depelim X...
+      + (* TODO Rewrite rules *) admit.
+      + (* TODO Rewrite rules *) admit.
+      + exists []. intuition auto.
+    - intros. rewrite <- mkApps_nested in X.
+      depelim X...
+      + simpl in H; noconf H. solve_discr.
+      + prepare_discr. apply mkApps_eq_decompose_app in H.
+        rewrite !decompose_app_rec_mkApps in H. noconf H.
+      + admit.
+      + admit.
+      + destruct (IHargs _ X1) as [args' [-> Hargs']].
+        exists (args' ++ [N1])%list.
+        rewrite <- mkApps_nested. intuition auto.
+        eapply All2_app; auto.
+  (* Qed. *)
+  Admitted.
+
+  Lemma pred1_mkApps_tConst_axiom (Σ : global_env) (Γ Δ : context)
+        cst u (args : list term) cb c :
+    declared_constant Σ cst cb -> cst_body cb = None ->
+    pred1 Σ Γ Δ (mkApps (tConst cst u) args) c ->
+    {args' : list term & (c = mkApps (tConst cst u) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
+  Proof with solve_discr.
+    revert c. induction args using rev_ind; intros; simpl in *.
+    - depelim X...
+      + (* TODO Rewrite rules *) admit.
+      + (* TODO Rewrite rules *) admit.
+      + red in H, isdecl. rewrite isdecl in H; noconf H.
+        simpl in H. injection H. intros. subst. congruence.
+      + exists []. intuition auto.
+    - rewrite <- mkApps_nested in X.
+      depelim X...
+      + simpl in H1; noconf H1. solve_discr.
+      + prepare_discr. apply mkApps_eq_decompose_app in H1.
+        rewrite !decompose_app_rec_mkApps in H1. noconf H1.
+      + (* TODO Rewrite rules *) admit.
+      + (* TODO Rewrite rules *) admit.
+      + destruct (IHargs _ H H0 X1) as [args' [-> Hargs']].
+        exists (args' ++ [N1])%list.
+        rewrite <- mkApps_nested. intuition auto.
+        eapply All2_app; auto.
+  (* Qed. *)
+  Admitted.
 
   Lemma pred1_mkApps_tFix_inv `{cf : checker_flags} (Σ : global_env) (Γ Δ : context)
         mfix0 idx (args0 : list term) c :
@@ -4592,7 +4620,8 @@ Section Confluence.
     move e: (decompose_app a) => [hd args].
     apply decompose_app_inv in e. subst a. simpl.
     case: hd pr => // ind n ui.
-    move/pred1_mkApps_tConstruct => [args' [-> Hargs']] _.
+    intros h _.
+    apply pred1_mkApps_tConstruct in h as [args' [-> Hargs']]. 2: auto.
     rewrite decompose_app_mkApps //.
   Qed.
 
@@ -5015,7 +5044,8 @@ Section Confluence.
           change eq_inductive with (@eqb inductive _).
           destruct (eqb_spec i ind).
           -- subst ind.
-             eapply pred1_mkApps_tConstruct in X1 as [args' [? ?]]. subst c1.
+             eapply pred1_mkApps_tConstruct in X1 as [args' [? ?]]. 2: auto.
+             subst c1.
              eapply pred1_mkApps_refl_tConstruct in X2.
              econstructor; eauto. 1: pcuic.
              eapply All2_sym, All2_map_left, All2_impl; eauto.
@@ -5115,7 +5145,7 @@ Section Confluence.
         simpl. rewrite rho_mkApps in X0; auto.
         simpl in X0.
         pose proof (pred1_pred1_ctx _ X0).
-        eapply pred1_mkApps_tConstruct in X as [args' [? ?]]; subst.
+        eapply pred1_mkApps_tConstruct in X as [args' [? ?]]; subst. 2: auto.
         eapply pred1_mkApps_refl_tConstruct in X0.
         destruct nth_error eqn:Heq.
         * change eq_inductive with (@eqb inductive _).
