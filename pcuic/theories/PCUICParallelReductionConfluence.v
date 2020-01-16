@@ -598,12 +598,14 @@ Section Confluence.
       + subst. solve_discr.
   Qed.
 
-  Lemma pred1_mkApps_refl_tConstruct (Σ : global_env) Γ Δ i k u l l' :
+  Lemma pred1_mkApps_refl_tConstruct `{checker_flags} (Σ : global_env) Γ Δ i k u l l' :
+    wf Σ ->
     pred1 Σ Γ Δ (mkApps (tConstruct i k u) l) (mkApps (tConstruct i k u) l') ->
     All2 (pred1 Σ Γ Δ) l l'.
   Proof.
-    intros.
-    eapply pred1_mkApps_tConstruct in X. destruct X.
+    intros wfΣ X.
+    eapply pred1_mkApps_tConstruct in X. 2: auto.
+    destruct X.
     destruct p. now eapply mkApps_eq_inj in e as [_ <-].
   Qed.
 
@@ -772,8 +774,9 @@ Section Confluence.
     - subst. solve_discr.
   Qed.
 
-  Lemma pred1_mkApps_tCoFix_inv (Σ : global_env) (Γ Δ : context)
+  Lemma pred1_mkApps_tCoFix_inv `{cf : checker_flags} (Σ : global_env) (Γ Δ : context)
         mfix0 idx (args0 : list term) c :
+    wf Σ ->
     pred1 Σ Γ Δ (mkApps (tCoFix mfix0 idx) args0) c ->
     ∃ mfix1 args1,
       (c = mkApps (tCoFix mfix1 idx) args1) *
@@ -782,10 +785,22 @@ Section Confluence.
                     (pred1 Σ) mfix0 mfix1 *
       (All2 (pred1 Σ Γ Δ) ) args0 args1.
   Proof with solve_discr.
-    intros pred. remember (mkApps _ _) as fixt. revert mfix0 idx args0 Heqfixt.
+    intros wfΣ pred. remember (mkApps _ _) as fixt. revert mfix0 idx args0 Heqfixt.
     induction pred; intros; solve_discr.
-    - (* TODO Rewrite rules *) admit.
-    - (* TODO Rewrite rules *) admit.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite <- Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_head in d. all: eauto.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite <- Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_par_head in d. all: eauto.
     - destruct args0 using rev_ind. 1: noconf Heqfixt.
       clear IHargs0.
       rewrite <- mkApps_nested in Heqfixt. noconf Heqfixt.
@@ -796,23 +811,35 @@ Section Confluence.
       + eapply All2_app; eauto.
     - exists mfix1, []; intuition (simpl; auto).
     - subst t; solve_discr.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
-  Lemma pred1_mkApps_tCoFix_refl_inv (Σ : global_env) (Γ Δ : context)
+  Lemma pred1_mkApps_tCoFix_refl_inv `{cf : checker_flags} (Σ : global_env) (Γ Δ : context)
         mfix0 mfix1 idx (args0 args1 : list term) :
+    wf Σ ->
     pred1 Σ Γ Δ (mkApps (tCoFix mfix0 idx) args0) (mkApps (tCoFix mfix1 idx) args1) ->
       All2_prop2_eq Γ Δ (Γ ,,, fix_context mfix0) (Δ ,,, fix_context mfix1) dtype dbody
                     (fun x => (dname x, rarg x))
                     (pred1 Σ) mfix0 mfix1 *
       (All2 (pred1 Σ Γ Δ)) args0 args1.
   Proof with solve_discr.
-    intros pred. remember (mkApps _ _) as fixt.
+    intros wfΣ pred. remember (mkApps _ _) as fixt.
     remember (mkApps _ args1) as fixt'.
     revert mfix0 mfix1 idx args0 args1 Heqfixt Heqfixt'.
     induction pred; intros; symmetry in Heqfixt; solve_discr.
-    - admit.
-    - admit.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_head in d. all: eauto.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_par_head in d. all: eauto.
     - destruct args0 using rev_ind. 1: noconf Heqfixt.
       clear IHargs0.
       rewrite <- mkApps_nested in Heqfixt. noconf Heqfixt.
@@ -828,8 +855,7 @@ Section Confluence.
     - repeat finish_discr.
       unfold All2_prop2_eq. intuition (simpl; auto).
     - subst t; solve_discr.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Hint Constructors pred1 : pcuic.
 
@@ -5046,7 +5072,7 @@ Section Confluence.
           -- subst ind.
              eapply pred1_mkApps_tConstruct in X1 as [args' [? ?]]. 2: auto.
              subst c1.
-             eapply pred1_mkApps_refl_tConstruct in X2.
+             eapply pred1_mkApps_refl_tConstruct in X2. 2: auto.
              econstructor; eauto. 1: pcuic.
              eapply All2_sym, All2_map_left, All2_impl; eauto.
              intros. hnf in X1. destruct X1. unfold on_Trel in *.
@@ -5062,8 +5088,9 @@ Section Confluence.
           rewrite decompose_app_mkApps; auto.
           simpl. rewrite rho_mkApps in X2; auto.
           eapply pred1_mkApps_tCoFix_inv in X1 as [mfix' [idx' [[? ?] ?]]].
+          2: auto.
           subst c1.
-          simpl in X2. eapply pred1_mkApps_tCoFix_refl_inv in X2.
+          simpl in X2. eapply pred1_mkApps_tCoFix_refl_inv in X2. 2: auto.
           intuition.
           eapply All2_prop2_eq_split in a1. intuition.
           unfold unfold_cofix. rewrite nth_error_map.
@@ -5146,7 +5173,7 @@ Section Confluence.
         simpl in X0.
         pose proof (pred1_pred1_ctx _ X0).
         eapply pred1_mkApps_tConstruct in X as [args' [? ?]]; subst. 2: auto.
-        eapply pred1_mkApps_refl_tConstruct in X0.
+        eapply pred1_mkApps_refl_tConstruct in X0. 2: auto.
         destruct nth_error eqn:Heq.
         * change eq_inductive with (@eqb inductive _).
           destruct (eqb_spec ind c0); subst.
@@ -5162,10 +5189,11 @@ Section Confluence.
         rewrite decompose_app_mkApps; auto.
         simpl. rewrite rho_mkApps in X0; auto. simpl in X0.
         eapply pred1_mkApps_tCoFix_inv in X as [mfix' [idx' [[? ?] ?]]].
+        2: auto.
         subst c'.
         simpl in a.
         pose proof X0.
-        eapply pred1_mkApps_tCoFix_refl_inv in X0.
+        eapply pred1_mkApps_tCoFix_refl_inv in X0. 2: auto.
         destruct X0.
         unfold unfold_cofix. rewrite nth_error_map.
         eapply All2_prop2_eq_split in a1. intuition auto.
