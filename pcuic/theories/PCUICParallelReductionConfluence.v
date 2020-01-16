@@ -694,8 +694,9 @@ Section Confluence.
     - subst t. solve_discr.
   Qed.
 
-  Lemma pred1_mkApps_tFix_refl_inv (Σ : global_env) (Γ Δ : context)
-        mfix0 mfix1 idx0 idx1 (args0 args1 : list term) :
+  Lemma pred1_mkApps_tFix_refl_inv `{cf : checker_flags} (Σ : global_env)
+      (Γ Δ : context) mfix0 mfix1 idx0 idx1 (args0 args1 : list term) :
+    wf Σ ->
     pred1 Σ Γ Δ (mkApps (tFix mfix0 idx0) args0) (mkApps (tFix mfix1 idx1) args1) ->
     (All2_prop2_eq Γ Δ (Γ ,,, fix_context mfix0) (Δ ,,, fix_context mfix1)
                    dtype dbody
@@ -703,6 +704,7 @@ Section Confluence.
                    (pred1 Σ) mfix0 mfix1 *
      (All2 (pred1 Σ Γ Δ) ) args0 args1).
   Proof with solve_discr.
+    intro wfΣ.
     remember (mkApps _ _) as fixt.
     remember (mkApps _ args1) as fixt'.
     intros pred. revert mfix0 mfix1 idx0 idx1 args0 args1 Heqfixt Heqfixt'.
@@ -715,10 +717,20 @@ Section Confluence.
       simpl in Heqfixt'.
       eapply mkApps_eq_inj in Heqfixt' => //.
       intuition discriminate.
-
-    - (* TODO Rewrite rules *) admit.
-    - (* TODO Rewrite rules *) admit.
-
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite <- Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_head in d. all: eauto.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply diff_false_true. rewrite <- Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_par_head in d. all: eauto.
     - destruct args0 using rev_ind; noconf Heqfixt. clear IHargs0.
       rewrite <- mkApps_nested in Heqfixt. noconf Heqfixt.
       destruct args1 using rev_ind; noconf Heqfixt'. clear IHargs1.
@@ -730,8 +742,7 @@ Section Confluence.
       + apply All2_app; auto.
     - constructor; auto.
     - subst. solve_discr.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma pred1_mkApps_tCoFix_inv (Σ : global_env) (Γ Δ : context)
         mfix0 idx (args0 : list term) c :
@@ -4929,7 +4940,9 @@ Section Confluence.
              { move=> [mfix1 [args1 [[HM1 Hmfix] Hargs]]].
                move: HM1 X => -> X.
                rewrite [tApp _ _](mkApps_nested _ _ [N1]).
-               move/pred1_mkApps_tFix_refl_inv => [redo redargs].
+               intro h.
+               eapply pred1_mkApps_tFix_refl_inv in h as [redo redargs].
+               2: assumption.
                rewrite map_app.
                eapply pred_fix; eauto with pcuic.
                - eapply pred1_rho_fix_context_2; auto with pcuic.
