@@ -518,49 +518,69 @@ Section Confluence.
     - cbn in *. eapply IHt. assumption.
   Qed.
 
-  Fixpoint isElimRel (t : term) :=
-    match t with
-    | tRel n => true
-    | tApp u v => isElimRel u
-    | tCase ind p c brs => isElimRel c
-    | tProj p u => isElimRel u
-    | _ => false
+  Definition subst_elim s k e :=
+    match e with
+    | eApp u => eApp (subst s k u)
+    | eProj p => eProj p
+    | eCase ind p brs => eCase ind (subst s k p) (map (on_snd (subst s k)) brs)
     end.
 
-  Lemma isElimRel_mkElims :
-    forall t l,
-      isElimRel (mkElims t l) = isElimRel t.
+  Lemma mkElim_subst :
+    forall s k t e,
+      subst s k (mkElim t e) = mkElim (subst s k t) (subst_elim s k e).
   Proof.
-    intros t l.
-    induction l in t |- * using list_ind_rev. 1: reflexivity.
-    unfold mkElims. rewrite fold_left_app. cbn.
-    destruct a. all: cbn. all: apply IHl.
+    intros s k t e. destruct e.
+    - cbn. reflexivity.
+    - cbn. reflexivity.
+    - cbn. reflexivity.
   Qed.
 
-  Lemma isElimRel_mkApps :
-    forall t l,
-      isElimRel (mkApps t l) = isElimRel t.
+  Lemma mkElims_subst :
+    forall s k t l,
+      subst s k (mkElims t l) = mkElims (subst s k t) (map (subst_elim s k) l).
   Proof.
-    intros t l.
-    induction l in t |- * using list_ind_rev. 1: reflexivity.
-    rewrite <- mkApps_nested. cbn. apply IHl.
+    intros s k t l. induction l in s, k, t |- * using list_ind_rev.
+    - cbn. reflexivity.
+    - unfold mkElims. rewrite fold_left_app. cbn.
+      rewrite map_app. rewrite fold_left_app. cbn.
+      rewrite mkElim_subst. f_equal. apply IHl.
   Qed.
 
-  (* I have to go back to old idea! :(
-     Using subst ss in isElimSymb_lhs
-  *)
-  Lemma isElimRel_subst :
-    forall t s k,
-      isElimRel t ->
-      isElimRel (subst s k t).
-  Admitted.
-
-  Lemma isElimRel_lhs :
-    forall r,
-      isElimRel (PCUICAst.lhs r).
+  Lemma isElimSymb_lift :
+    forall n k t,
+      isElimSymb t ->
+      isElimSymb (lift n k t).
   Proof.
-    intro r. unfold PCUICAst.lhs.
-    rewrite isElimRel_mkElims. reflexivity.
+    intros n k t h.
+    induction t. all: try discriminate.
+    all: cbn. all: eauto.
+  Qed.
+
+  Lemma isElimSymb_lhs :
+    forall kn n ui r,
+      n > r.(head) ->
+      let ss := symbols_subst kn 0 ui n in
+      isElimSymb (subst ss #|r.(pat_context)| (PCUICAst.lhs r)).
+  Proof.
+    intros kn n ui r h. unfold PCUICAst.lhs.
+    rewrite mkElims_subst.
+    rewrite isElimSymb_mkElims. cbn.
+    destruct (Nat.leb_spec #|pat_context r| (#|pat_context r| + head r)).
+    2: lia.
+    replace (#|pat_context r| + head r - #|pat_context r|)
+    with (head r) by lia.
+    destruct nth_error eqn:e.
+    - apply isElimSymb_lift.
+      unfold symbols_subst in e. revert e.
+      replace (n - 0) with n by lia.
+      generalize 0. generalize (head r). clear.
+      intros m k e. induction n in m, k, t, e |- *.
+      + cbn in e. destruct m. all: discriminate.
+      + destruct m.
+        * cbn in e. apply some_inj in e. subst. reflexivity.
+        * cbn in e. eapply IHn. eassumption.
+    - apply nth_error_None in e. rewrite symbols_subst_length in e.
+      lia.
   Qed.
 
   Lemma isAppSymb_subst :
@@ -574,8 +594,45 @@ Section Confluence.
     - cbn. reflexivity.
   Qed.
 
-  Lemma pred1_mkApps_tFix_inv (Σ : global_env) (Γ Δ : context)
+  Lemma declared_symbol_head `{checker_flags} :
+    forall Σ k n decl r,
+      wf Σ ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(rules) n = Some r ->
+      r.(head) < #|decl.(symbols)|.
+  Proof.
+    intros Σ k n decl r hΣ h e.
+    unfold declared_symbol in h.
+    eapply lookup_on_global_env in h. 2: eauto.
+    destruct h as [Σ' [wfΣ' decl']].
+    red in decl'. red in decl'.
+    destruct decl' as [hctx [hr [hpr hprr]]].
+    eapply All_nth_error in hr. 2: eassumption.
+    destruct hr as [T hl hr hh he].
+    rewrite map_length in hh. assumption.
+  Qed.
+
+  Lemma declared_symbol_par_head `{checker_flags} :
+    forall Σ k n decl r,
+      wf Σ ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(prules) n = Some r ->
+      r.(head) < #|decl.(symbols)|.
+  Proof.
+    intros Σ k n decl r hΣ h e.
+    unfold declared_symbol in h.
+    eapply lookup_on_global_env in h. 2: eauto.
+    destruct h as [Σ' [wfΣ' decl']].
+    red in decl'. red in decl'.
+    destruct decl' as [hctx [hr [hpr hprr]]].
+    eapply All_nth_error in hpr. 2: eassumption.
+    destruct hpr as [T hl hpr hh he].
+    rewrite map_length in hh. assumption.
+  Qed.
+
+  Lemma pred1_mkApps_tFix_inv `{cf : checker_flags} (Σ : global_env) (Γ Δ : context)
         mfix0 idx (args0 : list term) c :
+    wf Σ ->
     pred1 Σ Γ Δ (mkApps (tFix mfix0 idx) args0) c ->
     ({ mfix1 & { args1 : list term &
                          (c = mkApps (tFix mfix1 idx) args1) *
@@ -596,19 +653,24 @@ Section Confluence.
       (c = mkApps fn args1)) } } } })%type.
 
   Proof with solve_discr.
-    intros pred. remember (mkApps _ _) as fixt. revert mfix0 idx args0 Heqfixt.
+    intros wfΣ pred. remember (mkApps _ _) as fixt.
+    revert mfix0 idx args0 Heqfixt.
     induction pred; intros; solve_discr.
     - right. exists mfix1, args1, narg, fn. intuition eauto.
-    - exfalso. apply (f_equal isElimRel) in Heqfixt.
-      rewrite isElimRel_mkApps in Heqfixt. cbn in Heqfixt.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
       eapply diff_false_true. rewrite <- Heqfixt.
-      eapply isElimRel_subst. eapply isElimRel_subst.
-      apply isElimRel_lhs.
-    - exfalso. apply (f_equal isElimRel) in Heqfixt.
-      rewrite isElimRel_mkApps in Heqfixt. cbn in Heqfixt.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_head in d. all: eauto.
+    - exfalso. apply (f_equal isElimSymb) in Heqfixt.
+      rewrite isElimSymb_mkApps in Heqfixt. cbn in Heqfixt.
       eapply diff_false_true. rewrite <- Heqfixt.
-      eapply isElimRel_subst. eapply isElimRel_subst.
-      apply isElimRel_lhs.
+      eapply isElimSymb_subst. apply untyped_subslet_length in u.
+      rewrite subst_context_length in u. rewrite u.
+      eapply isElimSymb_lhs.
+      eapply declared_symbol_par_head in d. all: eauto.
     - destruct args0 using rev_ind. 1: noconf Heqfixt.
       clear IHargs0.
       rewrite <- mkApps_nested in Heqfixt. noconf Heqfixt.
@@ -627,7 +689,6 @@ Section Confluence.
           -- intros. discriminate.
         * eapply All2_app; eauto.
         * now rewrite <- mkApps_nested, b.
-
     - left.
       eexists mfix1, []. intuition auto.
     - subst t. solve_discr.
@@ -4621,8 +4682,10 @@ Section Confluence.
 
   Lemma triangle Γ Δ t u :
     let Pctx :=
-        fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ) in
-    pred1 Σ Γ Δ t u -> pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
+      fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ)
+    in
+    pred1 Σ Γ Δ t u ->
+    pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
     refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
@@ -4862,7 +4925,7 @@ Section Confluence.
                  + discriminate.
              }
              simpl.
-             case: (pred1_mkApps_tFix_inv _ _ _ _ _ _ _ X).
+             case: (pred1_mkApps_tFix_inv _ _ _ _ _ _ _ _ X). 1: assumption.
              { move=> [mfix1 [args1 [[HM1 Hmfix] Hargs]]].
                move: HM1 X => -> X.
                rewrite [tApp _ _](mkApps_nested _ _ [N1]).
