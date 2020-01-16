@@ -2835,7 +2835,7 @@ Section ConfluenceFacts.
     eapply red_pred in Hred.
     - generalize_eqs Hred.
       induction Hred in ind, pars, k, args |- * ; simplify *.
-      + eapply pred1_mkApps_tConstruct in r as [r' [eq redargs]].
+      + eapply pred1_mkApps_tConstruct in r as [r' [eq redargs]]. 2: auto.
         subst y. exists r'.
         intuition auto. solve_all. now apply pred1_red in X.
       + exists args; split; eauto. apply All2_same; auto.
