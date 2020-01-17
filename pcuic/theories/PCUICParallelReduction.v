@@ -2572,6 +2572,18 @@ Section ParallelSubstitution.
     ((∑ n, nth_error decl.(rules) n = Some r) +
      (∑ n, nth_error decl.(prules) n = Some r)).
 
+  Lemma is_rewrite_rule_head :
+    forall Σ k decl r,
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      r.(head) < #|decl.(symbols)|.
+  Proof.
+    intros Σ k decl r hΣ hr.
+    destruct hr as [h [[n e]|[n e]]].
+    - eapply declared_symbol_head. all: eassumption.
+    - eapply declared_symbol_par_head. all: eassumption.
+  Qed.
+
   Lemma lhs_reducts :
     forall Σ k ui decl r Γ Δ s t,
       wf Σ ->
@@ -2587,12 +2599,28 @@ Section ParallelSubstitution.
     assert (e : lhs = subst0 s (subst ss #|s| (PCUICAst.lhs r))) by reflexivity.
     clearbody lhs.
     induction h.
+    all: try solve [
+      exfalso ; apply (f_equal isElimSymb) in e ; cbn in e ;
+      eapply diff_false_true ; rewrite e ;
+      eapply isElimSymb_subst ; apply untyped_subslet_length in hs ;
+      rewrite subst_context_length in hs ; rewrite hs ;
+      eapply isElimSymb_lhs ;
+      eapply is_rewrite_rule_head in hr ; eauto
+    ].
     - exfalso. apply (f_equal isElimSymb) in e. cbn in e.
+      rewrite isElimSymb_mkApps in e. cbn in e.
       eapply diff_false_true. rewrite e.
       eapply isElimSymb_subst. apply untyped_subslet_length in hs.
       rewrite subst_context_length in hs. rewrite hs.
       eapply isElimSymb_lhs.
-      (* eapply declared_symbol_head in d. all: eauto. *)
+      eapply is_rewrite_rule_head in hr. all: eauto.
+    - exfalso. apply (f_equal isElimSymb) in e. cbn in e.
+      rewrite isElimSymb_mkApps in e. cbn in e.
+      eapply diff_false_true. rewrite e.
+      eapply isElimSymb_subst. apply untyped_subslet_length in hs.
+      rewrite subst_context_length in hs. rewrite hs.
+      eapply isElimSymb_lhs.
+      eapply is_rewrite_rule_head in hr. all: eauto.
   Abort.
 
 
