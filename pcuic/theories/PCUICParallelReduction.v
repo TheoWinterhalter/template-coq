@@ -2424,4 +2424,28 @@ Section ParallelSubstitution.
       econstructor; auto with pcuic.
   Qed.
 
+  Definition is_rewrite_rule Σ k decl r :=
+    declared_symbol Σ k decl ×
+    ((∑ n, nth_error decl.(rules) n = Some r) +
+     (∑ n, nth_error decl.(prules) n = Some r)).
+
+  Lemma lhs_reducts :
+    forall Σ k ui decl r Γ Δ s t,
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+      let lhs := subst0 s (subst ss #|s| (lhs r)) in
+      pred1 Σ Γ Δ lhs t ->
+      (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| (rhs r))) +
+      False.
+  Proof.
+    intros Σ k ui decl r Γ Δ s t hΣ hr ss hs lhs h.
+    assert (e : lhs = subst0 s (subst ss #|s| (PCUICAst.lhs r))) by reflexivity.
+    clearbody lhs.
+    induction h.
+    -
+  Abort.
+
+
 End ParallelSubstitution.
