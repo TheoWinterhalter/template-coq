@@ -2531,6 +2531,42 @@ Section ParallelSubstitution.
       lia.
   Qed.
 
+  Lemma declared_symbol_head `{checker_flags} :
+    forall Σ k n decl r,
+      wf Σ ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(rules) n = Some r ->
+      r.(head) < #|decl.(symbols)|.
+  Proof.
+    intros Σ k n decl r hΣ h e.
+    unfold declared_symbol in h.
+    eapply lookup_on_global_env in h. 2: eauto.
+    destruct h as [Σ' [wfΣ' decl']].
+    red in decl'. red in decl'.
+    destruct decl' as [hctx [hr [hpr hprr]]].
+    eapply All_nth_error in hr. 2: eassumption.
+    destruct hr as [T hl hr hh he].
+    rewrite map_length in hh. assumption.
+  Qed.
+
+  Lemma declared_symbol_par_head `{checker_flags} :
+    forall Σ k n decl r,
+      wf Σ ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(prules) n = Some r ->
+      r.(head) < #|decl.(symbols)|.
+  Proof.
+    intros Σ k n decl r hΣ h e.
+    unfold declared_symbol in h.
+    eapply lookup_on_global_env in h. 2: eauto.
+    destruct h as [Σ' [wfΣ' decl']].
+    red in decl'. red in decl'.
+    destruct decl' as [hctx [hr [hpr hprr]]].
+    eapply All_nth_error in hpr. 2: eassumption.
+    destruct hpr as [T hl hpr hh he].
+    rewrite map_length in hh. assumption.
+  Qed.
+
   Definition is_rewrite_rule Σ k decl r :=
     declared_symbol Σ k decl ×
     ((∑ n, nth_error decl.(rules) n = Some r) +
@@ -2551,7 +2587,12 @@ Section ParallelSubstitution.
     assert (e : lhs = subst0 s (subst ss #|s| (PCUICAst.lhs r))) by reflexivity.
     clearbody lhs.
     induction h.
-    -
+    - exfalso. apply (f_equal isElimSymb) in e. cbn in e.
+      eapply diff_false_true. rewrite e.
+      eapply isElimSymb_subst. apply untyped_subslet_length in hs.
+      rewrite subst_context_length in hs. rewrite hs.
+      eapply isElimSymb_lhs.
+      (* eapply declared_symbol_head in d. all: eauto. *)
   Abort.
 
 
