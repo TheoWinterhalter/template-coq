@@ -2601,26 +2601,26 @@ Section ParallelSubstitution.
     induction h.
     all: try solve [
       exfalso ; apply (f_equal isElimSymb) in e ; cbn in e ;
+      rewrite ?isElimSymb_mkApps in e ; cbn in e ;
       eapply diff_false_true ; rewrite e ;
       eapply isElimSymb_subst ; apply untyped_subslet_length in hs ;
       rewrite subst_context_length in hs ; rewrite hs ;
       eapply isElimSymb_lhs ;
       eapply is_rewrite_rule_head in hr ; eauto
     ].
-    - exfalso. apply (f_equal isElimSymb) in e. cbn in e.
-      rewrite isElimSymb_mkApps in e. cbn in e.
-      eapply diff_false_true. rewrite e.
-      eapply isElimSymb_subst. apply untyped_subslet_length in hs.
-      rewrite subst_context_length in hs. rewrite hs.
-      eapply isElimSymb_lhs.
-      eapply is_rewrite_rule_head in hr. all: eauto.
-    - exfalso. apply (f_equal isElimSymb) in e. cbn in e.
-      rewrite isElimSymb_mkApps in e. cbn in e.
-      eapply diff_false_true. rewrite e.
-      eapply isElimSymb_subst. apply untyped_subslet_length in hs.
-      rewrite subst_context_length in hs. rewrite hs.
-      eapply isElimSymb_lhs.
-      eapply is_rewrite_rule_head in hr. all: eauto.
+    - (* Case where nothing happens basically, to be taken into account
+         just t = lhs
+      *)
+      admit.
+    - (* Critical pair or rewrite rule *)
+      admit.
+    - (* Same but parallel *)
+      admit.
+    - admit.
+    - admit.
+    - admit.
+    - (* Another reflexivity case *)
+      admit.
   Abort.
 
 
