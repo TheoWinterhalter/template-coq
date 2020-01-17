@@ -2592,6 +2592,12 @@ Section ParallelSubstitution.
     unfold mkElims. apply fold_left_app.
   Qed.
 
+  (* TODO Have a lemma lhs_prefix_reducts
+    which is basically the same but conclude on any prefix (firstn on elims)
+    of a lhs. Maybe a lemma besides to conclude about the reducts of a pattern
+    (namely that there are none besides the pattern itself).
+  *)
+
   Lemma lhs_reducts :
     forall Σ k ui decl r Γ Δ s t,
       wf Σ ->
