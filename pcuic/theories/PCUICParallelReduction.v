@@ -2584,6 +2584,14 @@ Section ParallelSubstitution.
     - eapply declared_symbol_par_head. all: eassumption.
   Qed.
 
+  Lemma mkElims_app :
+    forall t l1 l2,
+      mkElims t (l1 ++ l2) = mkElims (mkElims t l1) l2.
+  Proof.
+    intros t l1 l2.
+    unfold mkElims. apply fold_left_app.
+  Qed.
+
   Lemma lhs_reducts :
     forall Σ k ui decl r Γ Δ s t,
       wf Σ ->
@@ -2592,13 +2600,14 @@ Section ParallelSubstitution.
       untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
       let lhs := subst0 s (subst ss #|s| (lhs r)) in
       pred1 Σ Γ Δ lhs t ->
+      (t = lhs) +
       (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| (rhs r))) +
       False.
   Proof.
     intros Σ k ui decl r Γ Δ s t hΣ hr ss hs lhs h.
     assert (e : lhs = subst0 s (subst ss #|s| (PCUICAst.lhs r))) by reflexivity.
     clearbody lhs.
-    induction h.
+    induction h in r, hr, s, hs, e |- *.
     all: try solve [
       exfalso ; apply (f_equal isElimSymb) in e ; cbn in e ;
       rewrite ?isElimSymb_mkApps in e ; cbn in e ;
@@ -2608,19 +2617,51 @@ Section ParallelSubstitution.
       eapply isElimSymb_lhs ;
       eapply is_rewrite_rule_head in hr ; eauto
     ].
-    - (* Case where nothing happens basically, to be taken into account
-         just t = lhs
-      *)
-      admit.
+    - left. left. reflexivity.
     - (* Critical pair or rewrite rule *)
       admit.
     - (* Same but parallel *)
       admit.
+    - unfold lhs in e. destruct (elims r) eqn:ee using list_rect_rev.
+      1:{
+        simpl in e. exfalso.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)).
+        2:{
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs. lia.
+        }
+        destruct nth_error eqn:en.
+        - revert en e. generalize (#|pat_context r| + head r - #|s|). clear.
+          subst ss. unfold symbols_subst. generalize (#|symbols decl| - 0).
+          generalize 0. clear.
+          intros i n m en e.
+          assert (∑ i, t = tSymb k i ui) as [j et].
+          { induction n in i, m, en |- *.
+            - cbn in en. destruct m. all: discriminate.
+            - cbn in en. destruct m.
+              + cbn in en. apply some_inj in en. subst.
+                eexists. reflexivity.
+              + cbn in en. eapply IHn. eassumption.
+          }
+          subst. cbn in e. discriminate.
+        - apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs.
+          apply nth_error_None in en. subst ss.
+          rewrite symbols_subst_length in en.
+          apply is_rewrite_rule_head in hr. 2: eassumption.
+          lia.
+      }
+      rewrite mkElims_app in e. cbn in e.
+      destruct a. all: try discriminate.
+      cbn in e. inversion e. subst. clear e.
+      clear IHl.
+      specialize (IHh1 r s hr hs).
+      (* We must generalise the lemma a bit to be able to go under
+         lhs. Or maybe do an induction on l instead or something?
+      *)
     - admit.
     - admit.
-    - admit.
-    - (* Another reflexivity case *)
-      admit.
+    - left. left. reflexivity.
   Abort.
 
 
