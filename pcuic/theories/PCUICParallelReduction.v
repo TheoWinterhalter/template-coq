@@ -2531,6 +2531,36 @@ Section ParallelSubstitution.
       lia.
   Qed.
 
+  Lemma isElimSymb_pre_lhs :
+    forall kn n ui r m,
+      n > r.(head) ->
+      let ss := symbols_subst kn 0 ui n in
+      let prelhs :=
+        mkElims (tRel (#|r.(pat_context)| +r.(head))) (skipn m r.(elims))
+      in
+      isElimSymb (subst ss #|r.(pat_context)| prelhs).
+  Proof.
+    intros kn n ui r m h. cbn.
+    rewrite mkElims_subst.
+    rewrite isElimSymb_mkElims. cbn.
+    destruct (Nat.leb_spec #|pat_context r| (#|pat_context r| + head r)).
+    2: lia.
+    replace (#|pat_context r| + head r - #|pat_context r|)
+    with (head r) by lia.
+    destruct nth_error eqn:e.
+    - apply isElimSymb_lift.
+      unfold symbols_subst in e. revert e.
+      replace (n - 0) with n by lia.
+      generalize 0. generalize (head r). clear.
+      intros m k e. induction n in m, k, t, e |- *.
+      + cbn in e. destruct m. all: discriminate.
+      + destruct m.
+        * cbn in e. apply some_inj in e. subst. reflexivity.
+        * cbn in e. eapply IHn. eassumption.
+    - apply nth_error_None in e. rewrite symbols_subst_length in e.
+      lia.
+  Qed.
+
   Lemma declared_symbol_head `{checker_flags} :
     forall Σ k n decl r,
       wf Σ ->
@@ -2611,6 +2641,50 @@ Section ParallelSubstitution.
 
     In both cases we need linearity of pattern variables.
   *)
+  Lemma lhs_prefix_reducts :
+    forall Σ k ui decl r Γ Δ s t n,
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+      let prelhs0 :=
+        mkElims (tRel (#|r.(pat_context)| +r.(head))) (skipn n r.(elims))
+      in
+      let prelhs := subst0 s (subst ss #|s| prelhs0) in
+      pred1 Σ Γ Δ prelhs t ->
+      False + (* Other rewrite rule *)
+      (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| prelhs0)).
+  Proof.
+    intros Σ k ui decl r Γ Δ s t n hΣ hr ss hs prelhs0 prelhs h.
+    assert (e0 :
+      prelhs0 =
+      mkElims (tRel (#|r.(pat_context)| +r.(head))) (skipn n r.(elims))
+    ) by reflexivity. clearbody prelhs0.
+    assert (e : prelhs = subst0 s (subst ss #|s| prelhs0)) by reflexivity.
+    clearbody prelhs.
+    induction h in r, hr, s, hs, e0, e, n |- *.
+    all: try solve [
+      exfalso ; rewrite ?e0 in e ;
+      apply (f_equal isElimSymb) in e ; cbn in e ;
+      rewrite ?isElimSymb_mkApps in e ; cbn in e ;
+      eapply diff_false_true ; rewrite e ;
+      eapply isElimSymb_subst ; apply untyped_subslet_length in hs ;
+      rewrite subst_context_length in hs ; rewrite hs ;
+      eapply isElimSymb_pre_lhs ;
+      eapply is_rewrite_rule_head in hr ; eauto
+    ].
+    - right. exists s. intuition auto.
+      apply All2_same. intro x. apply pred1_refl_gen. assumption.
+    - (* Rewrite rule *)
+      admit.
+    - (* Parallel rewrite rule *)
+      admit.
+    - admit.
+    - admit.
+    - admit.
+    - right. exists s. intuition auto.
+      apply All2_same. intro x. apply pred1_refl_gen. assumption.
+  Abort.
 
   Lemma lhs_reducts :
     forall Σ k ui decl r Γ Δ s t,
