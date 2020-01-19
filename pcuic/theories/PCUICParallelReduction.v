@@ -2596,6 +2596,20 @@ Section ParallelSubstitution.
     which is basically the same but conclude on any prefix (firstn on elims)
     of a lhs. Maybe a lemma besides to conclude about the reducts of a pattern
     (namely that there are none besides the pattern itself).
+
+    We want to say that either
+    - nothing happend
+    - a prefix of (the prefix of) the lhs matches another lhs and for that
+      we use a pattern substitution (All pattern s) to factorise the original
+      substitution so we can talk about reducing the terms outside the prefix
+    - the rule itself applied
+
+    Or more probably
+    - a rewrite rule applied (of the system, possibly the same)
+    - only congruence applied so the substitution reduced (possibly with
+      reflexivity)
+
+    In both cases we need linearity of pattern variables.
   *)
 
   Lemma lhs_reducts :
