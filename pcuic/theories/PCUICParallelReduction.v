@@ -2755,6 +2755,12 @@ Section ParallelSubstitution.
         inversion e.
         intuition auto. lia.
       } subst.
+      assert (decl0 = decl).
+      { unfold declared_symbol in d.
+        destruct hr as [hd _]. unfold declared_symbol in hd.
+        rewrite d in hd. inversion hd. reflexivity.
+      } subst.
+      change ss0 with ss in *. clear ss0.
       admit.
     - (* Parallel rewrite rule *)
       admit.
