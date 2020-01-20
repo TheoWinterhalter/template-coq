@@ -2697,11 +2697,21 @@ Section ParallelSubstitution.
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
       let prelhs0 :=
-        mkElims (tRel (#|r.(pat_context)| +r.(head))) (skipn n r.(elims))
+        mkElims (tRel (#|r.(pat_context)| + r.(head))) (skipn n r.(elims))
       in
       let prelhs := subst0 s (subst ss #|s| prelhs0) in
       pred1 Σ Γ Δ prelhs t ->
-      False + (* Other rewrite rule *)
+      (∑ r' θ θ' m,
+        is_rewrite_rule Σ k decl r' ×
+        r.(head) = r'.(head) ×
+        All2 (pred1 Σ Γ Δ) θ θ' ×
+        let prelhs1 :=
+          mkElims (tRel (#|r.(pat_context)| + r.(head))) (skipn (n+m) r.(elims))
+        in
+        let prelhs2 := subst0 s (subst ss #|s| prelhs1) in
+        prelhs2 = subst0 θ (subst ss #|θ| (lhs r')) ×
+        False
+      ) +
       (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| prelhs0)).
   Proof.
     intros Σ k ui decl r Γ Δ s t n hΣ hr ss hs prelhs0 prelhs h.
@@ -2725,6 +2735,7 @@ Section ParallelSubstitution.
     - right. exists s. intuition auto.
       apply All2_same. intro x. apply pred1_refl_gen. assumption.
     - (* Rewrite rule *)
+      left.
       assert (k0 = k /\ ui0 = ui /\ r.(head) = r0.(head)) as [? [? ehead]].
       { subst. subst lhs. unfold lhs in e.
         rewrite -> 4!mkElims_subst in e.
