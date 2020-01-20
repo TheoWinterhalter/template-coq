@@ -2622,6 +2622,55 @@ Section ParallelSubstitution.
     unfold mkElims. apply fold_left_app.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma list_make_nth_error :
+    forall A f i n m x,
+      nth_error (@list_make A f i n) m = Some x ->
+      x = f (m + i).
+  Proof.
+    intros A f i n m x e.
+    induction n in i, m, x, e |- *.
+    - cbn in e. destruct m. all: discriminate.
+    - cbn in e. destruct m.
+      + cbn in e. apply some_inj in e. subst. reflexivity.
+      + cbn in e. cbn. apply IHn in e. subst. f_equal. lia.
+  Qed.
+
+  Lemma symbols_subst_nth_error :
+    forall k n ui m t i,
+      nth_error (symbols_subst k n ui m) i = Some t ->
+      t = tSymb k (i + n) ui.
+  Proof.
+    intros k n ui m t i e. unfold symbols_subst in e.
+    apply list_make_nth_error in e. assumption.
+  Qed.
+
+  Fixpoint getSymb (t : term) :=
+    match t with
+    | tSymb k n ui => Some (k, n, ui)
+    | tApp u v => getSymb u
+    | tProj p u => getSymb u
+    | tCase ind p c brs => getSymb c
+    | _ => None
+    end.
+
+  Lemma getSymb_mkElim :
+    forall t e,
+      getSymb (mkElim t e) = getSymb t.
+  Proof.
+    intros t []. all: simpl. all: reflexivity.
+  Qed.
+
+  Lemma getSymb_mkElims :
+    forall t l,
+      getSymb (mkElims t l) = getSymb t.
+  Proof.
+    intros t l. induction l in t |- * using list_ind_rev.
+    - cbn. reflexivity.
+    - rewrite mkElims_app. cbn. rewrite getSymb_mkElim.
+      apply IHl.
+  Qed.
+
   (* TODO Have a lemma lhs_prefix_reducts
     which is basically the same but conclude on any prefix (firstn on elims)
     of a lhs. Maybe a lemma besides to conclude about the reducts of a pattern
@@ -2676,6 +2725,36 @@ Section ParallelSubstitution.
     - right. exists s. intuition auto.
       apply All2_same. intro x. apply pred1_refl_gen. assumption.
     - (* Rewrite rule *)
+      assert (k0 = k /\ ui0 = ui /\ r.(head) = r0.(head)) as [? [? ehead]].
+      { subst. subst lhs. unfold lhs in e.
+        rewrite -> 4!mkElims_subst in e.
+        cbn in e.
+        apply untyped_subslet_length in hs.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in hs.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec #|s0| (#|pat_context r0| + head r0)). 2: lia.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)). 2: lia.
+        eapply is_rewrite_rule_head in hr. 2: auto.
+        eapply declared_symbol_head in e1. all: eauto.
+        destruct nth_error eqn:e2.
+        2:{
+          eapply nth_error_None in e2. subst ss0.
+          rewrite symbols_subst_length in e2. lia.
+        }
+        destruct (nth_error ss) eqn:e3.
+        2:{
+          eapply nth_error_None in e3. subst ss.
+          rewrite symbols_subst_length in e3. lia.
+        }
+        apply symbols_subst_nth_error in e2.
+        apply symbols_subst_nth_error in e3. subst.
+        cbn in e.
+        apply (f_equal getSymb) in e.
+        rewrite 2!getSymb_mkElims in e. cbn in e.
+        inversion e.
+        intuition auto. lia.
+      } subst.
       admit.
     - (* Parallel rewrite rule *)
       admit.
