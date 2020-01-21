@@ -2749,7 +2749,7 @@ Section ParallelSubstitution.
       in
       let prelhs := subst0 s (subst ss #|s| prelhs0) in
       pred1 Σ Γ Δ prelhs t ->
-      (∑ r' θ θ' m,
+      (∑ r' θ θ' m el,
         is_rewrite_rule Σ k decl r' ×
         r.(head) = r'.(head) ×
         m <= n ×
@@ -2761,9 +2761,15 @@ Section ParallelSubstitution.
         in
         let prelhs2 := subst0 s (subst ss #|s| prelhs1) in
         prelhs2 = subst0 θ (subst ss #|θ| (lhs r')) ×
-        (* pred1 for the remainder of the prefix *)
-        (* t = something θ' *)
-        False
+        All2
+          (pred1_elim Σ Γ Δ)
+          (skipn
+            m
+            (firstn
+              n
+              (map (subst_elim s 0) (map (subst_elim ss #|s|) r.(elims)))))
+           el ×
+        t = mkElims (subst0 θ' (subst ss #|θ| r'.(rhs))) el
       ) +
       (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| prelhs0)).
   Proof.
