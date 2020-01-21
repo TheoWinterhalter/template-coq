@@ -2780,7 +2780,7 @@ Section ParallelSubstitution.
     ) by reflexivity. clearbody prelhs0.
     assert (e : prelhs = subst0 s (subst ss #|s| prelhs0)) by reflexivity.
     clearbody prelhs.
-    induction h in r, hr, s, hs, e0, e, n |- *.
+    induction h in r, hr, s, hs, prelhs0, e0, e, n |- *.
     all: try solve [
       exfalso ; rewrite ?e0 in e ;
       apply (f_equal isElimSymb) in e ; cbn in e ;
@@ -2919,18 +2919,28 @@ Section ParallelSubstitution.
       rewrite mkElims_app in e. cbn in e.
       destruct a. all: try discriminate.
       cbn in e. inversion e. subst. clear e.
-      clear IHl.
-      destruct n.
-      1:{
-        cbn in ee. apply (f_equal (@List.length _)) in ee.
-        cbn in ee. rewrite app_length in ee. cbn in ee. exfalso.
-        lia.
+      clear IHl IHh2.
+      specialize (IHh1 _ _ #|l| hr hs _ eq_refl).
+      forward IHh1.
+      { f_equal. f_equal. f_equal. clear - ee.
+        apply (f_equal (firstn #|l|)) in ee as e.
+        rewrite firstn_app in e. replace (#|l| - #|l|) with 0 in e by lia.
+        cbn in e. rewrite app_nil_r in e.
+        rewrite firstn_all in e.
+        apply (f_equal (@List.length _)) in ee as h.
+        rewrite app_length in h. cbn in h.
+        pose proof (firstn_le_length n r.(elims)) as h'.
+        rewrite h in h'.
+        rewrite firstn_firstn in e.
+        replace (Init.Nat.min #|l| n) with #|l| in e by lia.
+        auto.
       }
-      (* Maybe ask for n < #|elims|? So that it's simpler *)
-      (* replace (S n) with (n+1) in ee by lia.
-      rewrite firstn_add in ee. cbn in ee. *)
-      specialize (IHh1 _ _ n hr hs).
-      admit.
+      destruct IHh1 as [
+        [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+      | [s' [rs h]]
+      ].
+      + left. admit.
+      + right. admit.
     - admit.
     - admit.
     - right. exists s. intuition auto.
