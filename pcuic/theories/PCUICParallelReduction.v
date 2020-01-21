@@ -2719,6 +2719,24 @@ Section ParallelSubstitution.
       apply IHhe. assumption.
   Qed.
 
+  Lemma skipn_app :
+    forall A (l1 l2 : list A) n,
+      skipn n (l1 ++ l2) = skipn n l1 ++ skipn (n - #|l1|) l2.
+  Proof.
+    intros A l1 l2 n.
+    destruct (Nat.leb_spec #|l1| n) as [h|h].
+    - rewrite -> (skipn_all2 l1) by auto. cbn.
+      replace n with (#|l1| + (n - #|l1|)) at 1 by lia.
+      rewrite skipn_skipn. rewrite skipn_all_app. reflexivity.
+    - replace (n - #|l1|) with 0 by lia.
+      change (skipn 0 l2) with l2.
+      induction n in l1, l2, h |- *.
+      + unfold skipn. reflexivity.
+      + destruct l1. 1: cbn in * ; lia.
+        cbn in h. cbn. rewrite 2!skipn_S.
+        apply IHn. lia.
+  Qed.
+
   (* TODO Have a lemma lhs_prefix_reducts
     which is basically the same but conclude on any prefix (firstn on elims)
     of a lhs. Maybe a lemma besides to conclude about the reducts of a pattern
@@ -2939,7 +2957,25 @@ Section ParallelSubstitution.
         [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
       | [s' [rs h]]
       ].
-      + left. admit.
+      + left. subst.
+        eexists r', θ, θ', m, (el ++ [ eApp N1 ]). cbn.
+        repeat match goal with
+        | |- _ × _ => split
+        end. all: auto.
+        * apply (f_equal (@List.length _)) in ee as h.
+          rewrite app_length in h. cbn in h.
+          pose proof (firstn_le_length n r.(elims)) as h'.
+          rewrite h in h'. lia.
+        * rewrite 2!firstn_map. rewrite ee.
+          rewrite <- 2!map_skipn. rewrite skipn_app.
+          replace (m - #|l|) with 0 by lia.
+          unfold skipn at 2.
+          rewrite 2!map_app. cbn.
+          eapply All2_app.
+          -- admit.
+          -- constructor. 2: constructor.
+             constructor. assumption.
+        * rewrite mkElims_app. cbn. reflexivity.
       + right. admit.
     - admit.
     - admit.
