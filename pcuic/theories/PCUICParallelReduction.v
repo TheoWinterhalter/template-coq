@@ -2752,14 +2752,17 @@ Section ParallelSubstitution.
       (∑ r' θ θ' m,
         is_rewrite_rule Σ k decl r' ×
         r.(head) = r'.(head) ×
+        m <= n ×
         All2 (pred1 Σ Γ Δ) θ θ' ×
         let prelhs1 :=
           mkElims
             (tRel (#|r.(pat_context)| + r.(head)))
-            (firstn (n + m) r.(elims))
+            (firstn m r.(elims))
         in
         let prelhs2 := subst0 s (subst ss #|s| prelhs1) in
         prelhs2 = subst0 θ (subst ss #|θ| (lhs r')) ×
+        (* pred1 for the remainder of the prefix *)
+        (* t = something θ' *)
         False
       ) +
       (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| prelhs0)).
