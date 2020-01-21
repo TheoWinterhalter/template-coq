@@ -2885,7 +2885,52 @@ Section ParallelSubstitution.
         right. eexists. eassumption.
       + rewrite skipn_all2. 2: constructor.
         apply firstn_le_length.
-    - admit.
+    - rewrite e0 in e.
+      destruct (firstn n r.(elims)) eqn:ee using list_rect_rev.
+      1:{
+        exfalso.
+        simpl in e.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)).
+        2:{
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs. lia.
+        }
+        destruct nth_error eqn:en.
+        - revert en e. generalize (#|pat_context r| + head r - #|s|). clear.
+          subst ss. unfold symbols_subst. generalize (#|symbols decl| - 0).
+          generalize 0. clear.
+          intros i n m en e.
+          assert (∑ i, t = tSymb k i ui) as [j et].
+          { induction n in i, m, en |- *.
+            - cbn in en. destruct m. all: discriminate.
+            - cbn in en. destruct m.
+              + cbn in en. apply some_inj in en. subst.
+                eexists. reflexivity.
+              + cbn in en. eapply IHn. eassumption.
+          }
+          subst. cbn in e. discriminate.
+        - apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs.
+          apply nth_error_None in en. subst ss.
+          rewrite symbols_subst_length in en.
+          apply is_rewrite_rule_head in hr. 2: eassumption.
+          lia.
+      }
+      rewrite mkElims_app in e. cbn in e.
+      destruct a. all: try discriminate.
+      cbn in e. inversion e. subst. clear e.
+      clear IHl.
+      destruct n.
+      1:{
+        cbn in ee. apply (f_equal (@List.length _)) in ee.
+        cbn in ee. rewrite app_length in ee. cbn in ee. exfalso.
+        lia.
+      }
+      (* Maybe ask for n < #|elims|? So that it's simpler *)
+      (* replace (S n) with (n+1) in ee by lia.
+      rewrite firstn_add in ee. cbn in ee. *)
+      specialize (IHh1 _ _ n hr hs).
+      admit.
     - admit.
     - admit.
     - right. exists s. intuition auto.
