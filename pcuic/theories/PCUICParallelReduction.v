@@ -2840,7 +2840,51 @@ Section ParallelSubstitution.
       + rewrite skipn_all2. 2: constructor.
         apply firstn_le_length.
     - (* Parallel rewrite rule *)
-      admit.
+      left.
+      assert (k0 = k /\ ui0 = ui /\ r.(head) = r0.(head)) as [? [? ehead]].
+      { subst. subst lhs. unfold lhs in e.
+        rewrite -> 4!mkElims_subst in e.
+        cbn in e.
+        apply untyped_subslet_length in hs.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in hs.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec #|s0| (#|pat_context r0| + head r0)). 2: lia.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)). 2: lia.
+        eapply is_rewrite_rule_head in hr. 2: auto.
+        eapply declared_symbol_par_head in e1. all: eauto.
+        destruct nth_error eqn:e2.
+        2:{
+          eapply nth_error_None in e2. subst ss0.
+          rewrite symbols_subst_length in e2. lia.
+        }
+        destruct (nth_error ss) eqn:e3.
+        2:{
+          eapply nth_error_None in e3. subst ss.
+          rewrite symbols_subst_length in e3. lia.
+        }
+        apply symbols_subst_nth_error in e2.
+        apply symbols_subst_nth_error in e3. subst.
+        cbn in e.
+        apply (f_equal getSymb) in e.
+        rewrite 2!getSymb_mkElims in e. cbn in e.
+        inversion e.
+        intuition auto. lia.
+      } subst.
+      assert (decl0 = decl).
+      { unfold declared_symbol in d.
+        destruct hr as [hd _]. unfold declared_symbol in hd.
+        rewrite d in hd. inversion hd. reflexivity.
+      } subst.
+      change ss0 with ss in *. clear ss0.
+      exists r0, s0, s', n, []. cbn.
+      repeat match goal with
+      | |- _ × _ => split
+      end. all: auto.
+      + split. 1: assumption.
+        right. eexists. eassumption.
+      + rewrite skipn_all2. 2: constructor.
+        apply firstn_le_length.
     - admit.
     - admit.
     - admit.
