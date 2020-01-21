@@ -2536,7 +2536,7 @@ Section ParallelSubstitution.
       n > r.(head) ->
       let ss := symbols_subst kn 0 ui n in
       let prelhs :=
-        mkElims (tRel (#|r.(pat_context)| +r.(head))) (skipn m r.(elims))
+        mkElims (tRel (#|r.(pat_context)| + r.(head))) (firstn m r.(elims))
       in
       isElimSymb (subst ss #|r.(pat_context)| prelhs).
   Proof.
@@ -2745,7 +2745,7 @@ Section ParallelSubstitution.
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
       let prelhs0 :=
-        mkElims (tRel (#|r.(pat_context)| + r.(head))) (skipn n r.(elims))
+        mkElims (tRel (#|r.(pat_context)| + r.(head))) (firstn n r.(elims))
       in
       let prelhs := subst0 s (subst ss #|s| prelhs0) in
       pred1 Σ Γ Δ prelhs t ->
@@ -2754,7 +2754,9 @@ Section ParallelSubstitution.
         r.(head) = r'.(head) ×
         All2 (pred1 Σ Γ Δ) θ θ' ×
         let prelhs1 :=
-          mkElims (tRel (#|r.(pat_context)| + r.(head))) (skipn (n+m) r.(elims))
+          mkElims
+            (tRel (#|r.(pat_context)| + r.(head)))
+            (firstn (n + m) r.(elims))
         in
         let prelhs2 := subst0 s (subst ss #|s| prelhs1) in
         prelhs2 = subst0 θ (subst ss #|θ| (lhs r')) ×
@@ -2765,7 +2767,7 @@ Section ParallelSubstitution.
     intros Σ k ui decl r Γ Δ s t n hΣ hr ss hs prelhs0 prelhs h.
     assert (e0 :
       prelhs0 =
-      mkElims (tRel (#|r.(pat_context)| +r.(head))) (skipn n r.(elims))
+      mkElims (tRel (#|r.(pat_context)| + r.(head))) (firstn n r.(elims))
     ) by reflexivity. clearbody prelhs0.
     assert (e : prelhs = subst0 s (subst ss #|s| prelhs0)) by reflexivity.
     clearbody prelhs.
@@ -2897,10 +2899,10 @@ Section ParallelSubstitution.
       (* We must generalise the lemma a bit to be able to go under
          lhs. Or maybe do an induction on l instead or something?
       *)
+      admit.
     - admit.
     - admit.
     - left. left. reflexivity.
   Abort.
-
 
 End ParallelSubstitution.
