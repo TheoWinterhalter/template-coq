@@ -2671,6 +2671,54 @@ Section ParallelSubstitution.
       apply IHl.
   Qed.
 
+  Inductive pred1_elim Σ Γ Δ : elimination -> elimination -> Type :=
+  | pred1_eApp :
+      forall u u',
+        pred1 Σ Γ Δ u u' ->
+        pred1_elim Σ Γ Δ (eApp u) (eApp u')
+
+  | pred1_eCase :
+      forall ind p brs p' brs',
+        pred1 Σ Γ Δ p p' ->
+        All2 (on_Trel_eq (pred1 Σ Γ Δ) snd fst) brs brs' ->
+        pred1_elim Σ Γ Δ (eCase ind p brs) (eCase ind p' brs')
+
+  | pred1_eProj :
+      forall p,
+        (* pred1_ctx Σ Γ Δ -> *)
+        pred1_elim Σ Γ Δ (eProj p) (eProj p).
+
+  Lemma pred1_mkElim :
+    forall Σ Γ Δ t t' e e',
+      pred1 Σ Γ Δ t t' ->
+      pred1_elim Σ Γ Δ e e' ->
+      pred1 Σ Γ Δ (mkElim t e) (mkElim t' e').
+  Proof.
+    intros Σ Γ Δ t t' e e' ht he.
+    destruct he.
+    - cbn. constructor. all: assumption.
+    - cbn. constructor. all: assumption.
+    - cbn. constructor. all: assumption.
+  Qed.
+
+  Lemma pred1_mkElims :
+    forall Σ Γ Δ t t' e e',
+        pred1 Σ Γ Δ t t' ->
+        All2 (pred1_elim Σ Γ Δ) e e' ->
+        pred1 Σ Γ Δ (mkElims t e) (mkElims t' e').
+  Proof.
+    intros Σ Γ Δ t t' e e' ht he.
+    apply All2_rev in he.
+    rewrite <- (rev_involutive e).
+    rewrite <- (rev_involutive e').
+    revert he. generalize (List.rev e) (List.rev e'). clear e e'.
+    intros e e' he. induction he in t, t', ht |- *.
+    - assumption.
+    - simpl. rewrite 2!mkElims_app. cbn.
+      apply pred1_mkElim. 2: assumption.
+      apply IHhe. assumption.
+  Qed.
+
   (* TODO Have a lemma lhs_prefix_reducts
     which is basically the same but conclude on any prefix (firstn on elims)
     of a lhs. Maybe a lemma besides to conclude about the reducts of a pattern
