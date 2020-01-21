@@ -2831,7 +2831,14 @@ Section ParallelSubstitution.
         rewrite d in hd. inversion hd. reflexivity.
       } subst.
       change ss0 with ss in *. clear ss0.
-      admit.
+      exists r0, s0, s', n, []. cbn.
+      repeat match goal with
+      | |- _ × _ => split
+      end. all: auto.
+      + split. 1: assumption.
+        left. eexists. eassumption.
+      + rewrite skipn_all2. 2: constructor.
+        apply firstn_le_length.
     - (* Parallel rewrite rule *)
       admit.
     - admit.
