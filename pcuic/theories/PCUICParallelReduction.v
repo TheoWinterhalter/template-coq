@@ -3297,71 +3297,59 @@ Section ParallelSubstitution.
       is_rewrite_rule Σ k decl r ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
-      let lhs := subst0 s (subst ss #|s| (lhs r)) in
-      pred1 Σ Γ Δ lhs t ->
-      (t = lhs) +
-      (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| (rhs r))) +
-      False.
+      let prelhs0 :=
+        mkElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims)
+      in
+      let prelhs := subst0 s (subst ss #|s| prelhs0) in
+      pred1 Σ Γ Δ prelhs t ->
+      (∑ r' θ θ' m el,
+        is_rewrite_rule Σ k decl r' ×
+        r.(head) = r'.(head) ×
+        m <= #|r.(elims)| × (* Not necessary *)
+        All2 (pred1 Σ Γ Δ) θ θ' ×
+        let prelhs1 :=
+          mkElims
+            (tRel (#|r.(pat_context)| + r.(head)))
+            (firstn m r.(elims))
+        in
+        let prelhs2 := subst0 s (subst ss #|s| prelhs1) in
+        prelhs2 = subst0 θ (subst ss #|θ| (lhs r')) ×
+        All2
+          (pred1_elim Σ Γ Δ)
+          (skipn
+            m
+            (map (subst_elim s 0) (map (subst_elim ss #|s|) r.(elims))))
+           el ×
+        t = mkElims (subst0 θ' (subst ss #|θ| r'.(rhs))) el
+      ) +
+      (∑ el,
+        All2
+          (pred1_elim Σ Γ Δ)
+          (map
+            (subst_elim s 0)
+            (map (subst_elim ss #|s|) r.(elims))
+          )
+          el ×
+        t = mkElims (subst ss #|s| (tRel (#|r.(pat_context)| + r.(head)))) el
+      ).
   Proof.
-    intros Σ k ui decl r Γ Δ s t hΣ hr ss hs lhs h.
-    assert (e : lhs = subst0 s (subst ss #|s| (PCUICAst.lhs r))) by reflexivity.
-    clearbody lhs.
-    induction h in r, hr, s, hs, e |- *.
-    all: try solve [
-      exfalso ; apply (f_equal isElimSymb) in e ; cbn in e ;
-      rewrite ?isElimSymb_mkApps in e ; cbn in e ;
-      eapply diff_false_true ; rewrite e ;
-      eapply isElimSymb_subst ; apply untyped_subslet_length in hs ;
-      rewrite subst_context_length in hs ; rewrite hs ;
-      eapply isElimSymb_lhs ;
-      eapply is_rewrite_rule_head in hr ; eauto
+    intros Σ k ui decl r Γ Δ s t hΣ hr ss hs prelhs0 prelhs ht.
+    pose proof (lhs_prefix_reducts Σ k ui decl r Γ Δ s t #|r.(elims)| hΣ hr hs)
+      as thm.
+    rewrite firstn_all in thm. simpl in thm.
+    forward thm by auto.
+    destruct thm as [
+      [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+    | [el [hel h']]
     ].
-    - left. left. reflexivity.
-    - (* Critical pair or rewrite rule *)
-      admit.
-    - (* Same but parallel *)
-      admit.
-    - unfold lhs in e. destruct (elims r) eqn:ee using list_rect_rev.
-      1:{
-        simpl in e. exfalso.
-        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)).
-        2:{
-          apply untyped_subslet_length in hs.
-          rewrite subst_context_length in hs. lia.
-        }
-        destruct nth_error eqn:en.
-        - revert en e. generalize (#|pat_context r| + head r - #|s|). clear.
-          subst ss. unfold symbols_subst. generalize (#|symbols decl| - 0).
-          generalize 0. clear.
-          intros i n m en e.
-          assert (∑ i, t = tSymb k i ui) as [j et].
-          { induction n in i, m, en |- *.
-            - cbn in en. destruct m. all: discriminate.
-            - cbn in en. destruct m.
-              + cbn in en. apply some_inj in en. subst.
-                eexists. reflexivity.
-              + cbn in en. eapply IHn. eassumption.
-          }
-          subst. cbn in e. discriminate.
-        - apply untyped_subslet_length in hs.
-          rewrite subst_context_length in hs.
-          apply nth_error_None in en. subst ss.
-          rewrite symbols_subst_length in en.
-          apply is_rewrite_rule_head in hr. 2: eassumption.
-          lia.
-      }
-      rewrite mkElims_app in e. cbn in e.
-      destruct a. all: try discriminate.
-      cbn in e. inversion e. subst. clear e.
-      clear IHl.
-      specialize (IHh1 r s hr hs).
-      (* We must generalise the lemma a bit to be able to go under
-         lhs. Or maybe do an induction on l instead or something?
-      *)
-      admit.
-    - admit.
-    - admit.
-    - left. left. reflexivity.
-  Abort.
+    - left. exists r', θ, θ', m, el. cbn.
+      repeat match goal with
+      | |- _ × _ => split
+      end. all: auto.
+      rewrite 2!firstn_map in hrest.
+      rewrite firstn_all in hrest.
+      assumption.
+    - right. exists el. split. all: auto.
+  Qed.
 
 End ParallelSubstitution.
