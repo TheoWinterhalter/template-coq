@@ -2950,7 +2950,8 @@ Section ParallelSubstitution.
         right. eexists. eassumption.
       + rewrite skipn_all2. 2: constructor.
         apply firstn_le_length.
-    - rewrite e0 in e.
+    - (* Application *)
+      rewrite e0 in e.
       destruct (firstn n r.(elims)) eqn:ee using list_rect_rev.
       1:{
         exfalso.
@@ -3055,8 +3056,219 @@ Section ParallelSubstitution.
           }
           assumption.
         * rewrite mkElims_app. cbn. reflexivity.
-    - admit.
-    - admit.
+    - (* Case *)
+      rewrite e0 in e.
+      destruct (firstn n r.(elims)) eqn:ee using list_rect_rev.
+      1:{
+        exfalso.
+        simpl in e.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)).
+        2:{
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs. lia.
+        }
+        destruct nth_error eqn:en.
+        - revert en e. generalize (#|pat_context r| + head r - #|s|). clear.
+          subst ss. unfold symbols_subst. generalize (#|symbols decl| - 0).
+          generalize 0. clear.
+          intros i n m en e.
+          assert (∑ i, t = tSymb k i ui) as [j et].
+          { induction n in i, m, en |- *.
+            - cbn in en. destruct m. all: discriminate.
+            - cbn in en. destruct m.
+              + cbn in en. apply some_inj in en. subst.
+                eexists. reflexivity.
+              + cbn in en. eapply IHn. eassumption.
+          }
+          subst. cbn in e. discriminate.
+        - apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs.
+          apply nth_error_None in en. subst ss.
+          rewrite symbols_subst_length in en.
+          apply is_rewrite_rule_head in hr. 2: eassumption.
+          lia.
+      }
+      rewrite mkElims_app in e. cbn in e.
+      destruct a0. all: try discriminate.
+      cbn in e. inversion e. subst. clear e.
+      clear IHl IHh1.
+      specialize (IHh2 _ _ #|l| hr hs _ eq_refl).
+      forward IHh2.
+      { f_equal. f_equal. f_equal. clear - ee.
+        apply (f_equal (firstn #|l|)) in ee as e.
+        rewrite firstn_app in e. replace (#|l| - #|l|) with 0 in e by lia.
+        cbn in e. rewrite app_nil_r in e.
+        rewrite firstn_all in e.
+        apply (f_equal (@List.length _)) in ee as h.
+        rewrite app_length in h. cbn in h.
+        pose proof (firstn_le_length n r.(elims)) as h'.
+        rewrite h in h'.
+        rewrite firstn_firstn in e.
+        replace (Init.Nat.min #|l| n) with #|l| in e by lia.
+        auto.
+      }
+      destruct IHh2 as [
+        [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+      | [el [hel h]]
+      ].
+      + left. subst.
+        eexists r', θ, θ', m, (el ++ [ eCase indn p1 brs1 ]). cbn.
+        repeat match goal with
+        | |- _ × _ => split
+        end. all: auto.
+        * apply (f_equal (@List.length _)) in ee as h.
+          rewrite app_length in h. cbn in h.
+          pose proof (firstn_le_length n r.(elims)) as h'.
+          rewrite h in h'. lia.
+        * rewrite 2!firstn_map. rewrite ee.
+          rewrite <- 2!map_skipn. rewrite skipn_app.
+          replace (m - #|l|) with 0 by lia.
+          unfold skipn at 2.
+          rewrite 2!map_app. cbn.
+          eapply All2_app.
+          -- rewrite 2!firstn_map in hrest.
+             replace (firstn #|l| r.(elims))
+             with l in hrest.
+             2:{
+              apply (f_equal (@List.length _)) in ee as h.
+              rewrite app_length in h. cbn in h.
+              pose proof (firstn_le_length n r.(elims)) as h'.
+              rewrite h in h'.
+              replace #|l| with (Init.Nat.min #|l| n) by lia.
+              rewrite <- firstn_firstn. rewrite ee.
+              replace #|l| with (#|l| + 0) by lia.
+              rewrite firstn_app_2.
+              cbn. rewrite app_nil_r. reflexivity.
+             }
+             rewrite 2!map_skipn. assumption.
+          -- constructor. 2: constructor.
+             constructor. all: assumption.
+        * rewrite mkElims_app. cbn. reflexivity.
+      + right. subst. eexists (el ++ [ eCase indn p1 brs1 ]). split.
+        * rewrite 2!map_app. cbn. eapply All2_app.
+          2:{ constructor. 2: constructor. constructor. all: assumption. }
+          replace (firstn #|l| r.(elims))
+          with l in hel.
+          2:{
+            apply (f_equal (@List.length _)) in ee as h.
+            rewrite app_length in h. cbn in h.
+            pose proof (firstn_le_length n r.(elims)) as h'.
+            rewrite h in h'.
+            replace #|l| with (Init.Nat.min #|l| n) by lia.
+            rewrite <- firstn_firstn. rewrite ee.
+            replace #|l| with (#|l| + 0) by lia.
+            rewrite firstn_app_2.
+            cbn. rewrite app_nil_r. reflexivity.
+          }
+          assumption.
+        * rewrite mkElims_app. cbn. reflexivity.
+    - (* Proj *)
+      rewrite e0 in e.
+      destruct (firstn n r.(elims)) eqn:ee using list_rect_rev.
+      1:{
+        exfalso.
+        simpl in e.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)).
+        2:{
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs. lia.
+        }
+        destruct nth_error eqn:en.
+        - revert en e. generalize (#|pat_context r| + head r - #|s|). clear.
+          subst ss. unfold symbols_subst. generalize (#|symbols decl| - 0).
+          generalize 0. clear.
+          intros i n m en e.
+          assert (∑ i, t = tSymb k i ui) as [j et].
+          { induction n in i, m, en |- *.
+            - cbn in en. destruct m. all: discriminate.
+            - cbn in en. destruct m.
+              + cbn in en. apply some_inj in en. subst.
+                eexists. reflexivity.
+              + cbn in en. eapply IHn. eassumption.
+          }
+          subst. cbn in e. discriminate.
+        - apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs.
+          apply nth_error_None in en. subst ss.
+          rewrite symbols_subst_length in en.
+          apply is_rewrite_rule_head in hr. 2: eassumption.
+          lia.
+      }
+      rewrite mkElims_app in e. cbn in e.
+      destruct a. all: try discriminate.
+      cbn in e. inversion e. subst. clear e.
+      clear IHl.
+      specialize (IHh _ _ #|l| hr hs _ eq_refl).
+      forward IHh.
+      { f_equal. f_equal. f_equal. clear - ee.
+        apply (f_equal (firstn #|l|)) in ee as e.
+        rewrite firstn_app in e. replace (#|l| - #|l|) with 0 in e by lia.
+        cbn in e. rewrite app_nil_r in e.
+        rewrite firstn_all in e.
+        apply (f_equal (@List.length _)) in ee as h.
+        rewrite app_length in h. cbn in h.
+        pose proof (firstn_le_length n r.(elims)) as h'.
+        rewrite h in h'.
+        rewrite firstn_firstn in e.
+        replace (Init.Nat.min #|l| n) with #|l| in e by lia.
+        auto.
+      }
+      rename h into h0.
+      destruct IHh as [
+        [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+      | [el [hel h']]
+      ].
+      + left. subst.
+        eexists r', θ, θ', m, (el ++ [ eProj p0 ]). cbn.
+        repeat match goal with
+        | |- _ × _ => split
+        end. all: auto.
+        * apply (f_equal (@List.length _)) in ee as h.
+          rewrite app_length in h. cbn in h.
+          pose proof (firstn_le_length n r.(elims)) as h'.
+          rewrite h in h'. lia.
+        * rewrite 2!firstn_map. rewrite ee.
+          rewrite <- 2!map_skipn. rewrite skipn_app.
+          replace (m - #|l|) with 0 by lia.
+          unfold skipn at 2.
+          rewrite 2!map_app. cbn.
+          eapply All2_app.
+          -- rewrite 2!firstn_map in hrest.
+             replace (firstn #|l| r.(elims))
+             with l in hrest.
+             2:{
+              apply (f_equal (@List.length _)) in ee as h.
+              rewrite app_length in h. cbn in h.
+              pose proof (firstn_le_length n r.(elims)) as h'.
+              rewrite h in h'.
+              replace #|l| with (Init.Nat.min #|l| n) by lia.
+              rewrite <- firstn_firstn. rewrite ee.
+              replace #|l| with (#|l| + 0) by lia.
+              rewrite firstn_app_2.
+              cbn. rewrite app_nil_r. reflexivity.
+             }
+             rewrite 2!map_skipn. assumption.
+          -- constructor. 2: constructor.
+             constructor. all: assumption.
+        * rewrite mkElims_app. cbn. reflexivity.
+      + right. subst. eexists (el ++ [ eProj p0 ]). split.
+        * rewrite 2!map_app. cbn. eapply All2_app.
+          2:{ constructor. 2: constructor. constructor. all: assumption. }
+          replace (firstn #|l| r.(elims))
+          with l in hel.
+          2:{
+            apply (f_equal (@List.length _)) in ee as h.
+            rewrite app_length in h. cbn in h.
+            pose proof (firstn_le_length n r.(elims)) as h'.
+            rewrite h in h'.
+            replace #|l| with (Init.Nat.min #|l| n) by lia.
+            rewrite <- firstn_firstn. rewrite ee.
+            replace #|l| with (#|l| + 0) by lia.
+            rewrite firstn_app_2.
+            cbn. rewrite app_nil_r. reflexivity.
+          }
+          assumption.
+        * rewrite mkElims_app. cbn. reflexivity.
     - right. eexists. split.
       + apply All2_same. intro. apply pred1_elim_refl_gen. assumption.
       + rewrite e0 in e. rewrite e.
@@ -3077,7 +3289,7 @@ Section ParallelSubstitution.
         }
         apply symbols_subst_nth_error in er as ?. subst.
         cbn. reflexivity.
-  Admitted.
+  Qed.
 
   Lemma lhs_reducts :
     forall Σ k ui decl r Γ Δ s t,
