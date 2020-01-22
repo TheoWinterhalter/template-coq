@@ -2737,6 +2737,20 @@ Section ParallelSubstitution.
         apply IHn. lia.
   Qed.
 
+  Lemma pred1_elim_refl_gen :
+    forall Σ Γ Δ e,
+      pred1_ctx Σ Γ Δ ->
+      pred1_elim Σ Γ Δ e e.
+  Proof.
+    intros Σ Γ Δ [] h.
+    - constructor. apply pred1_refl_gen. assumption.
+    - constructor.
+      + apply pred1_refl_gen. assumption.
+      + apply All2_same. intros [? ?]. cbn. intuition auto.
+        apply pred1_refl_gen. assumption.
+    - constructor.
+  Qed.
+
   (* TODO Have a lemma lhs_prefix_reducts
     which is basically the same but conclude on any prefix (firstn on elims)
     of a lhs. Maybe a lemma besides to conclude about the reducts of a pattern
@@ -2755,6 +2769,12 @@ Section ParallelSubstitution.
       reflexivity)
 
     In both cases we need linearity of pattern variables.
+
+    We want to say subst_elim s e reducing means some filter of s reduces to
+    s' and the whole to subst_elim s' e.
+    Then linearity should allow us to combine the separate infos.
+    We will want to prove the earlier goal:
+    (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| prelhs0)).
   *)
   Lemma lhs_prefix_reducts :
     forall Σ k ui decl r Γ Δ s t n,
@@ -2789,7 +2809,16 @@ Section ParallelSubstitution.
            el ×
         t = mkElims (subst0 θ' (subst ss #|θ| r'.(rhs))) el
       ) +
-      (∑ s', All2 (pred1 Σ Γ Δ) s s' × t = subst0 s' (subst ss #|s| prelhs0)).
+      (∑ el,
+        All2
+          (pred1_elim Σ Γ Δ)
+          (map
+            (subst_elim s 0)
+            (map (subst_elim ss #|s|) (firstn n r.(elims)))
+          )
+          el ×
+        t = mkElims (subst ss #|s| (tRel (#|r.(pat_context)| + r.(head)))) el
+      ).
   Proof.
     intros Σ k ui decl r Γ Δ s t n hΣ hr ss hs prelhs0 prelhs h.
     assert (e0 :
@@ -2809,8 +2838,26 @@ Section ParallelSubstitution.
       eapply isElimSymb_pre_lhs ;
       eapply is_rewrite_rule_head in hr ; eauto
     ].
-    - right. exists s. intuition auto.
-      apply All2_same. intro x. apply pred1_refl_gen. assumption.
+    - right. eexists. split.
+      + apply All2_same. intro. apply pred1_elim_refl_gen. assumption.
+      + rewrite e0 in e. rewrite 2!mkElims_subst in e.
+        rewrite e. f_equal. cbn.
+        destruct (Nat.leb_spec #|s| (#|r.(pat_context)| + r.(head))).
+        2:{
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs. lia.
+        }
+        destruct nth_error eqn:er.
+        2:{
+          apply nth_error_None in er. subst ss.
+          rewrite symbols_subst_length in er.
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs.
+          apply is_rewrite_rule_head in hr. 2: auto.
+          lia.
+        }
+        apply symbols_subst_nth_error in er as ?. subst.
+        cbn. reflexivity.
     - (* Rewrite rule *)
       left.
       assert (k0 = k /\ ui0 = ui /\ r.(head) = r0.(head)) as [? [? ehead]].
@@ -2955,7 +3002,7 @@ Section ParallelSubstitution.
       }
       destruct IHh1 as [
         [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
-      | [s' [rs h]]
+      | [el [hel h]]
       ].
       + left. subst.
         eexists r', θ, θ', m, (el ++ [ eApp N1 ]). cbn.
@@ -2990,20 +3037,47 @@ Section ParallelSubstitution.
           -- constructor. 2: constructor.
              constructor. assumption.
         * rewrite mkElims_app. cbn. reflexivity.
-      + right. subst.
-        rewrite mkElims_app. cbn.
-        (* Maybe a weaker statement for now, and then prove something
-           about the substitution later using linaerity.
-           For this we want to say subst_elim s e reducing means
-           some filter of s reduces to s' and the whole to subst_elim s' e.
-           Then linearity should allow us to combine the separate infos.
-        *)
-        admit.
+      + right. subst. eexists (el ++ [ eApp N1 ]). split.
+        * rewrite 2!map_app. cbn. eapply All2_app.
+          2:{ constructor. 2: constructor. constructor. assumption. }
+          replace (firstn #|l| r.(elims))
+          with l in hel.
+          2:{
+            apply (f_equal (@List.length _)) in ee as h.
+            rewrite app_length in h. cbn in h.
+            pose proof (firstn_le_length n r.(elims)) as h'.
+            rewrite h in h'.
+            replace #|l| with (Init.Nat.min #|l| n) by lia.
+            rewrite <- firstn_firstn. rewrite ee.
+            replace #|l| with (#|l| + 0) by lia.
+            rewrite firstn_app_2.
+            cbn. rewrite app_nil_r. reflexivity.
+          }
+          assumption.
+        * rewrite mkElims_app. cbn. reflexivity.
     - admit.
     - admit.
-    - right. exists s. intuition auto.
-      apply All2_same. intro x. apply pred1_refl_gen. assumption.
-  Abort.
+    - right. eexists. split.
+      + apply All2_same. intro. apply pred1_elim_refl_gen. assumption.
+      + rewrite e0 in e. rewrite e.
+        rewrite 2!mkElims_subst. f_equal. cbn.
+        destruct (Nat.leb_spec #|s| (#|r.(pat_context)| + r.(head))).
+        2:{
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs. lia.
+        }
+        destruct nth_error eqn:er.
+        2:{
+          apply nth_error_None in er. subst ss.
+          rewrite symbols_subst_length in er.
+          apply untyped_subslet_length in hs.
+          rewrite subst_context_length in hs.
+          apply is_rewrite_rule_head in hr. 2: auto.
+          lia.
+        }
+        apply symbols_subst_nth_error in er as ?. subst.
+        cbn. reflexivity.
+  Admitted.
 
   Lemma lhs_reducts :
     forall Σ k ui decl r Γ Δ s t,
