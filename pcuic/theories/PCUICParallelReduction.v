@@ -2990,7 +2990,15 @@ Section ParallelSubstitution.
           -- constructor. 2: constructor.
              constructor. assumption.
         * rewrite mkElims_app. cbn. reflexivity.
-      + right. admit.
+      + right. subst.
+        rewrite mkElims_app. cbn.
+        (* Maybe a weaker statement for now, and then prove something
+           about the substitution later using linaerity.
+           For this we want to say subst_elim s e reducing means
+           some filter of s reduces to s' and the whole to subst_elim s' e.
+           Then linearity should allow us to combine the separate infos.
+        *)
+        admit.
     - admit.
     - admit.
     - right. exists s. intuition auto.
