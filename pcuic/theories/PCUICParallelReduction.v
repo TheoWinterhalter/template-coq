@@ -2972,7 +2972,21 @@ Section ParallelSubstitution.
           unfold skipn at 2.
           rewrite 2!map_app. cbn.
           eapply All2_app.
-          -- admit.
+          -- rewrite 2!firstn_map in hrest.
+             replace (firstn #|l| r.(elims))
+             with l in hrest.
+             2:{
+              apply (f_equal (@List.length _)) in ee as h.
+              rewrite app_length in h. cbn in h.
+              pose proof (firstn_le_length n r.(elims)) as h'.
+              rewrite h in h'.
+              replace #|l| with (Init.Nat.min #|l| n) by lia.
+              rewrite <- firstn_firstn. rewrite ee.
+              replace #|l| with (#|l| + 0) by lia.
+              rewrite firstn_app_2.
+              cbn. rewrite app_nil_r. reflexivity.
+             }
+             rewrite 2!map_skipn. assumption.
           -- constructor. 2: constructor.
              constructor. assumption.
         * rewrite mkElims_app. cbn. reflexivity.
