@@ -3352,4 +3352,36 @@ Section ParallelSubstitution.
     - right. exists el. split. all: auto.
   Qed.
 
+  Fixpoint is_pat_in i p :=
+    match p with
+    | tRel n => i =? n
+    | tApp u v => is_pat_in i u || is_pat_in i v
+    | tLambda na A t => is_pat_in i A || is_pat_in (S i) t
+    | tConstruct ind n ui => false
+    | tSymb k n ui => false
+    | _ => false
+    end.
+
+  Fixpoint filter_patvars i nb (l : list term) : list term :=
+    match l with
+    | p :: l =>
+      if is_pat_in (nb + i) p
+      then p :: filter_patvars (S i) nb l
+      else filter_patvars (S i) nb l
+    | [] => []
+    end.
+
+  (* Lemma pattern_reduct :
+    forall Σ Γ Δ p σ t npat nb,
+      pattern npat nb p ->
+      pred1 Σ Γ Δ (subst0 σ p) t ->
+      ∑ l,
+        All2 (pred1 Σ Γ Δ) (filter_patvars 0 nb σ) l ×
+        t = ??
+        (* is filter the right idea? Because then we don't get a proper
+           substitution on the right.
+           Maybe we need to talk about partial substitutions like for
+           recognition...
+        *) *)
+
 End ParallelSubstitution.
