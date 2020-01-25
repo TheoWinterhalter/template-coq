@@ -538,26 +538,27 @@ Proof.
        intros. now apply X.
   - red in o. simpl in *.
     destruct o0 as [hctx [hr [hpr hprr]]].
-    split. 2: split.
+    split. 2: split. 3: split.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
     + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onelims].
+      intros rw [T onlhs onrhs onhead onlin onelims].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
       * assumption.
+      * constructor.
       * assumption.
-    + split.
-      * eapply All_impl. 1: exact hpr.
-        intros rw [T onlhs onrhs onhead onelims].
-        exists T.
-        -- eapply X. all: eauto.
-        -- eapply X. all: eauto.
-        -- assumption.
-        -- assumption.
-      * cbn. eapply All_impl. 1: exact hprr.
-        cbn. intros x h. assumption.
+    + eapply All_impl. 1: exact hpr.
+      intros rw [T onlhs onrhs onhead onlin onelims].
+      exists T.
+      * eapply X. all: eauto.
+      * eapply X. all: eauto.
+      * assumption.
+      * constructor.
+      * assumption.
+    + cbn. eapply All_impl. 1: exact hprr.
+      cbn. intros x h. assumption.
 Qed.
 
 Lemma closed_declared_symbol_nth_error `{checker_flags} :

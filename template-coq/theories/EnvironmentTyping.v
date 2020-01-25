@@ -451,12 +451,19 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
     (** *** Typing of rewrite rule declarations  *)
 
+    (* Maybe I should try and generalise the work done for partial
+       substitutions.
+    *)
+    Definition linear (npat : nat) (el : list elimination) :=
+      True.
+
     Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
       rewCommonType : term ;
-      lhsTyped : P Σ (Δ ,,, r.(pat_context)) (lhs r) (Some rewCommonType) ;
-      rhsTyped : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
-      onHead : r.(head) < #|Δ| ; (* TODO Remove? *)
-      onElims : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
+      lhsTyped  : P Σ (Δ ,,, r.(pat_context)) (lhs r) (Some rewCommonType) ;
+      rhsTyped  : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
+      onHead    : r.(head) < #|Δ| ;
+      lhsLinear : linear #|r.(pat_context)| r.(elims) ;
+      onElims   : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
     }.
 
     Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
