@@ -2375,8 +2375,31 @@ Fixpoint pattern_linacc npat nb (p : term) :=
   | _ => None
   end.
 
-Definition linear (npat : nat) (el : list elimination) :=
-  True.
+Fixpoint elim_linacc npat e :=
+  match e with
+  | eApp p => pattern_linacc npat 0 p
+  | eCase indn p brs =>
+    lp <- pattern_linacc npat 0 p ;;
+    lb <- monad_map (fun br =>
+            pattern_linacc npat 0 br.2
+          ) brs ;;
+    lb <- monad_fold_right (lin_merge) lb (linear_account_init npat) ;;
+    lin_merge lp lb
+  | eProj p => ret (linear_account_init npat)
+  end.
+
+Definition linear_account (npat : nat) (el : list elimination) :=
+  l <- monad_map (elim_linacc npat) el ;;
+  monad_fold_right (lin_merge) l (linear_account_init npat).
+
+(* We force all variables to appear exactly once
+   (we could also allow some to be forgotten)
+*)
+Definition linear npat el :=
+  match linear_account npat el with
+  | Some l => forallb (fun x => x) l
+  | None => false
+  end.
 
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
@@ -2864,7 +2887,7 @@ Proof.
            ++ specialize (IH y). subst y. simpl in IH.
               apply IH. constructor 1. simpl. lia.
         -- assumption.
-        -- exact I.
+        -- assumption.
         -- assumption.
       * eapply All_impl. 1: exact hpr.
         intros rw [T onlhs onrhs onhead onlin onelims].
@@ -2890,7 +2913,7 @@ Proof.
           ++ specialize (IH y). subst y. simpl in IH.
              apply IH. constructor 1. simpl. lia.
         -- assumption.
-        -- constructor.
+        -- assumption.
         -- assumption.
       * eapply All_impl. 1: exact hprr.
         cbn. intros rw h. auto.

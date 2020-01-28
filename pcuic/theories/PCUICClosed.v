@@ -547,7 +547,7 @@ Proof.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
       * assumption.
-      * constructor.
+      * assumption.
       * assumption.
     + eapply All_impl. 1: exact hpr.
       intros rw [T onlhs onrhs onhead onlin onelims].
@@ -555,7 +555,7 @@ Proof.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
       * assumption.
-      * constructor.
+      * assumption.
       * assumption.
     + cbn. eapply All_impl. 1: exact hprr.
       cbn. intros x h. assumption.

@@ -435,7 +435,7 @@ Proof.
       * eapply HPΣ. all: eauto.
       * eapply HPΣ. all: eauto.
       * assumption.
-      * constructor.
+      * assumption.
       * assumption.
     + eapply All_impl. 1: exact hpr.
       intros rw [T onlhs onrhs onhead onlin onelims].
@@ -443,7 +443,7 @@ Proof.
       * eapply HPΣ. all: eauto.
       * eapply HPΣ. all: eauto.
       * assumption.
-      * constructor.
+      * assumption.
       * assumption.
     + cbn in *. eapply All_impl. 1: exact hprr.
       unfold prule_red. intros rw h.

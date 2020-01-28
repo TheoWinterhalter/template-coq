@@ -264,7 +264,7 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Parameter (elim_pattern : nat -> elimination -> Prop).
 
-  Parameter (linear : nat -> list elimination -> Prop).
+  Parameter (linear : nat -> list elimination -> bool).
 
 End Typing.
 
