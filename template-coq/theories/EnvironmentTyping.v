@@ -4,6 +4,9 @@ From MetaCoq.Template Require Import Universes Environment UnivSubst.
 Import List.ListNotations.
 Require Import ssreflect.
 
+Require Import monad_utils.
+Import MonadNotation.
+
 Set Asymmetric Patterns.
 
 Module Lookup (T : Term) (E : EnvironmentSig T).
@@ -261,6 +264,8 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Parameter (elim_pattern : nat -> elimination -> Prop).
 
+  Parameter (linear : nat -> list elimination -> Prop).
+
 End Typing.
 
 Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
@@ -450,12 +455,6 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       end.
 
     (** *** Typing of rewrite rule declarations  *)
-
-    (* Maybe I should try and generalise the work done for partial
-       substitutions.
-    *)
-    Definition linear (npat : nat) (el : list elimination) :=
-      True.
 
     Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
       rewCommonType : term ;

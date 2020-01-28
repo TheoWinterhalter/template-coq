@@ -2320,6 +2320,64 @@ Qed.
 
 (* TODO Prove the it is complete. *)
 
+(* TODO MOVE *)
+Fixpoint list_init {A} (x : A) (n : nat) : list A :=
+  match n with
+  | 0 => []
+  | S n => x :: list_init x n
+  end.
+
+Definition linear_account_init (npat : nat) :=
+  list_init false npat.
+
+Fixpoint lin_merge (a b : list bool) : option (list bool) :=
+  match a, b with
+  | true :: a, false :: b
+  | false :: a, true :: b =>
+    l <- lin_merge a b ;;
+    ret (true :: l)
+  | false :: a, false :: b =>
+    l <- lin_merge a b ;;
+    ret (false :: l)
+  | true :: a, true :: b =>
+    None
+  | _, _ =>
+    None
+  end.
+
+Fixpoint lin_set (n : nat) (l : list bool) : option (list bool) :=
+  match n, l with
+  | 0, false :: l => ret (true :: l)
+  | S n, b :: l =>
+    l' <- lin_set n l ;;
+    ret (b :: l')
+  | _, _ => None
+  end.
+
+Fixpoint pattern_linacc npat nb (p : term) :=
+  match p with
+  | tApp u v =>
+    lu <- pattern_linacc npat nb u ;;
+    lv <- pattern_linacc npat nb v ;;
+    lin_merge lu lv
+  | tRel n =>
+    if nb <=? n
+    then lin_set (n - nb) (linear_account_init npat)
+    else ret (linear_account_init npat)
+  | tLambda na A t =>
+    lA <- pattern_linacc npat nb A ;;
+    lt <- pattern_linacc npat (S nb) t ;;
+    lin_merge lA lt
+  | tConstruct ind n ui =>
+    ret (linear_account_init npat)
+  | tSymb k n ui =>
+    ret (linear_account_init npat)
+  | _ => None
+  end.
+
+Definition linear (npat : nat) (el : list elimination) :=
+  True.
+
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 
   Definition subst := @subst.
@@ -2332,6 +2390,7 @@ Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
   Definition typing := @typing.
   Definition smash_context := smash_context.
   Definition elim_pattern := elim_pattern.
+  Definition linear := @linear.
 
 End PCUICTypingDef.
 
