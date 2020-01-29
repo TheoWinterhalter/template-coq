@@ -3445,27 +3445,21 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma All2_mask_subst_linear_account_init :
-    forall P npat l s,
+    forall P npat l,
       #|l| = npat ->
-      #|s| = npat ->
-      All2_mask_subst P (linear_account_init npat) l s.
+      All2_mask_subst P (linear_account_init npat) l (list_init None npat).
   Proof.
-    intros P npat l s el es.
+    intros P npat l el.
     unfold linear_account_init.
-    induction npat in l, s, el, es |- *.
+    induction npat in l, el |- *.
     - cbn.
       destruct l. 2: discriminate.
-      destruct s. 2: discriminate.
       constructor.
     - cbn.
       destruct l. 1: discriminate.
-      destruct s. 1: discriminate.
-      cbn in *. (* constructor. *)
-      (* We need to relax the def of All2_mask_subst_false to allow anything
-         otherwise the lemma above can never be instantiated.
-      *)
-  Abort.
-
+      cbn in *. constructor.
+      apply IHnpat. lia.
+  Qed.
 
   Lemma pattern_reduct :
     forall Σ Γ Δ p σ t npat nb m,
