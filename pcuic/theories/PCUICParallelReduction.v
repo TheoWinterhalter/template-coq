@@ -5,7 +5,8 @@ From Equations Require Import Equations.
 From Coq Require Import Bool String List Program BinPos Compare_dec String Lia.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICSize
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICReduction PCUICWeakening PCUICSubstitution.
+     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICReduction PCUICWeakening
+     PCUICSubstitution PCUICReflect.
 
 (* Type-valued relations. *)
 Require Import CRelationClasses.
@@ -3365,7 +3366,7 @@ Section ParallelSubstitution.
         All2_mask_subst P m l s ->
         All2_mask_subst P (false :: m) (t :: l) (None :: s).
 
-  Lemma All2_mask_subst_lin_set :
+  (* Lemma All2_mask_subst_lin_set :
     forall P n m m' t u s l,
       lin_set n m = Some m' ->
       nth_error l n = Some t ->
@@ -3389,6 +3390,58 @@ Section ParallelSubstitution.
       apply some_inj in hm. subst.
       constructor.
       eapply IHhrec. all: eauto.
+  Qed. *)
+
+  Lemma subs_add_S_cons :
+    forall n u t s s',
+      subs_add (S n) u (t :: s) = Some s' ->
+      ∑ s'', subs_add n u s = Some s'' /\ s' = t :: s''.
+  Proof.
+    intros n u t s s' e.
+    unfold subs_add in *. simpl in e.
+    destruct nth_error eqn:e1. 2: discriminate.
+    destruct o.
+    - change ((if eqb u t0 then Some (t :: s) else None) = Some s') in e.
+      destruct (PCUICReflect.eqb_spec u t0). 2: discriminate.
+      subst. apply some_inj in e. subst.
+      eexists. intuition reflexivity.
+    - apply some_inj in e. subst.
+      eexists. intuition reflexivity.
+  Qed.
+
+  Lemma All2_mask_subst_lin_set :
+  forall P n m m' t u s s' l,
+    lin_set n m = Some m' ->
+    nth_error l n = Some t ->
+    subs_add n u s = Some s' ->
+    P t u ->
+    All2_mask_subst P m l s ->
+    All2_mask_subst P m' l s'.
+  Proof.
+    intros P n m m' t u s s' l hm hl hs h hrec.
+    induction hrec in t, u, h, n, m', hm, hl, s', hs |- *.
+    - destruct n. all: cbn in hm. all: discriminate.
+    - destruct n. 1: discriminate.
+      cbn in *.
+      destruct lin_set eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      apply subs_add_S_cons in hs as hs'.
+      destruct hs' as [s'' [hs' ?]]. subst.
+      constructor. 1: assumption.
+      eapply IHhrec. all: eauto.
+    - destruct n.
+      + cbn in *. apply some_inj in hm. subst.
+        apply some_inj in hl. subst.
+        apply some_inj in hs. subst.
+        rewrite skipn_S. unfold skipn.
+        constructor. all: assumption.
+      + cbn in *.
+        destruct lin_set eqn:e. 2: discriminate.
+        apply some_inj in hm. subst.
+        apply subs_add_S_cons in hs as hs'.
+        destruct hs' as [s'' [hs' ?]]. subst.
+        constructor.
+        eapply IHhrec. all: eauto.
   Qed.
 
   Lemma All2_mask_subst_linear_account_init :
