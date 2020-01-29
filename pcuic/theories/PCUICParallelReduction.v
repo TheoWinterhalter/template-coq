@@ -3352,7 +3352,32 @@ Section ParallelSubstitution.
     - right. exists el. split. all: auto.
   Qed.
 
-  Fixpoint is_pat_in i p :=
+  Inductive All2_mask_subst (P : term -> term -> Type) :
+    list bool -> list term -> list (option term) -> Type :=
+  | All2_mask_subst_nil : All2_mask_subst P [] [] []
+  | All2_mask_subst_true :
+      forall t u m l s,
+        P t u ->
+        All2_mask_subst P m l s ->
+        All2_mask_subst P (true :: m) (t :: l) (Some u :: s)
+  | All2_mask_subst_false :
+      forall t m l s,
+        All2_mask_subst P m l s ->
+        All2_mask_subst P (false :: m) (t :: l) (None :: s).
+
+  Lemma pattern_reduct :
+    forall Σ Γ Δ p σ t npat nb m,
+      pattern npat nb p ->
+      pattern_linacc npat nb p = Some m ->
+      pred1 Σ Γ Δ (subst0 σ p) t ->
+      ∑ θ,
+        All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
+        forall θ',
+          subs_complete θ θ' ->
+          t = subst0 θ' p.
+  Abort.
+
+  (* Fixpoint is_pat_in i p :=
     match p with
     | tRel n => i =? n
     | tApp u v => is_pat_in i u || is_pat_in i v
@@ -3369,7 +3394,7 @@ Section ParallelSubstitution.
       then p :: filter_patvars (S i) nb l
       else filter_patvars (S i) nb l
     | [] => []
-    end.
+    end. *)
 
   (* Lemma pattern_reduct :
     forall Σ Γ Δ p σ t npat nb,
