@@ -3365,16 +3365,114 @@ Section ParallelSubstitution.
         All2_mask_subst P m l s ->
         All2_mask_subst P (false :: m) (t :: l) (None :: s).
 
+  Lemma All2_mask_subst_lin_set :
+    forall P n m m' t u s l,
+      lin_set n m = Some m' ->
+      nth_error l n = Some t ->
+      nth_error s n = Some (Some u) ->
+      P t u ->
+      All2_mask_subst P m l s ->
+      All2_mask_subst P m' l s.
+  Proof.
+    intros P n m m' t u s l hm hl hs h hrec.
+    induction hrec in t, u, h, n, m', hm, hl, hs |- *.
+    - destruct n. all: cbn in hm. all: discriminate.
+    - destruct n. 1: discriminate.
+      cbn in *.
+      destruct lin_set eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      constructor. 1: assumption.
+      eapply IHhrec. all: eauto.
+    - destruct n. 1: discriminate.
+      cbn in *.
+      destruct lin_set eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      constructor.
+      eapply IHhrec. all: eauto.
+  Qed.
+
+  Lemma All2_mask_subst_linear_account_init :
+    forall P npat l s,
+      #|l| = npat ->
+      #|s| = npat ->
+      All2_mask_subst P (linear_account_init npat) l s.
+  Proof.
+    intros P npat l s el es.
+    unfold linear_account_init.
+    induction npat in l, s, el, es |- *.
+    - cbn.
+      destruct l. 2: discriminate.
+      destruct s. 2: discriminate.
+      constructor.
+    - cbn.
+      destruct l. 1: discriminate.
+      destruct s. 1: discriminate.
+      cbn in *. (* constructor. *)
+      (* We need to relax the def of All2_mask_subst_false to allow anything
+         otherwise the lemma above can never be instantiated.
+      *)
+  Abort.
+
+
   Lemma pattern_reduct :
     forall Σ Γ Δ p σ t npat nb m,
       pattern npat nb p ->
       pattern_linacc npat nb p = Some m ->
-      pred1 Σ Γ Δ (subst0 σ p) t ->
+      pred1 Σ Γ Δ (subst σ nb p) t ->
       ∑ θ,
         All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
         forall θ',
           subs_complete θ θ' ->
-          t = subst0 θ' p.
+          t = subst θ' nb p.
+  Proof.
+    intros Σ Γ Δ p σ t npat nb m hp hm h.
+    remember (subst σ nb p) as u eqn:e.
+    induction h in nb, p, σ, e, hp, m, hm |- *.
+    - destruct p.
+      all: cbn in hm. all: try discriminate.
+      + destruct (nb <=? n) eqn:e1.
+        * cbn in e. rewrite e1 in e.
+          destruct nth_error eqn:e2. 2: discriminate.
+          destruct t. all: try discriminate.
+          destruct t2. all: try discriminate.
+          cbn in e. inversion e. subst. clear e.
+          assert (n < npat + nb).
+          { inversion hp.
+            - change (tRel n) with (mkApps (tRel n) []) in H.
+              apply mkApps_Rel_inj in H as [? ?]. subst.
+              assumption.
+            - destruct (Nat.leb_spec nb n). all: lia.
+            - apply (f_equal isAppRel) in H.
+              rewrite isAppRel_mkApps in H. cbn in H.
+              discriminate.
+            - apply (f_equal isAppRel) in H.
+              rewrite isAppRel_mkApps in H. cbn in H.
+              discriminate.
+          }
+          eexists. split.
+          -- eapply All2_mask_subst_lin_set. all: eauto.
+(*
+
+
+      destruct (Nat.leb_spec nb n).
+
+    2: {
+      exfalso. destruct p.
+      all: cbn in hm. all: try discriminate.
+      destruct (Nat.leb_spec nb n).
+      -
+      inversion hp.
+      all: try apply (f_equal isAppRel) in H.
+
+      destruct hp.
+      all: cbn in e. all: rewrite ?subst_mkApps in e.
+      all: apply (f_equal (decompose_app)) in e.
+      all: cbn in e.
+      all: rewrite -> ?decompose_app_mkApps in e.
+    }
+    all: try solve [
+      exfalso ;
+    ] *)
   Abort.
 
   (* Fixpoint is_pat_in i p :=
