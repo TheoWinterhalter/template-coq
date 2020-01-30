@@ -3461,34 +3461,46 @@ Section ParallelSubstitution.
       apply IHnpat. lia.
   Qed.
 
+  (* Lemma pred1_lift_inv :
+    forall Σ Γ Δ n k t u v,
+      pred1 Σ Γ Δ (lift n k u) v ->
+      ∑ v',
+        v = lift n k v' ×
+        pred1 Σ Γ Δ u v'. *)
+        (* CONTEXTS! *)
+
   Lemma pattern_reduct :
-    forall Σ Γ Δ p σ t npat nb m,
-      pattern npat nb p ->
-      pattern_linacc npat nb p = Some m ->
-      pred1 Σ Γ Δ (subst σ nb p) t ->
+    forall Σ Γ Δ p σ t npat (Ξ Ξ' : context) m,
+      pattern npat #|Ξ| p ->
+      pattern_linacc npat #|Ξ| p = Some m ->
+      (* let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) -> *)
+      pred1 Σ (Γ ,,, Ξ) (Δ ,,, Ξ') (subst σ #|Ξ| p) t ->
       ∑ θ,
         All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
         forall θ',
           subs_complete θ θ' ->
-          t = subst θ' nb p.
+          t = subst θ' #|Ξ| p.
   Proof.
-    intros Σ Γ Δ p σ t npat nb m hp hm h.
-    remember (subst σ nb p) as u eqn:e.
-    induction h in nb, p, σ, e, hp, m, hm |- *.
+    intros Σ Γ Δ p σ t npat Ξ Ξ' m hp hm h.
+    remember (subst σ #|Ξ| p) as u eqn:e.
+    remember (Γ ,,, Ξ) as Θ eqn:eΘ.
+    remember (Δ ,,, Ξ') as Θ' eqn:eΘ'.
+    induction h in Γ, Δ, Ξ, Ξ', eΘ, eΘ', p, σ, e, hp, m, hm |- *.
     - destruct p.
       all: cbn in hm. all: try discriminate.
-      + destruct (nb <=? n) eqn:e1.
+      + destruct (#|Ξ| <=? n) eqn:e1.
         * cbn in e. rewrite e1 in e.
           destruct nth_error eqn:e2. 2: discriminate.
           destruct t. all: try discriminate.
           destruct t2. all: try discriminate.
           cbn in e. inversion e. subst. clear e.
-          assert (n < npat + nb).
+          assert (n < npat + #|Ξ|).
           { inversion hp.
             - change (tRel n) with (mkApps (tRel n) []) in H.
               apply mkApps_Rel_inj in H as [? ?]. subst.
               assumption.
-            - destruct (Nat.leb_spec nb n). all: lia.
+            - destruct (Nat.leb_spec #|Ξ| n). all: lia.
             - apply (f_equal isAppRel) in H.
               rewrite isAppRel_mkApps in H. cbn in H.
               discriminate.
@@ -3498,6 +3510,12 @@ Section ParallelSubstitution.
           }
           eexists. split.
           -- eapply All2_mask_subst_lin_set. all: eauto.
+             (* 2:{
+               constructor. 2: eassumption.
+             } *)
+             (* There are some lifting issues too... *)
+             3: eapply All2_mask_subst_linear_account_init.
+             (* Maybe some untyped_subslet for σ? *)
 (*
 
 
