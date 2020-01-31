@@ -3410,13 +3410,13 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma All2_mask_subst_lin_set :
-  forall P n m m' t u s s' l,
-    lin_set n m = Some m' ->
-    nth_error l n = Some t ->
-    subs_add n u s = Some s' ->
-    P t u ->
-    All2_mask_subst P m l s ->
-    All2_mask_subst P m' l s'.
+    forall P n m m' t u s s' l,
+      lin_set n m = Some m' ->
+      nth_error l n = Some t ->
+      subs_add n u s = Some s' ->
+      P t u ->
+      All2_mask_subst P m l s ->
+      All2_mask_subst P m' l s'.
   Proof.
     intros P n m m' t u s s' l hm hl hs h hrec.
     induction hrec in t, u, h, n, m', hm, hl, s', hs |- *.
@@ -3442,6 +3442,44 @@ Section ParallelSubstitution.
         destruct hs' as [s'' [hs' ?]]. subst.
         constructor.
         eapply IHhrec. all: eauto.
+  Qed.
+
+  Derive Signature for All2_mask_subst.
+
+  Lemma All2_mask_subst_lin_merge :
+    forall P m1 m2 m l s1 s2 s,
+      lin_merge m1 m2 = Some m ->
+      subs_merge s1 s2 = Some s ->
+      All2_mask_subst P m1 l s1 ->
+      All2_mask_subst P m2 l s2 ->
+      All2_mask_subst P m l s.
+  Proof.
+    intros P m1 m2 m l s1 s2 s hm hs h1 h2.
+    induction h1 in m2, m, hm, s2, s, hs, h2 |- *.
+    - cbn in *. discriminate.
+    - dependent destruction h2. 1: discriminate.
+      cbn in *.
+      destruct lin_merge eqn:e1. 2: discriminate.
+      destruct subs_merge eqn:e2. 2: discriminate.
+      apply some_inj in hm. subst.
+      apply some_inj in hs. subst.
+      constructor. 1: assumption.
+      eapply IHh1. all: eauto.
+    - dependent destruction h2.
+      + cbn in *.
+        destruct lin_merge eqn:e1. 2: discriminate.
+        destruct subs_merge eqn:e2. 2: discriminate.
+        apply some_inj in hm. subst.
+        apply some_inj in hs. subst.
+        constructor. 1: assumption.
+        eapply IHh1. all: eauto.
+      + cbn in *.
+        destruct lin_merge eqn:e1. 2: discriminate.
+        destruct subs_merge eqn:e2. 2: discriminate.
+        apply some_inj in hm. subst.
+        apply some_inj in hs. subst.
+        constructor.
+        eapply IHh1. all: eauto.
   Qed.
 
   Lemma All2_mask_subst_linear_account_init :
