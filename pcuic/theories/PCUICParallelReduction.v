@@ -3513,18 +3513,38 @@ Section ParallelSubstitution.
     - cbn. apply IHl. lia.
   Qed.
 
+  Lemma firstn_list_init :
+    forall A n m (x : A),
+      firstn n (list_init x m) = list_init x (min n m).
+  Proof.
+    intros A n m x.
+    induction n in m |- *. 1: reflexivity.
+    destruct m. 1: reflexivity.
+    cbn. f_equal. apply IHn.
+  Qed.
+
+  Lemma skipn_list_init :
+    forall A n m (x : A),
+      skipn n (list_init x m) = list_init x (m - n).
+  Proof.
+    intros A n m x.
+    induction m in n |- *.
+    - cbn. rewrite skipn_nil. reflexivity.
+    - destruct n. 1: reflexivity.
+      cbn. rewrite skipn_S. apply IHm.
+  Qed.
+
   Lemma subs_add_empty :
     forall n t l,
       n < l ->
       subs_add n t (list_init None l) =
-      Some (
-        firstn n (list_init None l) ++ Some t :: skipn (S n) (list_init None l)
-      ).
+      Some (list_init None n ++ Some t :: list_init None (l - S n)).
   Proof.
     intros n t l h.
     unfold subs_add.
     rewrite -> nth_error_list_init by assumption.
-    reflexivity.
+    rewrite firstn_list_init. rewrite skipn_list_init.
+    f_equal. f_equal. f_equal. lia.
   Qed.
 
   Lemma pattern_reduct :
