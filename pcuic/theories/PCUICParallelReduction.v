@@ -3447,39 +3447,41 @@ Section ParallelSubstitution.
   Derive Signature for All2_mask_subst.
 
   Lemma All2_mask_subst_lin_merge :
-    forall P m1 m2 m l s1 s2 s,
+    forall P m1 m2 m l s1 s2,
       lin_merge m1 m2 = Some m ->
-      subs_merge s1 s2 = Some s ->
       All2_mask_subst P m1 l s1 ->
       All2_mask_subst P m2 l s2 ->
-      All2_mask_subst P m l s.
+      ∑ s, subs_merge s1 s2 = Some s × All2_mask_subst P m l s.
   Proof.
-    intros P m1 m2 m l s1 s2 s hm hs h1 h2.
-    induction h1 in m2, m, hm, s2, s, hs, h2 |- *.
+    intros P m1 m2 m l s1 s2 hm h1 h2.
+    induction h1 in m2, m, hm, s2, h2 |- *.
     - cbn in *. discriminate.
     - dependent destruction h2. 1: discriminate.
       cbn in *.
-      destruct lin_merge eqn:e1. 2: discriminate.
-      destruct subs_merge eqn:e2. 2: discriminate.
+      destruct lin_merge eqn:e. 2: discriminate.
       apply some_inj in hm. subst.
-      apply some_inj in hs. subst.
-      constructor. 1: assumption.
-      eapply IHh1. all: eauto.
+      specialize IHh1 with (1 := e) (2 := h2).
+      destruct IHh1 as [s1 [hs h]].
+      eexists. split.
+      + rewrite hs. reflexivity.
+      + constructor. all: auto.
     - dependent destruction h2.
       + cbn in *.
-        destruct lin_merge eqn:e1. 2: discriminate.
-        destruct subs_merge eqn:e2. 2: discriminate.
+        destruct lin_merge eqn:e. 2: discriminate.
         apply some_inj in hm. subst.
-        apply some_inj in hs. subst.
-        constructor. 1: assumption.
-        eapply IHh1. all: eauto.
+        specialize IHh1 with (1 := e) (2 := h2).
+        destruct IHh1 as [s1 [hs h]].
+        eexists. split.
+        * rewrite hs. reflexivity.
+        * constructor. all: auto.
       + cbn in *.
-        destruct lin_merge eqn:e1. 2: discriminate.
-        destruct subs_merge eqn:e2. 2: discriminate.
+        destruct lin_merge eqn:e. 2: discriminate.
         apply some_inj in hm. subst.
-        apply some_inj in hs. subst.
-        constructor.
-        eapply IHh1. all: eauto.
+        specialize IHh1 with (1 := e) (2 := h2).
+        destruct IHh1 as [s1 [hs h]].
+        eexists. split.
+        * rewrite hs. reflexivity.
+        * constructor. assumption.
   Qed.
 
   Lemma All2_mask_subst_linear_account_init :
@@ -3584,6 +3586,29 @@ Section ParallelSubstitution.
     rewrite firstn_list_init. rewrite skipn_list_init.
     f_equal. f_equal. f_equal. lia.
   Qed.
+
+  Ltac destruct_eapply h :=
+    first [
+      eapply h
+    | let h' := fresh h in
+      destruct h as [h' _] ;
+      destruct_eapply h'
+    | let h' := fresh h in
+      destruct h as [_ h'] ;
+      destruct_eapply h'
+    ].
+
+  Tactic Notation "sig" "eapply" constr(h) :=
+    let thm := fresh h in
+    let h' := fresh h in
+    epose proof h as thm ;
+    edestruct thm as [? h'] ; [
+      clear thm ..
+    | first [
+        eapply h'
+      | destruct_eapply h'
+      ]
+    ].
 
   Lemma pattern_reduct :
     forall Σ Γ Δ p σ t k ui decl r Ξ Ξ' m,
@@ -3694,7 +3719,7 @@ Section ParallelSubstitution.
           apply untyped_subslet_length in hσ as eσ.
           rewrite subst_context_length in eσ.
           eexists. split.
-          { eapply All2_mask_subst_lin_merge. all: eauto.
+          (* { sig eapply All2_mask_subst_lin_merge. all: eauto.
             2:{
               eapply All2_mask_subst_lin_set. all: eauto.
               2:{
@@ -3703,7 +3728,7 @@ Section ParallelSubstitution.
               2: eapply All2_mask_subst_linear_account_init. 2: auto.
               apply subs_add_empty.
               apply nth_error_Some_length in e2. lia.
-            }
+            } *)
             (* Seems like we can actually deduce subs_merge from lin_merge
                and similarly for lin_set / subs_add.
                We need only do it in an applicable way.
