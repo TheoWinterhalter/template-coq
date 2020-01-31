@@ -3587,28 +3587,13 @@ Section ParallelSubstitution.
     f_equal. f_equal. f_equal. lia.
   Qed.
 
-  Ltac destruct_eapply h :=
-    first [
-      eapply h
-    | let h' := fresh h in
-      destruct h as [h' _] ;
-      destruct_eapply h'
-    | let h' := fresh h in
-      destruct h as [_ h'] ;
-      destruct_eapply h'
-    ].
+  Ltac sig_eapply h :=
+    lazymatch type of h with
+    | _ -> _ => let h' := open_constr:(h _) in sig_eapply h'
+    | ∑ _, _ => eapply (projT2 h)
+    end.
 
-  Tactic Notation "sig" "eapply" constr(h) :=
-    let thm := fresh h in
-    let h' := fresh h in
-    epose proof h as thm ;
-    edestruct thm as [? h'] ; [
-      clear thm ..
-    | first [
-        eapply h'
-      | destruct_eapply h'
-      ]
-    ].
+  Tactic Notation "sig" "eapply" constr(h) := sig_eapply h.
 
   Lemma pattern_reduct :
     forall Σ Γ Δ p σ t k ui decl r Ξ Ξ' m,
@@ -3719,21 +3704,7 @@ Section ParallelSubstitution.
           apply untyped_subslet_length in hσ as eσ.
           rewrite subst_context_length in eσ.
           eexists. split.
-          (* { sig eapply All2_mask_subst_lin_merge. all: eauto.
-            2:{
-              eapply All2_mask_subst_lin_set. all: eauto.
-              2:{
-                constructor. all: eauto.
-              }
-              2: eapply All2_mask_subst_linear_account_init. 2: auto.
-              apply subs_add_empty.
-              apply nth_error_Some_length in e2. lia.
-            } *)
-            (* Seems like we can actually deduce subs_merge from lin_merge
-               and similarly for lin_set / subs_add.
-               We need only do it in an applicable way.
-               (Or maybe some tactic to apply sigma-types.)
-            *)
+          1: sig eapply All2_mask_subst_lin_merge.
 
 (*
 
