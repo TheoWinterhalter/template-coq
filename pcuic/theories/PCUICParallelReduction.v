@@ -3548,7 +3548,8 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma pattern_reduct :
-    forall Σ Γ Δ p σ t k ui decl r (Ξ Ξ' : context) m,
+    forall Σ Γ Δ p σ t k ui decl r Ξ Ξ' m,
+      #|Ξ| = #|Ξ'| ->
       let npat := #|r.(pat_context)| in
       pattern npat #|Ξ| p ->
       pattern_linacc npat #|Ξ| p = Some m ->
@@ -3561,16 +3562,16 @@ Section ParallelSubstitution.
           subs_complete θ θ' ->
           t = subst θ' #|Ξ| p.
   Proof.
-    intros Σ Γ Δ p σ t k ui decl r Ξ Ξ' m npat hp hm ss hσ h.
+    intros Σ Γ Δ p σ t k ui decl r Ξ Ξ' m eΞ npat hp hm ss hσ h.
     remember (subst σ #|Ξ| p) as u eqn:e.
     remember (Γ ,,, Ξ) as Θ eqn:eΘ.
     remember (Δ ,,, Ξ') as Θ' eqn:eΘ'.
-    induction h in Γ, Δ, Ξ, Ξ', eΘ, eΘ', p, σ, hσ, e, hp, m, hm |- *.
+    induction h in Γ, Δ, Ξ, Ξ', eΞ, eΘ, eΘ', p, σ, hσ, e, hp, m, hm |- *.
     - destruct p.
       all: cbn in hm. all: try discriminate.
-      + destruct (#|Ξ| <=? n) eqn:e1.
-        * clear IHh1 IHh2 IHh3.
-          cbn in e. rewrite e1 in e.
+      + clear IHh1 IHh2 IHh3.
+        destruct (#|Ξ| <=? n) eqn:e1.
+        * cbn in e. rewrite e1 in e.
           destruct nth_error eqn:e2. 2: discriminate.
           destruct t. all: try discriminate.
           destruct t2. all: try discriminate.
@@ -3596,8 +3597,8 @@ Section ParallelSubstitution.
           eexists. split.
           -- eapply All2_mask_subst_lin_set. all: eauto.
              2:{
-               constructor. 2: eassumption.
-               constructor. all: eassumption.
+               eapply pred_beta.
+               all: eassumption.
              }
              2: eapply All2_mask_subst_linear_account_init. 2: auto.
              apply subs_add_empty.
@@ -3616,7 +3617,9 @@ Section ParallelSubstitution.
                end.
                cbn. reflexivity.
              }
-             (* WRONG I need to apply beta not congruence *)
+             rewrite distr_lift_subst. cbn.
+             rewrite eΞ. reflexivity.
+        * cbn in e. rewrite e1 in e. discriminate.
 (*
 
 
