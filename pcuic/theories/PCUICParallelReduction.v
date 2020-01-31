@@ -3689,8 +3689,26 @@ Section ParallelSubstitution.
           destruct nth_error eqn:e2. 2: discriminate.
           destruct t. all: try discriminate.
           cbn in e. inversion e. subst. clear e.
+          apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
+          apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
+          apply untyped_subslet_length in hσ as eσ.
+          rewrite subst_context_length in eσ.
           eexists. split.
-          --
+          { eapply All2_mask_subst_lin_merge. all: eauto.
+            2:{
+              eapply All2_mask_subst_lin_set. all: eauto.
+              2:{
+                constructor. all: eauto.
+              }
+              2: eapply All2_mask_subst_linear_account_init. 2: auto.
+              apply subs_add_empty.
+              apply nth_error_Some_length in e2. lia.
+            }
+            (* Seems like we can actually deduce subs_merge from lin_merge
+               and similarly for lin_set / subs_add.
+               We need only do it in an applicable way.
+               (Or maybe some tactic to apply sigma-types.)
+            *)
 
 (*
 
