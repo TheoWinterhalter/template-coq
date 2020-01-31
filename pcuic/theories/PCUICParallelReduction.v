@@ -3461,20 +3461,79 @@ Section ParallelSubstitution.
       apply IHnpat. lia.
   Qed.
 
-  (* Lemma pred1_lift_inv :
-    forall Σ Γ Δ n k t u v,
-      pred1 Σ Γ Δ (lift n k u) v ->
+  (* Is this the right statement? Will I be able to prove it? *)
+  Lemma pred1_lift_inv :
+    forall Σ Γ Γ' Δ Δ' Ξ Ξ' u v,
+      pred1 Σ
+        (Γ ,,, Δ ,,, lift_context #|Δ| 0 Ξ)
+        (Γ' ,,, Δ' ,,, lift_context #|Δ'| 0 Ξ')
+        (lift #|Δ| #|Ξ| u) v ->
       ∑ v',
-        v = lift n k v' ×
-        pred1 Σ Γ Δ u v'. *)
-        (* CONTEXTS! *)
+        v = lift #|Δ'| #|Ξ'| v' ×
+        pred1 Σ (Γ ,,, Ξ) (Γ' ,,, Ξ') u v'.
+  Proof.
+  Admitted.
+
+  Corollary pred1_lift0_inv :
+    forall Σ Γ Γ' Δ Δ' u v,
+      pred1 Σ (Γ ,,, Δ) (Γ' ,,, Δ') (lift0 #|Δ| u) v ->
+      ∑ v',
+        v = lift0 #|Δ'| v' ×
+        pred1 Σ Γ Γ' u v'.
+  Admitted.
+
+  Corollary pred1_lift1_inv :
+    forall Σ Γ Γ' Δ Δ' na na' A A' u v,
+      pred1 Σ
+        ((Γ ,,, Δ) ,, vass na (lift0 #|Δ| A))
+        ((Γ' ,,, Δ') ,, vass na' (lift0 #|Δ'| A'))
+        (lift #|Δ| 1 u) v ->
+      ∑ v',
+        v = lift #|Δ'| 1 v' ×
+        pred1 Σ (Γ ,, vass na A) (Γ' ,, vass na' A') u v'.
+  Admitted.
+
+  Lemma list_init_length :
+    forall A (x : A) n,
+      #|list_init x n| = n.
+  Proof.
+    intros A x n. induction n. 1: reflexivity.
+    cbn. f_equal. assumption.
+  Qed.
+
+  Lemma nth_error_list_init :
+    forall A (x : A) n l,
+      n < l ->
+      nth_error (list_init x l) n = Some x.
+  Proof.
+    intros A x n l h.
+    induction l in n, h |- *. 1: lia.
+    cbn. destruct n.
+    - cbn. reflexivity.
+    - cbn. apply IHl. lia.
+  Qed.
+
+  Lemma subs_add_empty :
+    forall n t l,
+      n < l ->
+      subs_add n t (list_init None l) =
+      Some (
+        firstn n (list_init None l) ++ Some t :: skipn (S n) (list_init None l)
+      ).
+  Proof.
+    intros n t l h.
+    unfold subs_add.
+    rewrite -> nth_error_list_init by assumption.
+    reflexivity.
+  Qed.
 
   Lemma pattern_reduct :
-    forall Σ Γ Δ p σ t npat (Ξ Ξ' : context) m,
+    forall Σ Γ Δ p σ t k ui decl r (Ξ Ξ' : context) m,
+      let npat := #|r.(pat_context)| in
       pattern npat #|Ξ| p ->
       pattern_linacc npat #|Ξ| p = Some m ->
-      (* let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) -> *)
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
       pred1 Σ (Γ ,,, Ξ) (Δ ,,, Ξ') (subst σ #|Ξ| p) t ->
       ∑ θ,
         All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
@@ -3482,15 +3541,16 @@ Section ParallelSubstitution.
           subs_complete θ θ' ->
           t = subst θ' #|Ξ| p.
   Proof.
-    intros Σ Γ Δ p σ t npat Ξ Ξ' m hp hm h.
+    intros Σ Γ Δ p σ t k ui decl r Ξ Ξ' m npat hp hm ss hσ h.
     remember (subst σ #|Ξ| p) as u eqn:e.
     remember (Γ ,,, Ξ) as Θ eqn:eΘ.
     remember (Δ ,,, Ξ') as Θ' eqn:eΘ'.
-    induction h in Γ, Δ, Ξ, Ξ', eΘ, eΘ', p, σ, e, hp, m, hm |- *.
+    induction h in Γ, Δ, Ξ, Ξ', eΘ, eΘ', p, σ, hσ, e, hp, m, hm |- *.
     - destruct p.
       all: cbn in hm. all: try discriminate.
       + destruct (#|Ξ| <=? n) eqn:e1.
-        * cbn in e. rewrite e1 in e.
+        * clear IHh1 IHh2 IHh3.
+          cbn in e. rewrite e1 in e.
           destruct nth_error eqn:e2. 2: discriminate.
           destruct t. all: try discriminate.
           destruct t2. all: try discriminate.
@@ -3508,14 +3568,23 @@ Section ParallelSubstitution.
               rewrite isAppRel_mkApps in H. cbn in H.
               discriminate.
           }
+          apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
+          apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
+          apply pred1_lift0_inv in h3 as [t3' [? h3]]. subst.
+          apply untyped_subslet_length in hσ as eσ.
+          rewrite subst_context_length in eσ.
           eexists. split.
           -- eapply All2_mask_subst_lin_set. all: eauto.
-             (* 2:{
+             2:{
                constructor. 2: eassumption.
-             } *)
-             (* There are some lifting issues too... *)
-             3: eapply All2_mask_subst_linear_account_init.
-             (* Maybe some untyped_subslet for σ? *)
+               constructor. all: eassumption.
+             }
+             2: eapply All2_mask_subst_linear_account_init. 2: auto.
+             apply subs_add_empty.
+             apply nth_error_Some_length in e2. lia.
+          -- intros θ' hθ.
+             cbn. rewrite e1.
+             apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
 (*
 
 
