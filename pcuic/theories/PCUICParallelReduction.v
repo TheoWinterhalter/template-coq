@@ -3571,55 +3571,89 @@ Section ParallelSubstitution.
       all: cbn in hm. all: try discriminate.
       + clear IHh1 IHh2 IHh3.
         destruct (#|Ξ| <=? n) eqn:e1.
-        * cbn in e. rewrite e1 in e.
+        2:{ cbn in e. rewrite e1 in e. discriminate. }
+        cbn in e. rewrite e1 in e.
+        destruct nth_error eqn:e2. 2: discriminate.
+        destruct t. all: try discriminate.
+        destruct t2. all: try discriminate.
+        cbn in e. inversion e. subst. clear e.
+        assert (n < npat + #|Ξ|).
+        { inversion hp.
+          - change (tRel n) with (mkApps (tRel n) []) in H.
+            apply mkApps_Rel_inj in H as [? ?]. subst.
+            assumption.
+          - destruct (Nat.leb_spec #|Ξ| n). all: lia.
+          - apply (f_equal isAppRel) in H.
+            rewrite isAppRel_mkApps in H. cbn in H.
+            discriminate.
+          - apply (f_equal isAppRel) in H.
+            rewrite isAppRel_mkApps in H. cbn in H.
+            discriminate.
+        }
+        apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
+        apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
+        apply pred1_lift0_inv in h3 as [t3' [? h3]]. subst.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_lin_set. all: eauto.
+          2:{
+            eapply pred_beta.
+            all: eassumption.
+          }
+          2: eapply All2_mask_subst_linear_account_init. 2: auto.
+          apply subs_add_empty.
+          apply nth_error_Some_length in e2. lia.
+        * intros θ' hθ.
+          cbn. rewrite e1.
+          apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+          erewrite hθ'.
+          2:{
+            rewrite nth_error_app_ge.
+            1:{ rewrite list_init_length. auto. }
+            rewrite list_init_length.
+            match goal with
+            | |- nth_error _ ?n = _ =>
+            replace n with 0 by lia
+            end.
+            cbn. reflexivity.
+          }
+          rewrite distr_lift_subst. cbn.
+          rewrite eΞ. reflexivity.
+      + destruct pattern_linacc eqn:ep1. 2: discriminate.
+        destruct (pattern_linacc _ _ p2) eqn:ep2. 2: discriminate.
+        cbn in e. inversion e. subst.
+        clear e. rename H0 into e.
+        destruct p1.
+        all: cbn in ep1. all: try discriminate.
+        * clear IHh1 IHh2.
+          specialize IHh3 with (5 := eq_refl) (6 := eq_refl) (7 := eq_refl).
+          specialize IHh3 with (3 := ep2).
+          forward IHh3 by auto.
+          forward IHh3.
+          { inversion hp.
+            - change (tApp (tRel n) p2) with (mkApps (tRel n) [p2]) in H.
+              apply mkApps_Rel_inj in H as [? ?]. subst.
+              destruct l1 as [| i l1]. 1: discriminate.
+              rename H3 into hl. cbn in hl.
+              inversion hl. subst.
+              apply pattern_bound.
+              inversion H2. assumption.
+            - apply (f_equal isAppRel) in H. cbn in H.
+              rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+            - apply (f_equal isAppRel) in H. cbn in H.
+              rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+          }
+          forward IHh3 by auto.
+          destruct IHh3 as [θ [hmθ hθ]].
+          cbn in e.
+          destruct (#|Ξ| <=? n) eqn:e1. 2: discriminate.
           destruct nth_error eqn:e2. 2: discriminate.
           destruct t. all: try discriminate.
-          destruct t2. all: try discriminate.
           cbn in e. inversion e. subst. clear e.
-          assert (n < npat + #|Ξ|).
-          { inversion hp.
-            - change (tRel n) with (mkApps (tRel n) []) in H.
-              apply mkApps_Rel_inj in H as [? ?]. subst.
-              assumption.
-            - destruct (Nat.leb_spec #|Ξ| n). all: lia.
-            - apply (f_equal isAppRel) in H.
-              rewrite isAppRel_mkApps in H. cbn in H.
-              discriminate.
-            - apply (f_equal isAppRel) in H.
-              rewrite isAppRel_mkApps in H. cbn in H.
-              discriminate.
-          }
-          apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
-          apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
-          apply pred1_lift0_inv in h3 as [t3' [? h3]]. subst.
-          apply untyped_subslet_length in hσ as eσ.
-          rewrite subst_context_length in eσ.
           eexists. split.
-          -- eapply All2_mask_subst_lin_set. all: eauto.
-             2:{
-               eapply pred_beta.
-               all: eassumption.
-             }
-             2: eapply All2_mask_subst_linear_account_init. 2: auto.
-             apply subs_add_empty.
-             apply nth_error_Some_length in e2. lia.
-          -- intros θ' hθ.
-             cbn. rewrite e1.
-             apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
-             erewrite hθ'.
-             2:{
-               rewrite nth_error_app_ge.
-               1:{ rewrite list_init_length. auto. }
-               rewrite list_init_length.
-               match goal with
-               | |- nth_error _ ?n = _ =>
-                replace n with 0 by lia
-               end.
-               cbn. reflexivity.
-             }
-             rewrite distr_lift_subst. cbn.
-             rewrite eΞ. reflexivity.
-        * cbn in e. rewrite e1 in e. discriminate.
+          --
+
 (*
 
 
