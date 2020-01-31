@@ -3605,6 +3605,18 @@ Section ParallelSubstitution.
           -- intros θ' hθ.
              cbn. rewrite e1.
              apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+             erewrite hθ'.
+             2:{
+               rewrite nth_error_app_ge.
+               1:{ rewrite list_init_length. auto. }
+               rewrite list_init_length.
+               match goal with
+               | |- nth_error _ ?n = _ =>
+                replace n with 0 by lia
+               end.
+               cbn. reflexivity.
+             }
+             (* WRONG I need to apply beta not congruence *)
 (*
 
 
