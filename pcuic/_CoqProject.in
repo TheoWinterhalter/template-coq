@@ -8,6 +8,7 @@ theories/PCUICInduction.v
 theories/PCUICReflect.v
 theories/PCUICLiftSubst.v
 theories/PCUICUnivSubst.v
+theories/PCUICPattern.v
 theories/PCUICTyping.v
 theories/PCUICInversion.v
 theories/PCUICPosition.v
