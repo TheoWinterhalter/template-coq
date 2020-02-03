@@ -3684,62 +3684,71 @@ Section ParallelSubstitution.
         clear e. rename H0 into e.
         destruct p1.
         all: cbn in ep1. all: try discriminate.
-        * clear IHh1 IHh2.
-          specialize IHh3 with (5 := eq_refl) (6 := eq_refl) (7 := eq_refl).
-          specialize IHh3 with (3 := ep2).
-          forward IHh3 by auto.
-          forward IHh3.
-          { inversion hp.
-            - change (tApp (tRel n) p2) with (mkApps (tRel n) [p2]) in H.
-              apply mkApps_Rel_inj in H as [? ?]. subst.
-              destruct l1 as [| i l1]. 1: discriminate.
-              rename H3 into hl. cbn in hl.
-              inversion hl. subst.
-              apply pattern_bound.
-              inversion H2. assumption.
-            - apply (f_equal isAppRel) in H. cbn in H.
-              rewrite isAppRel_mkApps in H. cbn in H. discriminate.
-            - apply (f_equal isAppRel) in H. cbn in H.
-              rewrite isAppRel_mkApps in H. cbn in H. discriminate.
-          }
-          forward IHh3 by auto.
-          destruct IHh3 as [θ [hmθ hθ]].
-          cbn in e.
-          destruct (#|Ξ| <=? n) eqn:e1. 2: discriminate.
-          destruct nth_error eqn:e2. 2: discriminate.
-          destruct t. all: try discriminate.
-          cbn in e. inversion e. subst. clear e.
-          apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
-          apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
-          apply untyped_subslet_length in hσ as eσ.
-          rewrite subst_context_length in eσ.
-          (* Destruct needed for afterwards *)
-          edestruct All2_mask_subst_lin_merge as [ps [eps hps]]. all: eauto.
-          { eapply All2_mask_subst_lin_set. all: eauto.
-            2:{ constructor. all: eauto. }
-            2: eapply All2_mask_subst_linear_account_init. 2: auto.
-            apply subs_add_empty.
-            apply nth_error_Some_length in e2. abstract lia.
-          }
-          eexists. split.
-          1: eassumption.
-          intros θ' hθ'.
-          cbn. rewrite e1.
-          eapply subs_merge_complete in hθ' as hh. 2: eassumption.
-          destruct hh as [hc1 hc2].
-          apply subs_complete_spec in hc1 as hh. destruct hh as [el hθ''].
-          erewrite hθ''.
-          2:{
-            rewrite nth_error_app_ge.
-            { rewrite list_init_length. reflexivity. }
-            rewrite list_init_length.
-            match goal with
-            | |- nth_error _ ?n = _ => replace n with 0 by lia
-            end.
-            cbn. reflexivity.
-          }
-          rewrite <- hθ. 2: auto.
-          (* Comparing with the β redex, we need to fix the generated subst *)
+        2:{
+          exfalso. inversion hp.
+          - apply (f_equal isAppRel) in H. cbn in H.
+            rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+          - apply (f_equal isAppConstruct) in H. cbn in H.
+            rewrite isAppConstruct_mkApps in H. cbn in H. discriminate.
+          - apply (f_equal isElimSymb) in H. cbn in H.
+            rewrite isElimSymb_mkApps in H. cbn in H. discriminate.
+        }
+        clear IHh1 IHh2.
+        specialize IHh3 with (5 := eq_refl) (6 := eq_refl) (7 := eq_refl).
+        specialize IHh3 with (3 := ep2).
+        forward IHh3 by auto.
+        forward IHh3.
+        { inversion hp.
+          - change (tApp (tRel n) p2) with (mkApps (tRel n) [p2]) in H.
+            apply mkApps_Rel_inj in H as [? ?]. subst.
+            destruct l1 as [| i l1]. 1: discriminate.
+            rename H3 into hl. cbn in hl.
+            inversion hl. subst.
+            apply pattern_bound.
+            inversion H2. assumption.
+          - apply (f_equal isAppRel) in H. cbn in H.
+            rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+          - apply (f_equal isAppRel) in H. cbn in H.
+            rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+        }
+        forward IHh3 by auto.
+        destruct IHh3 as [θ [hmθ hθ]].
+        cbn in e.
+        destruct (#|Ξ| <=? n) eqn:e1. 2: discriminate.
+        destruct nth_error eqn:e2. 2: discriminate.
+        destruct t. all: try discriminate.
+        cbn in e. inversion e. subst. clear e.
+        apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
+        apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        (* Destruct needed for afterwards *)
+        edestruct All2_mask_subst_lin_merge as [ps [eps hps]]. all: eauto.
+        { eapply All2_mask_subst_lin_set. all: eauto.
+          2:{ constructor. all: eauto. }
+          2: eapply All2_mask_subst_linear_account_init. 2: auto.
+          apply subs_add_empty.
+          apply nth_error_Some_length in e2. abstract lia.
+        }
+        eexists. split.
+        1: eassumption.
+        intros θ' hθ'.
+        cbn. rewrite e1.
+        eapply subs_merge_complete in hθ' as hh. 2: eassumption.
+        destruct hh as [hc1 hc2].
+        apply subs_complete_spec in hc1 as hh. destruct hh as [el hθ''].
+        erewrite hθ''.
+        2:{
+          rewrite nth_error_app_ge.
+          { rewrite list_init_length. reflexivity. }
+          rewrite list_init_length.
+          match goal with
+          | |- nth_error _ ?n = _ => replace n with 0 by lia
+          end.
+          cbn. reflexivity.
+        }
+        rewrite <- hθ. 2: auto.
+        (* Comparing with the β redex, we need to fix the generated subst *)
 (*
 
 
