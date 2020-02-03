@@ -3593,6 +3593,16 @@ Section ParallelSubstitution.
     | ∑ _, _ => eapply (projT2 h)
     end.
 
+  (* Ltac sig_eapply h :=
+    match type of h with
+    | _ => refine h
+    | _ -> _ => let h' := open_constr:(h _) in sig_eapply h'
+    | _ × _ =>
+      (let h' := open_constr:(snd h) in sig_eapply h') +
+      (let h' := open_constr:(fst h) in sig_eapply h')
+    | ∑ _, _ => let h' := open_constr:(projT2 h) in sig_eapply h'
+    end. *)
+
   Tactic Notation "sig" "eapply" constr(h) := sig_eapply h.
 
   Lemma pattern_reduct :
@@ -3704,8 +3714,22 @@ Section ParallelSubstitution.
           apply untyped_subslet_length in hσ as eσ.
           rewrite subst_context_length in eσ.
           eexists. split.
-          1: sig eapply All2_mask_subst_lin_merge.
-
+          1:{
+            unshelve sig eapply All2_mask_subst_lin_merge.
+            5-7: eauto. 1: shelve.
+            eapply All2_mask_subst_lin_set. all: eauto.
+            2:{ constructor. all: eauto. }
+            2: eapply All2_mask_subst_linear_account_init. 2: auto.
+            apply subs_add_empty.
+            apply nth_error_Some_length in e2. abstract lia.
+          }
+          intros θ' hθ'.
+          cbn. rewrite e1.
+          apply subs_complete_spec in hθ' as hh. destruct hh as [? hθ''].
+          erewrite hθ''.
+          2:{
+            (* Maybe instead I should prove a corollary of All2_... *)
+          }
 (*
 
 
