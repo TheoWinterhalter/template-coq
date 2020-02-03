@@ -3713,23 +3713,33 @@ Section ParallelSubstitution.
           apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
           apply untyped_subslet_length in hσ as eσ.
           rewrite subst_context_length in eσ.
-          eexists. split.
-          1:{
-            unshelve sig eapply All2_mask_subst_lin_merge.
-            5-7: eauto. 1: shelve.
-            eapply All2_mask_subst_lin_set. all: eauto.
+          (* Destruct needed for afterwards *)
+          edestruct All2_mask_subst_lin_merge as [ps [eps hps]]. all: eauto.
+          { eapply All2_mask_subst_lin_set. all: eauto.
             2:{ constructor. all: eauto. }
             2: eapply All2_mask_subst_linear_account_init. 2: auto.
             apply subs_add_empty.
             apply nth_error_Some_length in e2. abstract lia.
           }
+          eexists. split.
+          1: eassumption.
           intros θ' hθ'.
           cbn. rewrite e1.
-          apply subs_complete_spec in hθ' as hh. destruct hh as [? hθ''].
+          eapply subs_merge_complete in hθ' as hh. 2: eassumption.
+          destruct hh as [hc1 hc2].
+          apply subs_complete_spec in hc1 as hh. destruct hh as [el hθ''].
           erewrite hθ''.
           2:{
-            (* Maybe instead I should prove a corollary of All2_... *)
+            rewrite nth_error_app_ge.
+            { rewrite list_init_length. reflexivity. }
+            rewrite list_init_length.
+            match goal with
+            | |- nth_error _ ?n = _ => replace n with 0 by lia
+            end.
+            cbn. reflexivity.
           }
+          rewrite <- hθ. 2: auto.
+          (* Comparing with the β redex, we need to fix the generated subst *)
 (*
 
 
