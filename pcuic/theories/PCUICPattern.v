@@ -223,6 +223,17 @@ Qed.
 Definition option_assert (b : bool) : option () :=
   if b then ret tt else None.
 
+Fixpoint option_map2 {A B C}
+  (f : A -> B -> option C) (l1 : list A) (l2 : list B) : option (list C) :=
+  match l1, l2 with
+  | [], [] => ret []
+  | x :: l1, y :: l2 =>
+      z <- f x y ;;
+      l <- option_map2 f l1 l2 ;;
+      ret (z :: l)
+  | _, _ => None
+  end.
+
 Notation partial_subst := (list (option term)).
 
 (* Structure to build a substitution *)
@@ -238,6 +249,15 @@ Definition subs_add x t (l : partial_subst) : option (partial_subst) :=
 
 Definition subs_init npat x t :=
   subs_add x t (subs_empty npat).
+
+Fixpoint subs_merge (s1 s2 : partial_subst) : option (partial_subst) :=
+  match s1, s2 with
+  | [], [] => ret []
+  | None :: s1, d :: s2
+  | d :: s1, None :: s2 =>
+    s <- subs_merge s1 s2 ;; ret (d :: s)
+  | _, _ => None
+  end.
 
 (* For soundness and completeness we need to define lift_mask... *)
 
@@ -269,7 +289,7 @@ Definition subs_init npat x t :=
     f x y -> c versus f -> λxy. c (we should enforce the latter for things
     to go smoothly).
 *)
-Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
+Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
   : option partial_subst :=
   match p with
   | pattern_variable n mask hn hmask =>
@@ -287,7 +307,8 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
       option_assert (eqb ind ind') ;;
       option_assert (eqb n n') ;;
       option_assert (eqb ui ui') ;;
-      None (* TODO *)
+      (* sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;; *)
+      None
     | _ => None
     end
   end.
