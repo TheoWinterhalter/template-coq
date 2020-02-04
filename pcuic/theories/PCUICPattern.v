@@ -220,6 +220,9 @@ Proof.
     cbn. apply IHm.
 Qed.
 
+Definition option_assert (b : bool) : option () :=
+  if b then ret tt else None.
+
 Notation partial_subst := (list (option term)).
 
 (* Structure to build a substitution *)
@@ -244,6 +247,14 @@ Definition subs_init npat x t :=
 
    We need to keep Ξ, the context of bound variables, in order to reconstruct
    λs when doing higher order matching.
+
+   We cannot be type-directed as suggested by Jesper so we probably should
+   restrict the rules to satisfy η.
+   PROBLEM Even when η-expanding on the fly we have a problem: what about the
+   domain? It's supposed to be a pattern so we would like to unify it with
+   something, it's not possible however. To be compliant we need to either
+   remove the pattern status of the domain or forget about η... at least so
+   it seems.
 *)
 Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
   : option partial_subst :=
@@ -251,5 +262,10 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
   | pattern_variable n mask hn hmask =>
     u <- strengthen_mask mask #|Ξ| t ;;
     subs_init npat n (mkLambda_mask mask Ξ u)
+  | pattern_bound n bound =>
+    option_assert (eqb t (tRel n)) ;;
+    ret (subs_empty npat)
+  | pattern_lambda A b =>
+    None
   | _ => None
   end.
