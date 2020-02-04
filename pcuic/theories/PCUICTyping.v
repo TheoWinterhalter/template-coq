@@ -897,10 +897,6 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
 Definition option_assert (b : bool) : option () :=
   if b then ret tt else None.
 
-(* Structure to build a substitution *)
-Definition subs_empty npat : list (option term) :=
-  list_make (fun _ => None) 0 npat.
-
 (* Why do I need it again? *)
 Import PCUICReflect.
 
@@ -2244,13 +2240,6 @@ Proof.
 Qed.
 
 (* TODO Prove the it is complete. *)
-
-(* TODO MOVE *)
-Fixpoint list_init {A} (x : A) (n : nat) : list A :=
-  match n with
-  | 0 => []
-  | S n => x :: list_init x n
-  end.
 
 Definition linear_account_init (npat : nat) :=
   list_init false npat.

@@ -72,9 +72,6 @@ Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
   | epProj p => eProj p
   end.
 
-Local Notation mask := (list bool).
-Notation partial_subst := (list (option term)).
-
 (* Strengthening along a mask
   Assume Γ, Δ, Ξ ⊢ t : A and #|m| = #|Δ|
   strengthen_mask m t #|Ξ| should return a term where masked varibles
@@ -167,17 +164,93 @@ Fixpoint strengthen_mask (m : list bool) k (t : term) : option term :=
   | x => ret x
   end.
 
+Fixpoint mkLambda_mask (m : list bool) (Ξ : context) (b : term) : term :=
+  match m, Ξ with
+  | true :: m, {| decl_name := x ; decl_body := None ; decl_type := A |} :: Ξ =>
+    tLambda x A (mkLambda_mask m Ξ b)
+  | false :: m, d :: Ξ => mkLambda_mask m Ξ b
+  | [], [] => b
+  | _, _ => b (* Or use option? *)
+  end.
+
+(* TODO MOVE *)
+Fixpoint list_init {A} (x : A) (n : nat) : list A :=
+  match n with
+  | 0 => []
+  | S n => x :: list_init x n
+  end.
+
+Lemma list_init_length :
+  forall A (x : A) n,
+    #|list_init x n| = n.
+Proof.
+  intros A x n. induction n. 1: reflexivity.
+  cbn. f_equal. assumption.
+Qed.
+
+Lemma nth_error_list_init :
+  forall A (x : A) n l,
+    n < l ->
+    nth_error (list_init x l) n = Some x.
+Proof.
+  intros A x n l h.
+  induction l in n, h |- *. 1: lia.
+  cbn. destruct n.
+  - cbn. reflexivity.
+  - cbn. apply IHl. lia.
+Qed.
+
+Lemma firstn_list_init :
+  forall A n m (x : A),
+    firstn n (list_init x m) = list_init x (min n m).
+Proof.
+  intros A n m x.
+  induction n in m |- *. 1: reflexivity.
+  destruct m. 1: reflexivity.
+  cbn. f_equal. apply IHn.
+Qed.
+
+Lemma skipn_list_init :
+  forall A n m (x : A),
+    skipn n (list_init x m) = list_init x (m - n).
+Proof.
+  intros A n m x.
+  induction m in n |- *.
+  - cbn. rewrite skipn_nil. reflexivity.
+  - destruct n. 1: reflexivity.
+    cbn. apply IHm.
+Qed.
+
+Notation partial_subst := (list (option term)).
+
+(* Structure to build a substitution *)
+Definition subs_empty npat : list (option term) :=
+  list_init None npat.
+
+Definition subs_add x t (l : partial_subst) : option (partial_subst) :=
+  match nth_error l x with
+  | None => None
+  | Some None => Some (firstn x l ++ Some t :: skipn (S x) l)
+  | Some (Some _) => None
+  end.
+
+Definition subs_init npat x t :=
+  subs_add x t (subs_empty npat).
+
 (* For soundness and completeness we need to define lift_mask... *)
 
 (* In order to apply the rules we need to define higher order matching.
    Contrarily to first-order matching, we can't use substitution for
    instantiation alone.
+
+   We need to keep Ξ, the context of bound variables, in order to reconstruct
+   λs when doing higher order matching.
 *)
-(* Fixpoint match_pattern {npat nb} (p : pattern npat nb) (t : term)
+Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
   : option partial_subst :=
   match p with
-  | pattern_variable n mask hnb hnpat hmask => *)
-(* In order to complete the definition we need strengthen_mask but also
-  some way to write lambdas from a mask, however we're missing the types
-  to put in the domains...
-*)
+  | pattern_variable n mask hnb hnpat hmask =>
+    u <- strengthen_mask mask #|Ξ| t ;;
+    subs_init npat n (mkLambda_mask mask Ξ u)
+  | _ => None
+  end.
