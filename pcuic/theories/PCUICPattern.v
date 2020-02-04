@@ -7,6 +7,8 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICUtils
   PCUICPosition.
 
+Import MonadNotation.
+
 (* Pattern definition
 
    This definition is relative to the number of pattern variables,
@@ -70,10 +72,112 @@ Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
   | epProj p => eProj p
   end.
 
+Local Notation mask := (list bool).
 Notation partial_subst := (list (option term)).
+
+(* Strengthening along a mask
+  Assume Γ, Δ, Ξ ⊢ t : A and #|m| = #|Δ|
+  strengthen_mask m t #|Ξ| should return a term where masked varibles
+  (their interpretation is false) of Δ are removed (if they can).
+*)
+
+Fixpoint nfalse m :=
+  match m with
+  | true :: m => nfalse m
+  | false :: m => S (nfalse m)
+  | [] => 0
+  end.
+
+Definition masked_before m n : nat :=
+  nfalse (firstn n m).
+
+(* TODO MOVE *)
+Definition option_map_def {A B : Set}
+  (tf bf : A -> option B) (d : def A) : option (def B) :=
+  ty <- tf d.(dtype) ;;
+  bo <- bf d.(dbody) ;;
+  ret {|
+    dname := d.(dname) ;
+    dtype := ty ;
+    dbody := bo ;
+    rarg := d.(rarg)
+  |}.
+
+(* TODO MOVE *)
+Definition option_on_snd {A B C : Type}
+  (f : B -> option C) (p : A × B) : option (A × C) :=
+  c <- f p.2 ;;
+  ret (p.1, c).
+
+Fixpoint strengthen_mask (m : list bool) k (t : term) : option term :=
+  match t with
+  | tRel i =>
+      if i <? k then ret (tRel i)
+      else
+        match nth_error m (i - k) with
+        | Some true => ret (tRel (i - masked_before m (i - k)))
+        | Some false => None
+        | None => ret (tRel (i - nfalse m))
+        end
+
+  | tEvar ev args =>
+      args' <- monad_map (strengthen_mask m k) args ;;
+      ret (tEvar ev args')
+  | tLambda na A t =>
+      A' <- strengthen_mask m k A ;;
+      t' <- strengthen_mask m (S k) t ;;
+      ret (tLambda na A' t')
+
+  | tApp u v =>
+      u' <- strengthen_mask m k u ;;
+      v' <- strengthen_mask m k v ;;
+      ret (tApp u' v')
+
+  | tProd na A B =>
+      A' <- strengthen_mask m k A ;;
+      B' <- strengthen_mask m (S k) B ;;
+      ret (tProd na A' B')
+
+  | tLetIn na b B t =>
+      b' <- strengthen_mask m k b ;;
+      B' <- strengthen_mask m k B ;;
+      t' <- strengthen_mask m (S k) t ;;
+      ret (tLetIn na b' B' t')
+
+  | tCase ind p c brs =>
+      brs' <- monad_map (option_on_snd (strengthen_mask m k)) brs ;;
+      p' <- strengthen_mask m k p ;;
+      c' <- strengthen_mask m k c ;;
+      ret (tCase ind p' c' brs')
+
+  | tProj p c =>
+      c' <- strengthen_mask m k c ;;
+      ret (tProj p c')
+
+  | tFix mfix idx =>
+      let k' := (#|mfix| + k)%nat in
+      mfix' <- monad_map (option_map_def (strengthen_mask m k) (strengthen_mask m k')) mfix ;;
+      ret (tFix mfix' idx)
+
+  | tCoFix mfix idx =>
+      let k' := (#|mfix| + k)%nat in
+      mfix' <- monad_map (option_map_def (strengthen_mask m k) (strengthen_mask m k')) mfix ;;
+      ret (tCoFix mfix' idx)
+
+  | x => ret x
+  end.
+
+(* For soundness and completeness we need to define lift_mask... *)
 
 (* In order to apply the rules we need to define higher order matching.
    Contrarily to first-order matching, we can't use substitution for
    instantiation alone.
 *)
-(* Fixpoint match_pattern {npat nb} (p : pattern npat nb) (t : term) : option partial_subst *)
+(* Fixpoint match_pattern {npat nb} (p : pattern npat nb) (t : term)
+  : option partial_subst :=
+  match p with
+  | pattern_variable n mask hnb hnpat hmask => *)
+(* In order to complete the definition we need strengthen_mask but also
+  some way to write lambdas from a mask, however we're missing the types
+  to put in the domains...
+*)

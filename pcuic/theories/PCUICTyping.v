@@ -1128,22 +1128,6 @@ Proof.
     rewrite e. replace (n - n) with 0 by lia. cbn. reflexivity.
 Qed.
 
-Definition option_map_def {A B : Set}
-  (tf bf : A -> option B) (d : def A) : option (def B) :=
-  ty <- tf d.(dtype) ;;
-  bo <- bf d.(dbody) ;;
-  ret {|
-    dname := d.(dname) ;
-    dtype := ty ;
-    dbody := bo ;
-    rarg := d.(rarg)
-  |}.
-
-Definition option_on_snd {A B C : Type}
-  (f : B -> option C) (p : A × B) : option (A × C) :=
-  c <- f p.2 ;;
-  ret (p.1, c).
-
 Fixpoint strengthen n k t : option term :=
   match t with
   | tRel i =>
