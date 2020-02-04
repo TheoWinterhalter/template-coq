@@ -23,8 +23,7 @@ Import MonadNotation.
 *)
 Inductive pattern (npat : nat) (nb : nat) : Type :=
 | pattern_variable n (mask : list bool) :
-    nb <= n ->
-    n < npat + nb ->
+    n < npat -> (* n is a pattern index *)
     #|mask| = nb ->
     pattern npat nb
 
@@ -56,8 +55,8 @@ Fixpoint mask_to_rels (mask : list bool) (i : nat) :=
 *)
 Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
   match p with
-  | pattern_variable n mask h1 h2 h3 =>
-    mkApps (tRel n) (mask_to_rels mask 0)
+  | pattern_variable n mask hn hmask =>
+    mkApps (tRel (n + nb)) (mask_to_rels mask 0)
   | pattern_bound n h => tRel n
   | pattern_lambda A b => tLambda nAnon (pattern_to_term A) (pattern_to_term b)
   | pattern_construct ind n ui args =>
@@ -249,7 +248,7 @@ Definition subs_init npat x t :=
 Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
   : option partial_subst :=
   match p with
-  | pattern_variable n mask hnb hnpat hmask =>
+  | pattern_variable n mask hn hmask =>
     u <- strengthen_mask mask #|Ξ| t ;;
     subs_init npat n (mkLambda_mask mask Ξ u)
   | _ => None
