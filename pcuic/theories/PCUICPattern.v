@@ -29,7 +29,7 @@ Inductive pattern (npat : nat) (nb : nat) : Type :=
 
 | pattern_bound n (bound : n < nb)
 
-| pattern_lambda (A : pattern npat nb) (b : pattern npat (S nb))
+| pattern_lambda (A : term) (b : pattern npat (S nb))
 
 | pattern_construct
     (ind : inductive) (n : nat) (ui : universe_instance)
@@ -58,7 +58,7 @@ Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
   | pattern_variable n mask hn hmask =>
     mkApps (tRel (n + nb)) (mask_to_rels mask 0)
   | pattern_bound n h => tRel n
-  | pattern_lambda A b => tLambda nAnon (pattern_to_term A) (pattern_to_term b)
+  | pattern_lambda A b => tLambda nAnon A (pattern_to_term b)
   | pattern_construct ind n ui args =>
     mkApps (tConstruct ind n ui) (map (pattern_to_term) args)
   end.
@@ -255,6 +255,11 @@ Definition subs_init npat x t :=
    something, it's not possible however. To be compliant we need to either
    remove the pattern status of the domain or forget about η... at least so
    it seems.
+
+   ANOTHER PROBLEM If I do η-expansion with tApp (lift0 1 t) (tRel 0)
+   then all variables are a priori relevant in the term...
+   So we will only be able to match patterns mentionning all bound variables.
+   We'd be going through a lot of trouble for not much.
 *)
 Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
   : option partial_subst :=
