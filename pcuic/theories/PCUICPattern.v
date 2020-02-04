@@ -260,6 +260,14 @@ Definition subs_init npat x t :=
    then all variables are a priori relevant in the term...
    So we will only be able to match patterns mentionning all bound variables.
    We'd be going through a lot of trouble for not much.
+
+   SOLUTION? Only η-expanding when it's not a λ so as not to introduce
+   β-redexes. Meaning two cases for λ patterns.
+
+    ANOTHER PROBLEM pointed out by Jesper, some rewrite rules may not behave
+    well with respect to free variable elimination.
+    f x y -> c versus f -> λxy. c (we should enforce the latter for things
+    to go smoothly).
 *)
 Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
   : option partial_subst :=
@@ -271,6 +279,15 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term)
     option_assert (eqb t (tRel n)) ;;
     ret (subs_empty npat)
   | pattern_lambda A b =>
-    None
-  | _ => None
+    None (* TODO *)
+  | pattern_construct ind n ui args =>
+    let '(u,l) := decompose_app t in
+    match u with
+    | tConstruct ind' n' ui' =>
+      option_assert (eqb ind ind') ;;
+      option_assert (eqb n n') ;;
+      option_assert (eqb ui ui') ;;
+      None (* TODO *)
+    | _ => None
+    end
   end.
