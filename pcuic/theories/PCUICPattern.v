@@ -9,17 +9,13 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
 
 Import MonadNotation.
 
-(* Pattern definition
+(** Pattern definition
 
-   This definition is relative to the number of pattern variables,
-   and the number of bound variables introduced afterwards.
+  This definition is relative to the number of pattern variables,
+  and the number of bound variables introduced afterwards.
 
-   TODO Can we have an "exact" pattern this way?
-
-   TODO How to guarantee the tConstruct is fully applied?
-   Maybe we don't have to.
-
-   TODO Maybe constraint pattern_variable so the list is without duplicates.
+  TODO How to guarantee the tConstruct is fully applied?
+  Maybe we don't have to.
 *)
 Inductive pattern (npat : nat) (nb : nat) : Type :=
 | pattern_variable n (mask : list bool) :
@@ -49,7 +45,7 @@ Fixpoint mask_to_rels (mask : list bool) (i : nat) :=
   | [] => []
   end.
 
-(* Translating patterns to terms
+(** Translating patterns to terms
 
   Maybe it'd be smarter to define instantiation...
 *)
@@ -71,7 +67,8 @@ Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
   | epProj p => eProj p
   end.
 
-(* Strengthening along a mask
+(** Strengthening along a mask
+
   Assume Γ, Δ, Ξ ⊢ t : A and #|m| = #|Δ|
   strengthen_mask m t #|Ξ| should return a term where masked varibles
   (their interpretation is false) of Δ are removed (if they can).
@@ -273,28 +270,28 @@ Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
 
 (* For soundness and completeness we need to define lift_mask... *)
 
-(* In order to apply the rules we need to define higher order matching.
-   Contrarily to first-order matching, we can't use substitution for
-   instantiation alone.
+(** In order to apply the rules we need to define higher order matching.
+    Contrarily to first-order matching, we can't use substitution for
+    instantiation alone.
 
-   We need to keep Ξ, the context of bound variables, in order to reconstruct
-   λs when doing higher order matching.
+    We need to keep Ξ, the context of bound variables, in order to reconstruct
+    λs when doing higher order matching.
 
-   We cannot be type-directed as suggested by Jesper so we probably should
-   restrict the rules to satisfy η.
-   PROBLEM Even when η-expanding on the fly we have a problem: what about the
-   domain? It's supposed to be a pattern so we would like to unify it with
-   something, it's not possible however. To be compliant we need to either
-   remove the pattern status of the domain or forget about η... at least so
-   it seems.
+    We cannot be type-directed as suggested by Jesper so we probably should
+    restrict the rules to satisfy η.
+    PROBLEM Even when η-expanding on the fly we have a problem: what about the
+    domain? It's supposed to be a pattern so we would like to unify it with
+    something, it's not possible however. To be compliant we need to either
+    remove the pattern status of the domain or forget about η... at least so
+    it seems.
 
-   ANOTHER PROBLEM If I do η-expansion with tApp (lift0 1 t) (tRel 0)
-   then all variables are a priori relevant in the term...
-   So we will only be able to match patterns mentionning all bound variables.
-   We'd be going through a lot of trouble for not much.
+    ANOTHER PROBLEM If I do η-expansion with tApp (lift0 1 t) (tRel 0)
+    then all variables are a priori relevant in the term...
+    So we will only be able to match patterns mentionning all bound variables.
+    We'd be going through a lot of trouble for not much.
 
-   SOLUTION? Only η-expanding when it's not a λ so as not to introduce
-   β-redexes. Meaning two cases for λ patterns.
+    SOLUTION? Only η-expanding when it's not a λ so as not to introduce
+    β-redexes. Meaning two cases for λ patterns.
 
     ANOTHER PROBLEM pointed out by Jesper, some rewrite rules may not behave
     well with respect to free variable elimination.
@@ -327,3 +324,5 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
     | _ => None
     end
   end.
+
+Fixpoint
