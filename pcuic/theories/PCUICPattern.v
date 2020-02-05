@@ -29,7 +29,7 @@ Inductive pattern (npat : nat) (nb : nat) : Type :=
 
 | pattern_bound n (bound : n < nb)
 
-| pattern_lambda (A : term) (b : pattern npat (S nb))
+| pattern_lambda (na : name) (A : term) (b : pattern npat (S nb))
 
 | pattern_construct
     (ind : inductive) (n : nat) (ui : universe_instance)
@@ -58,7 +58,7 @@ Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
   | pattern_variable n mask hn hmask =>
     mkApps (tRel (n + nb)) (mask_to_rels mask 0)
   | pattern_bound n h => tRel n
-  | pattern_lambda A b => tLambda nAnon A (pattern_to_term b)
+  | pattern_lambda na A b => tLambda na A (pattern_to_term b)
   | pattern_construct ind n ui args =>
     mkApps (tConstruct ind n ui) (map (pattern_to_term) args)
   end.
@@ -298,8 +298,11 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
   | pattern_bound n bound =>
     option_assert (eqb t (tRel n)) ;;
     ret (subs_empty npat)
-  | pattern_lambda A b =>
-    None (* TODO *)
+  | pattern_lambda na A b =>
+    match t with
+    | tLambda na' A' b' => match_pattern (Ξ ,, vass na A) b b'
+    | _ => match_pattern (Ξ ,, vass na A) b (tApp (lift0 1 t) (tRel 0))
+    end
   | pattern_construct ind n ui args =>
     let '(u,l) := decompose_app t in
     match u with
