@@ -29,6 +29,10 @@ Inductive pattern (npat : nat) (nb : nat) : Type :=
 
 | pattern_construct
     (ind : inductive) (n : nat) (ui : universe_instance)
+    (args : list (pattern npat nb))
+
+| pattern_symbol
+    (k : kername) (n : nat) (ui : universe_instance)
     (args : list (pattern npat nb)).
 
 Inductive elim_pattern (npat : nat) : Type :=
@@ -57,6 +61,8 @@ Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
   | pattern_lambda na A b => tLambda na A (pattern_to_term b)
   | pattern_construct ind n ui args =>
     mkApps (tConstruct ind n ui) (map (pattern_to_term) args)
+  | pattern_symbol k n ui args =>
+    mkApps (tSymb k n ui) (map (pattern_to_term) args)
   end.
 
 Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
@@ -323,6 +329,17 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
       monad_fold_right (subs_merge) sl (subs_empty npat)
     | _ => None
     end
+  | pattern_symbol k n ui args =>
+    let '(u,l) := decompose_app t in
+    match u with
+    | tSymb k' n' ui' =>
+      option_assert (eqb k k') ;;
+      option_assert (eqb n n') ;;
+      option_assert (eqb ui ui') ;;
+      sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;;
+      monad_fold_right (subs_merge) sl (subs_empty npat)
+    | _ => None
+    end
   end.
 
 (* We assume el given reversed *)
@@ -406,6 +423,9 @@ Fixpoint pattern_mask {npat nb} (p : pattern npat nb) :=
   | pattern_bound n h => ret (linear_mask_init npat)
   | pattern_lambda na A b => pattern_mask b
   | pattern_construct ind n ui args =>
+    sl <- monad_map (fun p => pattern_mask p) args ;;
+    monad_fold_right (lin_merge) sl (linear_mask_init npat)
+  | pattern_symbol k n ui args =>
     sl <- monad_map (fun p => pattern_mask p) args ;;
     monad_fold_right (lin_merge) sl (linear_mask_init npat)
   end.
