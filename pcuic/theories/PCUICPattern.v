@@ -223,16 +223,19 @@ Qed.
 Definition option_assert (b : bool) : option () :=
   if b then ret tt else None.
 
-Fixpoint option_map2 {A B C}
+Definition option_map2 {A B C}
   (f : A -> B -> option C) (l1 : list A) (l2 : list B) : option (list C) :=
-  match l1, l2 with
-  | [], [] => ret []
-  | x :: l1, y :: l2 =>
-      z <- f x y ;;
-      l <- option_map2 f l1 l2 ;;
-      ret (z :: l)
-  | _, _ => None
-  end.
+  let aux :=
+    fix aux l1 l2 :=
+      match l1, l2 with
+      | [], [] => ret []
+      | x :: l1, y :: l2 =>
+          z <- f x y ;;
+          l <- aux l1 l2 ;;
+          ret (z :: l)
+      | _, _ => None
+      end
+  in aux l1 l2.
 
 Notation partial_subst := (list (option term)).
 
@@ -310,7 +313,7 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
       option_assert (eqb ind ind') ;;
       option_assert (eqb n n') ;;
       option_assert (eqb ui ui') ;;
-      (* sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;; *)
+      sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;;
       None
     | _ => None
     end
