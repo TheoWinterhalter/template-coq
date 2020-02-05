@@ -34,7 +34,7 @@ Inductive pattern (npat : nat) (nb : nat) : Type :=
 Inductive elim_pattern (npat : nat) : Type :=
 | epApp (p : pattern npat 0)
 | epCase
-    (indn : inductive × nat) (p : pattern npat 0)
+    (ind : inductive × nat) (p : pattern npat 0)
     (brs : list (nat × pattern npat 0))
 | epProj (p : projection).
 
@@ -62,8 +62,8 @@ Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
 Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
   match e with
   | epApp p => eApp (pattern_to_term p)
-  | epCase indn p brs =>
-    eCase indn (pattern_to_term p) (map (on_snd (pattern_to_term)) brs)
+  | epCase ind p brs =>
+    eCase ind (pattern_to_term p) (map (on_snd (pattern_to_term)) brs)
   | epProj p => eProj p
   end.
 
@@ -325,4 +325,44 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
     end
   end.
 
-Fixpoint
+(* We assume el given reversed *)
+Fixpoint match_elims
+  (k : kername) (n : nat) (ui : universe_instance)
+  {npat} (el : list (elim_pattern npat))
+  (t : term)
+  : option (partial_subst) :=
+  match el with
+  | [] =>
+    option_assert (eqb (tSymb k n ui) t) ;;
+    ret (subs_empty npat)
+  | epApp p :: el =>
+    match t with
+    | tApp u v =>
+      sv <- match_pattern [] p v ;;
+      su <- match_elims k n ui el u ;;
+      subs_merge su sv
+    | _ => None
+    end
+  | epCase ind p brs :: el =>
+    match t with
+    | tCase ind' p' c brs' =>
+      option_assert (eqb ind ind') ;;
+      sp <- match_pattern [] p p' ;;
+      sl <- option_map2 (fun br br' =>
+              option_assert (eqb br.1 br'.1) ;;
+              match_pattern [] br.2 br'.2
+            ) brs brs' ;;
+      sb <- monad_fold_right (subs_merge) sl (subs_empty npat) ;;
+      sc <- match_elims k n ui el c ;;
+      s1 <- subs_merge sp sb ;;
+      subs_merge s1 sc
+    | _ => None
+    end
+  | epProj p :: l =>
+    match t with
+    | tProj p' u =>
+      option_assert (eqb p p') ;;
+      match_elims k n ui el u
+    | _ => None
+    end
+  end.
