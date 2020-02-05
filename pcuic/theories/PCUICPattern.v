@@ -371,3 +371,65 @@ Definition match_lhs k n ui {npat} (l : list (elim_pattern npat)) t :=
   s <- match_elims k n ui (List.rev l) t ;;
   (* From linearity the following should always succeed *)
   map_option_out s.
+
+(** Notion of linearity
+
+  We use a notion of linear mask. Similar to partial substitutions
+  and strengthening masks.
+*)
+
+Definition linear_mask_init (npat : nat) :=
+  list_init false npat.
+
+Fixpoint lin_merge (a b : list bool) : option (list bool) :=
+  match a, b with
+  | false :: a, x :: b
+  | x :: a, false :: b =>
+    l <- lin_merge a b ;;
+    ret (x :: l)
+  | [], [] => ret []
+  | _, _ => None
+  end.
+
+Fixpoint lin_set (n : nat) (l : list bool) : option (list bool) :=
+  match n, l with
+  | 0, false :: l => ret (true :: l)
+  | S n, b :: l =>
+    l' <- lin_set n l ;;
+    ret (b :: l')
+  | _, _ => None
+  end.
+
+Fixpoint pattern_mask {npat nb} (p : pattern npat nb) :=
+  match p with
+  | pattern_variable n mask hn hmask => lin_set n (linear_mask_init npat)
+  | pattern_bound n h => ret (linear_mask_init npat)
+  | pattern_lambda na A b => pattern_mask b
+  | pattern_construct ind n ui args =>
+    sl <- monad_map (fun p => pattern_mask p) args ;;
+    monad_fold_right (lin_merge) sl (linear_mask_init npat)
+  end.
+
+Fixpoint elim_mask {npat} (e : elim_pattern npat) :=
+  match e with
+  | epApp p => pattern_mask p
+  | epCase ind p brs =>
+    lp <- pattern_mask p ;;
+    lb <- monad_map (fun p => pattern_mask p.2) brs ;;
+    lb <- monad_fold_right (lin_merge) lb (linear_mask_init npat) ;;
+    lin_merge lp lb
+  | epProj p => ret (linear_mask_init npat)
+  end.
+
+Definition linear_mask {npat} (el : list (elim_pattern npat)) :=
+  l <- monad_map elim_mask el ;;
+  monad_fold_right lin_merge l (linear_mask_init npat).
+
+(** We force all variables to appear exactly once
+    (we could also allow some to be forgotten)
+*)
+Definition linear {npat} (el : list (elim_pattern npat)) :=
+  match linear_mask el with
+  | Some l => forallb (fun x => x) l
+  | None => false
+  end.
