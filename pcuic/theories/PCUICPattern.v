@@ -453,3 +453,24 @@ Definition linear {npat} (el : list (elim_pattern npat)) :=
   | Some l => forallb (fun x => x) l
   | None => false
   end.
+
+(** Some lemmata *)
+
+Lemma subs_init_nth_error :
+  forall npat n t s,
+    subs_init npat n t = Some s ->
+    nth_error s n = Some (Some t).
+Proof.
+  intros npat n t s e.
+  unfold subs_init in e. unfold subs_add in e.
+  destruct nth_error eqn:en. 2: discriminate.
+  destruct o. 1: discriminate.
+  apply some_inj in e. subst.
+  rewrite nth_error_app_ge. 2: apply firstn_le_length.
+  rewrite firstn_length.
+  apply nth_error_Some_length in en.
+  match goal with
+  | |- nth_error _ ?n = _ => replace n with 0 by lia
+  end.
+  cbn. reflexivity.
+Qed.
