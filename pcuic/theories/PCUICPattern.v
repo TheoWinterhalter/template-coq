@@ -366,3 +366,8 @@ Fixpoint match_elims
     | _ => None
     end
   end.
+
+Definition match_lhs k n ui {npat} (l : list (elim_pattern npat)) t :=
+  s <- match_elims k n ui (List.rev l) t ;;
+  (* From linearity the following should always succeed *)
+  map_option_out s.
