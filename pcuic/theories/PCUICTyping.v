@@ -1464,15 +1464,6 @@ Qed.
 
 (* Print Assumptions wf_option_map2. *)
 
-Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
-  (l : list B) (x : A) : T A :=
-  match l with
-  | [] => ret x
-  | y :: l =>
-      a <- monad_fold_right g l x ;;
-      g a y
-  end.
-
 Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
 

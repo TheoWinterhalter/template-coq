@@ -262,6 +262,15 @@ Fixpoint subs_merge (s1 s2 : partial_subst) : option (partial_subst) :=
   | _, _ => None
   end.
 
+Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
+  (l : list B) (x : A) : T A :=
+  match l with
+  | [] => ret x
+  | y :: l =>
+      a <- monad_fold_right g l x ;;
+      g a y
+  end.
+
 (* For soundness and completeness we need to define lift_mask... *)
 
 (* In order to apply the rules we need to define higher order matching.
@@ -314,7 +323,7 @@ Fixpoint match_pattern {npat} Ξ (p : pattern npat #|Ξ|) (t : term) {struct p}
       option_assert (eqb n n') ;;
       option_assert (eqb ui ui') ;;
       sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;;
-      None
+      monad_fold_right (subs_merge) sl (subs_empty npat)
     | _ => None
     end
   end.
