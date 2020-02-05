@@ -279,7 +279,7 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
     nth_error args (pars + narg) = Some arg ->
     red1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg
 
-(** Rewrite rule *)
+(** Rewrite rule *) (* TODO!!!!! UPDATE *)
 | red_rewrite_rule k ui decl n r s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
@@ -2019,7 +2019,7 @@ Proof.
            simpl in IH. simpl. exists s. apply IH.
            constructor 1. simpl. lia.
       * eapply All_impl. 1: eassumption.
-        intros rw [T onlhs onrhs onhead onlin onelims].
+        intros rw [T onlhs onrhs onhead onlin].
         exists T.
         -- match type of IH with
            | ?T -> _ =>

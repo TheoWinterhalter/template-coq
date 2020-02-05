@@ -21,6 +21,9 @@ Module Type Term.
 
   Parameter (mkApps : term -> list term -> term).
 
+  Parameter (elim_pattern : nat -> Type).
+  Parameter (mkPElims : term -> forall {npat}, list (elim_pattern npat) -> term).
+
 End Term.
 
 Module Environment (T : Term).
@@ -84,25 +87,11 @@ Module Environment (T : Term).
       cst_universes : universes_decl }.
 
   (** REWRITE RULES *)
-  Inductive elimination :=
-  | eApp (p : term)
-  | eCase (indn : inductive * nat) (p : term) (brs : list (nat * term))
-  | eProj (p : projection).
-
-  Definition mkElim t e :=
-    match e with
-    | eApp p => mkApps t [ p ]
-    | eCase indn p brs => tCase indn p t brs
-    | eProj p => tProj p t
-    end.
-
-  Definition mkElims t el :=
-    fold_left mkElim el t.
 
   Record rewrite_rule := mkrew {
     pat_context : context ;
     head : nat ; (* Head symbol, local reference in the block *)
-    elims : list elimination ;
+    elims : list (elim_pattern #|pat_context|) ;
     rhs : term
   }.
 
@@ -121,7 +110,7 @@ Module Environment (T : Term).
   }.
 
   Definition lhs (r : rewrite_rule) : term :=
-    mkElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims).
+    mkPElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims).
 
   Inductive global_decl :=
   | ConstantDecl : constant_body -> global_decl

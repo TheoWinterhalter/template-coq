@@ -3,6 +3,7 @@
 Require Import Coq.Strings.String.
 Require Import Coq.PArith.BinPos.
 Require Import List. Import ListNotations.
+From MetaCoq.Template Require Import utils.
 From MetaCoq.Template Require Export Universes BasicAst Environment.
 
 (* Declare Scope pcuic.*)
@@ -119,6 +120,89 @@ Record mutual_inductive_entry := {
      module. Not handled by Template Coq yet. *) }.
 
 
+(** Pattern definition
+
+  This definition is relative to the number of pattern variables,
+  and the number of bound variables introduced afterwards.
+
+  TODO How to guarantee the tConstruct is fully applied?
+  Maybe we don't have to.
+*)
+Inductive pattern (npat : nat) (nb : nat) : Type :=
+| pattern_variable n (mask : list bool) :
+    n < npat -> (* n is a pattern index *)
+    #|mask| = nb ->
+    pattern npat nb
+
+| pattern_bound n (bound : n < nb)
+
+| pattern_lambda (na : name) (A : term) (b : pattern npat (S nb))
+
+| pattern_construct
+    (ind : inductive) (n : nat) (ui : universe_instance)
+    (args : list (pattern npat nb))
+
+| pattern_symbol
+    (k : kername) (n : nat) (ui : universe_instance)
+    (args : list (pattern npat nb)).
+
+Inductive elim_pattern (npat : nat) : Type :=
+| epApp (p : pattern npat 0)
+| epCase
+    (ind : inductive × nat) (p : pattern npat 0)
+    (brs : list (nat × pattern npat 0))
+| epProj (p : projection).
+
+Inductive elimination :=
+| eApp (p : term)
+| eCase (indn : inductive * nat) (p : term) (brs : list (nat * term))
+| eProj (p : projection).
+
+Definition mkElim t e :=
+  match e with
+  | eApp p => mkApps t [ p ]
+  | eCase indn p brs => tCase indn p t brs
+  | eProj p => tProj p t
+  end.
+
+Definition mkElims t el :=
+  fold_left mkElim el t.
+
+Fixpoint mask_to_rels (mask : list bool) (i : nat) :=
+  match mask with
+  | true :: mask => tRel i :: mask_to_rels mask (S i)
+  | false :: mask => mask_to_rels mask (S i)
+  | [] => []
+  end.
+
+(** Translating patterns to terms
+
+  Maybe it'd be smarter to define instantiation...
+*)
+Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
+  match p with
+  | pattern_variable n mask hn hmask =>
+    mkApps (tRel (n + nb)) (mask_to_rels mask 0)
+  | pattern_bound n h => tRel n
+  | pattern_lambda na A b => tLambda na A (pattern_to_term b)
+  | pattern_construct ind n ui args =>
+    mkApps (tConstruct ind n ui) (map (pattern_to_term) args)
+  | pattern_symbol k n ui args =>
+    mkApps (tSymb k n ui) (map (pattern_to_term) args)
+  end.
+
+Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
+  match e with
+  | epApp p => eApp (pattern_to_term p)
+  | epCase ind p brs =>
+    eCase ind (pattern_to_term p) (map (on_snd (pattern_to_term)) brs)
+  | epProj p => eProj p
+  end.
+
+Definition mkPElims (t : term) {npat} (l : list (elim_pattern npat)) : term :=
+  mkElims t (map elim_pattern_to_elim l).
+
+
 
 Module PCUICTerm <: Term.
 
@@ -134,6 +218,8 @@ Module PCUICTerm <: Term.
   Definition tProj := tProj.
 
   Definition mkApps := mkApps.
+  Definition elim_pattern := elim_pattern.
+  Definition mkPElims := mkPElims.
 
 End PCUICTerm.
 

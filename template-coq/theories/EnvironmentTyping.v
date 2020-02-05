@@ -262,9 +262,7 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
 
-  Parameter (elim_pattern : nat -> elimination -> Prop).
-
-  Parameter (linear : nat -> list elimination -> bool).
+  Parameter (linear : forall npat, list (elim_pattern npat) -> bool).
 
 End Typing.
 
@@ -461,14 +459,14 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       lhsTyped  : P Σ (Δ ,,, r.(pat_context)) (lhs r) (Some rewCommonType) ;
       rhsTyped  : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
       onHead    : r.(head) < #|Δ| ;
-      lhsLinear : linear #|r.(pat_context)| r.(elims) ;
-      onElims   : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
+      lhsLinear : linear #|r.(pat_context)| r.(elims)
     }.
 
     Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
     | or_left : forall x y, R x y -> or_rel R R' x y
     | or_right : forall x y, R' x y -> or_rel R R' x y.
 
+    (* TODO !!! It needs to be udpated *)
     Inductive red1_rules
       (k : kername) (symbols : list term) (rules : list rewrite_rule) (Γ : context)
       : term -> term -> Type :=
