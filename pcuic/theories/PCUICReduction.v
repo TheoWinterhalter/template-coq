@@ -6,7 +6,7 @@ From Coq Require Import Bool String List Program BinPos Compare_dec Utf8 String
   ZArith Lia.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICPosition.
+     PCUICLiftSubst PCUICUnivSubst PCUICPattern PCUICTyping PCUICPosition.
 
 Require Import Equations.Prop.DepElim.
 
@@ -1330,14 +1330,13 @@ Inductive tred1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
     tred1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg
 
 (** Rewrite rule *)
-| tred_rewrite_rule k ui decl n r s :
+| tred_rewrite_rule k ui decl n r t s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
+    match_rule k ui r t = Some s ->
     let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-    untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
-    let lhs := subst0 s (subst ss #|s| (lhs r)) in
     let rhs := subst0 s (subst ss #|s| (rhs r)) in
-    tred1 Σ Γ lhs rhs.
+    tred1 Σ Γ t rhs.
 
 Definition ctred1 Σ :=
   context_env_clos (tred1 Σ).

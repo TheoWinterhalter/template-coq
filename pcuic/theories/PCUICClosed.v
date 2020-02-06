@@ -2,8 +2,8 @@
 From Equations Require Import Equations.
 From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia.
 From MetaCoq.Template Require Import config utils Ast.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICLiftSubst
-     PCUICUnivSubst PCUICTyping PCUICWeakeningEnv.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
+  PCUICLiftSubst PCUICUnivSubst PCUICPattern PCUICTyping PCUICWeakeningEnv.
 Require Import ssreflect ssrbool.
 
 Require Import Equations.Prop.DepElim.
@@ -542,19 +542,18 @@ Proof.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
     + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onlin onelims].
+      intros rw [T onlhs onrhs onhead onlin].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
-      * assumption.
+
       * assumption.
       * assumption.
     + eapply All_impl. 1: exact hpr.
-      intros rw [T onlhs onrhs onhead onlin onelims].
+      intros rw [T onlhs onrhs onhead onlin].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
-      * assumption.
       * assumption.
       * assumption.
     + cbn. eapply All_impl. 1: exact hprr.
@@ -573,7 +572,7 @@ Proof.
   eapply lookup_on_global_env in h. 2: eauto.
   destruct h as [Σ' [wfΣ' decl']].
   red in decl'. red in decl'.
-  destruct decl' as [hctx hr].
+  destruct decl' as [hctx _].
   unfold on_context in hctx.
   set (l := symbols decl) in *.
   clearbody l. clear - e hctx wfΣ'.
@@ -672,7 +671,7 @@ Proof.
   apply wf_local_closed_ctx in hl. 2: auto.
   rewrite closedn_ctx_app in hl.
   apply utils.andP in hl as [? h]. cbn in h.
-  rewrite map_length in h. assumption.
+  erewrite <- map_length. eassumption.
 Qed.
 
 Lemma closed_declared_symbol_par_pat_context `{checker_flags} :
@@ -694,7 +693,7 @@ Proof.
   apply wf_local_closed_ctx in hl. 2: auto.
   rewrite closedn_ctx_app in hl.
   apply utils.andP in hl as [? h]. cbn in h.
-  rewrite map_length in h. assumption.
+  erewrite <- map_length. eassumption.
 Qed.
 
 Lemma closed_declared_symbol_par_context `{checker_flags} :
@@ -738,8 +737,8 @@ Proof.
   destruct h as [_ h].
   apply utils.andP in h. destruct h as [h _].
   rewrite app_context_length in h.
-  rewrite map_length in h.
-  assumption.
+  clear - h. revert r h. rewrite -> map_length.
+  auto.
 Qed.
 
 Lemma closed_rule_rhs `{checker_flags} :
@@ -763,8 +762,7 @@ Proof.
   destruct h as [_ h].
   apply utils.andP in h. destruct h as [h _].
   rewrite app_context_length in h.
-  rewrite map_length in h.
-  assumption.
+  revert r h. rewrite map_length. auto.
 Qed.
 
 Lemma closed_prule_lhs `{checker_flags} :
@@ -788,8 +786,7 @@ Proof.
   destruct h as [_ h].
   apply utils.andP in h. destruct h as [h _].
   rewrite app_context_length in h.
-  rewrite map_length in h.
-  assumption.
+  revert r h. rewrite map_length. auto.
 Qed.
 
 Lemma closed_prule_rhs `{checker_flags} :
@@ -813,8 +810,7 @@ Proof.
   destruct h as [_ h].
   apply utils.andP in h. destruct h as [h _].
   rewrite app_context_length in h.
-  rewrite map_length in h.
-  assumption.
+  revert r h. rewrite map_length. auto.
 Qed.
 
 Lemma declared_decl_closed `{checker_flags} (Σ : global_env) cst decl :
