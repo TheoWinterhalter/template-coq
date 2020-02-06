@@ -7,6 +7,67 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICUtils
   PCUICPosition.
 
+(* TODO MOVE *)
+Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
+  match n with
+  | 0 => []
+  | S n => f i :: list_make f (S i) n
+  end.
+
+(* TODO MOVE *)
+Lemma list_make_length :
+  forall A f i n,
+    #|@list_make A f i n| = n.
+Proof.
+  intros A f i n.
+  induction n in i |- *.
+  - reflexivity.
+  - simpl. f_equal. apply IHn.
+Qed.
+
+(* TODO MOVE *)
+Lemma list_make_map :
+  forall A f i n B (g : A -> B),
+    map g (@list_make A f i n) = list_make (fun i => g (f i)) i n.
+Proof.
+  intros A f i n B g.
+  induction n in i |- *.
+  - reflexivity.
+  - simpl. f_equal. eapply IHn.
+Qed.
+
+Definition symbols_subst k n u m :=
+  list_make (fun i => tSymb k i u) n (m - n).
+
+Lemma symbols_subst_length :
+  forall k n u m,
+    #|symbols_subst k n u m| = m - n.
+Proof.
+  intros k n u m.
+  unfold symbols_subst.
+  apply list_make_length.
+Qed.
+
+(** Instantiation of symbols in a pattern *)
+
+Fixpoint pattern_inst_symb k ui {nsymb npat nb} (p : pattern nsymb npat nb) :
+  pattern 0 npat nb :=
+  let ss := symbols_subst k 0 ui nsymb in
+  match p with
+  | pattern_variable n mask hn hmask =>
+    pattern_variable n mask hn hmask
+  | pattern_bound n h =>
+    pattern_bound n h
+  | pattern_lambda na A b =>
+    pattern_lambda na (subst ss (npat + nb) A) (pattern_inst_symb k ui b)
+  | pattern_construct ind n ui' args =>
+    pattern_construct ind n ui' (map (pattern_inst_symb k ui) args)
+  | pattern_symbol k' n ui' args =>
+    pattern_symbol k' n ui' (map (pattern_inst_symb k ui) args)
+  | pattern_local n hs args =>
+    pattern_symbol k n ui (map (pattern_inst_symb k ui) args)
+  end.
+
 Import MonadNotation.
 
 (** Strengthening along a mask

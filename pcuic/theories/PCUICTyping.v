@@ -171,47 +171,6 @@ Definition iota_red npar c args brs :=
 Local Open Scope type_scope.
 Arguments OnOne2 {A} P%type l l'.
 
-(* TODO MOVE *)
-Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
-  match n with
-  | 0 => []
-  | S n => f i :: list_make f (S i) n
-  end.
-
-(* TODO MOVE *)
-Lemma list_make_length :
-  forall A f i n,
-    #|@list_make A f i n| = n.
-Proof.
-  intros A f i n.
-  induction n in i |- *.
-  - reflexivity.
-  - simpl. f_equal. apply IHn.
-Qed.
-
-(* TODO MOVE *)
-Lemma list_make_map :
-  forall A f i n B (g : A -> B),
-    map g (@list_make A f i n) = list_make (fun i => g (f i)) i n.
-Proof.
-  intros A f i n B g.
-  induction n in i |- *.
-  - reflexivity.
-  - simpl. f_equal. eapply IHn.
-Qed.
-
-Definition symbols_subst k n u m :=
-  list_make (fun i => tSymb k i u) n (m - n).
-
-Lemma symbols_subst_length :
-  forall k n u m,
-    #|symbols_subst k n u m| = m - n.
-Proof.
-  intros k n u m.
-  unfold symbols_subst.
-  apply list_make_length.
-Qed.
-
 (* MOVED from PCUICSubtitution *)
 Inductive untyped_subslet (Γ : context) : list term -> context -> Type :=
 | untyped_emptyslet : untyped_subslet Γ [] []

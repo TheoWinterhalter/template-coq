@@ -152,6 +152,13 @@ Inductive pattern (nsymb npat nb : nat) : Type :=
 | pattern_local
     (n : nat) (hs : n < nsymb) (args : list (pattern nsymb npat nb)).
 
+Arguments pattern_variable {_ _ _} _ _ _ _.
+Arguments pattern_bound {_ _ _} _ _.
+Arguments pattern_lambda {_ _ _} _ _ _.
+Arguments pattern_construct {_ _ _} _ _ _ _.
+Arguments pattern_symbol {_ _ _} _ _ _ _.
+Arguments pattern_local {_ _ _} _ _ _.
+
 Inductive elim_pattern (nsymb npat : nat) : Type :=
 | epApp (p : pattern nsymb npat 0)
 | epCase
