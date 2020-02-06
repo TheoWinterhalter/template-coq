@@ -127,30 +127,36 @@ Record mutual_inductive_entry := {
 
   TODO How to guarantee the tConstruct is fully applied?
   Maybe we don't have to.
+
+  pattern_local is to later be interpreted as pattern_symbol with the right k
+  and ui.
 *)
-Inductive pattern (npat : nat) (nb : nat) : Type :=
+Inductive pattern (nsymb npat nb : nat) : Type :=
 | pattern_variable n (mask : list bool) :
     n < npat -> (* n is a pattern index *)
     #|mask| = nb ->
-    pattern npat nb
+    pattern nsymb npat nb
 
 | pattern_bound n (bound : n < nb)
 
-| pattern_lambda (na : name) (A : term) (b : pattern npat (S nb))
+| pattern_lambda (na : name) (A : term) (b : pattern nsymb npat (S nb))
 
 | pattern_construct
     (ind : inductive) (n : nat) (ui : universe_instance)
-    (args : list (pattern npat nb))
+    (args : list (pattern nsymb npat nb))
 
 | pattern_symbol
     (k : kername) (n : nat) (ui : universe_instance)
-    (args : list (pattern npat nb)).
+    (args : list (pattern nsymb npat nb))
 
-Inductive elim_pattern (npat : nat) : Type :=
-| epApp (p : pattern npat 0)
+| pattern_local
+    (n : nat) (hs : n < nsymb) (args : list (pattern nsymb npat nb)).
+
+Inductive elim_pattern (nsymb npat : nat) : Type :=
+| epApp (p : pattern nsymb npat 0)
 | epCase
-    (ind : inductive × nat) (p : pattern npat 0)
-    (brs : list (nat × pattern npat 0))
+    (ind : inductive × nat) (p : pattern nsymb npat 0)
+    (brs : list (nat × pattern nsymb npat 0))
 | epProj (p : projection).
 
 Inductive elimination :=
@@ -179,7 +185,7 @@ Fixpoint mask_to_rels (mask : list bool) (i : nat) :=
 
   Maybe it'd be smarter to define instantiation...
 *)
-Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
+Fixpoint pattern_to_term {nsymb npat nb} (p : pattern nsymb npat nb) : term :=
   match p with
   | pattern_variable n mask hn hmask =>
     mkApps (tRel (n + nb)) (mask_to_rels mask 0)
@@ -189,9 +195,12 @@ Fixpoint pattern_to_term {npat nb} (p : pattern npat nb) : term :=
     mkApps (tConstruct ind n ui) (map (pattern_to_term) args)
   | pattern_symbol k n ui args =>
     mkApps (tSymb k n ui) (map (pattern_to_term) args)
+  | pattern_local n hs args =>
+    mkApps (tRel (n + npat + nb)) (map (pattern_to_term) args)
   end.
 
-Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
+Fixpoint elim_pattern_to_elim {nsymb npat} (e : elim_pattern nsymb npat)
+  : elimination :=
   match e with
   | epApp p => eApp (pattern_to_term p)
   | epCase ind p brs =>
@@ -199,7 +208,8 @@ Fixpoint elim_pattern_to_elim {npat} (e : elim_pattern npat) : elimination :=
   | epProj p => eProj p
   end.
 
-Definition mkPElims (t : term) {npat} (l : list (elim_pattern npat)) : term :=
+Definition mkPElims (t : term) {nsymb npat} (l : list (elim_pattern nsymb npat))
+  : term :=
   mkElims t (map elim_pattern_to_elim l).
 
 

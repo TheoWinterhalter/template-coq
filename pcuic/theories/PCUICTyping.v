@@ -279,12 +279,12 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
     nth_error args (pars + narg) = Some arg ->
     red1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg
 
-(** Rewrite rule *) (* TODO!!!!! UPDATE *)
+(** Rewrite rule *)
 | red_rewrite_rule k ui decl n r s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
     let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-    untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+    (* match_lhs k r.(head) ui (map (subst_elim_pattern ) r.(elims)) = Some s -> *)
     let lhs := subst0 s (subst ss #|s| (lhs r)) in
     let rhs := subst0 s (subst ss #|s| (rhs r)) in
     red1 Σ Γ lhs rhs

@@ -262,7 +262,9 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
 
-  Parameter (linear : forall npat, list (elim_pattern npat) -> bool).
+  Parameter (linear :
+    forall nsymb npat, list (elim_pattern nsymb npat) -> bool
+  ).
 
 End Typing.
 
@@ -454,12 +456,12 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
     (** *** Typing of rewrite rule declarations  *)
 
-    Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
+    Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule #|Δ|) := {
       rewCommonType : term ;
       lhsTyped  : P Σ (Δ ,,, r.(pat_context)) (lhs r) (Some rewCommonType) ;
       rhsTyped  : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
       onHead    : r.(head) < #|Δ| ;
-      lhsLinear : linear #|r.(pat_context)| r.(elims)
+      lhsLinear : linear #|Δ| #|r.(pat_context)| r.(elims)
     }.
 
     Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
@@ -468,7 +470,8 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
     (* TODO !!! It needs to be udpated *)
     Inductive red1_rules
-      (k : kername) (symbols : list term) (rules : list rewrite_rule) (Γ : context)
+      (k : kername) (symbols : list term)
+      (rules : list (rewrite_rule #|map (vass nAnon) symbols|)) (Γ : context)
       : term -> term -> Type :=
     | red1_rules_rewrite_rule ui n r s :
         nth_error rules n = Some r ->
@@ -497,7 +500,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Definition red' Σ Γ k symbols rules :=
       clos_trans (or_rel (red Σ Γ) (red_rules k symbols rules Γ)).
 
-    Definition prule_red Σ Δ kn symbols rules (r : rewrite_rule) :=
+    Definition prule_red Σ Δ kn symbols rules (r : rewrite_rule #|map (vass nAnon) symbols|) :=
       red' Σ (Δ ,,, r.(pat_context)) kn symbols rules r.(lhs) r.(rhs).
 
     Definition on_rewrite_decl Σ kn d :=

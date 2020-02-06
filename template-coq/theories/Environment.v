@@ -21,8 +21,10 @@ Module Type Term.
 
   Parameter (mkApps : term -> list term -> term).
 
-  Parameter (elim_pattern : nat -> Type).
-  Parameter (mkPElims : term -> forall {npat}, list (elim_pattern npat) -> term).
+  Parameter (elim_pattern : nat -> nat -> Type).
+  Parameter (mkPElims :
+    term -> forall {nsymb npat}, list (elim_pattern nsymb npat) -> term
+  ).
 
 End Term.
 
@@ -88,28 +90,33 @@ Module Environment (T : Term).
 
   (** REWRITE RULES *)
 
-  Record rewrite_rule := mkrew {
+  Record rewrite_rule nsymb := mkrew {
     pat_context : context ;
     head : nat ; (* Head symbol, local reference in the block *)
-    elims : list (elim_pattern #|pat_context|) ;
+    elims : list (elim_pattern nsymb #|pat_context|) ;
     rhs : term
   }.
+
+  Arguments pat_context {_} _.
+  Arguments head {_} _.
+  Arguments elims {_} _.
+  Arguments rhs {_} _.
 
   Record rewrite_decl := {
     symbols : list term ; (* Types of the different symbols in the block,
                              can be thought of as a context.
                              The head can depend on the tail.
                            *)
-    rules : list rewrite_rule ; (* The actual rewrite rules *)
-    prules : list rewrite_rule ; (* Parallel rewrite rules to complete the
-                                    others. They aren't used in the theory
-                                    itself, only as an intermediary for
-                                    confluence.
-                                  *)
+    rules : list (rewrite_rule #|map (vass nAnon) symbols|) ; (* The actual rewrite rules *)
+    prules : list (rewrite_rule #|map (vass nAnon) symbols|) ;
+              (** Parallel rewrite rules to complete the others.
+                  They aren't used in the theory itself, only as an intermediary
+                  for confluence.
+              *)
     rew_universes : universes_decl
   }.
 
-  Definition lhs (r : rewrite_rule) : term :=
+  Definition lhs {nsymb} (r : rewrite_rule nsymb) : term :=
     mkPElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims).
 
   Inductive global_decl :=

@@ -182,8 +182,9 @@ Module TemplateTerm <: Term.
 
   Definition mkApps := mkApps.
 
-  Definition elim_pattern (npat : nat) := unit.
-  Definition mkPElims (t : term) npat (l : list (elim_pattern npat)) := tRel 0.
+  Definition elim_pattern (nsymb npat : nat) := unit.
+  Definition mkPElims (t : term) nsymb npat (l : list (elim_pattern nsymb npat)) :=
+    tRel 0.
 
 End TemplateTerm.
 
