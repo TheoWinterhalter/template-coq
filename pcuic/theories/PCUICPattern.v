@@ -7,6 +7,8 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICUtils
   PCUICPosition.
 
+Set Default Goal Selector "!".
+
 (* TODO MOVE *)
 Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
   match n with
@@ -271,6 +273,13 @@ Fixpoint subs_merge (s1 s2 : partial_subst) : option (partial_subst) :=
   | _, _ => None
   end.
 
+Lemma subs_empty_length :
+  forall n,
+    #|subs_empty n| = n.
+Proof.
+  intros n. unfold subs_empty. apply list_init_length.
+Qed.
+
 Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
   (l : list B) (x : A) : T A :=
   match l with
@@ -357,7 +366,7 @@ Fixpoint match_pattern {npat} Ξ (p : pattern 0 npat #|Ξ|) (t : term) {struct p
 Fixpoint match_elims
   (k : kername) (n : nat) (ui : universe_instance)
   {npat} (el : list (elim_pattern 0 npat))
-  (t : term)
+  (t : term) {struct el}
   : option (partial_subst) :=
   match el with
   | [] =>
@@ -386,7 +395,7 @@ Fixpoint match_elims
       subs_merge s1 sc
     | _ => None
     end
-  | epProj p :: l =>
+  | epProj p :: el =>
     match t with
     | tProj p' u =>
       option_assert (eqb p p') ;;
@@ -421,7 +430,51 @@ Lemma match_pattern_length :
   forall npat Ξ p t s,
     @match_pattern npat Ξ p t = Some s ->
     #|s| = npat.
-Admitted.
+Abort.
+
+Lemma subs_merge_length_left :
+  forall l1 l2 l,
+    subs_merge l1 l2 = Some l ->
+    #|l1| = #|l|.
+Proof.
+  intros l1 l2 l e.
+  induction l1 as [| [] l1 ih] in l2, l, e |- *.
+  - cbn in e. destruct l2. 2: discriminate.
+    apply some_inj in e. subst. reflexivity.
+  - cbn in e. destruct l2 as [| [] l2]. 1,2: discriminate.
+    destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    cbn. f_equal. eapply ih. eassumption.
+  - cbn in e. destruct l2 as [| [] l2]. 1: discriminate.
+    + destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. eapply ih. eassumption.
+    + destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. eapply ih. eassumption.
+Qed.
+
+Lemma subs_merge_length_right :
+  forall l1 l2 l,
+    subs_merge l1 l2 = Some l ->
+    #|l2| = #|l|.
+Proof.
+  intros l1 l2 l e.
+  induction l1 as [| [] l1 ih] in l2, l, e |- *.
+  - cbn in e. destruct l2. 2: discriminate.
+    apply some_inj in e. subst. reflexivity.
+  - cbn in e. destruct l2 as [| [] l2]. 1,2: discriminate.
+    destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    cbn. f_equal. apply ih. assumption.
+  - cbn in e. destruct l2 as [| [] l2]. 1: discriminate.
+    + destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. apply ih. assumption.
+    + destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. apply ih. assumption.
+Qed.
 
 Lemma match_elims_length :
   forall k n ui npat el t s,
@@ -429,12 +482,30 @@ Lemma match_elims_length :
     #|s| = npat.
 Proof.
   intros k n ui npat el t s e.
-  induction el as [| [] el ih].
-  - unfold match_elims in e. cbn fix in e.
-    (* WHY doesn't it reduce??? *)
-    admit.
-  -
-Admitted.
+  induction el as [| [] el ih] in t, s, e |- *.
+  - unfold match_elims in e.
+    destruct (eqb_spec (tSymb k n ui) t). 2: discriminate.
+    cbn in e. apply some_inj in e. subst.
+    apply subs_empty_length.
+  - cbn in e. destruct t. all: try discriminate.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct match_elims eqn:e2. 2: discriminate.
+    apply ih in e2.
+    apply subs_merge_length_left in e. lia.
+  - cbn - [eqb] in e. destruct t. all: try discriminate.
+    destruct eqb in e. 2: discriminate.
+    cbn in e.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct option_map2 eqn:e2. 2: discriminate.
+    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct match_elims eqn:e4. 2: discriminate.
+    destruct subs_merge eqn:e5. 2: discriminate.
+    apply ih in e4.
+    apply subs_merge_length_right in e. lia.
+  - cbn - [eqb] in e. destruct t. all: try discriminate.
+    destruct eqb. 2: discriminate.
+    cbn in e. apply ih in e. assumption.
+Qed.
 
 Lemma match_lhs_length :
   forall k n ui npat l t s,
