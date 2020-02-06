@@ -400,8 +400,66 @@ Definition match_lhs k n ui {npat} (l : list (elim_pattern 0 npat)) t :=
   (* From linearity the following should always succeed *)
   map_option_out s.
 
-Definition match_rule {npat} k ui (r : rewrite_rule npat) t :=
+Definition match_rule {nsymb} k ui (r : rewrite_rule nsymb) t :=
   match_lhs k r.(head) ui (map (elim_pattern_inst_symb k ui) r.(elims)) t.
+
+Lemma map_option_out_length :
+  forall A (l : list (option A)) l',
+    map_option_out l = Some l' ->
+    #|l| = #|l'|.
+Proof.
+  intros A l l' e.
+  induction l as [| [] l ih] in l', e |- *.
+  - cbn in e. apply some_inj in e. subst. reflexivity.
+  - cbn in e. destruct map_option_out eqn:e1. 2: discriminate.
+    apply some_inj in e. subst. cbn. f_equal.
+    apply ih. reflexivity.
+  - cbn in e. discriminate.
+Qed.
+
+Lemma match_pattern_length :
+  forall npat Ξ p t s,
+    @match_pattern npat Ξ p t = Some s ->
+    #|s| = npat.
+Admitted.
+
+Lemma match_elims_length :
+  forall k n ui npat el t s,
+    @match_elims k n ui npat el t = Some s ->
+    #|s| = npat.
+Proof.
+  intros k n ui npat el t s e.
+  induction el as [| [] el ih].
+  - unfold match_elims in e. cbn fix in e.
+    (* WHY doesn't it reduce??? *)
+    admit.
+  -
+Admitted.
+
+Lemma match_lhs_length :
+  forall k n ui npat l t s,
+    @match_lhs k n ui npat l t = Some s ->
+    #|s| = npat.
+Proof.
+  intros k n ui npat l t s e.
+  unfold match_lhs in e.
+  destruct match_elims eqn:e1. 2: discriminate.
+  cbn in e.
+  apply match_elims_length in e1.
+  apply map_option_out_length in e.
+  lia.
+Qed.
+
+Lemma match_rule_length :
+  forall nsymb k ui r t s,
+    @match_rule nsymb k ui r t = Some s ->
+    #|s| = #|r.(pat_context)|.
+Proof.
+  intros nsymb k ui r t s e.
+  unfold match_rule in e.
+  apply match_lhs_length in e.
+  assumption.
+Qed.
 
 (** Notion of linearity
 
