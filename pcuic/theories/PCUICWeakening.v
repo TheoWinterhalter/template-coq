@@ -4,8 +4,8 @@ From Coq Require Import Bool String List BinPos Compare_dec ZArith Lia.
 Require Import Coq.Program.Syntax Coq.Program.Basics.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-  PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICTyping PCUICWeakeningEnv
-  PCUICClosed PCUICReduction PCUICPosition.
+  PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICPattern PCUICTyping
+  PCUICWeakeningEnv PCUICClosed PCUICReduction PCUICPosition.
 Require Import ssreflect ssrbool.
 
 From Equations Require Import Equations.
@@ -852,24 +852,18 @@ Proof.
   - simpl. constructor.
     now rewrite -> nth_error_map, H.
 
-  - rewrite 2!distr_lift_subst_rec.
+  - rewrite distr_lift_subst_rec.
     assert (e : forall i j, map (lift i j) ss = ss).
     { intros i j. subst ss. unfold symbols_subst.
       rewrite list_make_map. simpl. reflexivity.
     }
     rewrite e.
-    rewrite lift_closed.
-    1:{ eapply closed_upwards. 1: eapply closed_rule_lhs.
-        all: eauto.
-        subst ss. rewrite symbols_subst_length.
-        apply untyped_subslet_length in H1.
-        rewrite subst_context_length in H1.
-        lia.
-    }
+    set (t' := lift _ _ t).
     rewrite lift_closed.
     1:{ eapply closed_upwards. 1: eapply closed_rule_rhs.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
+        (* TODO We need some length property on match_rule *)
         apply untyped_subslet_length in H1.
         rewrite subst_context_length in H1.
         lia.
