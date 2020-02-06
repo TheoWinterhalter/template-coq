@@ -239,14 +239,13 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
     red1 Σ Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg
 
 (** Rewrite rule *)
-| red_rewrite_rule k ui decl n r s :
+| red_rewrite_rule k ui decl n r t s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
+    match_rule k ui r t = Some s ->
     let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-    (* match_lhs k r.(head) ui (map (subst_elim_pattern ) r.(elims)) = Some s -> *)
-    let lhs := subst0 s (subst ss #|s| (lhs r)) in
     let rhs := subst0 s (subst ss #|s| (rhs r)) in
-    red1 Σ Γ lhs rhs
+    red1 Σ Γ t rhs
 
 
 | abs_red_l na M M' N : red1 Σ Γ M M' -> red1 Σ Γ (tLambda na M N) (tLambda na M' N)
@@ -327,14 +326,13 @@ Lemma red1_ind_all :
            nth_error args (pars + narg) = Some arg ->
            P Γ (tProj (i, pars, narg) (mkApps (tConstruct i k u) args)) arg) ->
 
-       (forall Γ k ui decl n r s,
+       (forall Γ k ui decl n r t s,
           declared_symbol Σ k decl ->
           nth_error decl.(rules) n = Some r ->
+          match_rule k ui r t = Some s ->
           let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-          untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
-          let lhs := subst0 s (subst ss #|s| (lhs r)) in
           let rhs := subst0 s (subst ss #|s| (rhs r)) in
-          P Γ lhs rhs) ->
+          P Γ t rhs) ->
 
        (forall (Γ : context) (na : name) (M M' N : term),
         red1 Σ Γ M M' -> P Γ M M' -> P Γ (tLambda na M N) (tLambda na M' N)) ->
@@ -2002,9 +2000,8 @@ Proof.
               apply IH. constructor 1. simpl. lia.
         -- assumption.
         -- assumption.
-        -- assumption.
       * eapply All_impl. 1: exact hpr.
-        intros rw [T onlhs onrhs onhead onlin onelims].
+        intros rw [T onlhs onrhs onhead onlin].
         exists T.
         -- match type of IH with
           | ?T -> _ =>
@@ -2026,7 +2023,6 @@ Proof.
              eapply typing_wf_local. eassumption.
           ++ specialize (IH y). subst y. simpl in IH.
              apply IH. constructor 1. simpl. lia.
-        -- assumption.
         -- assumption.
         -- assumption.
       * eapply All_impl. 1: exact hprr.

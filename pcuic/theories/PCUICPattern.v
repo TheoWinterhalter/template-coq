@@ -309,6 +309,10 @@ Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
     well with respect to free variable elimination.
     f x y -> c versus f -> λxy. c (we should enforce the latter for things
     to go smoothly).
+
+    NOTE For now we only recognise when no symbols are left uninstantiated.
+    This could be changed in the event we need to recognise them in the
+    global context.
 *)
 Fixpoint match_pattern {npat} Ξ (p : pattern 0 npat #|Ξ|) (t : term) {struct p}
   : option partial_subst :=
@@ -395,6 +399,9 @@ Definition match_lhs k n ui {npat} (l : list (elim_pattern 0 npat)) t :=
   s <- match_elims k n ui (List.rev l) t ;;
   (* From linearity the following should always succeed *)
   map_option_out s.
+
+Definition match_rule {npat} k ui (r : rewrite_rule npat) t :=
+  match_lhs k r.(head) ui (map (elim_pattern_inst_symb k ui) r.(elims)) t.
 
 (** Notion of linearity
 
