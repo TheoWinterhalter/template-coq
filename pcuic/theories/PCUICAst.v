@@ -166,6 +166,10 @@ Inductive elim_pattern (nsymb npat : nat) : Type :=
     (brs : list (nat × pattern nsymb npat 0))
 | epProj (p : projection).
 
+Arguments epApp {_ _} _.
+Arguments epCase {_ _} _ _ _.
+Arguments epProj {_ _} _.
+
 Inductive elimination :=
 | eApp (p : term)
 | eCase (indn : inductive * nat) (p : term) (brs : list (nat * term))

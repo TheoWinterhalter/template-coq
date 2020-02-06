@@ -68,6 +68,15 @@ Fixpoint pattern_inst_symb k ui {nsymb npat nb} (p : pattern nsymb npat nb) :
     pattern_symbol k n ui (map (pattern_inst_symb k ui) args)
   end.
 
+Fixpoint elim_pattern_inst_symb k ui {nsymb npat} (e : elim_pattern nsymb npat)
+  : elim_pattern 0 npat :=
+  match e with
+  | epApp p => epApp (pattern_inst_symb k ui p)
+  | epCase ind p brs =>
+    epCase ind (pattern_inst_symb k ui p) (map (on_snd (pattern_inst_symb k ui)) brs)
+  | epProj p => epProj p
+  end.
+
 Import MonadNotation.
 
 (** Strengthening along a mask
