@@ -242,10 +242,8 @@ Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 | red_rewrite_rule k ui decl n r t s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
-    match_rule k ui r t = Some s ->
-    let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-    let rhs := subst0 s (subst ss #|s| (rhs r)) in
-    red1 Σ Γ t rhs
+    match_rule #|decl.(symbols)| k ui r t = Some s ->
+    red1 Σ Γ t (subst0 s (rrhs #|decl.(symbols)| k ui r))
 
 
 | abs_red_l na M M' N : red1 Σ Γ M M' -> red1 Σ Γ (tLambda na M N) (tLambda na M' N)

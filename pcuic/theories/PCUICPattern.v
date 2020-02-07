@@ -599,6 +599,11 @@ Definition match_rule nsymb k ui (r : rewrite_rule) t :=
     (map (elim_pattern_inst_symb nsymb #|r.(pat_context)| k ui) r.(elims))
     t.
 
+(* Right hand side of a rule *)
+Definition rrhs nsymb k ui r :=
+  let ss := symbols_subst k 0 ui nsymb in
+  subst ss #|r.(pat_context)| (rhs r).
+
 Lemma map_option_out_length :
   forall A (l : list (option A)) l',
     map_option_out l = Some l' ->
