@@ -110,6 +110,50 @@ Inductive valid_elimination k (npat : nat) : elim_pattern -> Type :=
     forall p,
       valid_elimination k npat (epProj p).
 
+Lemma valid_prepattern_all_rect :
+  forall nsymb npat
+    (P : forall nb p, Type),
+    (forall nb n mask,
+      n < npat ->
+      #|mask| = nb ->
+      P nb (pVar n mask)
+    ) ->
+    (forall nb n,
+      n < nb ->
+      P nb (pBound n)
+    ) ->
+    (forall nb na A b,
+      valid_prepattern nsymb npat (S nb) b ->
+      P (S nb) b ->
+      P nb (pLambda na A b)
+    ) ->
+    (forall nb ind n ui args,
+      All (valid_prepattern nsymb npat nb) args ->
+      All (P nb) args ->
+      P nb (pConstruct ind n ui args)
+    ) ->
+    (forall nb n args,
+      n < nsymb ->
+      P nb (pLocal n args)
+    ) ->
+    forall nb p,
+      valid_prepattern nsymb npat nb p ->
+      P nb p.
+Proof.
+  intros nsymb npat P hVar hBound hLambda hConstruct hLocal nb p h.
+  revert nb p h.
+  fix aux 3. move aux at top.
+  intros nb p h. destruct h.
+  all:
+    match goal with
+    | H : _ |- _ => apply H
+    end ; auto.
+  revert args a.
+  fix auxa 2. move auxa at top.
+  intros args h. destruct h. 1: constructor.
+  constructor. all: auto.
+Qed.
+
 (* TODO MOVE *)
 Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
   match n with
