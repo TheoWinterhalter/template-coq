@@ -480,54 +480,58 @@ Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
     well with respect to free variable elimination.
     f x y -> c versus f -> λxy. c (we should enforce the latter for things
     to go smoothly).
-
-    NOTE For now we only recognise when no symbols are left uninstantiated.
-    This could be changed in the event we need to recognise them in the
-    global context.
 *)
-Fixpoint match_pattern {npat} Ξ (p : pattern 0 npat #|Ξ|) (t : term) {struct p}
+Fixpoint match_pattern npat Ξ (p : pattern) (t : term) {struct p}
   : option partial_subst :=
   match p with
-  | pattern_variable n mask hn hmask =>
+  | pVar n mask =>
     u <- strengthen_mask mask #|Ξ| t ;;
     subs_init npat n (mkLambda_mask mask Ξ u)
-  | pattern_bound n bound =>
+  | pBound n =>
     option_assert (eqb t (tRel n)) ;;
     ret (subs_empty npat)
-  | pattern_lambda na A b =>
+  | pLambda na A b =>
     match t with
-    | tLambda na' A' b' => match_pattern (Ξ ,, vass na A) b b'
-    | _ => match_pattern (Ξ ,, vass na A) b (tApp (lift0 1 t) (tRel 0))
+    | tLambda na' A' b' => match_pattern npat (Ξ ,, vass na A) b b'
+    | _ => match_pattern npat (Ξ ,, vass na A) b (tApp (lift0 1 t) (tRel 0))
     end
-  | pattern_construct ind n ui args =>
+  | pConstruct ind n ui args =>
     let '(u,l) := decompose_app t in
     match u with
     | tConstruct ind' n' ui' =>
       option_assert (eqb ind ind') ;;
       option_assert (eqb n n') ;;
       option_assert (eqb ui ui') ;;
-      sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;;
+      sl <- option_map2 (fun p t => match_pattern npat Ξ p t) args l ;;
       monad_fold_right (subs_merge) sl (subs_empty npat)
     | _ => None
     end
-  | pattern_symbol k n ui args =>
+  | pSymb k n ui args =>
     let '(u,l) := decompose_app t in
     match u with
     | tSymb k' n' ui' =>
       option_assert (eqb k k') ;;
       option_assert (eqb n n') ;;
       option_assert (eqb ui ui') ;;
-      sl <- option_map2 (fun p t => match_pattern Ξ p t) args l ;;
+      sl <- option_map2 (fun p t => match_pattern npat Ξ p t) args l ;;
       monad_fold_right (subs_merge) sl (subs_empty npat)
     | _ => None
     end
-  | pattern_local n hs args => False_rect _ ltac:(lia)
+  | pLocal n args =>
+    let '(u,l) := decompose_app t in
+    match u with
+    | tRel m =>
+      option_assert (eqb n m) ;;
+      sl <- option_map2 (fun p t => match_pattern npat Ξ p t) args l ;;
+      monad_fold_right (subs_merge) sl (subs_empty npat)
+    | _ => None
+    end
   end.
 
 (* We assume el given reversed *)
 Fixpoint match_elims
   (k : kername) (n : nat) (ui : universe_instance)
-  {npat} (el : list (elim_pattern 0 npat))
+  npat (el : list elim_pattern)
   (t : term) {struct el}
   : option (partial_subst) :=
   match el with
@@ -537,8 +541,8 @@ Fixpoint match_elims
   | epApp p :: el =>
     match t with
     | tApp u v =>
-      sv <- match_pattern [] p v ;;
-      su <- match_elims k n ui el u ;;
+      sv <- match_pattern npat [] p v ;;
+      su <- match_elims k n ui npat el u ;;
       subs_merge su sv
     | _ => None
     end
@@ -546,13 +550,13 @@ Fixpoint match_elims
     match t with
     | tCase ind' p' c brs' =>
       option_assert (eqb ind ind') ;;
-      sp <- match_pattern [] p p' ;;
+      sp <- match_pattern npat [] p p' ;;
       sl <- option_map2 (fun br br' =>
               option_assert (eqb br.1 br'.1) ;;
-              match_pattern [] br.2 br'.2
+              match_pattern npat [] br.2 br'.2
             ) brs brs' ;;
       sb <- monad_fold_right (subs_merge) sl (subs_empty npat) ;;
-      sc <- match_elims k n ui el c ;;
+      sc <- match_elims k n ui npat el c ;;
       s1 <- subs_merge sp sb ;;
       subs_merge s1 sc
     | _ => None
@@ -561,18 +565,22 @@ Fixpoint match_elims
     match t with
     | tProj p' u =>
       option_assert (eqb p p') ;;
-      match_elims k n ui el u
+      match_elims k n ui npat el u
     | _ => None
     end
   end.
 
-Definition match_lhs k n ui {npat} (l : list (elim_pattern 0 npat)) t :=
-  s <- match_elims k n ui (List.rev l) t ;;
+Definition match_lhs k n ui npat (l : list elim_pattern) t :=
+  s <- match_elims k n ui npat (List.rev l) t ;;
   (* From linearity the following should always succeed *)
   map_option_out s.
 
-Definition match_rule {nsymb} k ui (r : rewrite_rule nsymb) t :=
-  match_lhs k r.(head) ui (map (elim_pattern_inst_symb k ui) r.(elims)) t.
+Definition match_rule nsymb k ui (r : rewrite_rule) t :=
+  match_lhs
+    k r.(head) ui
+    #|r.(pat_context)|
+    (map (elim_pattern_inst_symb nsymb #|r.(pat_context)| k ui) r.(elims))
+    t.
 
 Lemma map_option_out_length :
   forall A (l : list (option A)) l',
