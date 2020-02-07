@@ -542,18 +542,19 @@ Proof.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
     + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onlin].
+      intros rw [T onlhs onrhs onhead onlin onelims].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
-
+      * assumption.
       * assumption.
       * assumption.
     + eapply All_impl. 1: exact hpr.
-      intros rw [T onlhs onrhs onhead onlin].
+      intros rw [T onlhs onrhs onhead onlin onelims].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
+      * assumption.
       * assumption.
       * assumption.
     + cbn. eapply All_impl. 1: exact hprr.
@@ -755,7 +756,7 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr hpr]].
   eapply nth_error_all in hn. 2: eassumption.
-  destruct hn as [T _ h _ _]. simpl in *.
+  destruct hn as [T _ h _ _ _]. simpl in *.
   eapply typecheck_closed in h.
   2: assumption.
   2: { eapply typing_wf_local. eassumption. }
@@ -779,7 +780,7 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply nth_error_all in hn. 2: exact hpr.
-  destruct hn as [T h _ _ _]. simpl in *.
+  destruct hn as [T h _ _ _ _]. simpl in *.
   eapply typecheck_closed in h.
   2: assumption.
   2: { eapply typing_wf_local. eassumption. }
@@ -803,7 +804,7 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply nth_error_all in hn. 2: exact hpr.
-  destruct hn as [T _ h _ _]. simpl in *.
+  destruct hn as [T _ h _ _ _]. simpl in *.
   eapply typecheck_closed in h.
   2: assumption.
   2: { eapply typing_wf_local. eassumption. }

@@ -1333,10 +1333,8 @@ Inductive tred1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 | tred_rewrite_rule k ui decl n r t s :
     declared_symbol Σ k decl ->
     nth_error decl.(rules) n = Some r ->
-    match_rule k ui r t = Some s ->
-    let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-    let rhs := subst0 s (subst ss #|s| (rhs r)) in
-    tred1 Σ Γ t rhs.
+    match_rule #|decl.(symbols)| k ui r t = Some s ->
+    tred1 Σ Γ t (subst0 s (rrhs #|decl.(symbols)| k ui r)).
 
 Definition ctred1 Σ :=
   context_env_clos (tred1 Σ).
