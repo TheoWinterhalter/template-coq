@@ -922,21 +922,6 @@ Proof.
   apply subs_complete_spec in h. apply h.
 Qed.
 
-Definition subs_init npat x t :=
-  subs_add x t (subs_empty npat).
-
-Fixpoint subs_merge (s1 s2 : list (option term)) : option (list (option term)) :=
-  match s1, s2 with
-  | [], [] => ret []
-  | None :: s1, d :: s2
-  | d :: s1, None :: s2 => s <- subs_merge s1 s2 ;; ret (d :: s)
-  | Some t1 :: s1, Some t2 :: s2 =>
-    option_assert (eqb t1 t2) ;;
-    s <- subs_merge s1 s2 ;;
-    ret (Some t1 :: s)
-  | _, _ => None
-  end.
-
 (* Particular case of completion *)
 Fixpoint subs_flatten_default (l : list (option term)) : list term :=
   match l with

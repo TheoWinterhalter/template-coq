@@ -815,14 +815,156 @@ Proof.
   - replace (k + 0) with k by lia. assumption.
 Qed.
 
+(* TODO MOVE *)
+Lemma nfalse_le :
+  forall l,
+    nfalse l <= #|l|.
+Proof.
+  intros l. induction l as [| [] l ih]. all: cbn ; lia.
+Qed.
+
+(* TODO MOVE *)
+Lemma masked_before_le :
+  forall m n,
+    masked_before m n <= n.
+Proof.
+  intros m n.
+  unfold masked_before.
+  etransitivity.
+  - eapply nfalse_le.
+  - apply firstn_le_length.
+Qed.
+
+(* TODO MOVE *)
+Lemma masked_before_le_nfalse :
+  forall m n,
+    masked_before m n <= nfalse m.
+Proof.
+  intros m n.
+  unfold masked_before.
+  induction m as [| [] m ih] in n |- *.
+  - destruct n. all: auto.
+  - destruct n.
+    + cbn. lia.
+    + cbn. apply ih.
+  - destruct n.
+    + cbn. lia.
+    + cbn. specialize (ih n). lia.
+Qed.
+
+Lemma strengthen_mask_lift :
+  forall m k t u p q,
+    strengthen_mask m k t = Some u ->
+    strengthen_mask m k (lift p (q + #|m| + k) t) =
+    Some (lift p (q + (#|m| - nfalse m) + k) u).
+Proof.
+  intros m k t u p q e.
+  induction t in m, k, u, p, q, e |- * using term_forall_list_ind.
+  - pose proof (nfalse_le m).
+    unfold strengthen_mask in e. cbn.
+    destruct (Nat.ltb_spec n k).
+    + cbn in e. apply some_inj in e. subst.
+      match goal with
+      | |- context [ ?a <=? ?b ] =>
+        destruct (Nat.leb_spec a b)
+      end. 1: lia.
+      unfold strengthen_mask.
+      destruct (Nat.ltb_spec n k). 2: lia.
+      cbn.
+      match goal with
+      | |- context [ ?a <=? ?b ] =>
+        destruct (Nat.leb_spec a b)
+      end. 1: lia.
+      reflexivity.
+    + destruct nth_error eqn:e1.
+      * apply nth_error_Some_length in e1 as ?.
+        destruct b. 2: discriminate.
+        cbn in e. apply some_inj in e. subst.
+        match goal with
+        | |- context [ ?a <=? ?b ] =>
+          destruct (Nat.leb_spec a b)
+        end. 1: lia.
+        unfold strengthen_mask.
+        destruct (Nat.ltb_spec n k). 1: lia.
+        rewrite e1. cbn. f_equal.
+        pose proof (masked_before_le m (n - k)).
+        pose proof (masked_before_le_nfalse m (n - k)).
+        pose proof (nfalse_le m).
+        match goal with
+        | |- context [ ?a <=? ?b ] =>
+          destruct (Nat.leb_spec a b)
+        end.
+Abort.
+
+Lemma strengthen_mask_lift :
+  forall m k t u p q,
+    q >= #|m| + k ->
+    strengthen_mask m k t = Some u ->
+    strengthen_mask m k (lift p q t) = Some (lift p (q - nfalse m) u).
+Proof.
+  intros m k t u p q h e.
+  induction t in m, k, u, p, q, e, h |- * using term_forall_list_ind.
+  - unfold strengthen_mask in e. cbn.
+    destruct (Nat.ltb_spec n k).
+    + cbn in e. apply some_inj in e. subst.
+      destruct (Nat.leb_spec q n). 1: lia.
+      unfold strengthen_mask.
+      destruct (Nat.ltb_spec n k). 2: lia.
+      cbn.
+      pose proof (nfalse_le m).
+      destruct (Nat.leb_spec (q - nfalse m) n). 1: lia.
+      reflexivity.
+    + destruct nth_error eqn:e1.
+      * apply nth_error_Some_length in e1 as ?.
+        destruct b. 2: discriminate.
+        cbn in e. apply some_inj in e. subst.
+        destruct (Nat.leb_spec q n). 1: lia.
+        unfold strengthen_mask.
+        destruct (Nat.ltb_spec n k). 1: lia.
+        rewrite e1. cbn. f_equal.
+        pose proof (masked_before_le m (n - k)).
+        pose proof (masked_before_le_nfalse m (n - k)).
+        pose proof (nfalse_le m).
+        match goal with
+        | |- context [ ?a <=? ?b ] =>
+          destruct (Nat.leb_spec a b)
+        end. 1: admit.
+        reflexivity.
+      * cbn in e. apply some_inj in e. subst.
+        apply nth_error_None in e1 as ?.
+        unfold lift.
+        pose proof (nfalse_le m).
+        destruct (Nat.leb_spec q n).
+        --- match goal with
+            | |- context [ ?a <=? ?b ] =>
+              destruct (Nat.leb_spec a b)
+            end.
+            +++ unfold strengthen_mask.
+                match goal with
+                | |- context [ ?a <? ?b ] =>
+                  destruct (Nat.ltb_spec a b)
+                end. 1: lia.
+                replace (nth_error m (p + n - k)) with (@None bool).
+                2:{ symmetry. apply nth_error_None. lia. }
+                cbn. f_equal. f_equal. lia.
+            +++ unfold strengthen_mask.
+                match goal with
+                | |- context [ ?a <? ?b ] =>
+                  destruct (Nat.ltb_spec a b)
+                end. 1: lia.
+                replace (nth_error m (p + n - k)) with (@None bool).
+                2:{ symmetry. apply nth_error_None. lia. }
+Abort.
+
 Lemma match_pattern_lift :
   forall npat Ξ p t s n m,
     match_pattern npat Ξ p t = Some s ->
     match_pattern npat Ξ p (lift n m t) = Some (map (option_map (lift n m)) s).
 Proof.
   intros npat Ξ p t s n m e.
-  (* Need either functional induction or better induction principle on pattern
-   *)
+  induction p in npat, Ξ, t, s, n, m, e |- * using pattern_all_rect.
+  - cbn in *. destruct strengthen_mask eqn:e1. 2: discriminate.
+
 Abort.
 
 Lemma match_elims_lift :
