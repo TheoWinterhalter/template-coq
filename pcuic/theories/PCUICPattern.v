@@ -9,6 +9,50 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
 
 Set Default Goal Selector "!".
 
+(** Induction principle for patterns *)
+Lemma pattern_all_rect :
+  forall (P : pattern -> Type),
+    (forall n mask, P (pVar n mask)) ->
+    (forall n, P (pBound n)) ->
+    (forall na A b,
+      P b ->
+      P (pLambda na A b)
+    ) ->
+    (forall ind n ui args,
+      All P args ->
+      P (pConstruct ind n ui args)
+    ) ->
+    (forall k n ui args,
+      All P args ->
+      P (pSymb k n ui args)
+    ) ->
+    (forall n args,
+      All P args ->
+      P (pLocal n args)
+    ) ->
+    forall p, P p.
+Proof.
+  intros P hVar hBound hLambda hConstruct hSymb hLocal.
+  fix aux 1. move aux at top.
+  intro p. destruct p.
+  all:
+    match goal with
+    | H : _ |- _ => apply H
+    end ; auto.
+  - revert args.
+    fix auxa 1. move auxa at top.
+    intro l. destruct l. 1: constructor.
+    constructor. all: auto.
+  - revert args.
+    fix auxa 1. move auxa at top.
+    intro l. destruct l. 1: constructor.
+    constructor. all: auto.
+  - revert args.
+    fix auxa 1. move auxa at top.
+    intro l. destruct l. 1: constructor.
+    constructor. all: auto.
+Defined.
+
 (** Validity of patterns
 
   We define two such notions, one before instantiation for inside the context
