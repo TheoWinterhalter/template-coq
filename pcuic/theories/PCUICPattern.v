@@ -215,7 +215,7 @@ Fixpoint pattern_inst_symb nsymb npat nb k ui (p : pattern) : pattern :=
     pSymb k n ui (map (pattern_inst_symb nsymb npat nb k ui) args)
   end.
 
-Fixpoint elim_pattern_inst_symb nsymb npat k ui e : elim_pattern :=
+Fixpoint elim_pattern_inst_symb nsymb npat k ui e {struct e} : elim_pattern :=
   match e with
   | epApp p => epApp (pattern_inst_symb nsymb npat 0 k ui p)
   | epCase ind p brs =>
@@ -239,6 +239,23 @@ Proof.
   cbn. constructor.
   apply All_map. eapply All_impl. 1: eassumption.
   cbn. intros p h. assumption.
+Qed.
+
+Lemma elim_pattern_inst_symb_spec :
+  forall nsymb npat k ui e,
+    valid_preelimination nsymb npat e ->
+    valid_elimination k npat (elim_pattern_inst_symb nsymb npat k ui e).
+Proof.
+  intros nsymb npat k ui e h.
+  induction h.
+  all: try solve [
+    cbn ; constructor ; eauto using pattern_inst_symb_spec
+  ].
+  cbn. constructor.
+  - apply pattern_inst_symb_spec. assumption.
+  - apply All_map. eapply All_impl. 1: eassumption.
+    cbn. intros [n q] h. unfold compose. cbn in *.
+    apply pattern_inst_symb_spec. assumption.
 Qed.
 
 Import MonadNotation.
