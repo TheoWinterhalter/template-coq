@@ -232,13 +232,14 @@ Lemma pattern_inst_symb_spec :
     valid_pattern k npat nb (pattern_inst_symb nsymb npat nb k ui p).
 Proof.
   intros nsymb npat nb k ui p h.
-  induction h.
+  induction h using valid_prepattern_all_rect.
   all: try solve [
     cbn ; constructor ; auto
   ].
   cbn. constructor.
-  (* We need a stronger induction principle *)
-Admitted.
+  apply All_map. eapply All_impl. 1: eassumption.
+  cbn. intros p h. assumption.
+Qed.
 
 Import MonadNotation.
 
