@@ -916,9 +916,9 @@ Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTypi
   Definition red := @red.
   Definition typing := @typing.
   Definition smash_context := smash_context.
-  Definition elim_pattern (nsymb npat : nat) := unit.
-  Definition linear (nsymb npat : nat) (el : list (elim_pattern nsymb npat)) :=
-    false.
+  Definition valid_preelimination (n m : nat) (e : TemplateTerm.elim_pattern) :=
+    unit.
+  Definition linear (npat : nat) (el : list TemplateTerm.elim_pattern) := false.
 
 End TemplateTyping.
 

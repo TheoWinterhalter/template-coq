@@ -9,6 +9,107 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
 
 Set Default Goal Selector "!".
 
+(** Validity of patterns
+
+  We define two such notions, one before instantiation for inside the context
+  and one after instantiation.
+
+  This definition is relative to the number of local symbols, the number of
+  pattern variables, and the number of bound variables introduced afterwards.
+
+  TODO How to guarantee the tConstruct is fully applied?
+  Maybe we don't have to.
+
+  pattern_local is to later be interpreted as pattern_symbol with the right k
+  and ui.
+*)
+Inductive valid_prepattern (nsymb npat nb : nat) : pattern -> Type :=
+| prepattern_variable :
+    forall n mask,
+      n < npat -> (* n is a pattern index *)
+      #|mask| = nb ->
+      valid_prepattern nsymb npat nb (pVar n mask)
+
+| prepattern_bound :
+    forall n,
+      n < nb ->
+      valid_prepattern nsymb npat nb (pBound n)
+
+| prepattern_lambda :
+    forall na A b,
+      valid_prepattern nsymb npat (S nb) b ->
+      valid_prepattern nsymb npat nb (pLambda na A b)
+
+| prepattern_construct :
+    forall ind n ui args,
+      All (valid_prepattern nsymb npat nb) args ->
+      valid_prepattern nsymb npat nb (pConstruct ind n ui args)
+
+| prepattern_local :
+    forall n args,
+      n < nsymb ->
+      valid_prepattern nsymb npat nb (pLocal n args).
+
+Inductive valid_pattern k (npat nb : nat) : pattern -> Type :=
+| pattern_variable :
+    forall n mask,
+      n < npat -> (* n is a pattern index *)
+      #|mask| = nb ->
+      valid_pattern k npat nb (pVar n mask)
+
+| pattern_bound :
+    forall n,
+      n < nb ->
+      valid_pattern k npat nb (pBound n)
+
+| pattern_lambda :
+    forall na A b,
+      valid_pattern k npat (S nb) b ->
+      valid_pattern k npat nb (pLambda na A b)
+
+| pattern_construct :
+    forall ind n ui args,
+      All (valid_pattern k npat nb) args ->
+      valid_pattern k npat nb (pConstruct ind n ui args)
+
+(* All symbols must belong to the same block. *)
+| pattern_symbol :
+    forall n ui args,
+      valid_pattern k npat nb (pSymb k n ui args).
+
+
+Inductive valid_preelimination (nsymb npat : nat) : elim_pattern -> Type :=
+| preelimination_app :
+    forall p,
+      valid_prepattern nsymb npat 0 p ->
+      valid_preelimination nsymb npat (epApp p)
+
+| preelimination_case :
+    forall ind p brs,
+      valid_prepattern nsymb npat 0 p ->
+      All (fun br => valid_prepattern nsymb npat 0 br.2) brs ->
+      valid_preelimination nsymb npat (epCase ind p brs)
+
+| preelimination_proj :
+    forall p,
+      valid_preelimination nsymb npat (epProj p).
+
+Inductive valid_elimination k (npat : nat) : elim_pattern -> Type :=
+| elimination_app :
+    forall p,
+      valid_pattern k npat 0 p ->
+      valid_elimination k npat (epApp p)
+
+| elimination_case :
+    forall ind p brs,
+      valid_pattern k npat 0 p ->
+      All (fun br => valid_pattern k npat 0 br.2) brs ->
+      valid_elimination k npat (epCase ind p brs)
+
+| elimination_proj :
+    forall p,
+      valid_elimination k npat (epProj p).
+
 (* TODO MOVE *)
 Fixpoint list_make {A} (f : nat -> A) (i n : nat) : list A :=
   match n with
@@ -50,34 +151,50 @@ Proof.
   apply list_make_length.
 Qed.
 
-(** Instantiation of symbols in a pattern *)
+(** Instantiation of symbols in a pattern
 
-Fixpoint pattern_inst_symb k ui {nsymb npat nb} (p : pattern nsymb npat nb) :
-  pattern 0 npat nb :=
+  This makes us go from prepatterns to patterns.
+*)
+
+Fixpoint pattern_inst_symb nsymb npat nb k ui (p : pattern) : pattern :=
   let ss := symbols_subst k 0 ui nsymb in
   match p with
-  | pattern_variable n mask hn hmask =>
-    pattern_variable n mask hn hmask
-  | pattern_bound n h =>
-    pattern_bound n h
-  | pattern_lambda na A b =>
-    pattern_lambda na (subst ss (npat + nb) A) (pattern_inst_symb k ui b)
-  | pattern_construct ind n ui' args =>
-    pattern_construct ind n ui' (map (pattern_inst_symb k ui) args)
-  | pattern_symbol k' n ui' args =>
-    pattern_symbol k' n ui' (map (pattern_inst_symb k ui) args)
-  | pattern_local n hs args =>
-    pattern_symbol k n ui (map (pattern_inst_symb k ui) args)
+  | pVar n mask => pVar n mask
+  | pBound n => pBound n
+  | pLambda na A b =>
+    pLambda na (subst ss (npat + nb) A) (pattern_inst_symb nsymb npat (S nb) k ui b)
+  | pConstruct ind n ui' args =>
+    pConstruct ind n ui' (map (pattern_inst_symb nsymb npat nb k ui) args)
+  | pSymb k' n ui' args =>
+    pSymb k' n ui' (map (pattern_inst_symb nsymb npat nb k ui) args)
+  | pLocal n args =>
+    pSymb k n ui (map (pattern_inst_symb nsymb npat nb k ui) args)
   end.
 
-Fixpoint elim_pattern_inst_symb k ui {nsymb npat} (e : elim_pattern nsymb npat)
-  : elim_pattern 0 npat :=
+Fixpoint elim_pattern_inst_symb nsymb npat k ui e : elim_pattern :=
   match e with
-  | epApp p => epApp (pattern_inst_symb k ui p)
+  | epApp p => epApp (pattern_inst_symb nsymb npat 0 k ui p)
   | epCase ind p brs =>
-    epCase ind (pattern_inst_symb k ui p) (map (on_snd (pattern_inst_symb k ui)) brs)
+    epCase
+      ind
+      (pattern_inst_symb nsymb npat 0 k ui p)
+      (map (on_snd (pattern_inst_symb nsymb npat 0 k ui)) brs)
   | epProj p => epProj p
   end.
+
+Lemma pattern_inst_symb_spec :
+  forall nsymb npat nb k ui p,
+    valid_prepattern nsymb npat nb p ->
+    valid_pattern k npat nb (pattern_inst_symb nsymb npat nb k ui p).
+Proof.
+  intros nsymb npat nb k ui p h.
+  induction h.
+  all: try solve [
+    cbn ; constructor ; auto
+  ].
+  cbn. constructor.
+  (* We need a stronger induction principle *)
+Admitted.
 
 Import MonadNotation.
 

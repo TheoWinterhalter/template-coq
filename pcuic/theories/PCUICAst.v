@@ -120,55 +120,29 @@ Record mutual_inductive_entry := {
      module. Not handled by Template Coq yet. *) }.
 
 
-(** Pattern definition
+(** Syntax of patterns
 
-  This definition is relative to the number of pattern variables,
-  and the number of bound variables introduced afterwards.
+  They contain both symbol and local patterns, they correspond to the same
+  thing but at different stages.
 
-  TODO How to guarantee the tConstruct is fully applied?
-  Maybe we don't have to.
-
-  pattern_local is to later be interpreted as pattern_symbol with the right k
-  and ui.
+  Indices are understood locally in their respective contexts.
 *)
-Inductive pattern (nsymb npat nb : nat) : Type :=
-| pattern_variable n (mask : list bool) :
-    n < npat -> (* n is a pattern index *)
-    #|mask| = nb ->
-    pattern nsymb npat nb
-
-| pattern_bound n (bound : n < nb)
-
-| pattern_lambda (na : name) (A : term) (b : pattern nsymb npat (S nb))
-
-| pattern_construct
+Inductive pattern : Type :=
+| pVar (n : nat) (mask : list bool)
+| pBound (n : nat)
+| pLambda (na : name) (A : term) (b : pattern)
+| pConstruct
     (ind : inductive) (n : nat) (ui : universe_instance)
-    (args : list (pattern nsymb npat nb))
-
-| pattern_symbol
+    (args : list pattern)
+| pSymb
     (k : kername) (n : nat) (ui : universe_instance)
-    (args : list (pattern nsymb npat nb))
+    (args : list pattern)
+| pLocal (n : nat) (args : list pattern).
 
-| pattern_local
-    (n : nat) (hs : n < nsymb) (args : list (pattern nsymb npat nb)).
-
-Arguments pattern_variable {_ _ _} _ _ _ _.
-Arguments pattern_bound {_ _ _} _ _.
-Arguments pattern_lambda {_ _ _} _ _ _.
-Arguments pattern_construct {_ _ _} _ _ _ _.
-Arguments pattern_symbol {_ _ _} _ _ _ _.
-Arguments pattern_local {_ _ _} _ _ _.
-
-Inductive elim_pattern (nsymb npat : nat) : Type :=
-| epApp (p : pattern nsymb npat 0)
-| epCase
-    (ind : inductive × nat) (p : pattern nsymb npat 0)
-    (brs : list (nat × pattern nsymb npat 0))
+Inductive elim_pattern : Type :=
+| epApp (p : pattern)
+| epCase (ind : inductive × nat) (p : pattern) (brs : list (nat × pattern))
 | epProj (p : projection).
-
-Arguments epApp {_ _} _.
-Arguments epCase {_ _} _ _ _.
-Arguments epProj {_ _} _.
 
 Inductive elimination :=
 | eApp (p : term)
@@ -196,32 +170,32 @@ Fixpoint mask_to_rels (mask : list bool) (i : nat) :=
 
   Maybe it'd be smarter to define instantiation...
 *)
-Fixpoint pattern_to_term {nsymb npat nb} (p : pattern nsymb npat nb) : term :=
+Fixpoint pattern_to_term npat nb (p : pattern) : term :=
   match p with
-  | pattern_variable n mask hn hmask =>
+  | pVar n mask =>
     mkApps (tRel (n + nb)) (mask_to_rels mask 0)
-  | pattern_bound n h => tRel n
-  | pattern_lambda na A b => tLambda na A (pattern_to_term b)
-  | pattern_construct ind n ui args =>
-    mkApps (tConstruct ind n ui) (map (pattern_to_term) args)
-  | pattern_symbol k n ui args =>
-    mkApps (tSymb k n ui) (map (pattern_to_term) args)
-  | pattern_local n hs args =>
-    mkApps (tRel (n + npat + nb)) (map (pattern_to_term) args)
+  | pBound n => tRel n
+  | pLambda na A b => tLambda na A (pattern_to_term npat nb b)
+  | pConstruct ind n ui args =>
+    mkApps (tConstruct ind n ui) (map (pattern_to_term npat nb) args)
+  | pSymb k n ui args =>
+    mkApps (tSymb k n ui) (map (pattern_to_term npat nb) args)
+  | pLocal n args =>
+    mkApps (tRel (n + npat + nb)) (map (pattern_to_term npat nb) args)
   end.
 
-Fixpoint elim_pattern_to_elim {nsymb npat} (e : elim_pattern nsymb npat)
-  : elimination :=
+Fixpoint elim_pattern_to_elim npat (e : elim_pattern) : elimination :=
   match e with
-  | epApp p => eApp (pattern_to_term p)
+  | epApp p => eApp (pattern_to_term npat 0 p)
   | epCase ind p brs =>
-    eCase ind (pattern_to_term p) (map (on_snd (pattern_to_term)) brs)
+    eCase
+      ind (pattern_to_term npat 0 p)
+      (map (on_snd (pattern_to_term npat 0)) brs)
   | epProj p => eProj p
   end.
 
-Definition mkPElims (t : term) {nsymb npat} (l : list (elim_pattern nsymb npat))
-  : term :=
-  mkElims t (map elim_pattern_to_elim l).
+Definition mkPElims npat (t : term) (l : list elim_pattern) : term :=
+  mkElims t (map (elim_pattern_to_elim npat) l).
 
 
 
