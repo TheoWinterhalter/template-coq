@@ -2,14 +2,16 @@
 From Equations Require Import Equations.
 From Coq Require Import Bool String List BinPos Compare_dec ZArith Lia.
 Require Import Coq.Program.Syntax Coq.Program.Basics.
-From MetaCoq.Template Require Import config utils.
+From MetaCoq.Template Require Import config utils monad_utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICPattern PCUICTyping
-  PCUICWeakeningEnv PCUICClosed PCUICReduction PCUICPosition.
+  PCUICWeakeningEnv PCUICClosed PCUICReduction PCUICPosition PCUICReflect.
 Require Import ssreflect ssrbool.
 
 From Equations Require Import Equations.
 Require Import Equations.Prop.DepElim.
+
+Import MonadNotation.
 
 Set Default Goal Selector "!".
 
@@ -813,6 +815,58 @@ Proof.
   - replace (k + 0) with k by lia. assumption.
 Qed.
 
+Lemma match_pattern_lift :
+  forall npat Ξ p t s n m,
+    match_pattern npat Ξ p t = Some s ->
+    match_pattern npat Ξ p (lift n m t) = Some (map (option_map (lift n m)) s).
+Proof.
+  intros npat Ξ p t s n m e.
+  (* Need either functional induction or better induction principle on pattern
+   *)
+Abort.
+
+Lemma match_elims_lift :
+  forall k hn ui npat l t s n m,
+    match_elims k hn ui npat l t = Some s ->
+    match_elims k hn ui npat l (lift n m t) =
+    Some (map (option_map (lift n m)) s).
+Proof.
+  intros k hn ui npat l t s n m e.
+  induction l as [| [] l ih] in k, hn, ui, npat, t, s, n, m, e |- *.
+  - unfold match_elims in *.
+    destruct (eqb_spec (tSymb k hn ui) t). 2: discriminate.
+    subst. cbn in e. apply some_inj in e. subst.
+    unfold lift at 1.
+    destruct (eqb_spec (tSymb k hn ui) (tSymb k hn ui)).
+    2:{ exfalso. auto. }
+    cbn. f_equal.
+    unfold subs_empty. induction npat. 1: reflexivity.
+    cbn. f_equal. auto.
+  - cbn in *. destruct t. all: try discriminate.
+    cbn. destruct match_pattern eqn:e1. 2: discriminate.
+    (* We need the same for match_pattern *)
+Abort.
+
+Lemma match_lhs_lift :
+  forall k hn ui npat l t s n m,
+    match_lhs k hn ui npat l t = Some s ->
+    match_lhs k hn ui npat l (lift n m t) = Some (map (lift n m) s).
+Proof.
+  intros k hn ui npat l t s n m e.
+  unfold match_lhs in *.
+  destruct match_elims eqn:e1. 2: discriminate.
+  cbn in e.
+Abort.
+
+Lemma match_rule_lift :
+  forall nsymb k ui r t s n m,
+    match_rule nsymb k ui r t = Some s ->
+    match_rule nsymb k ui r (lift n m t) = Some (map (lift n m) s).
+Proof.
+  intros nsymb k ui r t s n m e.
+  unfold match_rule in *.
+Abort.
+
 Lemma weakening_red1 `{CF:checker_flags} Σ Γ Γ' Γ'' M N :
   wf Σ ->
   red1 Σ (Γ ,,, Γ') M N ->
@@ -852,7 +906,11 @@ Proof.
   - simpl. constructor.
     now rewrite -> nth_error_map, H.
 
-  - rewrite distr_lift_subst_rec.
+  - unfold rrhs.
+    apply match_rule_length in H1 as el.
+    rewrite <- el.
+    rewrite distr_lift_subst_rec.
+    set (ss := symbols_subst _ _ _ _).
     assert (e : forall i j, map (lift i j) ss = ss).
     { intros i j. subst ss. unfold symbols_subst.
       rewrite list_make_map. simpl. reflexivity.
@@ -860,16 +918,16 @@ Proof.
     rewrite e.
     set (t' := lift _ _ t).
     rewrite lift_closed.
-    1:{ eapply closed_upwards. 1: eapply closed_rule_rhs.
-        all: eauto.
-        subst ss. rewrite symbols_subst_length.
-        (* TODO We need some length property on match_rule *)
-        apply untyped_subslet_length in H1.
-        rewrite subst_context_length in H1.
-        lia.
+    1:{
+      eapply closed_upwards. 1: eapply closed_rule_rhs.
+      all: eauto.
+      subst ss. rewrite symbols_subst_length.
+      lia.
     }
-    replace #|s| with #|map (lift #|Γ''| #|Γ'|) s| by (now rewrite map_length).
+    rewrite el.
     eapply red_rewrite_rule. all: eauto.
+    subst t'.
+
     eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
     eapply closed_declared_symbol_pat_context in H as hcl. 2-3: eassumption.
     rewrite -> (closed_ctx_lift _ #|Γ'|) in h.

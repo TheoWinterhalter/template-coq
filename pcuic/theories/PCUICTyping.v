@@ -845,9 +845,6 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
   We assume the ss subst is already done in the elimination list.
 *)
 
-Definition option_assert (b : bool) : option () :=
-  if b then ret tt else None.
-
 (* Why do I need it again? *)
 Import PCUICReflect.
 
