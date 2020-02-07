@@ -747,42 +747,42 @@ Fixpoint lin_set (n : nat) (l : list bool) : option (list bool) :=
   | _, _ => None
   end.
 
-Fixpoint pattern_mask {nsymb npat nb} (p : pattern nsymb npat nb) :=
+Fixpoint pattern_mask npat (p : pattern) :=
   match p with
-  | pattern_variable n mask hn hmask => lin_set n (linear_mask_init npat)
-  | pattern_bound n h => ret (linear_mask_init npat)
-  | pattern_lambda na A b => pattern_mask b
-  | pattern_construct ind n ui args =>
-    sl <- monad_map (fun p => pattern_mask p) args ;;
+  | pVar n mask => lin_set n (linear_mask_init npat)
+  | pBound n => ret (linear_mask_init npat)
+  | pLambda na A b => pattern_mask npat b
+  | pConstruct ind n ui args =>
+    sl <- monad_map (fun p => pattern_mask npat p) args ;;
     monad_fold_right (lin_merge) sl (linear_mask_init npat)
-  | pattern_symbol k n ui args =>
-    sl <- monad_map (fun p => pattern_mask p) args ;;
+  | pSymb k n ui args =>
+    sl <- monad_map (fun p => pattern_mask npat p) args ;;
     monad_fold_right (lin_merge) sl (linear_mask_init npat)
-  | pattern_local n hs args =>
-    sl <- monad_map (fun p => pattern_mask p) args ;;
+  | pLocal n args =>
+    sl <- monad_map (fun p => pattern_mask npat p) args ;;
     monad_fold_right (lin_merge) sl (linear_mask_init npat)
   end.
 
-Fixpoint elim_mask {nsymb npat} (e : elim_pattern nsymb npat) :=
+Fixpoint elim_mask npat (e : elim_pattern) :=
   match e with
-  | epApp p => pattern_mask p
+  | epApp p => pattern_mask npat p
   | epCase ind p brs =>
-    lp <- pattern_mask p ;;
-    lb <- monad_map (fun p => pattern_mask p.2) brs ;;
+    lp <- pattern_mask npat p ;;
+    lb <- monad_map (fun p => pattern_mask npat p.2) brs ;;
     lb <- monad_fold_right (lin_merge) lb (linear_mask_init npat) ;;
     lin_merge lp lb
   | epProj p => ret (linear_mask_init npat)
   end.
 
-Definition linear_mask {nsymb npat} (el : list (elim_pattern nsymb npat)) :=
-  l <- monad_map elim_mask el ;;
+Definition linear_mask npat (el : list elim_pattern) :=
+  l <- monad_map (elim_mask npat) el ;;
   monad_fold_right lin_merge l (linear_mask_init npat).
 
 (** We force all variables to appear exactly once
     (we could also allow some to be forgotten)
 *)
-Definition linear {nsymb npat} (el : list (elim_pattern nsymb npat)) :=
-  match linear_mask el with
+Definition linear npat (el : list elim_pattern) :=
+  match linear_mask npat el with
   | Some l => forallb (fun x => x) l
   | None => false
   end.
