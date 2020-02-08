@@ -546,6 +546,10 @@ Fixpoint match_pattern npat Ξ (p : pattern) (t : term) {struct p}
   : option partial_subst :=
   match p with
   | pVar n mask =>
+    (* /!\ This should be 0 not #|Ξ|!!!!!!!!!
+      I don't know what I tried to do here but it needs to be checked
+      and the definition of stren... as well!
+    *)
     u <- strengthen_mask mask #|Ξ| t ;;
     subs_init npat n (mkLambda_mask mask Ξ u)
   | pBound n =>

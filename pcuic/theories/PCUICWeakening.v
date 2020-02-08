@@ -954,7 +954,7 @@ Proof.
                 end. 1: lia.
                 replace (nth_error m (p + n - k)) with (@None bool).
                 2:{ symmetry. apply nth_error_None. lia. }
-Abort.
+Admitted.
 
 Lemma match_pattern_lift :
   forall npat Ξ p t s n m,
@@ -964,8 +964,20 @@ Proof.
   intros npat Ξ p t s n m e.
   induction p in npat, Ξ, t, s, n, m, e |- * using pattern_all_rect.
   - cbn in *. destruct strengthen_mask eqn:e1. 2: discriminate.
-
-Abort.
+    apply strengthen_mask_lift with (p := n) (q := m) in e1 as e2.
+    2:{
+      (* m >= #|mask| + #|Ξ| *)
+      (* How are we ever gonna have that?
+        By saying m >= #|s| + #|Ξ|?
+        #|s| = npat, but what's the link with mask?
+        From validity of patterns we have #|mask| = nb so we'd need to talk
+        about nb actually.
+        Isn't nb already #|Ξ|?
+        This is really confusing...
+      *)
+      admit.
+    }
+Admitted.
 
 Lemma match_elims_lift :
   forall k hn ui npat l t s n m,
