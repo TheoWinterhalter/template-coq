@@ -1054,26 +1054,19 @@ Proof.
 Qed.
 
 Lemma match_pattern_lift :
-  forall npat Ξ p t s n m,
+  forall kn npat Ξ p t s n m,
+    m > #|Ξ| ->
+    valid_pattern kn npat #|Ξ| p ->
     match_pattern npat Ξ p t = Some s ->
     match_pattern npat Ξ p (lift n m t) = Some (map (option_map (lift n m)) s).
 Proof.
-  intros npat Ξ p t s n m e.
-  induction p in npat, Ξ, t, s, n, m, e |- * using pattern_all_rect.
+  intros kn npat Ξ p t s n m hm hp e.
+  induction p in kn, npat, Ξ, t, s, n, m, hm, hp, e |- * using pattern_all_rect.
   - cbn in *. destruct strengthen_mask eqn:e1. 2: discriminate.
     apply strengthen_mask_lift with (p := n) (q := m) in e1 as e2.
-    2:{
-      (* m >= #|mask| + #|Ξ| *)
-      (* How are we ever gonna have that?
-        By saying m >= #|s| + #|Ξ|?
-        #|s| = npat, but what's the link with mask?
-        From validity of patterns we have #|mask| = nb so we'd need to talk
-        about nb actually.
-        Isn't nb already #|Ξ|?
-        This is really confusing...
-      *)
-      admit.
-    }
+    2:{ inversion hp. subst. lia. }
+    rewrite e2.
+    unfold subs_init in *.
 Admitted.
 
 Lemma match_elims_lift :
@@ -1116,7 +1109,7 @@ Lemma match_rule_lift :
 Proof.
   intros nsymb k ui r t s n m e.
   unfold match_rule in *.
-Abort.
+Admitted.
 
 Lemma weakening_red1 `{CF:checker_flags} Σ Γ Γ' Γ'' M N :
   wf Σ ->
@@ -1178,6 +1171,7 @@ Proof.
     rewrite el.
     eapply red_rewrite_rule. all: eauto.
     subst t'.
+    eapply match_rule_lift. assumption.
 
     eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
     eapply closed_declared_symbol_pat_context in H as hcl. 2-3: eassumption.
