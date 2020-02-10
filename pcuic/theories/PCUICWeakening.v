@@ -863,6 +863,17 @@ Proof.
   - cbn. f_equal. apply ih.
 Qed.
 
+Lemma match_option_eq :
+  forall A B (x : option A) (f : A -> B) b y,
+    x = Some y ->
+    match x with
+    | Some a => f a
+    | None => b
+    end = f y.
+Proof.
+  intros A B x f b y e. subst. reflexivity.
+Qed.
+
 Lemma strengthen_mask_lift :
   forall m k t u p q,
     q > #|m| + k ->
@@ -871,7 +882,25 @@ Lemma strengthen_mask_lift :
 Proof.
   intros m k t u p q h e.
   induction t in m, k, u, p, q, e, h |- * using term_forall_list_ind.
-
+  (* all: try solve [
+    cbn in * ; apply some_inj in e ; subst ;
+    reflexivity
+  ]. *)
+  all: try solve [
+    cbn in * ;
+    repeat match type of e with
+    | context [ strengthen_mask ?m ?k ?t ] =>
+      let e' := fresh "e" in
+      destruct (strengthen_mask m k t) eqn:e' ; [| discriminate ] ;
+      match goal with
+      | ih : forall m k u p q, _ -> strengthen_mask m k t = _ -> _ |- _ =>
+        erewrite ih ; [| eauto ; lia .. ]
+      end
+    end ;
+    apply some_inj in e ; subst ; cbn - [minus] ;
+    pose proof (nfalse_le m) ;
+    (repeat f_equal) ; lia
+  ].
   - cbn.
     pose proof (nfalse_le m).
     destruct (Nat.leb_spec q n).
@@ -937,7 +966,66 @@ Proof.
               exfalso. lia.
             }
             reflexivity.
-  -
+  - cbn in *.
+    destruct monad_map as [l1|] eqn:e1. 2: discriminate.
+    apply some_inj in e. subst. cbn.
+    eapply match_option_eq with (f := fun x => _).
+    induction H in l1, e1.
+    1:{ cbn in e1. apply some_inj in e1. subst. reflexivity. }
+    cbn in e1.
+    destruct strengthen_mask eqn:e2. 2: discriminate.
+    destruct monad_map eqn:e3. 2: discriminate.
+    apply some_inj in e1. subst. cbn.
+    erewrite p0. all: eauto.
+    erewrite IHAll. 2: reflexivity.
+    reflexivity.
+  - cbn in *.
+    destruct monad_map as [l1|] eqn:e1. 2: discriminate.
+    repeat match type of e with
+    | context [ strengthen_mask ?m ?k ?t ] =>
+      let e' := fresh "e" in
+      destruct (strengthen_mask m k t) eqn:e' ; [| discriminate ] ;
+      match goal with
+      | ih : forall m k u p q, _ -> strengthen_mask m k t = _ -> _ |- _ =>
+        erewrite ih ; [| eauto ; lia .. ]
+      end
+    end.
+    apply some_inj in e. subst.
+    cbn - [minus].
+    eapply match_option_eq with (f := fun x => _).
+    clear IHt1 IHt2 e0 e2.
+    induction X as [| [n u] l hu hl ih] in l1, e1.
+    1:{ cbn in e1. apply some_inj in e1. subst. reflexivity. }
+    cbn in e1.
+    destruct strengthen_mask eqn:e2. 2: discriminate.
+    destruct monad_map eqn:e3. 2: discriminate.
+    apply some_inj in e1. subst. cbn.
+    erewrite hu. all: eauto.
+    erewrite ih. 2: reflexivity.
+    reflexivity.
+  - cbn in *.
+    destruct monad_map as [l|] eqn:e1. 2: discriminate.
+    apply some_inj in e. subst. cbn.
+    eapply match_option_eq with (f := fun x => _).
+    rewrite map_length.
+    revert e1. generalize #|m0|. intros v e1.
+    induction X as [| [na ty bo ra] mfix [h1 h2] hm ih] in l, v, e1.
+    1:{ cbn in e1. apply some_inj in e1. subst. reflexivity. }
+    cbn in *.
+    repeat match type of e1 with
+    | context [ strengthen_mask ?m ?k ?t ] =>
+      let e' := fresh "e" in
+      destruct (strengthen_mask m k t) eqn:e' ; [| discriminate ] ;
+      match goal with
+      | ih : forall m k u p q, _ -> strengthen_mask m k t = _ -> _ |- _ =>
+        erewrite ih ; [| eauto ; lia .. ]
+      end
+    end.
+    destruct monad_map eqn:e3. 2: discriminate.
+    apply some_inj in e1. subst. cbn - [minus].
+    erewrite ih. 2: eauto.
+    f_equal. unfold map_def at 2. cbn.
+    f_equal.
 Admitted.
 
 Lemma match_pattern_lift :
