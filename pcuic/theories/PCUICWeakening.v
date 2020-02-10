@@ -882,10 +882,6 @@ Lemma strengthen_mask_lift :
 Proof.
   intros m k t u p q h e.
   induction t in m, k, u, p, q, e, h |- * using term_forall_list_ind.
-  (* all: try solve [
-    cbn in * ; apply some_inj in e ; subst ;
-    reflexivity
-  ]. *)
   all: try solve [
     cbn in * ;
     repeat match type of e with
@@ -1008,7 +1004,8 @@ Proof.
     apply some_inj in e. subst. cbn.
     eapply match_option_eq with (f := fun x => _).
     rewrite map_length.
-    revert e1. generalize #|m0|. intros v e1.
+    apply option_monad_map_length in e1 as e2.
+    revert e1. rewrite e2. generalize #|l|. intros v e1.
     induction X as [| [na ty bo ra] mfix [h1 h2] hm ih] in l, v, e1.
     1:{ cbn in e1. apply some_inj in e1. subst. reflexivity. }
     cbn in *.
@@ -1025,8 +1022,36 @@ Proof.
     apply some_inj in e1. subst. cbn - [minus].
     erewrite ih. 2: eauto.
     f_equal. unfold map_def at 2. cbn.
-    f_equal.
-Admitted.
+    f_equal. f_equal. f_equal.
+    pose proof (nfalse_le m).
+    lia.
+  - cbn in *.
+    destruct monad_map as [l|] eqn:e1. 2: discriminate.
+    apply some_inj in e. subst. cbn.
+    eapply match_option_eq with (f := fun x => _).
+    rewrite map_length.
+    apply option_monad_map_length in e1 as e2.
+    revert e1. rewrite e2. generalize #|l|. intros v e1.
+    induction X as [| [na ty bo ra] mfix [h1 h2] hm ih] in l, v, e1.
+    1:{ cbn in e1. apply some_inj in e1. subst. reflexivity. }
+    cbn in *.
+    repeat match type of e1 with
+    | context [ strengthen_mask ?m ?k ?t ] =>
+      let e' := fresh "e" in
+      destruct (strengthen_mask m k t) eqn:e' ; [| discriminate ] ;
+      match goal with
+      | ih : forall m k u p q, _ -> strengthen_mask m k t = _ -> _ |- _ =>
+        erewrite ih ; [| eauto ; lia .. ]
+      end
+    end.
+    destruct monad_map eqn:e3. 2: discriminate.
+    apply some_inj in e1. subst. cbn - [minus].
+    erewrite ih. 2: eauto.
+    f_equal. unfold map_def at 2. cbn.
+    f_equal. f_equal. f_equal.
+    pose proof (nfalse_le m).
+    lia.
+Qed.
 
 Lemma match_pattern_lift :
   forall npat Ξ p t s n m,
