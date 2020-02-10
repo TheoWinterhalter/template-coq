@@ -1053,6 +1053,45 @@ Proof.
     lia.
 Qed.
 
+(* TODO MOVE *)
+Lemma firstn_subs_empty :
+  forall n m,
+    firstn n (subs_empty m) = subs_empty (min n m).
+Proof.
+  intros n m.
+  induction n in m |- *.
+  - cbn. reflexivity.
+  - destruct m.
+    + cbn. reflexivity.
+    + cbn. f_equal. apply IHn.
+Qed.
+
+Inductive assumption_context : context -> Prop :=
+| assumption_context_nil : assumption_context []
+| assumption_context_vass na t Γ :
+    assumption_context Γ ->
+    assumption_context (vass na t :: Γ).
+
+Lemma mkLambda_mask_lift :
+  forall m Ξ p q t,
+    assumption_context Ξ ->
+    #|m| = #|Ξ| ->
+    lift p q (mkLambda_mask m Ξ t) =
+    mkLambda_mask m Ξ (lift p (q - nfalse m) t).
+Proof.
+  intros m Ξ p q t hΞ e.
+  induction m as [| [] m ih] in Ξ, hΞ, e, p, q, t |- *.
+  - cbn. destruct Ξ. all: f_equal. all: lia.
+  - cbn. destruct Ξ as [| [na [bo|] ty] Ξ].
+    1: discriminate.
+    1: inversion hΞ.
+    cbn in e. cbn.
+    rewrite ih.
+    + inversion hΞ. assumption.
+    + lia.
+    +
+Abort.
+
 Lemma match_pattern_lift :
   forall kn npat Ξ p t s n m,
     m > #|Ξ| ->
@@ -1067,6 +1106,18 @@ Proof.
     2:{ inversion hp. subst. lia. }
     rewrite e2.
     unfold subs_init in *.
+    unfold subs_add in *.
+    destruct nth_error as [[]|] eqn:e3. 1,3: discriminate.
+    apply some_inj in e. subst.
+    rewrite map_app. cbn.
+    f_equal. f_equal.
+    + rewrite firstn_subs_empty.
+      apply nth_error_Some_length in e3 as el.
+      rewrite subs_empty_length in el.
+      replace (min n0 npat) with n0 by lia.
+      induction n0 in |- *. 1: reflexivity.
+      cbn. f_equal. apply IHn0.
+    + f_equal.
 Admitted.
 
 Lemma match_elims_lift :

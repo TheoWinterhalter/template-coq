@@ -850,13 +850,6 @@ Import PCUICReflect.
 
 Open Scope list_scope.
 
-Definition subs_add x t (l : list (option term)) : option (list (option term)) :=
-  match nth_error l x with
-  | None => None
-  | Some None => Some (firstn x l ++ Some t :: skipn (S x) l)
-  | Some (Some t') => if eqb t t' then Some l else None
-  end.
-
 Definition subs_flatten (l : list (option term)) : option (list term) :=
   map_option_out l.
 
