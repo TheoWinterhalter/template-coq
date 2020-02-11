@@ -1074,24 +1074,28 @@ Inductive assumption_context : context -> Prop :=
 
 Lemma mkLambda_mask_lift :
   forall m Ξ p q t u,
+    #|m| = #|Ξ| ->
     q > #|m| ->
     mkLambda_mask m Ξ t = Some u ->
-    mkLambda_mask m (lift_context p q Ξ) (lift p (q - nfalse m) t) =
-    Some (lift p q u).
+    mkLambda_mask m (lift_context p (q - nfalse m) Ξ) (lift p (q - nfalse m) t)
+    = Some (lift p q u).
 Proof.
-  intros m Ξ p q t u hm e.
-  induction m as [| [] m ih] in hm, Ξ, p, q, t, u, e |- *.
+  intros m Ξ p q t u hΞ hm e.
+  induction m as [| [] m ih] in hm, Ξ, hΞ, p, q, t, u, e |- *.
   - cbn in *. destruct Ξ. 2: discriminate.
     apply some_inj in e. subst. cbn.
     f_equal. f_equal. lia.
   - cbn in e. destruct Ξ as [| [na [bo|] ty] Ξ]. 1,2: discriminate.
-    cbn in hm.
-    rewrite lift_context_snoc. unfold lift_decl. cbn.
+    cbn in hm. cbn in hΞ. pose proof (nfalse_le m).
+    rewrite lift_context_snoc. unfold lift_decl, map_decl. cbn.
     destruct strengthen_mask eqn:e1. 2: discriminate.
-    apply strengthen_mask_lift with (p := p) (q := #|Ξ| + q) in e1. 2: lia.
+    apply strengthen_mask_lift with (p := p) (q := #|Ξ| + (q - nfalse m)) in e1.
+    2: lia.
     rewrite e1.
-    apply ih with (p := p) (q := q) in e. 2: lia.
-    rewrite <- e. cbn. f_equal.
+    apply ih with (p := p) (q := q) in e. 2,3: lia.
+    rewrite <- e. cbn. f_equal. f_equal.
+    + f_equal. give_up.
+    + f_equal. give_up.
     (* Wrong lemma of def *)
 Abort.
 
