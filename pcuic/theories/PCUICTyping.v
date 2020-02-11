@@ -1742,7 +1742,7 @@ Proof.
     eassumption.
 Qed.
 
-Lemma rec_pattern_sound :
+(* Lemma rec_pattern_sound :
   forall npat nb p t s,
     pattern npat nb p ->
     rec_pattern npat nb p t = Some s ->
@@ -1945,7 +1945,7 @@ Proof.
           eapply ih. all: eauto.
           lia.
   - discriminate.
-Qed.
+Qed. *)
 
 Lemma skipn_skipn :
   forall {A} n m (l : list A),
@@ -2037,7 +2037,7 @@ Proof.
   rewrite <- e'. f_equal. f_equal. lia.
 Qed.
 
-Lemma rec_pattern_complete :
+(* Lemma rec_pattern_complete :
   forall npat nb p s',
     pattern npat nb p ->
     exists s,
@@ -2083,10 +2083,10 @@ Proof.
 
            The lemma isn't true because s' can be longer
         *)
-Abort.
+Abort. *)
 
 (* Is assumes the eliminaion list is reversed *)
-Fixpoint rec_lhs_rec
+(* Fixpoint rec_lhs_rec
   (npat : nat) (k : kername) (n : nat) (ui : universe_instance)
   (l : list elimination) (t : term) : option (list (option term)) :=
   match l with
@@ -2221,7 +2221,7 @@ Proof.
     subst. cbn in e. f_equal.
     eapply ih. all: eauto.
     inversion h. assumption.
-Qed.
+Qed. *)
 
 Lemma map_option_out_subs_complete :
   forall s s',
@@ -2242,7 +2242,7 @@ Qed.
    Or maybe we want to enforce all to appear at least once, which would make
    sense.
 *)
-Lemma rec_lhs_sound :
+(* Lemma rec_lhs_sound :
   forall npat k n ui l t s,
     Forall (elim_pattern npat) l ->
     rec_lhs npat k n ui l t = Some s ->
@@ -2257,7 +2257,7 @@ Proof.
   eapply rec_lhs_rec_sound in e1. 3: eauto.
   - rewrite fold_left_rev_right in e1. assumption.
   - eapply rev_Forall. assumption.
-Qed.
+Qed. *)
 
 (* TODO Prove the it is complete. *)
 

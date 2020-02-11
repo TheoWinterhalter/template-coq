@@ -262,7 +262,7 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
 
-  Parameter (elim_pattern : nat -> elimination -> Prop).
+  Parameter (elim_pattern : nat -> elimination -> Type).
 
   Parameter (linear : nat -> list elimination -> bool).
 
@@ -462,7 +462,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       rhsTyped  : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
       onHead    : r.(head) < #|Δ| ;
       lhsLinear : linear #|r.(pat_context)| r.(elims) ;
-      onElims   : Forall (elim_pattern #|r.(pat_context)|) r.(elims)
+      onElims   : All (elim_pattern #|r.(pat_context)|) r.(elims)
     }.
 
     Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
