@@ -1073,23 +1073,23 @@ Inductive assumption_context : context -> Prop :=
     assumption_context (vass na t :: Γ).
 
 Lemma mkLambda_mask_lift :
-  forall m Ξ p q t,
-    assumption_context Ξ ->
-    #|m| = #|Ξ| ->
-    lift p q (mkLambda_mask m Ξ t) =
-    mkLambda_mask m Ξ (lift p (q - nfalse m) t).
+  forall m Ξ p q t u,
+    q > #|m| ->
+    mkLambda_mask m Ξ t = Some u ->
+    mkLambda_mask m Ξ (lift p (q - nfalse m) t) = Some (lift p q u).
 Proof.
-  intros m Ξ p q t hΞ e.
-  induction m as [| [] m ih] in Ξ, hΞ, e, p, q, t |- *.
-  - cbn. destruct Ξ. all: f_equal. all: lia.
-  - cbn. destruct Ξ as [| [na [bo|] ty] Ξ].
-    1: discriminate.
-    1: inversion hΞ.
-    cbn in e. cbn.
-    rewrite ih.
-    + inversion hΞ. assumption.
-    + lia.
-    +
+  intros m Ξ p q t u hm e.
+  induction m as [| [] m ih] in hm, Ξ, p, q, t, u, e |- *.
+  - cbn in *. destruct Ξ. 2: discriminate.
+    apply some_inj in e. subst.
+    f_equal. f_equal. lia.
+  - cbn in e. destruct Ξ as [| [na [bo|] ty] Ξ]. 1,2: discriminate.
+    cbn. destruct strengthen_mask eqn:e1. 2: discriminate.
+    cbn in hm.
+    apply ih with (p := p) (q := q) in e. 2: lia.
+    rewrite <- e. cbn. f_equal.
+    apply strengthen_mask_lift with (p := p) (q := q) in e1. 2: lia.
+    (* Wrong lemma of def *)
 Abort.
 
 Lemma match_pattern_lift :
@@ -1105,6 +1105,9 @@ Proof.
     apply strengthen_mask_lift with (p := n) (q := m) in e1 as e2.
     2:{ inversion hp. subst. lia. }
     rewrite e2.
+    destruct mkLambda_mask eqn:e3. 2: discriminate.
+
+
     unfold subs_init in *.
     unfold subs_add in *.
     destruct nth_error as [[]|] eqn:e3. 1,3: discriminate.

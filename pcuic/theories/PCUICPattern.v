@@ -397,13 +397,15 @@ Fixpoint strengthen_mask (m : list bool) k (t : term) : option term :=
   | x => ret x
   end.
 
-Fixpoint mkLambda_mask (m : list bool) (Ξ : context) (b : term) : term :=
+Fixpoint mkLambda_mask (m : list bool) (Ξ : context) (b : term) : option term :=
   match m, Ξ with
   | true :: m, {| decl_name := x ; decl_body := None ; decl_type := A |} :: Ξ =>
-    tLambda x A (mkLambda_mask m Ξ b)
-  | false :: m, d :: Ξ => mkLambda_mask m Ξ b
-  | [], [] => b
-  | _, _ => b (* Or use option? *)
+    A' <- strengthen_mask m 0 A ;;
+    mkLambda_mask m Ξ (tLambda x A' b)
+  | false :: m, d :: Ξ =>
+    mkLambda_mask m Ξ b (* Return None when not an assumption? *)
+  | [], [] => ret b
+  | _, _ => None
   end.
 
 (* TODO MOVE *)
@@ -547,7 +549,8 @@ Fixpoint match_pattern npat Ξ (p : pattern) (t : term) {struct p}
   match p with
   | pVar n mask =>
     u <- strengthen_mask mask 0 t ;;
-    subs_init npat n (mkLambda_mask mask Ξ u)
+    f <- mkLambda_mask mask Ξ u ;;
+    subs_init npat n f
   | pBound n =>
     option_assert (eqb t (tRel n)) ;;
     ret (subs_empty npat)
