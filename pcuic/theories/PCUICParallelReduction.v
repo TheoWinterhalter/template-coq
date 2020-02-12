@@ -3907,4 +3907,28 @@ Section ParallelSubstitution.
         * intros θ' hθ'. reflexivity.
   Qed.
 
+  Lemma elim_reduct :
+    forall Σ Γ Δ e σ t k ui decl r m,
+      wf Σ ->
+      let npat := #|r.(pat_context)| in
+      elim_pattern npat e ->
+      elim_mask npat e = Some m ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
+      pred1_elim Σ Γ Δ (subst_elim σ 0 e) t ->
+      ∑ θ,
+        All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
+        forall θ',
+          subs_complete θ θ' ->
+          t = subst_elim θ' 0 e.
+  Proof.
+    intros Σ Γ Δ e σ t k ui decl r m hΣ npat he hm ss hσ h.
+    remember (subst_elim σ 0 e) as u eqn:e1.
+    induction h in e, σ, hσ, e1, he, m, hm |- *.
+    - destruct e. all: try discriminate.
+      cbn in e1. inversion e1. subst. clear e1.
+      inversion he. subst.
+      cbn in hm.
+  Abort.
+
 End ParallelSubstitution.
