@@ -3399,14 +3399,9 @@ Section ParallelSubstitution.
   Proof.
     intros n u t s s' e.
     unfold subs_add in *. simpl in e.
-    destruct nth_error eqn:e1. 2: discriminate.
-    destruct o.
-    - change ((if eqb u t0 then Some (t :: s) else None) = Some s') in e.
-      destruct (PCUICReflect.eqb_spec u t0). 2: discriminate.
-      subst. apply some_inj in e. subst.
-      eexists. intuition reflexivity.
-    - apply some_inj in e. subst.
-      eexists. intuition reflexivity.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst.
+    eexists. intuition reflexivity.
   Qed.
 
   Lemma All2_mask_subst_lin_set :
@@ -3455,7 +3450,8 @@ Section ParallelSubstitution.
   Proof.
     intros P m1 m2 m l s1 s2 hm h1 h2.
     induction h1 in m2, m, hm, s2, h2 |- *.
-    - cbn in *. discriminate.
+    - inversion h2. subst. cbn in hm. apply some_inj in hm. subst.
+      exists []. intuition auto.
     - dependent destruction h2. 1: discriminate.
       cbn in *.
       destruct lin_merge eqn:e. 2: discriminate.
@@ -3484,13 +3480,13 @@ Section ParallelSubstitution.
         * constructor. assumption.
   Qed.
 
-  Lemma All2_mask_subst_linear_account_init :
+  Lemma All2_mask_subst_linear_mask_init :
     forall P npat l,
       #|l| = npat ->
-      All2_mask_subst P (linear_account_init npat) l (list_init None npat).
+      All2_mask_subst P (linear_mask_init npat) l (subs_empty npat).
   Proof.
     intros P npat l el.
-    unfold linear_account_init.
+    unfold linear_mask_init, subs_empty.
     induction npat in l, el |- *.
     - cbn.
       destruct l. 2: discriminate.
