@@ -3626,7 +3626,13 @@ Section ParallelSubstitution.
         rewrite isAppRel_mkApps in H ; cbn in H ; discriminate
       ] ; subst ;
       cbn ; cbn in e ;
-      destruct nth_error eqn:e1 ; [| discriminate ] ;
+      destruct nth_error eqn:e1 ; [|
+        try discriminate ;
+        apply nth_error_None in e1 ;
+        apply untyped_subslet_length in hσ ;
+        rewrite subst_context_length in hσ ;
+        exfalso ; lia
+      ] ;
       rewrite lift0_id in e ; subst ;
       replace (n - 0) with n in e1 by lia ;
       apply untyped_subslet_length in hσ as eσ ;
@@ -3699,14 +3705,20 @@ Section ParallelSubstitution.
         }
         rewrite lift0_id. reflexivity.
     - destruct p. all: try discriminate.
-      cbn in hm. clear IHh1 IHh2 IHh3.
+      cbn in hm.
       inversion hp.
       2:{
         apply (f_equal isAppRel) in H. cbn in H.
         rewrite isAppRel_mkApps in H. cbn in H. discriminate.
       } subst.
       cbn. cbn in e.
-      destruct nth_error eqn:e1. 2: discriminate.
+      destruct nth_error eqn:e1.
+      2:{
+        apply nth_error_None in e1.
+        apply untyped_subslet_length in hσ.
+        rewrite subst_context_length in hσ.
+        exfalso. lia.
+      }
       rewrite lift0_id in e. subst.
       replace (n - 0) with n in e1 by lia.
       apply untyped_subslet_length in hσ as eσ.
