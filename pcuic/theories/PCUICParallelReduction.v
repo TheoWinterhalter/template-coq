@@ -3606,7 +3606,7 @@ Section ParallelSubstitution.
       #|Ξ| = #|Ξ'| ->
       let npat := #|r.(pat_context)| in
       pattern npat p ->
-      pattern_linacc npat #|Ξ| p = Some m -> (* Seems like we should redefine it properly and move it in PCUICPattern while we're at it *)
+      pattern_mask npat p = Some m ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
       pred1 Σ (Γ ,,, Ξ) (Δ ,,, Ξ') (subst σ #|Ξ| p) t ->
@@ -3623,57 +3623,59 @@ Section ParallelSubstitution.
     induction h in Γ, Δ, Ξ, Ξ', eΞ, eΘ, eΘ', p, σ, hσ, e, hp, m, hm |- *.
     - destruct p.
       all: cbn in hm. all: try discriminate.
-      + clear IHh1 IHh2 IHh3.
-        destruct (#|Ξ| <=? n) eqn:e1.
-        2:{ cbn in e. rewrite e1 in e. discriminate. }
-        cbn in e. rewrite e1 in e.
-        destruct nth_error eqn:e2. 2: discriminate.
-        destruct t. all: try discriminate.
-        destruct t2. all: try discriminate.
-        cbn in e. inversion e. subst. clear e.
-        assert (n < npat + #|Ξ|).
-        { inversion hp.
-          - change (tRel n) with (mkApps (tRel n) []) in H.
-            apply mkApps_Rel_inj in H as [? ?]. subst.
-            assumption.
-          - destruct (Nat.leb_spec #|Ξ| n). all: lia.
-          - apply (f_equal isAppRel) in H.
-            rewrite isAppRel_mkApps in H. cbn in H.
-            discriminate.
-          - apply (f_equal isAppRel) in H.
-            rewrite isAppRel_mkApps in H. cbn in H.
-            discriminate.
+      2:{
+        cbn in e. inversion e. subst.
+        destruct p1. all: try discriminate.
+        inversion hp.
+        apply (f_equal isAppRel) in H. cbn in H.
+        rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+      }
+      clear IHh1 IHh2 IHh3.
+      inversion hp.
+      2:{
+        apply (f_equal isAppRel) in H. cbn in H.
+        rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+      } subst.
+      cbn. cbn in e.
+      destruct (#|Ξ| <=? n) eqn:e1. 2: discriminate.
+      destruct nth_error eqn:e2. 2: discriminate.
+      destruct t. all: try discriminate.
+      destruct t2. all: try discriminate.
+      cbn in e. inversion e. subst. clear e.
+      apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
+      apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
+      apply pred1_lift0_inv in h3 as [t3' [? h3]]. subst.
+      apply untyped_subslet_length in hσ as eσ.
+      rewrite subst_context_length in eσ.
+      eexists. split.
+      + eapply All2_mask_subst_lin_set. all: eauto.
+        2:{
+          eapply pred_beta.
+          all: eassumption.
         }
-        apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
-        apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
-        apply pred1_lift0_inv in h3 as [t3' [? h3]]. subst.
-        apply untyped_subslet_length in hσ as eσ.
-        rewrite subst_context_length in eσ.
-        eexists. split.
-        * eapply All2_mask_subst_lin_set. all: eauto.
-          2:{
-            eapply pred_beta.
-            all: eassumption.
-          }
-          2: eapply All2_mask_subst_linear_account_init. 2: auto.
-          apply subs_add_empty.
-          apply nth_error_Some_length in e2. lia.
-        * intros θ' hθ.
-          cbn. rewrite e1.
-          apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
-          erewrite hθ'.
-          2:{
-            rewrite nth_error_app_ge.
-            1:{ rewrite list_init_length. auto. }
-            rewrite list_init_length.
-            match goal with
-            | |- nth_error _ ?n = _ =>
-            replace n with 0 by lia
-            end.
-            cbn. reflexivity.
-          }
-          rewrite distr_lift_subst. cbn.
-          rewrite eΞ. reflexivity.
+        2: eapply All2_mask_subst_linear_account_init. 2: auto.
+        apply subs_add_empty.
+        apply nth_error_Some_length in e2. lia.
+      + intros θ' hθ.
+        cbn. rewrite e1.
+        apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+        erewrite hθ'.
+        2:{
+          rewrite nth_error_app_ge.
+          1:{ rewrite list_init_length. auto. }
+          rewrite list_init_length.
+          match goal with
+          | |- nth_error _ ?n = _ =>
+          replace n with 0 by lia
+          end.
+          cbn. reflexivity.
+        }
+        rewrite distr_lift_subst. cbn.
+        rewrite eΞ. reflexivity.
+
+
+
+
       + destruct pattern_linacc eqn:ep1. 2: discriminate.
         destruct (pattern_linacc _ _ p2) eqn:ep2. 2: discriminate.
         cbn in e. inversion e. subst.
