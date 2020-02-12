@@ -3865,7 +3865,46 @@ Section ParallelSubstitution.
         erewrite hθ1. 2: eassumption.
         erewrite hθ2. 2: eassumption.
         rewrite subst_mkApps. cbn. reflexivity.
-
-  Abort.
+    - inversion hp.
+      + subst.
+        cbn in hm. cbn. cbn in i.
+        destruct nth_error eqn:e1. 2: discriminate.
+        rewrite lift0_id in i.
+        replace (n - 0) with n in e1 by lia.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_lin_set. all: eauto.
+          -- apply subs_add_empty. eassumption.
+          -- econstructor. all: eassumption.
+          -- eapply All2_mask_subst_linear_mask_init. assumption.
+        * intros θ' hθ.
+          replace (n - 0) with n by lia.
+          apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+          erewrite hθ'.
+          2:{
+            rewrite nth_error_app_ge.
+            1:{ rewrite list_init_length. auto. }
+            rewrite list_init_length.
+            match goal with
+            | |- nth_error _ ?n = _ =>
+            replace n with 0 by lia
+            end.
+            cbn. reflexivity.
+          }
+          rewrite lift0_id. reflexivity.
+      + subst. rewrite subst_mkApps in i. cbn in i.
+        destruct args using list_rect_rev.
+        2:{
+          rewrite map_app in i. rewrite <- mkApps_nested in i.
+          cbn in i. discriminate.
+        }
+        cbn in *. apply some_inj in hm. subst.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
+        * intros θ' hθ'. reflexivity.
+  Qed.
 
 End ParallelSubstitution.
