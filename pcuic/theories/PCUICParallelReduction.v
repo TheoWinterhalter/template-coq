@@ -3498,7 +3498,7 @@ Section ParallelSubstitution.
   Qed.
 
   (* Is this the right statement? Will I be able to prove it? *)
-  Lemma pred1_lift_inv :
+  (* Lemma pred1_lift_inv :
     forall Σ Γ Γ' Δ Δ' Ξ Ξ' u v,
       pred1 Σ
         (Γ ,,, Δ ,,, lift_context #|Δ| 0 Ξ)
@@ -3527,7 +3527,7 @@ Section ParallelSubstitution.
       ∑ v',
         v = lift #|Δ'| 1 v' ×
         pred1 Σ (Γ ,, vass na A) (Γ' ,, vass na' A') u v'.
-  Admitted.
+  Admitted. *)
 
   Lemma list_init_length :
     forall A (x : A) n,
