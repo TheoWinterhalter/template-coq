@@ -3618,6 +3618,42 @@ Section ParallelSubstitution.
     intros Σ Γ Δ p σ t k ui decl r m npat hp hm ss hσ h.
     remember (subst0 σ p) as u eqn:e.
     induction h in p, σ, hσ, e, hp, m, hm |- *.
+    all: try solve [
+      destruct p ; try discriminate ;
+      cbn in hm ;
+      inversion hp ; [|
+        apply (f_equal isAppRel) in H ; cbn in H ;
+        rewrite isAppRel_mkApps in H ; cbn in H ; discriminate
+      ] ; subst ;
+      cbn ; cbn in e ;
+      destruct nth_error eqn:e1 ; [| discriminate ] ;
+      rewrite lift0_id in e ; subst ;
+      replace (n - 0) with n in e1 by lia ;
+      apply untyped_subslet_length in hσ as eσ ;
+      rewrite subst_context_length in eσ ;
+      eexists ; split ; [
+        eapply All2_mask_subst_lin_set ; eauto ; [
+          apply subs_add_empty ; eassumption
+        | econstructor ; eassumption
+        | eapply All2_mask_subst_linear_mask_init ; assumption
+        ]
+      | intros θ' hθ ;
+        replace (n - 0) with n by lia ;
+        apply subs_complete_spec in hθ as hh ; destruct hh as [? hθ'] ;
+        erewrite hθ' ; [
+          rewrite lift0_id ; reflexivity
+        | rewrite nth_error_app_ge ; [
+            rewrite list_init_length ; auto
+          | rewrite list_init_length ;
+            match goal with
+            | |- nth_error _ ?n = _ =>
+              replace n with 0 by lia
+            end ;
+            cbn ; reflexivity
+          ]
+        ]
+      ]
+    ].
     - destruct p.
       all: cbn in hm. all: try discriminate.
       2:{
