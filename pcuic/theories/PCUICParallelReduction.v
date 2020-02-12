@@ -3602,25 +3602,22 @@ Section ParallelSubstitution.
   Tactic Notation "sig" "eapply" constr(h) := sig_eapply h.
 
   Lemma pattern_reduct :
-    forall Σ Γ Δ p σ t k ui decl r Ξ Ξ' m,
-      #|Ξ| = #|Ξ'| ->
+    forall Σ Γ Δ p σ t k ui decl r m,
       let npat := #|r.(pat_context)| in
       pattern npat p ->
       pattern_mask npat p = Some m ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
-      pred1 Σ (Γ ,,, Ξ) (Δ ,,, Ξ') (subst σ #|Ξ| p) t ->
+      pred1 Σ Γ Δ (subst0 σ p) t ->
       ∑ θ,
         All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
         forall θ',
           subs_complete θ θ' ->
-          t = subst θ' #|Ξ| p.
+          t = subst0 θ' p.
   Proof.
-    intros Σ Γ Δ p σ t k ui decl r Ξ Ξ' m eΞ npat hp hm ss hσ h.
-    remember (subst σ #|Ξ| p) as u eqn:e.
-    remember (Γ ,,, Ξ) as Θ eqn:eΘ.
-    remember (Δ ,,, Ξ') as Θ' eqn:eΘ'.
-    induction h in Γ, Δ, Ξ, Ξ', eΞ, eΘ, eΘ', p, σ, hσ, e, hp, m, hm |- *.
+    intros Σ Γ Δ p σ t k ui decl r m npat hp hm ss hσ h.
+    remember (subst0 σ p) as u eqn:e.
+    induction h in p, σ, hσ, e, hp, m, hm |- *.
     - destruct p.
       all: cbn in hm. all: try discriminate.
       2:{
@@ -3637,14 +3634,9 @@ Section ParallelSubstitution.
         rewrite isAppRel_mkApps in H. cbn in H. discriminate.
       } subst.
       cbn. cbn in e.
-      destruct (#|Ξ| <=? n) eqn:e1. 2: discriminate.
-      destruct nth_error eqn:e2. 2: discriminate.
-      destruct t. all: try discriminate.
-      destruct t2. all: try discriminate.
-      cbn in e. inversion e. subst. clear e.
-      apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
-      apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
-      apply pred1_lift0_inv in h3 as [t3' [? h3]]. subst.
+      destruct nth_error eqn:e1. 2: discriminate.
+      rewrite lift0_id in e. subst.
+      replace (n - 0) with n in e1 by lia.
       apply untyped_subslet_length in hσ as eσ.
       rewrite subst_context_length in eσ.
       eexists. split.
@@ -3653,11 +3645,10 @@ Section ParallelSubstitution.
           eapply pred_beta.
           all: eassumption.
         }
-        2: eapply All2_mask_subst_linear_account_init. 2: auto.
-        apply subs_add_empty.
-        apply nth_error_Some_length in e2. lia.
+        * apply subs_add_empty. eassumption.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
       + intros θ' hθ.
-        cbn. rewrite e1.
+        replace (n - 0) with n by lia.
         apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
         erewrite hθ'.
         2:{
@@ -3670,137 +3661,8 @@ Section ParallelSubstitution.
           end.
           cbn. reflexivity.
         }
-        rewrite distr_lift_subst. cbn.
-        rewrite eΞ. reflexivity.
-
-
-
-
-      + destruct pattern_linacc eqn:ep1. 2: discriminate.
-        destruct (pattern_linacc _ _ p2) eqn:ep2. 2: discriminate.
-        cbn in e. inversion e. subst.
-        clear e. rename H0 into e.
-        destruct p1.
-        all: cbn in ep1. all: try discriminate.
-        2:{
-          exfalso. inversion hp.
-          - apply (f_equal isAppRel) in H. cbn in H.
-            rewrite isAppRel_mkApps in H. cbn in H. discriminate.
-          - apply (f_equal isAppConstruct) in H. cbn in H.
-            rewrite isAppConstruct_mkApps in H. cbn in H. discriminate.
-          - apply (f_equal isElimSymb) in H. cbn in H.
-            rewrite isElimSymb_mkApps in H. cbn in H. discriminate.
-        }
-        clear IHh1 IHh2.
-        specialize IHh3 with (5 := eq_refl) (6 := eq_refl) (7 := eq_refl).
-        specialize IHh3 with (3 := ep2).
-        forward IHh3 by auto.
-        forward IHh3.
-        { inversion hp.
-          - change (tApp (tRel n) p2) with (mkApps (tRel n) [p2]) in H.
-            apply mkApps_Rel_inj in H as [? ?]. subst.
-            destruct l1 as [| i l1]. 1: discriminate.
-            rename H3 into hl. cbn in hl.
-            inversion hl. subst.
-            apply pattern_bound.
-            inversion H2. assumption.
-          - apply (f_equal isAppRel) in H. cbn in H.
-            rewrite isAppRel_mkApps in H. cbn in H. discriminate.
-          - apply (f_equal isAppRel) in H. cbn in H.
-            rewrite isAppRel_mkApps in H. cbn in H. discriminate.
-        }
-        forward IHh3 by auto.
-        destruct IHh3 as [θ [hmθ hθ]].
-        cbn in e.
-        destruct (#|Ξ| <=? n) eqn:e1. 2: discriminate.
-        destruct nth_error eqn:e2. 2: discriminate.
-        destruct t. all: try discriminate.
-        cbn in e. inversion e. subst. clear e.
-        apply pred1_lift0_inv in h1 as [t1' [? h1]]. subst.
-        apply pred1_lift1_inv in h2 as [t2' [? h2]]. subst.
-        apply untyped_subslet_length in hσ as eσ.
-        rewrite subst_context_length in eσ.
-        (* Destruct needed for afterwards *)
-        edestruct All2_mask_subst_lin_merge as [ps [eps hps]]. all: eauto.
-        { eapply All2_mask_subst_lin_set. all: eauto.
-          2:{ constructor. all: eauto. }
-          2: eapply All2_mask_subst_linear_account_init. 2: auto.
-          apply subs_add_empty.
-          apply nth_error_Some_length in e2. abstract lia.
-        }
-        eexists. split.
-        1: eassumption.
-        intros θ' hθ'.
-        cbn. rewrite e1.
-        eapply subs_merge_complete in hθ' as hh. 2: eassumption.
-        destruct hh as [hc1 hc2].
-        apply subs_complete_spec in hc1 as hh. destruct hh as [el hθ''].
-        erewrite hθ''.
-        2:{
-          rewrite nth_error_app_ge.
-          { rewrite list_init_length. reflexivity. }
-          rewrite list_init_length.
-          match goal with
-          | |- nth_error _ ?n = _ => replace n with 0 by lia
-          end.
-          cbn. reflexivity.
-        }
-        rewrite <- hθ. 2: auto.
-        (* Comparing with the β redex, we need to fix the generated subst *)
-(*
-
-
-      destruct (Nat.leb_spec nb n).
-
-    2: {
-      exfalso. destruct p.
-      all: cbn in hm. all: try discriminate.
-      destruct (Nat.leb_spec nb n).
-      -
-      inversion hp.
-      all: try apply (f_equal isAppRel) in H.
-
-      destruct hp.
-      all: cbn in e. all: rewrite ?subst_mkApps in e.
-      all: apply (f_equal (decompose_app)) in e.
-      all: cbn in e.
-      all: rewrite -> ?decompose_app_mkApps in e.
-    }
-    all: try solve [
-      exfalso ;
-    ] *)
+        rewrite lift0_id. reflexivity.
+    -
   Abort.
-
-  (* Fixpoint is_pat_in i p :=
-    match p with
-    | tRel n => i =? n
-    | tApp u v => is_pat_in i u || is_pat_in i v
-    | tLambda na A t => is_pat_in i A || is_pat_in (S i) t
-    | tConstruct ind n ui => false
-    | tSymb k n ui => false
-    | _ => false
-    end.
-
-  Fixpoint filter_patvars i nb (l : list term) : list term :=
-    match l with
-    | p :: l =>
-      if is_pat_in (nb + i) p
-      then p :: filter_patvars (S i) nb l
-      else filter_patvars (S i) nb l
-    | [] => []
-    end. *)
-
-  (* Lemma pattern_reduct :
-    forall Σ Γ Δ p σ t npat nb,
-      pattern npat nb p ->
-      pred1 Σ Γ Δ (subst0 σ p) t ->
-      ∑ l,
-        All2 (pred1 Σ Γ Δ) (filter_patvars 0 nb σ) l ×
-        t = ??
-        (* is filter the right idea? Because then we don't get a proper
-           substitution on the right.
-           Maybe we need to talk about partial substitutions like for
-           recognition...
-        *) *)
 
 End ParallelSubstitution.
