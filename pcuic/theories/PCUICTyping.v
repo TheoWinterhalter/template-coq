@@ -897,101 +897,14 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
 Definition option_assert (b : bool) : option () :=
   if b then ret tt else None.
 
-(* Structure to build a substitution *)
-Definition subs_empty npat : list (option term) :=
-  list_make (fun _ => None) 0 npat.
-
 (* Why do I need it again? *)
 Import PCUICReflect.
 
 Open Scope list_scope.
 
-Definition subs_add x t (l : list (option term)) : option (list (option term)) :=
-  match nth_error l x with
-  | None => None
-  | Some None => Some (firstn x l ++ Some t :: skipn (S x) l)
-  | Some (Some t') => if eqb t t' then Some l else None
-  end.
-
+(* TODO REMOVE *)
 Definition subs_flatten (l : list (option term)) : option (list term) :=
   map_option_out l.
-
-(** To deal with a partial substitution we consider all its complete extensions.
-*)
-
-Inductive subs_complete : list (option term) -> list term -> Prop :=
-| subs_complete_nil : subs_complete [] []
-| subs_complete_Some :
-    forall a s s',
-      subs_complete s s' ->
-      subs_complete (Some a :: s) (a :: s')
-| subs_complete_None :
-    forall a s s',
-      subs_complete s s' ->
-      subs_complete (None :: s) (a :: s').
-
-Lemma subs_complete_spec :
-  forall s s',
-    subs_complete s s' <->
-    (#|s| = #|s'| /\
-     forall n t, nth_error s n = Some (Some t) -> nth_error s' n = Some t).
-Proof.
-  intros s s'. split.
-  - intro h. induction h.
-    + split. 1: reflexivity.
-      intros [] t e. all: discriminate.
-    + cbn. destruct IHh as [el ih].
-      split. 1: auto.
-      intros [|n] t e.
-      * cbn in *. apply some_inj in e. assumption.
-      * cbn in *. eapply ih. assumption.
-    + cbn. destruct IHh as [el ih].
-      split. 1: auto.
-      intros [|n] t e.
-      * cbn in *. discriminate.
-      * cbn in *. eapply ih. assumption.
-  - intros [e h]. induction s in s', e, h |- *.
-    + destruct s'. 2: discriminate.
-      constructor.
-    + destruct s'. 1: discriminate.
-      cbn in e. destruct a.
-      * specialize h with (n := 0) as h'.
-        cbn in h'. specialize h' with (1 := eq_refl).
-        apply some_inj in h'. subst.
-        constructor.
-        eapply IHs. 1: lia.
-        intros n t hn.
-        specialize h with (n := S n). cbn in h.
-        eapply h. assumption.
-      * constructor. eapply IHs. 1: lia.
-        intros n ? hn.
-        specialize h with (n := S n). cbn in h.
-        eapply h. assumption.
-Qed.
-
-Lemma subs_complete_length :
-  forall s s',
-    subs_complete s s' ->
-    #|s| = #|s'|.
-Proof.
-  intros s s' h.
-  apply subs_complete_spec in h. apply h.
-Qed.
-
-Definition subs_init npat x t :=
-  subs_add x t (subs_empty npat).
-
-Fixpoint subs_merge (s1 s2 : list (option term)) : option (list (option term)) :=
-  match s1, s2 with
-  | [], [] => ret []
-  | None :: s1, d :: s2
-  | d :: s1, None :: s2 => s <- subs_merge s1 s2 ;; ret (d :: s)
-  | Some t1 :: s1, Some t2 :: s2 =>
-    option_assert (eqb t1 t2) ;;
-    s <- subs_merge s1 s2 ;;
-    ret (Some t1 :: s)
-  | _, _ => None
-  end.
 
 (* Particular case of completion *)
 Fixpoint subs_flatten_default (l : list (option term)) : list term :=
@@ -1021,65 +934,6 @@ Proof.
   - cbn. f_equal. assumption.
 Qed.
 
-Lemma subs_merge_complete :
-  forall s1 s2 s,
-    subs_merge s1 s2 = Some s ->
-    forall s',
-      subs_complete s s' ->
-      subs_complete s1 s' /\ subs_complete s2 s'.
-Proof.
-  intros s1 s2 s e s' hs. induction hs in s1, s2, e |- *.
-  - assert (h : s1 = [] /\ s2 = []).
-    { induction s1 in s2, e |- *.
-      - destruct s2.
-        + intuition auto.
-        + cbn in e. discriminate.
-      - destruct a.
-        + destruct s2. 1: discriminate.
-          destruct o.
-          * cbn in e. unfold eq_dec_to_bool in e.
-            destruct eq_dec.
-            2: discriminate.
-            subst. cbn in e. destruct (subs_merge s1 s2) eqn: es.
-            all: discriminate.
-          * cbn in e. destruct (subs_merge s1 s2) eqn: es.
-            all: discriminate.
-        + cbn in e. destruct s2. 1: discriminate.
-          destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-      }
-      destruct h. subst. intuition constructor.
-  - destruct s1, s2. all: try discriminate.
-    1:{ cbn in e. destruct o. all: discriminate. }
-    destruct o, o0.
-    + cbn in e. unfold eq_dec_to_bool in e.
-      destruct eq_dec. 2: discriminate.
-      subst. cbn in e.
-      destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-      apply some_inj in e. inversion e. subst. clear e.
-      eapply IHhs in es as [h1 h2].
-      intuition (constructor ; auto).
-    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-      apply some_inj in e. inversion e. subst. clear e.
-      eapply IHhs in es as [h1 h2].
-      intuition (constructor ; auto).
-    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-      apply some_inj in e. inversion e. subst. clear e.
-      eapply IHhs in es as [h1 h2].
-      intuition (constructor ; auto).
-    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-  - destruct s1, s2. all: try discriminate.
-    1:{ cbn in e. destruct o. all: discriminate. }
-    destruct o, o0.
-    + cbn in e. unfold eq_dec_to_bool in e. destruct eq_dec. 2: discriminate.
-      cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-      inversion e. subst.
-      eapply IHhs in es as [h1 h2].
-      intuition (constructor ; auto).
-Qed.
-
   (* Other direction *)
   (* - intro h. induction s1 in s2, s, h |- *.
     + assert (s = []).
@@ -1098,35 +952,6 @@ Qed.
       apply subs_complete_length in h. discriminate.
     +
 Admitted. *)
-
-Lemma subs_init_nth_error :
-  forall npat n t s,
-    subs_init npat n t = Some s ->
-    nth_error s n = Some (Some t).
-Proof.
-  intros npat n t s.
-  unfold subs_init. unfold subs_add.
-  destruct nth_error eqn:e1. 2: discriminate.
-  destruct o.
-  - exfalso.
-    unfold subs_empty in e1. revert e1.
-    generalize 0. intros m e.
-    induction n in m, npat, e |- *.
-    + cbn in e. destruct npat.
-      * cbn in e. discriminate.
-      * cbn in e. discriminate.
-    + cbn in e. destruct npat.
-      * cbn in e. discriminate.
-      * cbn in e. eapply IHn. eassumption.
-  - intro e. apply some_inj in e. subst.
-    rewrite nth_error_app_ge.
-    { eapply firstn_le_length. }
-    assert (e : #|firstn n (subs_empty npat)| = n).
-    { apply nth_error_Some_length in e1.
-      rewrite -> firstn_length. lia.
-    }
-    rewrite e. replace (n - n) with 0 by lia. cbn. reflexivity.
-Qed.
 
 Definition option_map_def {A B : Set}
   (tf bf : A -> option B) (d : def A) : option (def B) :=

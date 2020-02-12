@@ -67,6 +67,15 @@ Fixpoint list_init {A} (x : A) (n : nat) : list A :=
   | S n => x :: list_init x n
   end.
 
+(* TODO MOVE *)
+Lemma list_init_length :
+  forall A (x : A) n,
+    #|list_init x n| = n.
+Proof.
+  intros A x n. induction n. 1: reflexivity.
+  cbn. f_equal. assumption.
+Qed.
+
 Definition linear_mask_init (npat : nat) :=
   list_init false npat.
 
@@ -130,3 +139,154 @@ Definition linear npat (el : list elimination) :=
   | Some l => forallb (fun x => x) l
   | None => false
   end.
+
+(** Notion of partial substitutions *)
+
+Notation partial_subst := (list (option term)).
+
+(* Structure to build a substitution *)
+Definition subs_empty npat : list (option term) :=
+  list_init None npat.
+
+Definition subs_add x t (l : partial_subst) : option (partial_subst) :=
+  match nth_error l x with
+  | None => None
+  | Some None => Some (firstn x l ++ Some t :: skipn (S x) l)
+  | Some (Some _) => None
+  end.
+
+Definition subs_init npat x t :=
+  subs_add x t (subs_empty npat).
+
+Fixpoint subs_merge (s1 s2 : partial_subst) : option (partial_subst) :=
+  match s1, s2 with
+  | [], [] => ret []
+  | None :: s1, d :: s2
+  | d :: s1, None :: s2 =>
+    s <- subs_merge s1 s2 ;; ret (d :: s)
+  | _, _ => None
+  end.
+
+Lemma subs_empty_length :
+  forall n,
+    #|subs_empty n| = n.
+Proof.
+  intros n. unfold subs_empty. apply list_init_length.
+Qed.
+
+Inductive subs_complete : list (option term) -> list term -> Prop :=
+| subs_complete_nil : subs_complete [] []
+| subs_complete_Some :
+    forall a s s',
+      subs_complete s s' ->
+      subs_complete (Some a :: s) (a :: s')
+| subs_complete_None :
+    forall a s s',
+      subs_complete s s' ->
+      subs_complete (None :: s) (a :: s').
+
+Lemma subs_complete_spec :
+  forall s s',
+    subs_complete s s' <->
+    (#|s| = #|s'| /\
+     forall n t, nth_error s n = Some (Some t) -> nth_error s' n = Some t).
+Proof.
+  intros s s'. split.
+  - intro h. induction h.
+    + split. 1: reflexivity.
+      intros [] t e. all: discriminate.
+    + cbn. destruct IHh as [el ih].
+      split. 1: auto.
+      intros [|n] t e.
+      * cbn in *. apply some_inj in e. assumption.
+      * cbn in *. eapply ih. assumption.
+    + cbn. destruct IHh as [el ih].
+      split. 1: auto.
+      intros [|n] t e.
+      * cbn in *. discriminate.
+      * cbn in *. eapply ih. assumption.
+  - intros [e h]. induction s in s', e, h |- *.
+    + destruct s'. 2: discriminate.
+      constructor.
+    + destruct s'. 1: discriminate.
+      cbn in e. destruct a.
+      * specialize h with (n := 0) as h'.
+        cbn in h'. specialize h' with (1 := eq_refl).
+        apply some_inj in h'. subst.
+        constructor.
+        eapply IHs. 1: lia.
+        intros n t hn.
+        specialize h with (n := S n). cbn in h.
+        eapply h. assumption.
+      * constructor. eapply IHs. 1: lia.
+        intros n ? hn.
+        specialize h with (n := S n). cbn in h.
+        eapply h. assumption.
+Qed.
+
+Lemma subs_complete_length :
+  forall s s',
+    subs_complete s s' ->
+    #|s| = #|s'|.
+Proof.
+  intros s s' h.
+  apply subs_complete_spec in h. apply h.
+Qed.
+
+Lemma subs_merge_complete :
+  forall s1 s2 s,
+    subs_merge s1 s2 = Some s ->
+    forall s',
+      subs_complete s s' ->
+      subs_complete s1 s' /\ subs_complete s2 s'.
+Proof.
+  intros s1 s2 s e s' hs. induction hs in s1, s2, e |- *.
+  - assert (h : s1 = [] /\ s2 = []).
+  { induction s1 as [| [] s1 ih] in s2, e |- *.
+    - destruct s2.
+      + intuition auto.
+      + cbn in e. discriminate.
+    - destruct s2 as [| [] s2]. 1-2: discriminate.
+      cbn in e. destruct subs_merge eqn:e1. all: discriminate.
+    - destruct s2 as [| [] s2]. 1: discriminate.
+      + cbn in e. destruct subs_merge eqn:e1. all: discriminate.
+      + cbn in e. destruct subs_merge eqn:e1. all: discriminate.
+  }
+  destruct h. subst. intuition constructor.
+- destruct s1 as [| [] s1], s2 as [| [] s2]. all: try discriminate.
+  + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+    apply some_inj in e. inversion e. subst. clear e.
+    eapply IHhs in es as [h1 h2].
+    intuition (constructor ; auto).
+  + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+    apply some_inj in e. inversion e. subst. clear e.
+    eapply IHhs in es as [h1 h2].
+    intuition (constructor ; auto).
+  + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+- destruct s1 as [| [] s1], s2 as [| [] s2]. all: try discriminate.
+  + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+  + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+  + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+    inversion e. subst.
+    eapply IHhs in es as [h1 h2].
+    intuition (constructor ; auto).
+Qed.
+
+Lemma subs_init_nth_error :
+  forall npat n t s,
+    subs_init npat n t = Some s ->
+    nth_error s n = Some (Some t).
+Proof.
+  intros npat n t s e.
+  unfold subs_init in e. unfold subs_add in e.
+  destruct nth_error eqn:en. 2: discriminate.
+  destruct o. 1: discriminate.
+  apply some_inj in e. subst.
+  rewrite nth_error_app_ge. 2: apply firstn_le_length.
+  rewrite firstn_length.
+  apply nth_error_Some_length in en.
+  match goal with
+  | |- nth_error _ ?n = _ => replace n with 0 by lia
+  end.
+  cbn. reflexivity.
+Qed.
