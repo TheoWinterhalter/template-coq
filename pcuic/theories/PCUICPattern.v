@@ -119,7 +119,7 @@ Fixpoint pattern_mask npat p :=
   | _ => None
   end.
 
-Fixpoint elim_mask npat e :=
+Definition elim_mask npat e :=
   match e with
   | eApp p => pattern_mask npat p
   | eCase ind p brs =>
