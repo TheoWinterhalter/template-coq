@@ -3662,7 +3662,39 @@ Section ParallelSubstitution.
           cbn. reflexivity.
         }
         rewrite lift0_id. reflexivity.
-    -
+    - destruct p. all: try discriminate.
+      cbn in hm. clear IHh1 IHh2 IHh3.
+      inversion hp.
+      2:{
+        apply (f_equal isAppRel) in H. cbn in H.
+        rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+      } subst.
+      cbn. cbn in e.
+      destruct nth_error eqn:e1. 2: discriminate.
+      rewrite lift0_id in e. subst.
+      replace (n - 0) with n in e1 by lia.
+      apply untyped_subslet_length in hσ as eσ.
+      rewrite subst_context_length in eσ.
+      eexists. split.
+      + eapply All2_mask_subst_lin_set. all: eauto.
+        * apply subs_add_empty. eassumption.
+        * eapply pred_zeta. all: eassumption.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
+      + intros θ' hθ.
+        replace (n - 0) with n by lia.
+        apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+        erewrite hθ'.
+        2:{
+          rewrite nth_error_app_ge.
+          1:{ rewrite list_init_length. auto. }
+          rewrite list_init_length.
+          match goal with
+          | |- nth_error _ ?n = _ =>
+          replace n with 0 by lia
+          end.
+          cbn. reflexivity.
+        }
+        rewrite lift0_id. reflexivity.
   Abort.
 
 End ParallelSubstitution.
