@@ -3620,12 +3620,20 @@ Section ParallelSubstitution.
     induction h in p, σ, hσ, e, hp, m, hm |- *.
     all: try solve [
       destruct p ; try discriminate ;
+      try (
+        inversion hp ; rewrite <- H in e ;
+        rewrite subst_mkApps in e ; cbn in e ;
+        apply (f_equal isAppConstruct) in e ;
+        rewrite 2!isAppConstruct_mkApps in e ;
+        cbn in e ; discriminate
+      ) ;
       cbn in hm ;
       inversion hp ; [|
         apply (f_equal isAppRel) in H ; cbn in H ;
         rewrite isAppRel_mkApps in H ; cbn in H ; discriminate
       ] ; subst ;
       cbn ; cbn in e ;
+      let e1 := fresh "e1" in
       destruct nth_error eqn:e1 ; [|
         try discriminate ;
         apply nth_error_None in e1 ;
@@ -3705,6 +3713,20 @@ Section ParallelSubstitution.
         }
         rewrite lift0_id. reflexivity.
     - destruct p. all: try discriminate.
+      2:{
+        inversion hp. rewrite <- H in e.
+        rewrite subst_mkApps in e. cbn in e.
+        apply (f_equal isAppConstruct) in e.
+        rewrite 2!isAppConstruct_mkApps in e.
+        cbn in e. discriminate.
+      }
+      2:{
+        inversion hp. rewrite <- H in e.
+        rewrite subst_mkApps in e. cbn in e.
+        apply (f_equal isAppConstruct) in e.
+        rewrite 2!isAppConstruct_mkApps in e.
+        cbn in e. discriminate.
+      }
       cbn in hm.
       inversion hp.
       2:{
