@@ -3,7 +3,7 @@ Require Import ssreflect ssrbool.
 From MetaCoq Require Import LibHypsNaming.
 From Equations Require Import Equations.
 From Coq Require Import Bool String List Program BinPos Compare_dec String Lia.
-From MetaCoq.Template Require Import config utils.
+From MetaCoq.Template Require Import config monad_utils utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICSize PCUICPattern PCUICLiftSubst PCUICUnivSubst PCUICTyping
   PCUICReduction PCUICWeakening PCUICSubstitution PCUICReflect.
@@ -3929,6 +3929,17 @@ Section ParallelSubstitution.
       cbn in e1. inversion e1. subst. clear e1.
       inversion he. subst.
       cbn in hm.
+      eapply pattern_reduct in p. all: eauto.
+      destruct p as [θ [h1 h2]].
+      exists θ. split.
+      + assumption.
+      + intros θ' hθ. cbn. erewrite h2. 2: eassumption.
+        reflexivity.
+    - destruct e. all: try discriminate.
+      cbn in e1. inversion e1. subst. clear e1.
+      inversion he. subst.
+      cbn in hm.
+      destruct pattern_mask eqn:e2. 2: discriminate.
   Abort.
 
 End ParallelSubstitution.
