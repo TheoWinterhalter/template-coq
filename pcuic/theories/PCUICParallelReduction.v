@@ -3806,7 +3806,66 @@ Section ParallelSubstitution.
           cbn. reflexivity.
         }
         rewrite lift0_id. reflexivity.
-    -
+    - destruct p. all: try discriminate.
+      + cbn in hm. cbn. cbn in e.
+        inversion hp.
+        2:{
+          apply (f_equal isAppRel) in H. cbn in H.
+          rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+        } subst.
+        destruct nth_error eqn:e1. 2: discriminate.
+        rewrite lift0_id in e. subst.
+        replace (n - 0) with n in e1 by lia.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_lin_set. all: eauto.
+          -- apply subs_add_empty. eassumption.
+          -- econstructor. all: eassumption.
+          -- eapply All2_mask_subst_linear_mask_init. assumption.
+        * intros θ' hθ.
+          replace (n - 0) with n by lia.
+          apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+          erewrite hθ'.
+          2:{
+            rewrite nth_error_app_ge.
+            1:{ rewrite list_init_length. auto. }
+            rewrite list_init_length.
+            match goal with
+            | |- nth_error _ ?n = _ =>
+            replace n with 0 by lia
+            end.
+            cbn. reflexivity.
+          }
+          rewrite lift0_id. reflexivity.
+      + cbn in e. inversion e. subst. clear e.
+        inversion hp.
+        destruct args as [| p args _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in H. cbn in H. inversion H. subst.
+        apply All_app in H0 as [ha hp2]. inversion hp2. subst.
+        cbn in hm.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+        specialize IHh1 with (2 := e1) (4 := eq_refl).
+        forward IHh1 by (constructor ; auto).
+        forward IHh1 by auto.
+        destruct IHh1 as [θ1 [hm1 hθ1]].
+        specialize IHh2 with (2 := e2) (4 := eq_refl).
+        forward IHh2 by auto.
+        forward IHh2 by auto.
+        destruct IHh2 as [θ2 [hm2 hθ2]].
+        eapply All2_mask_subst_lin_merge in hm. all: eauto.
+        destruct hm as [θ [eθ hθ]].
+        exists θ. split. 1: assumption.
+        intros θ' hθ'.
+        rewrite <- mkApps_nested. cbn.
+        rewrite subst_mkApps. cbn.
+        eapply subs_merge_complete in eθ as h. 2: eauto.
+        destruct h as [? ?].
+        erewrite hθ1. 2: eassumption.
+        erewrite hθ2. 2: eassumption.
+        rewrite subst_mkApps. cbn. reflexivity.
+
   Abort.
 
 End ParallelSubstitution.
