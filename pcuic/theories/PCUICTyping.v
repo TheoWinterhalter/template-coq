@@ -1495,15 +1495,6 @@ Qed.
 
 (* Print Assumptions wf_option_map2. *)
 
-Fixpoint monad_fold_right {T} {M : Monad T} {A B} (g : A -> B -> T A)
-  (l : list B) (x : A) : T A :=
-  match l with
-  | [] => ret x
-  | y :: l =>
-      a <- monad_fold_right g l x ;;
-      g a y
-  end.
-
 Equations rec_pattern (npat nb : nat) (p t : term) : option (list (option term))
   by wf (PCUICSize.size p) lt :=
 
@@ -2260,87 +2251,6 @@ Proof.
 Qed. *)
 
 (* TODO Prove the it is complete. *)
-
-(* TODO MOVE *)
-Fixpoint list_init {A} (x : A) (n : nat) : list A :=
-  match n with
-  | 0 => []
-  | S n => x :: list_init x n
-  end.
-
-Definition linear_account_init (npat : nat) :=
-  list_init false npat.
-
-Fixpoint lin_merge (a b : list bool) : option (list bool) :=
-  match a, b with
-  | true :: a, false :: b
-  | false :: a, true :: b =>
-    l <- lin_merge a b ;;
-    ret (true :: l)
-  | false :: a, false :: b =>
-    l <- lin_merge a b ;;
-    ret (false :: l)
-  | true :: a, true :: b =>
-    None
-  | _, _ =>
-    None
-  end.
-
-Fixpoint lin_set (n : nat) (l : list bool) : option (list bool) :=
-  match n, l with
-  | 0, false :: l => ret (true :: l)
-  | S n, b :: l =>
-    l' <- lin_set n l ;;
-    ret (b :: l')
-  | _, _ => None
-  end.
-
-Fixpoint pattern_linacc npat nb (p : term) :=
-  match p with
-  | tApp u v =>
-    lu <- pattern_linacc npat nb u ;;
-    lv <- pattern_linacc npat nb v ;;
-    lin_merge lu lv
-  | tRel n =>
-    if nb <=? n
-    then lin_set (n - nb) (linear_account_init npat)
-    else ret (linear_account_init npat)
-  | tLambda na A t =>
-    lA <- pattern_linacc npat nb A ;;
-    lt <- pattern_linacc npat (S nb) t ;;
-    lin_merge lA lt
-  | tConstruct ind n ui =>
-    ret (linear_account_init npat)
-  | tSymb k n ui =>
-    ret (linear_account_init npat)
-  | _ => None
-  end.
-
-Fixpoint elim_linacc npat e :=
-  match e with
-  | eApp p => pattern_linacc npat 0 p
-  | eCase indn p brs =>
-    lp <- pattern_linacc npat 0 p ;;
-    lb <- monad_map (fun br =>
-            pattern_linacc npat 0 br.2
-          ) brs ;;
-    lb <- monad_fold_right (lin_merge) lb (linear_account_init npat) ;;
-    lin_merge lp lb
-  | eProj p => ret (linear_account_init npat)
-  end.
-
-Definition linear_account (npat : nat) (el : list elimination) :=
-  l <- monad_map (elim_linacc npat) el ;;
-  monad_fold_right (lin_merge) l (linear_account_init npat).
-
-(* We force all variables to appear exactly once
-   (we could also allow some to be forgotten)
-*)
-Definition linear npat el :=
-  match linear_account npat el with
-  | Some l => forallb (fun x => x) l
-  | None => false
-  end.
 
 Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
 

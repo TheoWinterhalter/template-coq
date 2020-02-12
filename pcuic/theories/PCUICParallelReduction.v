@@ -3609,8 +3609,8 @@ Section ParallelSubstitution.
     forall Σ Γ Δ p σ t k ui decl r Ξ Ξ' m,
       #|Ξ| = #|Ξ'| ->
       let npat := #|r.(pat_context)| in
-      pattern npat #|Ξ| p ->
-      pattern_linacc npat #|Ξ| p = Some m ->
+      pattern npat p ->
+      pattern_linacc npat #|Ξ| p = Some m -> (* Seems like we should redefine it properly and move it in PCUICPattern while we're at it *)
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
       untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
       pred1 Σ (Γ ,,, Ξ) (Δ ,,, Ξ') (subst σ #|Ξ| p) t ->
