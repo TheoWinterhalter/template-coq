@@ -8,6 +8,8 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICSize PCUICPattern PCUICLiftSubst PCUICUnivSubst PCUICTyping
   PCUICReduction PCUICWeakening PCUICSubstitution PCUICReflect.
 
+Import MonadNotation.
+
 (* Type-valued relations. *)
 Require Import CRelationClasses.
 Require Import Equations.Type.Relation Equations.Type.Relation_Properties.
@@ -4044,6 +4046,59 @@ Section ParallelSubstitution.
         apply untyped_subslet_length in hσ.
         rewrite subst_context_length in hσ. assumption.
       + intros. reflexivity.
+  Qed.
+
+  Lemma elims_reduct :
+    forall Σ Γ Δ σ el el' k decl ui r m,
+      wf Σ ->
+      let npat := #|r.(pat_context)| in
+      All (elim_pattern npat) el ->
+      linear_mask npat el = Some m ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
+      All2 (pred1_elim Σ Γ Δ) (map (subst_elim σ 0) el) el' ->
+      ∑ θ,
+        All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
+        forall θ',
+          subs_complete θ θ' ->
+          el' = map (subst_elim θ' 0) el.
+  Proof.
+    intros Σ Γ Δ σ el el' k decl ui r m hΣ npat hp hl ss hσ h.
+    unfold linear_mask in hl.
+    destruct monad_map as [m'|] eqn:e. 2: discriminate.
+    cbn in hl.
+    remember (map (subst_elim σ 0) el) as l eqn:eql.
+    induction h in el, hp, eql, m', e, m, hl |- *.
+    - destruct el. 2: discriminate.
+      cbn in *. apply some_inj in e. subst.
+      cbn in hl. apply some_inj in hl. subst.
+      eexists. split.
+      + eapply All2_mask_subst_linear_mask_init.
+        apply untyped_subslet_length in hσ.
+        rewrite subst_context_length in hσ.
+        assumption.
+      + intros. reflexivity.
+    - destruct el as [| d el]. 1: discriminate.
+      cbn in eql. inversion eql. subst. clear eql.
+      cbn in e. destruct elim_mask eqn:e1. 2: discriminate.
+      destruct monad_map eqn:e2. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn in hl. destruct monad_fold_right eqn:e3. 2: discriminate.
+      inversion hp. subst.
+      specialize IHh with (2 := e2) (3 := e3) (4 := eq_refl).
+      forward IHh by auto.
+      destruct IHh as [θ1 [hm1 hθ1]].
+      eapply elim_reduct in r0. all: eauto.
+      destruct r0 as [θ2 [hm2 hθ2]].
+      eapply All2_mask_subst_lin_merge in hl. all: eauto.
+      destruct hl as [θ [eθ hm]].
+      exists θ. split. 1: auto.
+      intros θ' hθ.
+      eapply subs_merge_complete in hθ. 2: eauto.
+      destruct hθ.
+      cbn. erewrite hθ1. 2: eauto.
+      f_equal.
+      eapply hθ2. assumption.
   Qed.
 
 End ParallelSubstitution.
