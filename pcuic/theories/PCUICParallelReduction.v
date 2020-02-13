@@ -3907,6 +3907,22 @@ Section ParallelSubstitution.
         * intros θ' hθ'. reflexivity.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma All2_map_inv_left :
+    forall A B C P l l' f,
+      @All2 A B P (map f l) l' ->
+      @All2 C B (fun x y => P (f x) y) l l'.
+  Proof.
+    intros A B C P l l' f h.
+    dependent induction h.
+    - destruct l. 2: discriminate.
+      constructor.
+    - destruct l0. 1: discriminate.
+      cbn in H. inversion H. subst.
+      constructor. 1: assumption.
+      apply IHh. reflexivity.
+  Qed.
+
   Lemma elim_reduct :
     forall Σ Γ Δ e σ t k ui decl r m,
       wf Σ ->
@@ -3939,7 +3955,87 @@ Section ParallelSubstitution.
       cbn in e1. inversion e1. subst. clear e1.
       inversion he. subst.
       cbn in hm.
-      destruct pattern_mask eqn:e2. 2: discriminate.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      destruct monad_map eqn:e2. 2: discriminate.
+      destruct monad_fold_right eqn:e3. 2: discriminate.
+      cbn.
+      eapply pattern_reduct in p0. all: eauto.
+      destruct p0 as [θ1 [hm1 ih1]].
+      assert (hbrs :
+        All2 (fun br br' =>
+          br.1 = br'.1 ×
+          forall m,
+            pattern_mask npat br.2 = Some m ->
+            ∑ θ,
+              All2_mask_subst (pred1 Σ Γ Δ) m σ θ ×
+              forall θ',
+                subs_complete θ θ' ->
+                br'.2 = subst0 θ' br.2
+        ) brs0 brs'
+      ).
+      { apply All2_map_inv_left in a.
+        induction a in H3 |- *. 1: constructor.
+        destruct x as [n1 u1], y as [n2 u2]. cbn in *.
+        inversion H3. subst. cbn in *.
+        destruct r0 as [hu ?]. subst.
+        forward IHa by auto.
+        constructor.
+        - cbn. intuition auto.
+          eapply pattern_reduct in hu. all: eauto.
+        - apply IHa.
+      }
+      assert (
+        ∑ θ,
+          All2_mask_subst (pred1 Σ Γ Δ) l1 σ θ ×
+          forall θ',
+            subs_complete θ θ' ->
+            All2 (fun br br' =>
+              br.1 = br'.1 /\
+              br'.2 = subst0 θ' br.2
+            ) brs0 brs'
+      ) as [θ2 [hm2 hθ2]].
+      { induction hbrs in l0, e2, l1, e3 |- *.
+        - cbn in *. apply some_inj in e2. subst.
+          cbn in e3. apply some_inj in e3. subst.
+          eexists. split.
+          + eapply All2_mask_subst_linear_mask_init.
+            apply untyped_subslet_length in hσ.
+            rewrite subst_context_length in hσ. assumption.
+          + intros θ' hθ. constructor.
+        - destruct x as [n0 u], y as [n v]. cbn in *.
+          destruct r0 as [? ih]. subst.
+          destruct (pattern_mask _ u) eqn:e4. 2: discriminate.
+          destruct monad_map eqn:e5. 2: discriminate.
+          apply some_inj in e2. subst.
+          cbn in e3. destruct monad_fold_right eqn:e6. 2: discriminate.
+          specialize ih with (1 := eq_refl).
+          destruct ih as [θ2 [hm2 hθ2]].
+          specialize IHhbrs with (1 := eq_refl) (2 := e6).
+          destruct IHhbrs as [θ3 [hm3 hθ3]].
+          eapply All2_mask_subst_lin_merge in e3. all: eauto.
+          destruct e3 as [θ [hθ hm]].
+          eexists. split.
+          + eassumption.
+          + intros θ' hθ'.
+            eapply subs_merge_complete in hθ. 2: eassumption.
+            destruct hθ.
+            constructor.
+            * cbn. intuition auto.
+            * apply hθ3. auto.
+      }
+      eapply All2_mask_subst_lin_merge in hm. all: eauto.
+      destruct hm as [θ [eθ hm]].
+      exists θ. split. 1: assumption.
+      intros θ' hθ.
+      eapply subs_merge_complete in hθ. 2: eassumption.
+      destruct hθ as [cθ1 cθ2].
+      erewrite -> ih1 by eauto.
+      f_equal.
+      specialize hθ2 with (1 := cθ2).
+      clear - hθ2.
+      induction hθ2 as [| [m u] [n v] brs brs' [? ?] a ih ]. 1: reflexivity.
+      cbn in *. subst.
+      intuition auto.
   Abort.
 
 End ParallelSubstitution.
