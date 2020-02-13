@@ -4036,6 +4036,14 @@ Section ParallelSubstitution.
       induction hθ2 as [| [m u] [n v] brs brs' [? ?] a ih ]. 1: reflexivity.
       cbn in *. subst.
       intuition auto.
-  Abort.
+    - destruct e. all: try discriminate.
+      cbn in e1. inversion e1. subst. clear e1.
+      cbn in hm. apply some_inj in hm. subst.
+      cbn. eexists. split.
+      + eapply All2_mask_subst_linear_mask_init.
+        apply untyped_subslet_length in hσ.
+        rewrite subst_context_length in hσ. assumption.
+      + intros. reflexivity.
+  Qed.
 
 End ParallelSubstitution.
