@@ -4101,4 +4101,84 @@ Section ParallelSubstitution.
       eapply hθ2. assumption.
   Qed.
 
+  Lemma declared_symbol_pattern :
+    forall Σ k decl n r,
+      wf Σ ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(rules) n = Some r ->
+      All (elim_pattern #|r.(pat_context)|) r.(elims).
+  Proof.
+    intros Σ k decl n r hΣ h e.
+    unfold declared_symbol in h.
+    eapply lookup_on_global_env in h. 2: eauto.
+    destruct h as [Σ' [wfΣ' decl']].
+    red in decl'. red in decl'.
+    destruct decl' as [hctx [hr [hpr hprr]]].
+    eapply All_nth_error in hr. 2: eassumption.
+    destruct hr as [T hl hr hh he].
+    assumption.
+  Qed.
+
+  Lemma declared_symbol_par_pattern :
+    forall Σ k decl n r,
+      wf Σ ->
+      declared_symbol Σ k decl ->
+      nth_error decl.(prules) n = Some r ->
+      All (elim_pattern #|r.(pat_context)|) r.(elims).
+  Proof.
+    intros Σ k decl n r hΣ h e.
+    unfold declared_symbol in h.
+    eapply lookup_on_global_env in h. 2: eauto.
+    destruct h as [Σ' [wfΣ' decl']].
+    red in decl'. red in decl'.
+    destruct decl' as [hctx [hr [hpr hprr]]].
+    eapply All_nth_error in hpr. 2: eassumption.
+    destruct hpr as [T hl hpr hh he].
+    assumption.
+  Qed.
+
+  Lemma is_rewrite_rule_pattern :
+    forall Σ k decl r,
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      All (elim_pattern #|r.(pat_context)|) r.(elims).
+  Proof.
+    intros Σ k decl r hΣ hr.
+    destruct hr as [h [[n e]|[n e]]].
+    - eapply declared_symbol_pattern. all: eassumption.
+    - eapply declared_symbol_par_pattern. all: eassumption.
+  Qed.
+
+  (** When you do not apply a rewrite rule to a lhs only the substitution
+    reduces.
+  *)
+  Lemma lhs_elim_reduct :
+    forall Σ k ui decl r Γ Δ σ el',
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
+      let el := (map (subst_elim ss #|σ|) r.(elims)) in
+      All2 (pred1_elim Σ Γ Δ) (map (subst_elim σ 0) el) el' ->
+      ∑ σ',
+        All2 (pred1 Σ Γ Δ) σ σ' ×
+        el' = map (subst_elim σ' 0) el.
+  Proof.
+    intros Σ k ui decl r Γ Δ σ el' hΣ hr ss hσ el h.
+    eapply elims_reduct in h. all: eauto.
+    2:{
+      apply is_rewrite_rule_pattern in hr. 2: auto.
+      apply All_map. eapply All_impl. 1: eauto.
+      intros e he. unfold compose.
+      (* We need to prove this, which is annoying but shouldn't
+        be a problem.
+      *)
+      admit.
+    }
+    (* We should do something similar with linearity
+      presumably before the eapply.
+      This is going to be more painful but should also hold.
+    *)
+  Admitted.
+
 End ParallelSubstitution.
