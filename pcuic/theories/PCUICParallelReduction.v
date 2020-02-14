@@ -4377,6 +4377,24 @@ Section ParallelSubstitution.
     rewrite e. assumption.
   Qed.
 
+  Lemma All2_mask_subst_all :
+    forall P m σ θ,
+      forallb (fun x => x) m ->
+      All2_mask_subst P m σ θ ->
+      ∑ θ',
+        map_option_out θ = Some θ' ×
+        All2 P σ θ'.
+  Proof.
+    intros P m σ θ hm h.
+    induction h.
+    - eexists. intuition constructor.
+    - inversion hm. forward IHh by auto.
+      destruct IHh as [θ' [h1 h2]].
+      eexists. cbn. rewrite h1.
+      intuition eauto.
+    - inversion hm.
+  Qed.
+
   (** When you do not apply a rewrite rule to a lhs only the substitution
     reduces.
   *)
@@ -4394,6 +4412,14 @@ Section ParallelSubstitution.
   Proof.
     intros Σ k ui decl r Γ Δ σ el' hΣ hr ss hσ el h.
     eapply is_rewrite_rule_linear in hr as hlin. 2: auto.
+    eapply linear_subst with (σ := ss) (n := #|σ|) in hlin.
+    2:{
+      apply untyped_subslet_length in hσ.
+      rewrite subst_context_length in hσ.
+      lia.
+    }
+    unfold linear in hlin.
+    destruct linear_mask eqn:elin. 2: discriminate.
     eapply elims_reduct in h. all: eauto.
     2:{
       apply is_rewrite_rule_pattern in hr. 2: auto.
@@ -4404,10 +4430,12 @@ Section ParallelSubstitution.
       rewrite subst_context_length in hσ.
       lia.
     }
-    (* We should do something similar with linearity
-      presumably before the eapply.
-      This is going to be more painful but should also hold.
-    *)
-  Admitted.
+    destruct h as [θ [hm hc]].
+    eapply All2_mask_subst_all in hlin. 2: eauto.
+    destruct hlin as [θ' [eθ h]].
+    eexists. intuition eauto.
+    apply hc.
+    apply map_option_out_subs_complete. auto.
+  Qed.
 
 End ParallelSubstitution.
