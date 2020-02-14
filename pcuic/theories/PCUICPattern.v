@@ -55,6 +55,29 @@ Inductive elim_pattern (npat : nat) : elimination -> Type :=
     forall p,
       elim_pattern npat (eProj p).
 
+Lemma pattern_all_rect :
+  forall npat (P : term -> Type),
+    (forall n,
+      n < npat ->
+      P (tRel n)
+    ) ->
+    (forall ind n ui args,
+      All (pattern npat) args ->
+      All P args ->
+      P (mkApps (tConstruct ind n ui) args)
+    ) ->
+    forall p, pattern npat p -> P p.
+Proof.
+  intros npat P hRel hCons.
+  fix aux 2. move aux at top.
+  intros p hp. destruct hp.
+  - apply hRel. auto.
+  - apply hCons. 1: auto.
+    revert args a. fix auxa 2.
+    intros args h. destruct h. 1: constructor.
+    constructor. all: auto.
+Qed.
+
 (** Notion of linearity
 
   We use a notion of linear mask. Similar to partial substitutions.
