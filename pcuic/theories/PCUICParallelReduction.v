@@ -4149,6 +4149,40 @@ Section ParallelSubstitution.
     - eapply declared_symbol_par_pattern. all: eassumption.
   Qed.
 
+  Lemma pattern_subst :
+    forall npat p n σ,
+      pattern npat p ->
+      n >= npat ->
+      pattern npat (subst σ n p).
+  Proof.
+    intros npat p n σ hp hn.
+    induction hp.
+    - cbn. destruct (Nat.leb_spec0 n n0). 1: exfalso ; lia.
+      constructor. auto.
+    - rewrite subst_mkApps. cbn. constructor.
+      apply All_map. eapply All_impl. 1: eassumption.
+      intros p hp. unfold compose.
+      (* We need a stronger induction principle *)
+      admit.
+  Admitted.
+
+  Lemma elim_pattern_subst :
+    forall npat e n σ,
+      elim_pattern npat e ->
+      n >= npat ->
+      elim_pattern npat (subst_elim σ n e).
+  Proof.
+    intros npat e n σ he hn.
+    induction he.
+    - cbn. constructor. apply pattern_subst. all: auto.
+    - cbn. constructor.
+      + apply pattern_subst. all: auto.
+      + apply All_map. eapply All_impl. 1: eauto.
+        cbn. unfold compose. intros [m u] hu. cbn in *.
+        apply pattern_subst. all: auto.
+    - cbn. constructor.
+  Qed.
+
   (** When you do not apply a rewrite rule to a lhs only the substitution
     reduces.
   *)
