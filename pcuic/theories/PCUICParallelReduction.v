@@ -4230,8 +4230,152 @@ Section ParallelSubstitution.
     - eapply declared_symbol_par_linear. all: eassumption.
   Qed.
 
-  (* Lemma linear_mask_subst :
-    forall npat  *)
+  (* TODO MOVE *)
+  Lemma lin_set_eq :
+    forall n m,
+      lin_set n m =
+      match nth_error m n with
+      | Some true => None
+      | Some false => Some (firstn n m ++ true :: skipn (S n) m)
+      | None => None
+      end.
+  Proof.
+    intros n m.
+    induction n in m |- *.
+    - cbn. destruct m as [| [] m]. all: reflexivity.
+    - cbn. destruct m as [| [] m].
+      + reflexivity.
+      + destruct lin_set eqn:e.
+        * cbn. rewrite IHn in e.
+          destruct nth_error as [[]|] eqn: e1. 1,3: discriminate.
+          apply some_inj in e. subst.
+          reflexivity.
+        * cbn. rewrite IHn in e.
+          destruct nth_error as [[]|] eqn: e1. 2: discriminate.
+          all: reflexivity.
+      + destruct lin_set eqn:e.
+        * cbn. rewrite IHn in e.
+          destruct nth_error as [[]|] eqn: e1. 1,3: discriminate.
+          apply some_inj in e. subst.
+          reflexivity.
+        * cbn. rewrite IHn in e.
+          destruct nth_error as [[]|] eqn: e1. 2: discriminate.
+          all: reflexivity.
+  Qed.
+
+  (* TODO MOVE *)
+  Lemma linear_mask_init_length :
+    forall n,
+      #|linear_mask_init n| = n.
+  Proof.
+    intros n. unfold linear_mask_init.
+    apply list_init_length.
+  Qed.
+
+  Lemma pattern_mask_subst :
+    forall npat n σ p m,
+      pattern_mask npat p = Some m ->
+      n >= npat ->
+      pattern_mask npat (subst σ n p) = Some m.
+  Proof.
+    intros npat n σ p m hp hn.
+    induction p in m, hp |- *.
+    all: try discriminate.
+    - cbn in *.
+      rewrite lin_set_eq in hp.
+      destruct nth_error as [[]|] eqn:e. 1,3: discriminate.
+      apply some_inj in hp. subst.
+      apply nth_error_Some_length in e as h.
+      rewrite linear_mask_init_length in h.
+      destruct (Nat.leb_spec0 n n0). 1: lia.
+      cbn. rewrite lin_set_eq.
+      rewrite e. reflexivity.
+    - cbn in *.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      move hp at top.
+      destruct pattern_mask eqn:e2. 2: discriminate.
+      specialize IHp1 with (1 := eq_refl).
+      specialize IHp2 with (1 := eq_refl).
+      rewrite IHp1. rewrite IHp2. assumption.
+    - cbn in *.
+      assumption.
+  Qed.
+
+  Lemma elim_mask_subst :
+    forall npat n σ e m,
+      elim_mask npat e = Some m ->
+      n >= npat ->
+      elim_mask npat (subst_elim σ n e) = Some m.
+  Proof.
+    intros npat n σ e m hm hn.
+    destruct e.
+    - cbn in hm. cbn.
+      eapply pattern_mask_subst. all: auto.
+    - cbn in hm. cbn.
+      destruct pattern_mask eqn:ep. 2: discriminate.
+      destruct monad_map as [ml|] eqn:el. 2: discriminate.
+      destruct monad_fold_right eqn:em. 2: discriminate.
+      eapply pattern_mask_subst with (σ := σ) in ep. 2: eauto.
+      rewrite ep.
+      match goal with
+      | |- context [ monad_map ?f ?l ] =>
+        assert (monad_map f l = Some ml) as eml
+      end.
+      { induction brs as [| [k u]] in ml, el |- *.
+        - cbn in el. apply some_inj in el. subst.
+          cbn. reflexivity.
+        - cbn in el. destruct pattern_mask eqn:eu. 2: discriminate.
+          destruct monad_map eqn:em. 2: discriminate.
+          apply some_inj in el. subst.
+          cbn.
+          eapply pattern_mask_subst with (σ := σ) in eu. 2: eauto.
+          rewrite eu.
+          specialize IHbrs with (1 := eq_refl). rewrite IHbrs.
+          reflexivity.
+      }
+      rewrite eml. rewrite em.
+      assumption.
+    - cbn in hm. apply some_inj in hm. subst.
+      cbn. reflexivity.
+  Qed.
+
+  Lemma linear_mask_subst :
+    forall npat n σ l m,
+      linear_mask npat l = Some m ->
+      n >= npat ->
+      linear_mask npat (map (subst_elim σ n) l) = Some m.
+  Proof.
+    intros npat n σ l m hm hn.
+    unfold linear_mask in *.
+    destruct monad_map as [ml|] eqn:e. 2: discriminate.
+    cbn in hm.
+    assert (h : monad_map (elim_mask npat) (map (subst_elim σ n) l) = Some ml).
+    { induction l as [| x l ih] in ml, e |- *.
+      - cbn in e. apply some_inj in e. subst.
+        cbn. reflexivity.
+      - cbn in e. destruct elim_mask eqn:ex. 2: discriminate.
+        destruct monad_map eqn:em. 2: discriminate.
+        apply some_inj in e. subst.
+        cbn. eapply elim_mask_subst with (σ := σ) in ex. 2: eauto.
+        rewrite ex.
+        specialize ih with (1 := eq_refl). rewrite ih.
+        reflexivity.
+    }
+    rewrite h. cbn. assumption.
+  Qed.
+
+  Lemma linear_subst :
+    forall npat n σ l,
+      linear npat l ->
+      n >= npat ->
+      linear npat (map (subst_elim σ n) l).
+  Proof.
+    intros npat n σ l hl hn.
+    unfold linear in *.
+    destruct linear_mask eqn:e. 2: discriminate.
+    eapply linear_mask_subst with (σ := σ) in e. 2: eauto.
+    rewrite e. assumption.
+  Qed.
 
   (** When you do not apply a rewrite rule to a lhs only the substitution
     reduces.
