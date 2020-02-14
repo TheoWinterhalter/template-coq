@@ -4156,15 +4156,14 @@ Section ParallelSubstitution.
       pattern npat (subst σ n p).
   Proof.
     intros npat p n σ hp hn.
-    induction hp.
+    induction hp using pattern_all_rect.
     - cbn. destruct (Nat.leb_spec0 n n0). 1: exfalso ; lia.
       constructor. auto.
     - rewrite subst_mkApps. cbn. constructor.
       apply All_map. eapply All_impl. 1: eassumption.
       intros p hp. unfold compose.
-      (* We need a stronger induction principle *)
-      admit.
-  Admitted.
+      assumption.
+  Qed.
 
   Lemma elim_pattern_subst :
     forall npat e n σ,
