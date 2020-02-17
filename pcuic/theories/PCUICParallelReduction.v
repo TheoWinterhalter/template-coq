@@ -2792,6 +2792,7 @@ Section ParallelSubstitution.
       pred1 Σ Γ Δ prelhs t ->
       (∑ r' θ θ' m el,
         is_rewrite_rule Σ k decl r' ×
+        untyped_subslet Γ θ (subst_context ss 0 r'.(pat_context)) ×
         r.(head) = r'.(head) ×
         m <= n ×
         All2 (pred1 Σ Γ Δ) θ θ' ×
@@ -3005,7 +3006,7 @@ Section ParallelSubstitution.
         auto.
       }
       destruct IHh1 as [
-        [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+        [r' [θ [θ' [m [el [hr' [uθ [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]]
       | [el [hel h]]
       ].
       + left. subst.
@@ -3111,7 +3112,7 @@ Section ParallelSubstitution.
         auto.
       }
       destruct IHh2 as [
-        [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+        [r' [θ [θ' [m [el [hr' [uθ [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]]
       | [el [hel h]]
       ].
       + left. subst.
@@ -3218,7 +3219,7 @@ Section ParallelSubstitution.
       }
       rename h into h0.
       destruct IHh as [
-        [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+        [r' [θ [θ' [m [el [hr' [uθ [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]]
       | [el [hel h']]
       ].
       + left. subst.
@@ -3307,6 +3308,7 @@ Section ParallelSubstitution.
       pred1 Σ Γ Δ prelhs t ->
       (∑ r' θ θ' m el,
         is_rewrite_rule Σ k decl r' ×
+        untyped_subslet Γ θ (subst_context ss 0 r'.(pat_context)) ×
         r.(head) = r'.(head) ×
         m <= #|r.(elims)| × (* Not necessary *)
         All2 (pred1 Σ Γ Δ) θ θ' ×
@@ -3342,7 +3344,7 @@ Section ParallelSubstitution.
     rewrite firstn_all in thm. simpl in thm.
     forward thm by auto.
     destruct thm as [
-      [r' [θ [θ' [m [el [hr' [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]
+      [r' [θ [θ' [m [el [hr' [uθ [ehr [hm [hθ [epre [hrest h]]]]]]]]]]]]
     | [el [hel h']]
     ].
     - left. exists r', θ, θ', m, el. cbn.
@@ -4461,6 +4463,7 @@ Section ParallelSubstitution.
       pred1 Σ Γ Δ prelhs t ->
       (∑ r' θ θ' m el,
         is_rewrite_rule Σ k decl r' ×
+        untyped_subslet Γ θ (subst_context ss 0 r'.(pat_context)) ×
         r.(head) = r'.(head) ×
         m <= #|r.(elims)| × (* Not necessary *)
         All2 (pred1 Σ Γ Δ) θ θ' ×
