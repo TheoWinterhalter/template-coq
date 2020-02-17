@@ -4526,19 +4526,23 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma elim_unify_subst :
-    forall σ θ npat e1 e2 m,
-      elim_mask npat e1 = Some m ->
+    forall σ θ npat e1 e2 m1 m2,
+      elim_pattern npat e1 ->
+      elim_pattern npat e2 ->
+      elim_mask npat e1 = Some m1 ->
+      elim_mask npat e2 = Some m2 ->
       subst_elim σ 0 e1 = subst_elim θ 0 e2 ->
       ∑ φ ψ,
-        All_mask_subst (pattern npat) m φ ×
-        All (pattern npat) ψ ×
-        forall φ',
+        All_mask_subst (pattern npat) m1 φ ×
+        All_mask_subst (pattern npat) m2 ψ ×
+        forall φ' ψ',
           subs_complete φ φ' ->
-          subst_elim φ' 0 e1 = subst_elim ψ 0 e2.
+          subs_complete ψ ψ' ->
+          subst_elim φ' 0 e1 = subst_elim ψ' 0 e2.
   Proof.
-    intros σ θ npat e1 e2 m hm e.
-    induction e1 in m, hm, θ, e2, e |- *.
-    - cbn in e. destruct e2. all: try discriminate.
+    intros σ θ npat e1 e2 m1 m2 he1 he2 hm1 hm2 e.
+    induction he1 in m1, hm1, m2, hm2, θ, e2, he2, e |- *.
+    - cbn in e. destruct he2. all: try discriminate.
       cbn in e. inversion e as [h]. clear e.
       (* Now we have to deal with patterns *)
   Abort.
