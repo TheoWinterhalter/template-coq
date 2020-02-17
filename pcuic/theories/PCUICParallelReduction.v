@@ -4452,17 +4452,19 @@ Section ParallelSubstitution.
       All_mask_subst P (false :: m) (None :: σ).
 
   (* TODO MOVE *)
-  Fixpoint decompose_elims t l :=
+  Fixpoint decompose_elims_rec t l :=
     match t with
-    | tApp u v => decompose_elims u (eApp v :: l)
-    | tCase ind p c brs => decompose_elims c (eCase ind p brs :: l)
-    | tProj p t => decompose_elims t (eProj p :: l)
+    | tApp u v => decompose_elims_rec u (eApp v :: l)
+    | tCase ind p c brs => decompose_elims_rec c (eCase ind p brs :: l)
+    | tProj p t => decompose_elims_rec t (eProj p :: l)
     | t => (t, l)
     end.
 
+  Definition decompose_elims t := decompose_elims_rec t [].
+
   Lemma decompose_elims_mkElims :
     forall t l,
-      let d := decompose_elims t l in
+      let d := decompose_elims_rec t l in
       mkElims t l = mkElims d.1 d.2.
   Proof.
     intros t l. induction t in l |- *.
@@ -4474,7 +4476,7 @@ Section ParallelSubstitution.
 
   Lemma decompose_elims_fst :
     forall t l l',
-      (decompose_elims t l).1 = (decompose_elims t l').1.
+      (decompose_elims_rec t l).1 = (decompose_elims_rec t l').1.
   Proof.
     intros t l l'.
     induction t in l, l' |- *.
@@ -4486,7 +4488,7 @@ Section ParallelSubstitution.
 
   Lemma decompose_elims_snd :
     forall t l,
-      (decompose_elims t l).2 = (decompose_elims t []).2 ++ l.
+      (decompose_elims_rec t l).2 = (decompose_elims t).2 ++ l.
   Proof.
     intros t l.
     induction t in l |- *.
@@ -4501,22 +4503,23 @@ Section ParallelSubstitution.
 
   Lemma mkElims_decompose_elims :
     forall t l,
-      decompose_elims (mkElims t l) [] =
-      ((decompose_elims t []).1, (decompose_elims t []).2 ++ l).
+      decompose_elims (mkElims t l) =
+      ((decompose_elims t).1, (decompose_elims t).2 ++ l).
   Proof.
     intros t l.
     induction l as [| [] l ih] in t |- *.
     - cbn. rewrite app_nil_r.
-      set (d := decompose_elims _ _). destruct d. reflexivity.
-    - cbn. rewrite ih. cbn. f_equal.
+      change (decompose_elims_rec t []) with (decompose_elims t).
+      set (d := decompose_elims _). destruct d. reflexivity.
+    - cbn. unfold decompose_elims in *. rewrite ih. cbn. f_equal.
       + apply decompose_elims_fst.
       + rewrite decompose_elims_snd.
         rewrite <- app_assoc. reflexivity.
-    - cbn. rewrite ih. cbn. f_equal.
+    - cbn. unfold decompose_elims in *. rewrite ih. cbn. f_equal.
       + apply decompose_elims_fst.
       + rewrite decompose_elims_snd.
         rewrite <- app_assoc. reflexivity.
-    - cbn. rewrite ih. cbn. f_equal.
+    - cbn. unfold decompose_elims in *. rewrite ih. cbn. f_equal.
       + apply decompose_elims_fst.
       + rewrite decompose_elims_snd.
         rewrite <- app_assoc. reflexivity.
@@ -4571,7 +4574,11 @@ Section ParallelSubstitution.
     }
     apply symbols_subst_nth_error in e3. subst. cbn in e.
     apply (f_equal decompose_elims) in e.
-    (* rewrite mkElims_decompose_elims in e. *)
+    rewrite 2!mkElims_decompose_elims in e. cbn in e.
+    inversion e as [h]. clear e.
+    (* Now we have to conclude on unification of eliminations.
+      Since they have the same length we can do it pointwise.
+    *)
   Abort.
 
 End ParallelSubstitution.
