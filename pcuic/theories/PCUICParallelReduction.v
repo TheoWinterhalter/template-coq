@@ -4525,6 +4525,24 @@ Section ParallelSubstitution.
         rewrite <- app_assoc. reflexivity.
   Qed.
 
+  Lemma elim_unify_subst :
+    forall σ θ npat e1 e2 m,
+      elim_mask npat e1 = Some m ->
+      subst_elim σ 0 e1 = subst_elim θ 0 e2 ->
+      ∑ φ ψ,
+        All_mask_subst (pattern npat) m φ ×
+        All (pattern npat) ψ ×
+        forall φ',
+          subs_complete φ φ' ->
+          subst_elim φ' 0 e1 = subst_elim ψ 0 e2.
+  Proof.
+    intros σ θ npat e1 e2 m hm e.
+    induction e1 in m, hm, θ, e2, e |- *.
+    - cbn in e. destruct e2. all: try discriminate.
+      cbn in e. inversion e as [h]. clear e.
+      (* Now we have to deal with patterns *)
+  Abort.
+
   Lemma lhs_unify_subst :
     forall Σ k decl ui r r' σ θ m Γ,
       wf Σ ->
