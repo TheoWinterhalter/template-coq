@@ -4451,6 +4451,77 @@ Section ParallelSubstitution.
       All_mask_subst P m σ ->
       All_mask_subst P (false :: m) (None :: σ).
 
+  (* TODO MOVE *)
+  Fixpoint decompose_elims t l :=
+    match t with
+    | tApp u v => decompose_elims u (eApp v :: l)
+    | tCase ind p c brs => decompose_elims c (eCase ind p brs :: l)
+    | tProj p t => decompose_elims t (eProj p :: l)
+    | t => (t, l)
+    end.
+
+  Lemma decompose_elims_mkElims :
+    forall t l,
+      let d := decompose_elims t l in
+      mkElims t l = mkElims d.1 d.2.
+  Proof.
+    intros t l. induction t in l |- *.
+    all: try reflexivity.
+    - cbn. rewrite <- IHt1. reflexivity.
+    - cbn. rewrite <- IHt2. reflexivity.
+    - cbn. rewrite <- IHt. reflexivity.
+  Qed.
+
+  Lemma decompose_elims_fst :
+    forall t l l',
+      (decompose_elims t l).1 = (decompose_elims t l').1.
+  Proof.
+    intros t l l'.
+    induction t in l, l' |- *.
+    all: try reflexivity.
+    - cbn. apply IHt1.
+    - cbn. apply IHt2.
+    - cbn. apply IHt.
+  Qed.
+
+  Lemma decompose_elims_snd :
+    forall t l,
+      (decompose_elims t l).2 = (decompose_elims t []).2 ++ l.
+  Proof.
+    intros t l.
+    induction t in l |- *.
+    all: try reflexivity.
+    - cbn. rewrite IHt1. rewrite (IHt1 [_]).
+      rewrite <- app_assoc. reflexivity.
+    - cbn. rewrite IHt2. rewrite (IHt2 [_]).
+      rewrite <- app_assoc. reflexivity.
+    - cbn. rewrite IHt. rewrite (IHt [_]).
+      rewrite <- app_assoc. reflexivity.
+  Qed.
+
+  Lemma mkElims_decompose_elims :
+    forall t l,
+      decompose_elims (mkElims t l) [] =
+      ((decompose_elims t []).1, (decompose_elims t []).2 ++ l).
+  Proof.
+    intros t l.
+    induction l as [| [] l ih] in t |- *.
+    - cbn. rewrite app_nil_r.
+      set (d := decompose_elims _ _). destruct d. reflexivity.
+    - cbn. rewrite ih. cbn. f_equal.
+      + apply decompose_elims_fst.
+      + rewrite decompose_elims_snd.
+        rewrite <- app_assoc. reflexivity.
+    - cbn. rewrite ih. cbn. f_equal.
+      + apply decompose_elims_fst.
+      + rewrite decompose_elims_snd.
+        rewrite <- app_assoc. reflexivity.
+    - cbn. rewrite ih. cbn. f_equal.
+      + apply decompose_elims_fst.
+      + rewrite decompose_elims_snd.
+        rewrite <- app_assoc. reflexivity.
+  Qed.
+
   Lemma lhs_unify_subst :
     forall Σ k decl ui r r' σ θ m Γ,
       wf Σ ->
@@ -4474,7 +4545,33 @@ Section ParallelSubstitution.
           subs_complete φ φ' ->
           subst0 φ' prelhs2 = subst0 ψ lhs'.
           (* + decomposition of substitutions *)
+          (* + intermediary contexts (maybe the same one?) and untyped_subslet *)
   Proof.
+    intros Σ k decl ui r r' σ θ m Γ hΣ hr hr' ss uσ uθ eh hm npat prelhs1
+      prelhs2 lhs' e.
+    subst prelhs1 prelhs2 lhs'.
+    unfold lhs in e. rewrite <- eh in e.
+    rewrite 4!mkElims_subst in e.
+    apply untyped_subslet_length in uσ as lσ.
+    rewrite subst_context_length in lσ.
+    apply untyped_subslet_length in uθ as lθ.
+    rewrite subst_context_length in lθ.
+    cbn in e.
+    destruct leb eqn:e1.
+    2:{ exfalso. apply leb_complete_conv in e1. lia. }
+    destruct (leb #|θ| _) eqn:e2.
+    2:{ exfalso. apply leb_complete_conv in e2. lia. }
+    replace (npat + head r - #|σ|) with r.(head) in e by lia.
+    replace (#|pat_context r'| + head r - #|θ|) with r.(head) in e by lia.
+    destruct nth_error eqn:e3.
+    2:{
+      apply is_rewrite_rule_head in hr. 2: auto.
+      apply nth_error_None in e3. subst ss.
+      rewrite symbols_subst_length in e3. exfalso. lia.
+    }
+    apply symbols_subst_nth_error in e3. subst. cbn in e.
+    apply (f_equal decompose_elims) in e.
+    (* rewrite mkElims_decompose_elims in e. *)
   Abort.
 
 End ParallelSubstitution.
