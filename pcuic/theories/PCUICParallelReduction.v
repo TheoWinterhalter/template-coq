@@ -4438,4 +4438,56 @@ Section ParallelSubstitution.
     apply map_option_out_subs_complete. auto.
   Qed.
 
+(*  Lemma lhs_unify_subst :
+    forall Σ k decl r r',
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      is_rewrite_rule Σ k decl r' ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
+      (* Aren't we missing some untyped_subslet for θ in lhs_reducts? *)
+*)
+
+  (* Lemma lhs_reducts :
+    forall Σ k ui decl r Γ Δ s t,
+      wf Σ ->
+      is_rewrite_rule Σ k decl r ->
+      let ss := symbols_subst k 0 ui #|decl.(symbols)| in
+      untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+      let prelhs0 :=
+        mkElims (tRel (#|r.(pat_context)| + r.(head))) r.(elims)
+      in
+      let prelhs := subst0 s (subst ss #|s| prelhs0) in
+      pred1 Σ Γ Δ prelhs t ->
+      (∑ r' θ θ' m el,
+        is_rewrite_rule Σ k decl r' ×
+        r.(head) = r'.(head) ×
+        m <= #|r.(elims)| × (* Not necessary *)
+        All2 (pred1 Σ Γ Δ) θ θ' ×
+        let prelhs1 :=
+          mkElims
+            (tRel (#|r.(pat_context)| + r.(head)))
+            (firstn m r.(elims))
+        in
+        let prelhs2 := subst0 s (subst ss #|s| prelhs1) in
+        prelhs2 = subst0 θ (subst ss #|θ| (lhs r')) ×
+        All2
+          (pred1_elim Σ Γ Δ)
+          (skipn
+            m
+            (map (subst_elim s 0) (map (subst_elim ss #|s|) r.(elims))))
+           el ×
+        t = mkElims (subst0 θ' (subst ss #|θ| r'.(rhs))) el
+      ) +
+      (∑ el,
+        All2
+          (pred1_elim Σ Γ Δ)
+          (map
+            (subst_elim s 0)
+            (map (subst_elim ss #|s|) r.(elims))
+          )
+          el ×
+        t = mkElims (subst ss #|s| (tRel (#|r.(pat_context)| + r.(head)))) el
+      ). *)
+
 End ParallelSubstitution.
