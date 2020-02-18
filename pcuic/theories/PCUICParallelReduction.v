@@ -4869,7 +4869,9 @@ Section ParallelSubstitution.
           All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ).
   Proof.
     intros σ θ p1 p2 m1 m2 Γ Δ1 Δ2 npat1 npat2 hp1 hp2 hm1 hm2 uσ uθ e.
-    induction hp1 in p2, hp2, m1, hm1, m2, hm2, σ, uσ, θ, uθ, e |- *
+    induction hp1
+    as [n hn | ind n ui args pa ih]
+    in p2, hp2, m1, hm1, m2, hm2, σ, uσ, θ, uθ, e |- *
     using pattern_all_rect.
     - cbn in hm1. cbn in e.
       replace (n - 0) with n in e by lia.
@@ -4962,7 +4964,42 @@ Section ParallelSubstitution.
           apply pattern_mask_length in hm2.
           lia.
         * rewrite map_length. rewrite id_mask_length. reflexivity.
-    -
+    - rewrite subst_mkApps in e. cbn in e.
+      destruct hp2 as [i hi | ind' n' ui' args' pa'].
+      + (* Symmetric case of the other? *)
+        admit.
+      + rewrite subst_mkApps in e. cbn in e.
+        apply (f_equal decompose_app) in e.
+        rewrite -> 2!decompose_app_mkApps in e by auto.
+        symmetry in e. inversion e. subst. clear e.
+        match goal with
+        | h : map _ _ = map _ _ |- _ => rename h into e
+        end.
+        symmetry in e.
+        eapply All_prod in ih. 2: exact pa.
+        clear pa.
+        induction ih
+        as [| p l [hp ihp] hl ih]
+        in σ, θ, args', pa', m1, hm1, m2, hm2, uσ, uθ, e |- *
+        using All_rev_rect.
+        * destruct args'. 2: discriminate.
+          cbn in *.
+          apply some_inj in hm1.
+          apply some_inj in hm2. subst.
+          exists (subs_empty npat1), (subs_empty npat2), Γ, (idsn #|Γ|).
+          repeat lazymatch goal with
+          | |- _ × _ => split
+          | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
+          end.
+          -- admit. (* If not true, just change to the right subst/ctx *)
+          -- reflexivity.
+          -- unfold subs_empty. rewrite map_list_init. cbn.
+             eapply All2_mask_subst_linear_mask_init.
+             apply untyped_subslet_length in uσ. auto.
+          -- unfold subs_empty. rewrite map_list_init. cbn.
+             eapply All2_mask_subst_linear_mask_init.
+             apply untyped_subslet_length in uθ. auto.
+        * admit.
   Abort.
 
   Lemma elim_unify_subst :
