@@ -4746,57 +4746,7 @@ Section ParallelSubstitution.
         apply subs_complete_spec in hφ as [lφ hφ].
         apply subs_init_nth_error in e2 as e3.
         apply hφ in e3. rewrite e3. rewrite lift0_id.
-        (* TODO Maybe a lemma? *)
-        { clear - hp2 hm2 hψ.
-          induction hp2 in m2, hm2, ψ', hψ |- * using pattern_all_rect.
-          - cbn. replace (n - 0) with n by lia.
-            apply subs_complete_spec in hψ as [eψ hψ].
-            cbn in hm2. rewrite lin_set_eq in hm2.
-            destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
-            apply some_inj in hm2.
-            apply (f_equal (fun l => #|l|)) in hm2 as e2.
-            rewrite app_length in e2. cbn in e2.
-            rewrite firstn_length in e2.
-            rewrite skipn_length in e2.
-            { rewrite linear_mask_init_length. lia. }
-            rewrite linear_mask_init_length in e2.
-            match type of e2 with
-            | ?n = _ => replace n with npat2 in e2 by lia
-            end.
-            destruct (nth_error (id_mask 0 m2) n) as [[]|] eqn:e.
-            3:{
-              apply nth_error_None in e.
-              rewrite id_mask_length in e.
-              lia.
-            }
-            2:{
-              exfalso. subst. rewrite id_mask_app in e.
-              cbn in e. rewrite nth_error_app2 in e.
-              { rewrite id_mask_length. rewrite firstn_length. lia. }
-              rewrite id_mask_length in e. rewrite firstn_length in e.
-              rewrite linear_mask_init_length in e.
-              replace (n - min n npat2) with 0 in e by lia.
-              cbn in e. discriminate.
-            }
-            apply hψ in e as e3. rewrite e3.
-            rewrite lift0_id.
-            clear - e.
-            replace n with (0 + n) by lia.
-            revert e. generalize 0. intros i e.
-            induction m2 as [| [] m1 ih] in i, n, t, e |- *.
-            + cbn in e. destruct n. all: discriminate.
-            + cbn in e. destruct n.
-              * cbn in e. inversion e. f_equal. lia.
-              * cbn in e. apply ih in e. subst.
-                f_equal. lia.
-            + cbn in e. destruct n.
-              * cbn in e. discriminate.
-              * cbn in e. apply ih in e. subst.
-                f_equal. lia.
-          - rewrite subst_mkApps. cbn. f_equal.
-            (* We clearyly want the above as a lemma. *)
-            admit.
-        }
+        eapply id_mask_subst. all: eauto.
       + (* It's true but will be annoying *) admit.
       + (* Should be ok, or id_mask is ill-defined *) admit.
     -
