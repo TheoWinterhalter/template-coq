@@ -4679,6 +4679,13 @@ Section ParallelSubstitution.
       + f_equal. apply ihp. assumption.
   Qed.
 
+  (* TODO Not really interesting, for assumptions contexts... *)
+  (* Inductive untyped_subs_mask Γ :
+    list bool -> partial_subst -> context -> Type :=
+  | untyped_subs_true :
+      forall Δ σ m na t A,
+        untyped_subs_mask Γ (true :: m) (Some t :: σ) (Δ ,, vass na A) *)
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -4695,8 +4702,8 @@ Section ParallelSubstitution.
         forall φ' ψ',
           subs_complete φ φ' ->
           subs_complete ψ ψ' ->
-          untyped_subslet Ξ φ' Δ1 ×
-          untyped_subslet Ξ ψ' Δ2 ×
+          (* untyped_subslet Ξ φ' Δ1 ->
+          untyped_subslet Ξ ψ' Δ2 -> *)
           subst0 φ' p1 = subst0 ψ' p2 ×
           All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
           All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ).
@@ -4734,14 +4741,9 @@ Section ParallelSubstitution.
       exists φ, (id_mask 0 m2), Δ2, θ.
       repeat lazymatch goal with
       | |- _ × _ => split
-      | |- forall _, _ => intros φ' ψ' hφ hψ
+      | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
       end.
       + assumption.
-      + (* This is too strong a requirement but having it as an assumption
-          is too weak. We should have untyped_subslet relative to a mask.
-        *)
-        admit.
-      + admit.
       + cbn. replace (n - 0) with n by lia.
         apply subs_complete_spec in hφ as [lφ hφ].
         apply subs_init_nth_error in e2 as e3.
