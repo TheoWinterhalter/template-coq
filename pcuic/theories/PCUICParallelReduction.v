@@ -4558,6 +4558,53 @@ Section ParallelSubstitution.
     - cbn. f_equal. rewrite ih. f_equal. f_equal. lia.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma All_rev_rect :
+    forall A P (R : list A -> Type),
+      R [] ->
+      (forall x l,
+        P x ->
+        All P l ->
+        R l ->
+        R (l ++ [x])
+      ) ->
+      forall l, All P l -> R l.
+  Proof.
+    intros A P R Rnil Rcons l h.
+    rewrite <- rev_involutive.
+    apply All_rev in h. revert h.
+    generalize (List.rev l). clear l.
+    intros l h. induction h.
+    - apply Rnil.
+    - cbn. apply Rcons. all: auto.
+      apply All_rev. assumption.
+  Qed.
+
+  Lemma lin_merge_id_mask :
+    forall m1 m2 m i,
+      lin_merge m1 m2 = Some m ->
+      subs_merge (id_mask i m1) (id_mask i m2) = Some (id_mask i m).
+  Proof.
+    intros m1 m2 m i hm.
+    induction m1 as [| [] m1 ih] in i, m2, m, hm |- *.
+    - cbn in hm. destruct m2. 2: discriminate.
+      apply some_inj in hm. subst.
+      cbn. reflexivity.
+    - cbn in hm. destruct m2 as [| [] m2]. 1,2: discriminate.
+      destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      cbn. erewrite -> ih by eassumption.
+      reflexivity.
+    - cbn in hm. destruct m2 as [| b m2]. 1: discriminate.
+      destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      destruct b.
+      + cbn. erewrite -> ih by eassumption.
+        reflexivity.
+      + cbn. erewrite -> ih by eassumption.
+        reflexivity.
+  Qed.
+
   Lemma id_mask_subst :
     forall p m npat σ,
       pattern npat p ->
@@ -4615,12 +4662,22 @@ Section ParallelSubstitution.
     - rewrite subst_mkApps. cbn. f_equal.
       eapply All_prod in pa. 2: exact ih.
       clear ih.
-      induction pa as [| p l [ihp hp] hl ih] in σ, hσ, m, hm |- *.
+      induction pa as [| p l [ihp hp] hl ih]
+      in σ, hσ, m, hm |- * using All_rev_rect.
       1: reflexivity.
-      cbn.
-      cbn in hm.
-      erewrite ihp. all: eauto.
-  Abort.
+      rewrite map_app. cbn.
+      rewrite <- mkApps_nested in hm. cbn in hm.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      destruct (pattern_mask _ p) eqn:e2. 2: discriminate.
+      specialize ih with (1 := eq_refl).
+      specialize ihp with (1 := eq_refl).
+      apply lin_merge_id_mask with (i := 0) in hm as sm.
+      eapply subs_merge_complete in sm. 2: eassumption.
+      destruct sm as [? ?].
+      f_equal.
+      + apply ih. assumption.
+      + f_equal. apply ihp. assumption.
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
