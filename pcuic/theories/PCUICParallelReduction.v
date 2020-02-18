@@ -4525,12 +4525,47 @@ Section ParallelSubstitution.
         rewrite <- app_assoc. reflexivity.
   Qed.
 
+  (* TODO MOVE *)
+  (** Identity partial substitution on a given mask
+    Similar to idsn I suppose.
+  *)
+  Fixpoint id_mask i m : partial_subst :=
+    match m with
+    | true  :: m => Some (tRel i) :: id_mask (S i) m
+    | false :: m => None :: id_mask (S i) m
+    | [] => []
+    end.
+
+  Lemma id_mask_length :
+    forall i m,
+      #|id_mask i m| = #|m|.
+  Proof.
+    intros i m.
+    induction m as [| [] m ih] in i |- *.
+    - reflexivity.
+    - cbn. f_equal. apply ih.
+    - cbn. f_equal. apply ih.
+  Qed.
+
+  Lemma id_mask_app :
+    forall i m1 m2,
+      id_mask i (m1 ++ m2) = id_mask i m1 ++ id_mask (i + #|m1|) m2.
+  Proof.
+    intros i m1 m2.
+    induction m1 as [| [] m1 ih] in i, m2 |- *.
+    - cbn. f_equal. lia.
+    - cbn. f_equal. rewrite ih. f_equal. f_equal. lia.
+    - cbn. f_equal. rewrite ih. f_equal. f_equal. lia.
+  Qed.
+
   Lemma pattern_unify_subst :
-    forall σ θ npat p1 p2 m1 m2 Γ Δ1 Δ2,
-      pattern npat p1 ->
-      pattern npat p2 ->
-      pattern_mask npat p1 = Some m1 ->
-      pattern_mask npat p2 = Some m2 ->
+    forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
+      let npat1 := #|Δ1| in
+      let npat2 := #|Δ2| in
+      pattern npat1 p1 ->
+      pattern npat2 p2 ->
+      pattern_mask npat1 p1 = Some m1 ->
+      pattern_mask npat2 p2 = Some m2 ->
       untyped_subslet Γ σ Δ1 ->
       untyped_subslet Γ θ Δ2 ->
       subst0 σ p1 = subst0 θ p2 ->
@@ -4545,6 +4580,105 @@ Section ParallelSubstitution.
           All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
           All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ).
   Proof.
+    intros σ θ p1 p2 m1 m2 Γ Δ1 Δ2 npat1 npat2 hp1 hp2 hm1 hm2 uσ uθ e.
+    induction hp1 in p2, hp2, m1, hm1, m2, hm2, σ, uσ, θ, uθ, e |- *
+    using pattern_all_rect.
+    - cbn in hm1. cbn in e.
+      replace (n - 0) with n in e by lia.
+      destruct nth_error eqn:e1.
+      2:{
+        apply nth_error_None in e1.
+        apply untyped_subslet_length in uσ.
+        exfalso. lia.
+      }
+      rewrite lift0_id in e. subst.
+      case_eq (subs_init npat1 n p2).
+      2:{
+        intros e2. exfalso.
+        unfold subs_init, subs_add in e2.
+        apply untyped_subslet_length in uσ.
+        destruct (nth_error (subs_empty _) _) as [[]|] eqn:e3.
+        - clearbody npat1. clear - e3.
+          induction npat1 in t, n, e3 |- *.
+          + cbn in e3. destruct n. all: discriminate.
+          + cbn in e3. destruct n.
+            * cbn in e3. discriminate.
+            * cbn in e3. eapply IHnpat1. eassumption.
+        - discriminate.
+        - apply nth_error_None in e3.
+          rewrite subs_empty_length in e3.
+          lia.
+      }
+      intros φ e2.
+      exists φ, (id_mask 0 m2), Δ2, θ.
+      repeat lazymatch goal with
+      | |- _ × _ => split
+      | |- forall _, _ => intros φ' ψ' hφ hψ
+      end.
+      + assumption.
+      + (* This is too strong a requirement but having it as an assumption
+          is too weak. We should have untyped_subslet relative to a mask.
+        *)
+        admit.
+      + admit.
+      + cbn. replace (n - 0) with n by lia.
+        apply subs_complete_spec in hφ as [lφ hφ].
+        apply subs_init_nth_error in e2 as e3.
+        apply hφ in e3. rewrite e3. rewrite lift0_id.
+        (* TODO Maybe a lemma? *)
+        { clear - hp2 hm2 hψ.
+          induction hp2 in m2, hm2, ψ', hψ |- * using pattern_all_rect.
+          - cbn. replace (n - 0) with n by lia.
+            apply subs_complete_spec in hψ as [eψ hψ].
+            cbn in hm2. rewrite lin_set_eq in hm2.
+            destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+            apply some_inj in hm2.
+            apply (f_equal (fun l => #|l|)) in hm2 as e2.
+            rewrite app_length in e2. cbn in e2.
+            rewrite firstn_length in e2.
+            rewrite skipn_length in e2.
+            { rewrite linear_mask_init_length. lia. }
+            rewrite linear_mask_init_length in e2.
+            match type of e2 with
+            | ?n = _ => replace n with npat2 in e2 by lia
+            end.
+            destruct (nth_error (id_mask 0 m2) n) as [[]|] eqn:e.
+            3:{
+              apply nth_error_None in e.
+              rewrite id_mask_length in e.
+              lia.
+            }
+            2:{
+              exfalso. subst. rewrite id_mask_app in e.
+              cbn in e. rewrite nth_error_app2 in e.
+              { rewrite id_mask_length. rewrite firstn_length. lia. }
+              rewrite id_mask_length in e. rewrite firstn_length in e.
+              rewrite linear_mask_init_length in e.
+              replace (n - min n npat2) with 0 in e by lia.
+              cbn in e. discriminate.
+            }
+            apply hψ in e as e3. rewrite e3.
+            rewrite lift0_id.
+            clear - e.
+            replace n with (0 + n) by lia.
+            revert e. generalize 0. intros i e.
+            induction m2 as [| [] m1 ih] in i, n, t, e |- *.
+            + cbn in e. destruct n. all: discriminate.
+            + cbn in e. destruct n.
+              * cbn in e. inversion e. f_equal. lia.
+              * cbn in e. apply ih in e. subst.
+                f_equal. lia.
+            + cbn in e. destruct n.
+              * cbn in e. discriminate.
+              * cbn in e. apply ih in e. subst.
+                f_equal. lia.
+          - rewrite subst_mkApps. cbn. f_equal.
+            (* We clearyly want the above as a lemma. *)
+            admit.
+        }
+      + (* It's true but will be annoying *) admit.
+      + (* Should be ok, or id_mask is ill-defined *) admit.
+    -
   Abort.
 
   Lemma elim_unify_subst :
