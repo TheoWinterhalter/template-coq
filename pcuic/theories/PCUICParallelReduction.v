@@ -4749,6 +4749,103 @@ Section ParallelSubstitution.
       forall Δ σ m na t A,
         untyped_subs_mask Γ (true :: m) (Some t :: σ) (Δ ,, vass na A) *)
 
+  (* TODO MOVE *)
+  Lemma all_nth_error_All2_mask_subst :
+    forall P m σ θ,
+      (forall n,
+        nth_error m n = Some true ->
+        ∑ t u,
+          nth_error σ n = Some t ×
+          nth_error θ n = Some (Some u) ×
+          P t u
+      ) ->
+      (forall n,
+        nth_error m n = Some false ->
+        nth_error θ n = Some None
+      ) ->
+      #|m| = #|σ| ->
+      #|m| = #|θ| ->
+      All2_mask_subst P m σ θ.
+  Proof.
+    intros P m σ θ ht hf lσ lθ.
+    induction m as [| [] m ih] in σ, θ, ht, hf, lσ, lθ |- *.
+    - destruct σ. 2: discriminate.
+      destruct θ. 2: discriminate.
+      constructor.
+    - cbn in *.
+      destruct σ. 1: discriminate.
+      destruct θ as [| [] θ]. 1: discriminate.
+      2:{
+        specialize (ht 0). cbn in ht.
+        forward ht by auto.
+        destruct ht as [? [? [? [? ?]]]]. discriminate.
+      }
+      constructor.
+      + specialize (ht 0). cbn in ht.
+        forward ht by auto.
+        destruct ht as [u [v [e1 [e2 ?]]]].
+        apply some_inj in e1. subst.
+        apply some_inj in e2. apply some_inj in e2. subst.
+        assumption.
+      + apply ih. all: auto.
+        * intros n e.
+          specialize (ht (S n)). cbn in ht.
+          forward ht by auto. assumption.
+        * intros n e.
+          specialize (hf (S n)). cbn in hf.
+          forward hf by auto. assumption.
+    - cbn in *.
+      destruct σ. 1: discriminate.
+      destruct θ as [| [] θ]. 1: discriminate.
+      1:{
+        specialize (hf 0). cbn in hf.
+        forward hf by auto.
+        discriminate.
+      }
+      constructor.
+      apply ih. all: auto.
+      + intros n e.
+        specialize (ht (S n)). cbn in ht.
+        forward ht by auto. assumption.
+      + intros n e.
+        specialize (hf (S n)). cbn in hf.
+        forward hf by auto. assumption.
+  Qed.
+
+  Lemma nth_error_id_mask :
+    forall i m n,
+      nth_error m n = Some true ->
+      nth_error (id_mask i m) n = Some (Some (tRel (i + n))).
+  Proof.
+    intros i m n h.
+    induction m as [| [] m ih] in i, n, h |- *.
+    - destruct n. all: discriminate.
+    - cbn. destruct n.
+      + cbn. f_equal. f_equal. f_equal. lia.
+      + cbn in *. rewrite -> ih by auto.
+        f_equal. f_equal. f_equal. lia.
+    - cbn. destruct n.
+      + cbn in *. discriminate.
+      + cbn in *. rewrite -> ih by auto.
+        f_equal. f_equal. f_equal. lia.
+  Qed.
+
+  Lemma nth_error_false_id_mask :
+    forall i m n,
+      nth_error m n = Some false ->
+      nth_error (id_mask i m) n = Some None.
+  Proof.
+    intros i m n h.
+    induction m as [| [] m ih] in i, n, h |- *.
+    - destruct n. all: discriminate.
+    - cbn. destruct n.
+      + cbn in *. discriminate.
+      + cbn in *. rewrite -> ih by auto. reflexivity.
+    - cbn. destruct n.
+      + cbn. reflexivity.
+      + cbn in *. rewrite -> ih by auto. reflexivity.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -4840,23 +4937,31 @@ Section ParallelSubstitution.
           eapply IHnpat1. all: eauto.
           unfold subs_init, subs_add. rewrite e4.
           reflexivity.
-      + apply untyped_subslet_length in uθ.
-        change #|Δ2| with npat2 in uθ.
-        apply pattern_mask_length in hm2.
-        clearbody npat2. clear - uθ hm2.
-        generalize 0 at 2. intro i.
-        induction m2 as [| [] m2 ih] in i, npat2, θ, uθ, hm2 |- *.
-        * cbn in hm2. subst. destruct θ. 2: discriminate.
-          constructor.
-        * cbn in hm2. destruct npat2. 1: discriminate.
-          destruct θ. 1: discriminate.
-          cbn in uθ. cbn.
-          destruct (Nat.leb_spec0 i i). 2: exfalso ; lia.
-          replace (i - i) with 0 by lia. cbn.
-          constructor. 1: admit.
-          Fail apply ih.
-          admit.
-        * admit.
+      + apply all_nth_error_All2_mask_subst.
+        * intros i e.
+          destruct (nth_error θ i) eqn:e3.
+          2:{
+            apply nth_error_Some_length in e.
+            apply nth_error_None in e3.
+            apply untyped_subslet_length in uθ.
+            apply pattern_mask_length in hm2.
+            exfalso. lia.
+          }
+          rewrite nth_error_map.
+          apply nth_error_id_mask with (i := 0) in e as e4. cbn in e4.
+          rewrite e4. cbn - [subst]. cbn.
+          replace (i - 0) with i by lia.
+          rewrite e3. rewrite lift0_id.
+          eexists _, _.
+          intuition reflexivity.
+        * intros i e.
+          rewrite nth_error_map.
+          apply nth_error_false_id_mask with (i := 0) in e as e3.
+          rewrite e3. cbn. reflexivity.
+        * apply untyped_subslet_length in uθ.
+          apply pattern_mask_length in hm2.
+          lia.
+        * rewrite map_length. rewrite id_mask_length. reflexivity.
     -
   Abort.
 
