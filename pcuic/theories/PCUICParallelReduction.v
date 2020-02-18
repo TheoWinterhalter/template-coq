@@ -4679,6 +4679,69 @@ Section ParallelSubstitution.
       + f_equal. apply ihp. assumption.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma map_list_init :
+    forall A B (f : A -> B) a n,
+      map f (list_init a n) = list_init (f a) n.
+  Proof.
+    intros A B f a n.
+    induction n.
+    - reflexivity.
+    - cbn. f_equal. apply IHn.
+  Qed.
+
+  (* TODO MOVE? *)
+  Lemma lin_merge_length :
+    forall m1 m2 m,
+      lin_merge m1 m2 = Some m ->
+      #|m| = #|m1| /\ #|m| = #|m2|.
+  Proof.
+    intros m1 m2 m hm.
+    induction m1 as [| [] m1 ih] in m2, m, hm |- *.
+    - destruct m2. 2: discriminate.
+      cbn in hm. apply some_inj in hm. subst.
+      auto.
+    - destruct m2 as [| [] m2]. 1,2: discriminate.
+      cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      apply ih in e. cbn. intuition eauto.
+    - cbn in hm. destruct m2. 1: discriminate.
+      destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      apply ih in e. cbn. intuition eauto.
+  Qed.
+
+  (* TODO MOVE? *)
+  Lemma pattern_mask_length :
+    forall npat p m,
+      pattern_mask npat p = Some m ->
+      #|m| = npat.
+  Proof.
+    intros npat p m hm.
+    induction p in m, hm |- *.
+    all: try discriminate.
+    - cbn in hm. induction n in npat, m, hm |- *.
+      + cbn in hm. destruct linear_mask_init as [| []] eqn:e.
+        1,2: discriminate.
+        apply some_inj in hm. subst. cbn.
+        apply (f_equal (fun l => #|l|)) in e. cbn in e.
+        rewrite linear_mask_init_length in e. auto.
+      + cbn in hm. destruct linear_mask_init eqn:e. 1: discriminate.
+        destruct lin_set eqn:e1. 2: discriminate.
+        apply some_inj in hm. subst. cbn.
+        destruct npat. 1: discriminate.
+        cbn in e. inversion e. subst. clear e.
+        apply IHn in e1. auto.
+    - cbn in hm.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+      specialize IHp1 with (1 := eq_refl).
+      specialize IHp2 with (1 := eq_refl).
+      apply lin_merge_length in hm. lia.
+    - cbn in hm. apply some_inj in hm. subst.
+      apply linear_mask_init_length.
+  Qed.
+
   (* TODO Not really interesting, for assumptions contexts... *)
   (* Inductive untyped_subs_mask Γ :
     list bool -> partial_subst -> context -> Type :=
@@ -4749,8 +4812,51 @@ Section ParallelSubstitution.
         apply subs_init_nth_error in e2 as e3.
         apply hφ in e3. rewrite e3. rewrite lift0_id.
         eapply id_mask_subst. all: eauto.
-      + (* It's true but will be annoying *) admit.
-      + (* Should be ok, or id_mask is ill-defined *) admit.
+      + apply untyped_subslet_length in uσ.
+        assert (e : #|σ| = npat1) by auto.
+        clearbody npat1. clear - hm1 e1 e2 e.
+        induction npat1 in φ, n, σ, m1, hm1, e1, e2, e |- *.
+        1:{ cbn in hm1. destruct n. all: discriminate. }
+        cbn in hm1. destruct n.
+        * cbn in hm1. apply some_inj in hm1. subst.
+          destruct σ. 1: discriminate.
+          cbn in e1. apply some_inj in e1. subst.
+          cbn in e2. apply some_inj in e2. subst.
+          cbn.
+          constructor. 1: reflexivity.
+          unfold skipn. rewrite map_list_init. cbn.
+          apply All2_mask_subst_linear_mask_init.
+          cbn in e. lia.
+        * cbn in hm1. destruct lin_set eqn:e3. 2: discriminate.
+          apply some_inj in hm1. subst.
+          destruct σ. 1: discriminate.
+          cbn in e1. cbn in e.
+          unfold subs_init, subs_add in e2.
+          cbn in e2.
+          destruct (nth_error (list_init _ _) _) as [[]|] eqn:e4.
+          1,3: discriminate.
+          apply some_inj in e2. subst. cbn.
+          constructor.
+          eapply IHnpat1. all: eauto.
+          unfold subs_init, subs_add. rewrite e4.
+          reflexivity.
+      + apply untyped_subslet_length in uθ.
+        change #|Δ2| with npat2 in uθ.
+        apply pattern_mask_length in hm2.
+        clearbody npat2. clear - uθ hm2.
+        generalize 0 at 2. intro i.
+        induction m2 as [| [] m2 ih] in i, npat2, θ, uθ, hm2 |- *.
+        * cbn in hm2. subst. destruct θ. 2: discriminate.
+          constructor.
+        * cbn in hm2. destruct npat2. 1: discriminate.
+          destruct θ. 1: discriminate.
+          cbn in uθ. cbn.
+          destruct (Nat.leb_spec0 i i). 2: exfalso ; lia.
+          replace (i - i) with 0 by lia. cbn.
+          constructor. 1: admit.
+          Fail apply ih.
+          admit.
+        * admit.
     -
   Abort.
 
