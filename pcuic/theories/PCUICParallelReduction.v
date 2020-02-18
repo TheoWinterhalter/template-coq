@@ -4558,6 +4558,70 @@ Section ParallelSubstitution.
     - cbn. f_equal. rewrite ih. f_equal. f_equal. lia.
   Qed.
 
+  Lemma id_mask_subst :
+    forall p m npat σ,
+      pattern npat p ->
+      pattern_mask npat p = Some m ->
+      subs_complete (id_mask 0 m) σ ->
+      p = subst0 σ p.
+  Proof.
+    intros p m npat σ hp hm hσ.
+    induction hp as [n hn | ind n ui args pa ih]
+    in m, hm, σ, hσ |- * using pattern_all_rect.
+    - cbn. replace (n - 0) with n by lia.
+      apply subs_complete_spec in hσ as [eσ hσ].
+      cbn in hm. rewrite lin_set_eq in hm.
+      destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+      apply some_inj in hm.
+      apply (f_equal (fun l => #|l|)) in hm as e2.
+      rewrite app_length in e2. cbn in e2.
+      rewrite firstn_length in e2.
+      rewrite skipn_length in e2.
+      { rewrite linear_mask_init_length. lia. }
+      rewrite linear_mask_init_length in e2.
+      match type of e2 with
+      | ?n = _ => replace n with npat in e2 by lia
+      end.
+      destruct (nth_error (id_mask 0 m) n) as [[]|] eqn:e.
+      3:{
+        apply nth_error_None in e.
+        rewrite id_mask_length in e.
+        lia.
+      }
+      2:{
+        exfalso. subst. rewrite id_mask_app in e.
+        cbn in e. rewrite nth_error_app2 in e.
+        { rewrite id_mask_length. rewrite firstn_length. lia. }
+        rewrite id_mask_length in e. rewrite firstn_length in e.
+        rewrite linear_mask_init_length in e.
+        replace (n - min n npat) with 0 in e by lia.
+        cbn in e. discriminate.
+      }
+      apply hσ in e as e3. rewrite e3.
+      rewrite lift0_id.
+      clear - e.
+      replace n with (0 + n) by lia.
+      revert e. generalize 0. intros i e.
+      induction m as [| [] m ih] in i, n, t, e |- *.
+      + cbn in e. destruct n. all: discriminate.
+      + cbn in e. destruct n.
+        * cbn in e. inversion e. f_equal. lia.
+        * cbn in e. apply ih in e. subst.
+          f_equal. lia.
+      + cbn in e. destruct n.
+        * cbn in e. discriminate.
+        * cbn in e. apply ih in e. subst.
+          f_equal. lia.
+    - rewrite subst_mkApps. cbn. f_equal.
+      eapply All_prod in pa. 2: exact ih.
+      clear ih.
+      induction pa as [| p l [ihp hp] hl ih] in σ, hσ, m, hm |- *.
+      1: reflexivity.
+      cbn.
+      cbn in hm.
+      erewrite ihp. all: eauto.
+  Abort.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
