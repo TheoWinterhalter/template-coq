@@ -4925,6 +4925,18 @@ Section ParallelSubstitution.
     apply untyped_subslet_weaks with (Δ := []).
   Qed.
 
+  (* TODO Maybe useless? *)
+  Inductive masks : list bool -> partial_subst -> Type :=
+  | masks_nil : masks [] []
+  | masks_true :
+      forall m σ t,
+        masks m σ ->
+        masks (true :: m) (Some t :: σ)
+  | masks_false :
+      forall m σ,
+        masks m σ ->
+        masks (false :: m) (None :: σ).
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -5103,7 +5115,21 @@ Section ParallelSubstitution.
           specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
           forward ih by auto. forward ih by auto.
           destruct ih as [φ2 [ψ2 [Ξ2 [ξ2 [eφ2 [eψ2 [uξ2 h2]]]]]]].
-          (* We should change the order of things *)
+          eapply All2_mask_subst_lin_merge in hm1 as me. 2,3: eauto.
+          destruct me as [φ [mφ eφ]].
+          eapply All2_mask_subst_lin_merge in hm2 as me. 2,3: eauto.
+          destruct me as [ψ [mψ eψ]].
+          (* PROBLEM 1:
+            We don't have the right φ and ψ they are already "mapped".
+            Maybe uses masks or some fancier All2_mask_subst_lin_merge
+            to accont for the map?
+            Or have some subs_merge_map?
+          *)
+          (* PROBLEM 2:
+            What do we do with ξ? And even worse with Ξ1 and Ξ2, if they are
+            different it seems doomed.
+          *)
+          (* exists φ, ψ. *)
   Abort.
 
   Lemma elim_unify_subst :
