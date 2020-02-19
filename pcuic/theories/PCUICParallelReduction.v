@@ -5065,12 +5065,12 @@ Section ParallelSubstitution.
           cbn in *.
           apply some_inj in hm1.
           apply some_inj in hm2. subst.
-          exists (subs_empty npat1), (subs_empty npat2), Γ, (idsn #|Γ|).
+          exists (subs_empty npat1), (subs_empty npat2), Γ, (idsubst Γ).
           repeat lazymatch goal with
           | |- _ × _ => split
           | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
           end.
-          -- admit. (* If not true, just change to the right subst/ctx *)
+          -- apply untyped_subslet_idsubst.
           -- reflexivity.
           -- unfold subs_empty. rewrite map_list_init. cbn.
              eapply All2_mask_subst_linear_mask_init.
