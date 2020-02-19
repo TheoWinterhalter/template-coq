@@ -4846,18 +4846,35 @@ Section ParallelSubstitution.
       + cbn in *. rewrite -> ih by auto. reflexivity.
   Qed.
 
-  Definition weaks i n :=
-    list_make tRel i n.
+  Fixpoint weaks i Γ :=
+    match Γ with
+    | {| decl_body := Some t ; decl_type := A |} :: Γ =>
+      subst0 (weaks (S i) Γ) t :: weaks (S i) Γ
+    | {| decl_body := None ; decl_type := A |} :: Γ =>
+      tRel i :: weaks (S i) Γ
+    | [] => []
+    end.
 
+  (** The purpose of this lemma is to convince myself this is the right
+    definition.
+  *)
   Lemma subslet_weaks :
     forall Σ Γ Δ,
-      subslet Σ (Γ ,,, Δ) (weaks #|Δ| #|Γ|) Γ.
+      subslet Σ (Γ ,,, Δ) (weaks #|Δ| Γ) Γ.
   Proof.
     intros Σ Γ Δ.
     induction Γ as [| [na [t|] A] Γ ih] in Δ |- *.
     - cbn. constructor.
-    - cbn. (* Only works with an assumption context *)
-      give_up.
+    - cbn. constructor.
+      + match goal with
+        | |- subslet _ ((?d :: _) ,,, _) _ _ =>
+          specialize (ih (Δ ++ [d]))
+        end.
+        rewrite app_length in ih. cbn in ih.
+        unfold ",,," in *. rewrite <- app_assoc in ih. cbn in ih.
+        replace (#|Δ| + 1) with (S #|Δ|) in ih by lia.
+        assumption.
+      + admit.
     - cbn. constructor.
       + match goal with
         | |- subslet _ ((?d :: _) ,,, _) _ _ =>
@@ -4869,6 +4886,44 @@ Section ParallelSubstitution.
         assumption.
       + admit.
   Abort.
+
+  Lemma untyped_subslet_weaks :
+    forall Γ Δ,
+      untyped_subslet (Γ ,,, Δ) (weaks #|Δ| Γ) Γ.
+  Proof.
+    intros Γ Δ.
+    induction Γ as [| [na [t|] A] Γ ih] in Δ |- *.
+    - cbn. constructor.
+    - cbn. constructor.
+      match goal with
+      | |- untyped_subslet ((?d :: _) ,,, _) _ _ =>
+        specialize (ih (Δ ++ [d]))
+      end.
+      rewrite app_length in ih. cbn in ih.
+      unfold ",,," in *. rewrite <- app_assoc in ih. cbn in ih.
+      replace (#|Δ| + 1) with (S #|Δ|) in ih by lia.
+      assumption.
+    - cbn. constructor.
+      match goal with
+      | |- untyped_subslet ((?d :: _) ,,, _) _ _ =>
+        specialize (ih (Δ ++ [d]))
+      end.
+      rewrite app_length in ih. cbn in ih.
+      unfold ",,," in *. rewrite <- app_assoc in ih. cbn in ih.
+      replace (#|Δ| + 1) with (S #|Δ|) in ih by lia.
+      assumption.
+  Qed.
+
+  Definition idsubst Γ :=
+    weaks 0 Γ.
+
+  Lemma untyped_subslet_idsubst :
+    forall Γ,
+      untyped_subslet Γ (idsubst Γ) Γ.
+  Proof.
+    intro Γ.
+    apply untyped_subslet_weaks with (Δ := []).
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
