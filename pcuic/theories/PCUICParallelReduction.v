@@ -4937,15 +4937,15 @@ Section ParallelSubstitution.
       untyped_subslet Γ θ Δ2 ->
       subst0 σ p1 = subst0 θ p2 ->
       ∑ φ ψ Ξ ξ,
+        All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
+        All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ) ×
         untyped_subslet Γ ξ Ξ ×
         forall φ' ψ',
           subs_complete φ φ' ->
           subs_complete ψ ψ' ->
           (* untyped_subslet Ξ φ' Δ1 ->
           untyped_subslet Ξ ψ' Δ2 -> *)
-          subst0 φ' p1 = subst0 ψ' p2 ×
-          All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
-          All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ).
+          subst0 φ' p1 = subst0 ψ' p2.
   Proof.
     intros σ θ p1 p2 m1 m2 Γ Δ1 Δ2 npat1 npat2 hp1 hp2 hm1 hm2 uσ uθ e.
     induction hp1
@@ -4984,12 +4984,6 @@ Section ParallelSubstitution.
       | |- _ × _ => split
       | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
       end.
-      + assumption.
-      + cbn. replace (n - 0) with n by lia.
-        apply subs_complete_spec in hφ as [lφ hφ].
-        apply subs_init_nth_error in e2 as e3.
-        apply hφ in e3. rewrite e3. rewrite lift0_id.
-        eapply id_mask_subst. all: eauto.
       + apply untyped_subslet_length in uσ.
         assert (e : #|σ| = npat1) by auto.
         clearbody npat1. clear - hm1 e1 e2 e.
@@ -5043,6 +5037,12 @@ Section ParallelSubstitution.
           apply pattern_mask_length in hm2.
           lia.
         * rewrite map_length. rewrite id_mask_length. reflexivity.
+      + assumption.
+      + cbn. replace (n - 0) with n by lia.
+        apply subs_complete_spec in hφ as [lφ hφ].
+        apply subs_init_nth_error in e2 as e3.
+        apply hφ in e3. rewrite e3. rewrite lift0_id.
+        eapply id_mask_subst. all: eauto.
     - rewrite subst_mkApps in e. cbn in e.
       destruct hp2 as [i hi | ind' n' ui' args' pa'].
       + (* Symmetric case of the other *)
@@ -5070,14 +5070,14 @@ Section ParallelSubstitution.
           | |- _ × _ => split
           | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
           end.
-          -- apply untyped_subslet_idsubst.
-          -- reflexivity.
           -- unfold subs_empty. rewrite map_list_init. cbn.
              eapply All2_mask_subst_linear_mask_init.
              apply untyped_subslet_length in uσ. auto.
           -- unfold subs_empty. rewrite map_list_init. cbn.
              eapply All2_mask_subst_linear_mask_init.
              apply untyped_subslet_length in uθ. auto.
+          -- apply untyped_subslet_idsubst.
+          -- reflexivity.
         * destruct args' as [| p' l' _] using list_rect_rev.
           1:{
             apply (f_equal (fun l => #|l|)) in e. cbn in e.
@@ -5099,10 +5099,10 @@ Section ParallelSubstitution.
           inversion pp'. subst. clear pp'.
           specialize ihp with (2 := eq_refl) (3 := pmp') (4 := uσ) (5 := uθ).
           forward ihp by auto. forward ihp by auto.
-          destruct ihp as [φ1 [ψ1 [Ξ1 [ξ1 [uξ1 h1]]]]].
+          destruct ihp as [φ1 [ψ1 [Ξ1 [ξ1 [eφ1 [eψ1 [uξ1 h1]]]]]]].
           specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
           forward ih by auto. forward ih by auto.
-          destruct ih as [φ2 [ψ2 [Ξ2 [ξ2 [uξ2 h2]]]]].
+          destruct ih as [φ2 [ψ2 [Ξ2 [ξ2 [eφ2 [eψ2 [uξ2 h2]]]]]]].
           (* We should change the order of things *)
   Abort.
 
