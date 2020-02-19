@@ -4846,6 +4846,51 @@ Section ParallelSubstitution.
       + cbn in *. rewrite -> ih by auto. reflexivity.
   Qed.
 
+  (* TODO MOVE *)
+  Fixpoint idsn_cumul i n :=
+    match n with
+    | 0 => []
+    | S n => tRel i :: idsn_cumul (S i) n
+    end.
+
+  Fixpoint idsn_rev i n :=
+    match n with
+    | 0 => []
+    | S n => tRel (i + n) :: idsn_rev i n
+    end.
+
+  Lemma idsn_rev_spec :
+    forall n,
+      idsn n = List.rev (idsn_rev 0 n).
+  Proof.
+    intros n.
+    induction n.
+    - reflexivity.
+    - cbn. f_equal. apply IHn.
+  Qed.
+
+  Lemma idsn_spec :
+    forall n,
+      idsn n = idsn_cumul 0 n.
+  Proof.
+    intros n. rewrite idsn_rev_spec.
+    rewrite <- rev_involutive. f_equal.
+    generalize 0. intro i.
+    induction n in i |- *.
+    - reflexivity.
+    - cbn. rewrite <- IHn.
+  Abort.
+
+  (* TODO MOVE *)
+  Lemma untyped_subslet_idsn :
+    forall Γ,
+      untyped_subslet Γ (idsn #|Γ|) Γ.
+  Proof.
+    intros Γ. induction Γ as [| [na [bo|] ty] Γ ih].
+    - constructor.
+    (* - cbn. econstructor. *)
+  Abort.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -4966,7 +5011,7 @@ Section ParallelSubstitution.
         * rewrite map_length. rewrite id_mask_length. reflexivity.
     - rewrite subst_mkApps in e. cbn in e.
       destruct hp2 as [i hi | ind' n' ui' args' pa'].
-      + (* Symmetric case of the other? *)
+      + (* Symmetric case of the other *)
         admit.
       + rewrite subst_mkApps in e. cbn in e.
         apply (f_equal decompose_app) in e.
