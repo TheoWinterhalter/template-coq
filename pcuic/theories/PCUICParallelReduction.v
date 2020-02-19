@@ -4846,49 +4846,28 @@ Section ParallelSubstitution.
       + cbn in *. rewrite -> ih by auto. reflexivity.
   Qed.
 
-  (* TODO MOVE *)
-  Fixpoint idsn_cumul i n :=
-    match n with
-    | 0 => []
-    | S n => tRel i :: idsn_cumul (S i) n
-    end.
+  Definition weaks i n :=
+    list_make tRel i n.
 
-  Fixpoint idsn_rev i n :=
-    match n with
-    | 0 => []
-    | S n => tRel (i + n) :: idsn_rev i n
-    end.
-
-  Lemma idsn_rev_spec :
-    forall n,
-      idsn n = List.rev (idsn_rev 0 n).
+  Lemma subslet_weaks :
+    forall Σ Γ Δ,
+      subslet Σ (Γ ,,, Δ) (weaks #|Δ| #|Γ|) Γ.
   Proof.
-    intros n.
-    induction n.
-    - reflexivity.
-    - cbn. f_equal. apply IHn.
-  Qed.
-
-  Lemma idsn_spec :
-    forall n,
-      idsn n = idsn_cumul 0 n.
-  Proof.
-    intros n. rewrite idsn_rev_spec.
-    rewrite <- rev_involutive. f_equal.
-    generalize 0. intro i.
-    induction n in i |- *.
-    - reflexivity.
-    - cbn. rewrite <- IHn.
-  Abort.
-
-  (* TODO MOVE *)
-  Lemma untyped_subslet_idsn :
-    forall Γ,
-      untyped_subslet Γ (idsn #|Γ|) Γ.
-  Proof.
-    intros Γ. induction Γ as [| [na [bo|] ty] Γ ih].
-    - constructor.
-    (* - cbn. econstructor. *)
+    intros Σ Γ Δ.
+    induction Γ as [| [na [t|] A] Γ ih] in Δ |- *.
+    - cbn. constructor.
+    - cbn. (* Only works with an assumption context *)
+      give_up.
+    - cbn. constructor.
+      + match goal with
+        | |- subslet _ ((?d :: _) ,,, _) _ _ =>
+          specialize (ih (Δ ++ [d]))
+        end.
+        rewrite app_length in ih. cbn in ih.
+        unfold ",,," in *. rewrite <- app_assoc in ih. cbn in ih.
+        replace (#|Δ| + 1) with (S #|Δ|) in ih by lia.
+        assumption.
+      + admit.
   Abort.
 
   Lemma pattern_unify_subst :
