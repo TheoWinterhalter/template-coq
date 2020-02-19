@@ -5078,7 +5078,32 @@ Section ParallelSubstitution.
           -- unfold subs_empty. rewrite map_list_init. cbn.
              eapply All2_mask_subst_linear_mask_init.
              apply untyped_subslet_length in uθ. auto.
-        * admit.
+        * destruct args' as [| p' l' _] using list_rect_rev.
+          1:{
+            apply (f_equal (fun l => #|l|)) in e. cbn in e.
+            rewrite map_length in e. rewrite app_length in e.
+            cbn in e. exfalso. lia.
+          }
+          rewrite 2!map_app in e. cbn in e.
+          apply (f_equal rev) in e. rewrite 2!rev_app in e. cbn in e.
+          inversion e. clear e.
+          rename H0 into ep, H1 into el.
+          apply (f_equal rev) in el. rewrite 2!rev_invol in el.
+          rewrite <- mkApps_nested in hm1. cbn in hm1.
+          destruct pattern_mask eqn:pm1. 2: discriminate.
+          destruct (pattern_mask _ p) eqn:pmp. 2: discriminate.
+          rewrite <- mkApps_nested in hm2. cbn in hm2.
+          destruct (pattern_mask npat2 _) eqn:pm2. 2: discriminate.
+          destruct (pattern_mask _ p') eqn:pmp'. 2: discriminate.
+          apply All_app in pa' as [pl' pp'].
+          inversion pp'. subst. clear pp'.
+          specialize ihp with (2 := eq_refl) (3 := pmp') (4 := uσ) (5 := uθ).
+          forward ihp by auto. forward ihp by auto.
+          destruct ihp as [φ1 [ψ1 [Ξ1 [ξ1 [uξ1 h1]]]]].
+          specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
+          forward ih by auto. forward ih by auto.
+          destruct ih as [φ2 [ψ2 [Ξ2 [ξ2 [uξ2 h2]]]]].
+          (* We should change the order of things *)
   Abort.
 
   Lemma elim_unify_subst :
