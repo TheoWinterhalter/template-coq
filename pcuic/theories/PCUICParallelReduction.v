@@ -5293,12 +5293,12 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma partial_subst_mask_subs_init :
-    forall npat n p σ m,
+    forall npat npat' n p σ m,
       pattern_mask npat p = Some m ->
-      subs_init npat n p = Some σ ->
+      subs_init npat' n p = Some σ ->
       partial_subst_mask npat σ = Some m.
   Proof.
-    intros npat n p σ m hm e.
+    intros npat npat' n p σ m hm e.
     unfold subs_init in e.
     eapply partial_subst_mask_subs_add in e.
     2: eapply partial_subst_mask_subs_empty.
@@ -5385,7 +5385,7 @@ Section ParallelSubstitution.
         apply id_mask_pattern_subst with (i := 0) in hm2.
         eapply All_on_Some_impl. 1: exact hm2.
         intros p hp. apply pattern_right. assumption.
-      + (* eapply partial_subst_mask_subs_init in e2. 2: eassumption. *)
+      + eapply partial_subst_mask_subs_init in e2. 2: eassumption.
         (* Should be npat not npat1 *)
       + apply untyped_subslet_length in uσ.
         assert (e : #|σ| = npat1) by auto.
