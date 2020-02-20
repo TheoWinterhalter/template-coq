@@ -5123,6 +5123,190 @@ Section ParallelSubstitution.
     - constructor.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma if_id :
+    forall A b (x : A),
+      (if b then x else x) = x.
+  Proof.
+    intros A b x.
+    destruct b. all: reflexivity.
+  Qed.
+
+  Fixpoint at_most_one_true l :=
+    match l with
+    | true :: l => forallb (fun x => ~~ x) l
+    | false :: l => at_most_one_true l
+    | [] => true
+    end.
+
+  Fixpoint orl l :=
+    match l with
+    | true :: l => true
+    | false :: l => orl l
+    | [] => false
+    end.
+
+  Lemma lin_merge_cons :
+    forall b1 b2 m1 m2 m,
+      lin_merge (b1 :: m1) (b2 :: m2) = Some m ->
+      ∑ m',
+        lin_merge m1 m2 = Some m' ×
+        at_most_one_true [b1 ; b2] ×
+        m = orl [b1 ; b2] :: m'.
+  Proof.
+    intros b1 b2 m1 m2 m e.
+    destruct b1, b2.
+    all: cbn in e.
+    - discriminate.
+    - destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst. cbn.
+      eexists. intuition eauto.
+    - destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst. cbn.
+      eexists. intuition eauto.
+    - destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst. cbn.
+      eexists. intuition eauto.
+  Qed.
+
+  Lemma lin_merge_cons_make :
+    forall b1 b2 m1 m2 m,
+      at_most_one_true [b1 ; b2] ->
+      lin_merge m1 m2 = Some m ->
+      lin_merge (b1 :: m1) (b2 :: m2) = Some (orl [b1 ; b2] :: m).
+  Proof.
+    intros b1 b2 m1 m2 m hb hm.
+    cbn. destruct b1, b2. 1: discriminate.
+    all: rewrite hm ; reflexivity.
+  Qed.
+
+  Ltac crush_bool :=
+    repeat match goal with
+    | |- _ => discriminate
+    | |- _ => reflexivity
+    | b : bool |- _ => destruct b
+    end.
+
+  Lemma lin_merge_assoc :
+    forall {m1 m2 m3 m4 m5},
+      lin_merge m1 m2 = Some m4 ->
+      lin_merge m4 m3 = Some m5 ->
+      ∑ m6,
+        lin_merge m2 m3 = Some m6 ×
+        lin_merge m1 m6 = Some m5.
+  Proof.
+    intros m1 m2 m3 m4 m5 h12 h43.
+    induction m1 in m2, m3, m4, m5, h12, h43 |- *.
+    - destruct m2. 2: discriminate.
+      cbn in h12. apply some_inj in h12. subst.
+      destruct m3. 2: discriminate.
+      cbn in h43. apply some_inj in h43. subst.
+      exists []. intuition auto.
+    - destruct m2.
+      1:{ cbn in h12. rewrite if_id in h12. discriminate. }
+      apply lin_merge_cons in h12 as [m4' [h12 [b12 ?]]]. subst.
+      destruct m3.
+      1:{ cbn - [orl] in h43. rewrite if_id in h43. discriminate. }
+      apply lin_merge_cons in h43 as [m5' [h43 [b43 ?]]]. subst.
+      specialize IHm1 with (1 := h12) (2 := h43).
+      destruct IHm1 as [m6 [h12' h43']].
+      erewrite lin_merge_cons_make. 3: eauto. 2: crush_bool.
+      eexists. split. 1: reflexivity.
+      erewrite lin_merge_cons_make. 3: eauto.
+      + f_equal. f_equal. crush_bool.
+      + crush_bool.
+  Qed.
+
+  Lemma lin_merge_sym :
+    forall m1 m2 m,
+      lin_merge m1 m2 = Some m ->
+      lin_merge m2 m1 = Some m.
+  Proof.
+    intros m1 m2 m e.
+    induction m1 as [| [] m1 ih] in m2, m, e |- *.
+    - destruct m2. 2: discriminate.
+      assumption.
+    - destruct m2 as [| [] m2]. 1,2: discriminate.
+      cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. erewrite -> ih by eassumption.
+      reflexivity.
+    - destruct m2 as [| [] m2]. 1: discriminate.
+      + cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
+        apply some_inj in e. subst.
+        cbn. erewrite -> ih by eassumption.
+        reflexivity.
+      + cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
+        apply some_inj in e. subst.
+        cbn. erewrite -> ih by eassumption.
+        reflexivity.
+  Qed.
+
+  Lemma partial_subst_mask_subs_empty :
+    forall npat n,
+      partial_subst_mask npat (subs_empty n) = Some (linear_mask_init npat).
+  Proof.
+    intros npat n.
+    induction n.
+    - cbn. reflexivity.
+    - cbn. assumption.
+  Qed.
+
+  Lemma partial_subst_mask_subs_add :
+    forall n p σ θ npat σm pm m,
+      subs_add n p σ = Some θ ->
+      partial_subst_mask npat σ = Some σm ->
+      pattern_mask npat p = Some pm ->
+      lin_merge σm pm = Some m ->
+      partial_subst_mask npat θ = Some m.
+  Proof.
+    intros n p σ θ npat σm pm m e hσ hp hm.
+    unfold subs_add in e.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst.
+    induction σ as [| [q|] σ ih] in n, σm, pm, m, e1, hσ, hp, hm |- *.
+    - destruct n. all: discriminate.
+    - destruct n. 1: discriminate.
+      cbn in *.
+      destruct pattern_mask eqn:e2. 2: discriminate.
+      destruct partial_subst_mask eqn:e3. 2: discriminate.
+      rewrite skipn_S.
+      pose proof (lin_merge_assoc hσ hm) as [m' [hm' ?]].
+      specialize ih with (1 := e1) (2 := eq_refl) (3 := hp) (4 := hm').
+      rewrite ih. assumption.
+    - destruct n.
+      + cbn in *. rewrite hp. unfold skipn.
+        rewrite hσ. apply lin_merge_sym. assumption.
+      + cbn in *. rewrite skipn_S.
+        eapply ih. all: eassumption.
+  Qed.
+
+  Lemma lin_merge_linear_mask_init :
+    forall m,
+      lin_merge (linear_mask_init #|m|) m = Some m.
+  Proof.
+    intros m.
+    induction m as [| [] m ih].
+    - reflexivity.
+    - cbn. rewrite ih. reflexivity.
+    - cbn. rewrite ih. reflexivity.
+  Qed.
+
+  Lemma partial_subst_mask_subs_init :
+    forall npat n p σ m,
+      pattern_mask npat p = Some m ->
+      subs_init npat n p = Some σ ->
+      partial_subst_mask npat σ = Some m.
+  Proof.
+    intros npat n p σ m hm e.
+    unfold subs_init in e.
+    eapply partial_subst_mask_subs_add in e.
+    2: eapply partial_subst_mask_subs_empty.
+    all: eauto.
+    apply pattern_mask_length in hm. subst.
+    apply lin_merge_linear_mask_init.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -5201,6 +5385,8 @@ Section ParallelSubstitution.
         apply id_mask_pattern_subst with (i := 0) in hm2.
         eapply All_on_Some_impl. 1: exact hm2.
         intros p hp. apply pattern_right. assumption.
+      + (* eapply partial_subst_mask_subs_init in e2. 2: eassumption. *)
+        (* Should be npat not npat1 *)
       + apply untyped_subslet_length in uσ.
         assert (e : #|σ| = npat1) by auto.
         clearbody npat1. clear - hm1 e1 e2 e.
