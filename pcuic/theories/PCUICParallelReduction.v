@@ -4960,6 +4960,24 @@ Section ParallelSubstitution.
     | [] => ret (linear_mask_init npat)
     end.
 
+  (* It isn't really well defined! We should let go of lets. *)
+  (* Inductive untyped_subslet_mask Γ :
+    list bool -> partial_subst -> context -> Type :=
+  | untyped_mask_emptyslet : untyped_subslet_mask Γ [] [] []
+  | untyped_cons_let_ass_true :
+      forall m σ Δ na t A,
+        untyped_subslet_mask Γ m σ Δ ->
+        untyped_subslet_mask Γ (true :: m) (Some t :: σ) (Δ ,, vass na A)
+  | untyped_cons_let_def_true :
+      forall m σ Δ na t A,
+        untyped_subslet_mask Γ m σ Δ ->
+        untyped_subslet_mask
+          Γ (true :: m) (Some (subst0 σ t) :: σ) (Δ ,, vdef na t A)
+  | untyped_cons_false :
+      forall m σ Δ d,
+        untyped_subslet_mask Γ m σ Δ ->
+        untyped_subslet_mask Γ (false :: m) (None :: σ) (Δ ,, d). *)
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -4971,7 +4989,9 @@ Section ParallelSubstitution.
       untyped_subslet Γ σ Δ1 ->
       untyped_subslet Γ θ Δ2 ->
       subst0 σ p1 = subst0 θ p2 ->
-      ∑ φ ψ Ξ ξ,
+      ∑ φ ψ ξ,
+        (* untyped_subslet_mask (Δ1 ,,, Δ2) m1 φ Δ1 ×
+        untyped_subslet_mask (Δ1 ,,, Δ2) m2 ψ Δ2 × *)
         All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
         All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ) ×
         untyped_subslet Γ ξ Ξ ×
