@@ -5307,6 +5307,54 @@ Section ParallelSubstitution.
     apply lin_merge_linear_mask_init.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma list_init_add :
+    forall A (x : A) n m,
+      list_init x (n + m) = list_init x n ++ list_init x m.
+  Proof.
+    intros A x n m.
+    induction n in m |- *.
+    - cbn. reflexivity.
+    - cbn. rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma linear_mask_init_add :
+    forall n m,
+      linear_mask_init (n + m) =
+      linear_mask_init n ++ linear_mask_init m.
+  Proof.
+    intros n m.
+    unfold linear_mask_init. apply list_init_add.
+  Qed.
+
+  Lemma pattern_mask_right :
+    forall npat1 npat2 p m,
+      pattern_mask npat2 p = Some m ->
+      pattern_mask (npat1 + npat2) p = Some (linear_mask_init npat1 ++ m).
+  Proof.
+    intros n1 n2 p m hm.
+    induction p in n1, n2, m, hm |- *.
+    - cbn in *. rewrite lin_set_eq in hm.
+      rewrite lin_set_eq.
+      (* Is this correct? Or do I have to lift some indices?
+        Or reverse m1/m2?
+      *)
+  Abort.
+
+  Lemma partial_subst_mask_right :
+    forall npat1 npat2 σ m,
+      partial_subst_mask npat2 σ = Some m ->
+      partial_subst_mask (npat1 + npat2) σ = Some (linear_mask_init npat1 ++ m).
+  Proof.
+    intros npat1 npat2 σ m hm.
+    induction σ as [| [p|] σ ih] in npat1, npat2, m, hm |- *.
+    - cbn in hm. apply some_inj in hm. subst.
+      rewrite <- linear_mask_init_add. cbn. reflexivity.
+    - cbn in hm. destruct pattern_mask eqn:e1. 2: discriminate.
+      destruct partial_subst_mask eqn:e2. 2: discriminate.
+      (* Need same for pattern *)
+  Abort.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
