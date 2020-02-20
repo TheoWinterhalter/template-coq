@@ -5094,6 +5094,35 @@ Section ParallelSubstitution.
     - constructor. assumption.
   Qed.
 
+  Lemma id_mask_pattern_subst :
+    forall npat i m,
+      i + #|m| = npat ->
+      All (on_Some (pattern npat)) (id_mask i m).
+  Proof.
+    intros npat i m h.
+    induction m as [| [] m ih] in i, h |- *.
+    - constructor.
+    - cbn. cbn in h. constructor.
+      + constructor. lia.
+      + apply ih. lia.
+    - cbn. cbn in h. constructor.
+      + constructor.
+      + apply ih. lia.
+  Qed.
+
+  Lemma All_on_Some_impl :
+    forall A (P : A -> Type) Q l,
+      All (on_Some P) l ->
+      (forall x, P x -> Q x) ->
+      All (on_Some Q) l.
+  Proof.
+    intros A P Q l hl hPQ.
+    eapply All_impl. 1: exact hl.
+    intros [] h.
+    - eapply hPQ. assumption.
+    - constructor.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -5167,7 +5196,11 @@ Section ParallelSubstitution.
       + apply subs_init_length in e2. assumption.
       + rewrite id_mask_length. apply pattern_mask_length in hm2. assumption.
       + eapply All_on_Some_subs_init. 1: eauto.
-        fail.
+        apply pattern_right. assumption.
+      + apply pattern_mask_length in hm2.
+        apply id_mask_pattern_subst with (i := 0) in hm2.
+        eapply All_on_Some_impl. 1: exact hm2.
+        intros p hp. apply pattern_right. assumption.
       + apply untyped_subslet_length in uσ.
         assert (e : #|σ| = npat1) by auto.
         clearbody npat1. clear - hm1 e1 e2 e.
