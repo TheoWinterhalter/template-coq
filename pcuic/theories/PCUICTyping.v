@@ -2540,7 +2540,7 @@ Proof.
            simpl in IH. simpl. exists s. apply IH.
            constructor 1. simpl. lia.
       * eapply All_impl. 1: eassumption.
-        intros rw [T onlhs onrhs onhead onlin onelims].
+        intros rw [T onlhs onrhs onhead onlin onelims asscon].
         exists T.
         -- match type of IH with
            | ?T -> _ =>
@@ -2565,8 +2565,9 @@ Proof.
         -- assumption.
         -- assumption.
         -- assumption.
+        -- assumption.
       * eapply All_impl. 1: exact hpr.
-        intros rw [T onlhs onrhs onhead onlin onelims].
+        intros rw [T onlhs onrhs onhead onlin onelims asscon].
         exists T.
         -- match type of IH with
           | ?T -> _ =>
@@ -2588,6 +2589,7 @@ Proof.
              eapply typing_wf_local. eassumption.
           ++ specialize (IH y). subst y. simpl in IH.
              apply IH. constructor 1. simpl. lia.
+        -- assumption.
         -- assumption.
         -- assumption.
         -- assumption.

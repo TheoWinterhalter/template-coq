@@ -456,13 +456,21 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
 
     (** *** Typing of rewrite rule declarations  *)
 
+    Inductive assumption_context : context -> Prop :=
+    | assumption_context_nil : assumption_context []
+    | assumption_context_vass :
+        forall na t Γ,
+          assumption_context Γ ->
+          assumption_context (vass na t :: Γ).
+
     Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
       rewCommonType : term ;
       lhsTyped  : P Σ (Δ ,,, r.(pat_context)) (lhs r) (Some rewCommonType) ;
       rhsTyped  : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
       onHead    : r.(head) < #|Δ| ;
       lhsLinear : linear #|r.(pat_context)| r.(elims) ;
-      onElims   : All (elim_pattern #|r.(pat_context)|) r.(elims)
+      onElims   : All (elim_pattern #|r.(pat_context)|) r.(elims) ;
+      assPatCon : assumption_context r.(pat_context)
     }.
 
     Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=

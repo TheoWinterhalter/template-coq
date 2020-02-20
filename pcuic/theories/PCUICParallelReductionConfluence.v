@@ -1625,10 +1625,6 @@ Section Confluence.
     Lemma refine_pred Γ Δ t u u' : u = u' -> pred1 Σ Γ Δ t u' -> pred1 Σ Γ Δ t u.
     Proof. now intros ->. Qed.
 
-    Inductive assumption_context : context -> Prop :=
-    | assumption_context_nil : assumption_context []
-    | assumption_context_vass na t Γ : assumption_context Γ -> assumption_context (vass na t :: Γ).
-
     Lemma fix_context_assumption_context m : assumption_context (fix_context m).
     Proof.
       unfold fix_context. unfold mapi. generalize 0 at 2.

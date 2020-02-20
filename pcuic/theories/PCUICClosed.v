@@ -542,18 +542,20 @@ Proof.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
     + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onlin onelims].
+      intros rw [T onlhs onrhs onhead onlin onelims oncon].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
+      * assumption.
       * assumption.
       * assumption.
       * assumption.
     + eapply All_impl. 1: exact hpr.
-      intros rw [T onlhs onrhs onhead onlin onelims].
+      intros rw [T onlhs onrhs onhead onlin onelims oncon].
       exists T.
       * eapply X. all: eauto.
       * eapply X. all: eauto.
+      * assumption.
       * assumption.
       * assumption.
       * assumption.
