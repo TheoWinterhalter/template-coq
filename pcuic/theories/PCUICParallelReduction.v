@@ -4939,8 +4939,8 @@ Section ParallelSubstitution.
 
   (* Pattern partial substitution *)
   (* TODO Maybe just inline *)
-  Definition pattern_partial_subst npat (σ : partial_subst) :=
-    All (on_Some (pattern npat)) σ.
+  (* Definition pattern_partial_subst npat (σ : partial_subst) :=
+    All (on_Some (pattern npat)) σ. *)
 
   (** Linear mask for a partial substitution *)
   Fixpoint partial_subst_mask npat σ : option (list bool) :=
@@ -4980,8 +4980,25 @@ Section ParallelSubstitution.
 
   (* In case of assumptions contexts, it's just a question of having
     the right length.
-    TODO Enfore assumptions contexts for pattern variables.
   *)
+
+  Lemma untyped_subslet_assumption_context :
+    forall Γ Δ σ,
+      assumption_context Δ ->
+      #|σ| = #|Δ| ->
+      untyped_subslet Γ σ Δ.
+  Proof.
+    intros Γ Δ σ hΔ e.
+    induction Δ as [| [na [t|] A] Δ ih] in σ, hΔ, e |- *.
+    - destruct σ. 2: discriminate.
+      constructor.
+    - exfalso. inversion hΔ.
+    - destruct σ. 1: discriminate.
+      cbn in e. constructor.
+      apply ih.
+      + inversion hΔ. assumption.
+      + congruence.
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
@@ -4994,15 +5011,24 @@ Section ParallelSubstitution.
       untyped_subslet Γ σ Δ1 ->
       untyped_subslet Γ θ Δ2 ->
       subst0 σ p1 = subst0 θ p2 ->
-      ∑ φ ψ ξ,
-        (* untyped_subslet_mask (Δ1 ,,, Δ2) m1 φ Δ1 ×
-        untyped_subslet_mask (Δ1 ,,, Δ2) m2 ψ Δ2 × *)
+      ∑ φ ψ φm ψm ξ,
+        (* Δ1 ,,, Δ2 ⊢ φ : Δ1 relative to mask m1 *)
+        #|φ| = #|Δ1| ×
+        (* Δ1 ,,, Δ2 ⊢ ψ : Δ2 relative to mask m2 *)
+        #|ψ| = #|Δ2| ×
+        let npat := (npat1 + npat2)%nat in
+        All (on_Some (pattern npat)) φ ×
+        All (on_Some (pattern npat)) ψ ×
+        partial_subst_mask npat φ = Some φm ×
+        partial_subst_mask npat ψ = Some ψm ×
         All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
         All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ) ×
-        untyped_subslet Γ ξ Ξ ×
+        untyped_subslet Γ ξ (Δ1 ,,, Δ2) ×
         forall φ' ψ',
           subs_complete φ φ' ->
           subs_complete ψ ψ' ->
+          (* Since Δ1 and Δ2 are assumptions contexts this always holds *)
+          (* Provided we use the lemma with assumptions contexts *)
           (* untyped_subslet Ξ φ' Δ1 ->
           untyped_subslet Ξ ψ' Δ2 -> *)
           subst0 φ' p1 = subst0 ψ' p2.
