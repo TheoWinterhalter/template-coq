@@ -4742,13 +4742,6 @@ Section ParallelSubstitution.
       apply linear_mask_init_length.
   Qed.
 
-  (* TODO Not really interesting, for assumptions contexts... *)
-  (* Inductive untyped_subs_mask Γ :
-    list bool -> partial_subst -> context -> Type :=
-  | untyped_subs_true :
-      forall Δ σ m na t A,
-        untyped_subs_mask Γ (true :: m) (Some t :: σ) (Δ ,, vass na A) *)
-
   (* TODO MOVE *)
   Lemma all_nth_error_All2_mask_subst :
     forall P m σ θ,
@@ -4960,6 +4953,13 @@ Section ParallelSubstitution.
     | [] => ret (linear_mask_init npat)
     end.
 
+  (* TODO Not really interesting, for assumptions contexts... *)
+  (* Inductive untyped_subs_mask Γ :
+    list bool -> partial_subst -> context -> Type :=
+  | untyped_subs_true :
+      forall Δ σ m na t A,
+        untyped_subs_mask Γ (true :: m) (Some t :: σ) (Δ ,, vass na A) *)
+
   (* It isn't really well defined! We should let go of lets. *)
   (* Inductive untyped_subslet_mask Γ :
     list bool -> partial_subst -> context -> Type :=
@@ -4977,6 +4977,11 @@ Section ParallelSubstitution.
       forall m σ Δ d,
         untyped_subslet_mask Γ m σ Δ ->
         untyped_subslet_mask Γ (false :: m) (None :: σ) (Δ ,, d). *)
+
+  (* In case of assumptions contexts, it's just a question of having
+    the right length.
+    TODO Enfore assumptions contexts for pattern variables.
+  *)
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
