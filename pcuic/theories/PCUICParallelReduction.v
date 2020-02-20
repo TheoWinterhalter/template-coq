@@ -4937,6 +4937,29 @@ Section ParallelSubstitution.
         masks m σ ->
         masks (false :: m) (None :: σ).
 
+  (* Altered version of on_some *)
+  Definition on_Some {A} (P : A -> Type) o :=
+    match o with
+    | Some x => P x
+    | None => unit
+    end.
+
+  (* Pattern partial substitution *)
+  (* TODO Maybe just inline *)
+  Definition pattern_partial_subst npat (σ : partial_subst) :=
+    All (on_Some (pattern npat)) σ.
+
+  (** Linear mask for a partial substitution *)
+  Fixpoint partial_subst_mask npat σ : option (list bool) :=
+    match σ with
+    | Some p :: σ =>
+      mp <- pattern_mask npat p ;;
+      mσ <- partial_subst_mask npat σ ;;
+      lin_merge mp mσ
+    | None :: σ => partial_subst_mask npat σ
+    | [] => ret (linear_mask_init npat)
+    end.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
