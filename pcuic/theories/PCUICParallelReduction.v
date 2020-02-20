@@ -5330,16 +5330,44 @@ Section ParallelSubstitution.
   Lemma pattern_mask_right :
     forall npat1 npat2 p m,
       pattern_mask npat2 p = Some m ->
-      pattern_mask (npat1 + npat2) p = Some (linear_mask_init npat1 ++ m).
+      pattern_mask (npat1 + npat2) p = Some (m ++ linear_mask_init npat1).
   Proof.
     intros n1 n2 p m hm.
-    induction p in n1, n2, m, hm |- *.
+    induction p in m, hm |- *.
+    all: try discriminate.
     - cbn in *. rewrite lin_set_eq in hm.
       rewrite lin_set_eq.
-      (* Is this correct? Or do I have to lift some indices?
-        Or reverse m1/m2?
-      *)
-  Abort.
+      destruct nth_error as [[]|] eqn:e. 1,3: discriminate.
+      apply some_inj in hm. subst.
+      replace (n1 + n2) with (n2 + n1) by lia.
+      rewrite linear_mask_init_add.
+      apply nth_error_Some_length in e as ?.
+      rewrite -> nth_error_app1 by assumption.
+      rewrite e. rewrite firstn_app.
+      replace (n - #|linear_mask_init n2|) with 0 by lia. cbn.
+      rewrite app_nil_r. repeat rewrite <- app_assoc.
+      rewrite skipn_app.
+      replace (S n - #|linear_mask_init n2|) with 0 by lia. cbn.
+      reflexivity.
+    - cbn in *. destruct pattern_mask as [l1|] eqn:e1. 2: discriminate.
+      destruct (pattern_mask _ p2) as [l2|] eqn:e2. 2: discriminate.
+      specialize IHp1 with (1 := eq_refl). rewrite IHp1.
+      specialize IHp2 with (1 := eq_refl). rewrite IHp2.
+      induction l1 in l2, m, hm |- *.
+      + destruct l2. 2: discriminate.
+        cbn in hm. apply some_inj in hm. subst.
+        cbn. rewrite <- lin_merge_linear_mask_init.
+        rewrite linear_mask_init_length. reflexivity.
+      + destruct l2.
+        1:{ cbn in hm. rewrite if_id in hm. discriminate. }
+        apply lin_merge_cons in hm as [m' [hm' [hb ?]]]. subst.
+        specialize IHl1 with (1 := hm').
+        cbn - [lin_merge orl]. erewrite lin_merge_cons_make.
+        all: eauto.
+    - cbn in *. apply some_inj in hm. subst.
+      f_equal. rewrite <- linear_mask_init_add.
+      f_equal. lia.
+  Qed.
 
   Lemma partial_subst_mask_right :
     forall npat1 npat2 σ m,
