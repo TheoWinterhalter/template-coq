@@ -5000,6 +5000,77 @@ Section ParallelSubstitution.
       + congruence.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma subs_add_length :
+    forall n t σ θ,
+      subs_add n t σ = Some θ ->
+      #|σ| = #|θ|.
+  Proof.
+    intros n t σ θ e.
+    unfold subs_add in e.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst.
+    apply nth_error_Some_length in e1.
+    rewrite app_length. cbn.
+    rewrite firstn_length. rewrite -> skipn_length by lia.
+    lia.
+  Qed.
+
+  (* TODO MOVE *)
+  Lemma subs_init_length :
+    forall n m t σ,
+      subs_init n m t = Some σ ->
+      #|σ| = n.
+  Proof.
+    intros n m t σ e.
+    unfold subs_init in e.
+    apply subs_add_length in e.
+    rewrite subs_empty_length in e.
+    auto.
+  Qed.
+
+  Lemma All_on_Some_subs_empty :
+    forall P n,
+      All (on_Some P) (subs_empty n).
+  Proof.
+    intros P n.
+    induction n.
+    - constructor.
+    - cbn. constructor.
+      + constructor.
+      + assumption.
+  Qed.
+
+  Lemma All_on_Some_subs_add :
+    forall P σ θ n t,
+      subs_add n t σ = Some θ ->
+      All (on_Some P) σ ->
+      P t ->
+      All (on_Some P) θ.
+  Proof.
+    intros P σ θ n t e hσ ht.
+    unfold subs_add in e.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst.
+    apply All_app_inv.
+    - apply All_firstn. assumption.
+    - constructor.
+      + assumption.
+      + apply All_skipn. assumption.
+  Qed.
+
+  Lemma All_on_Some_subs_init :
+    forall P n m t σ,
+      subs_init n m t = Some σ ->
+      P t ->
+      All (on_Some P) σ.
+  Proof.
+    intros P n m t σ e ht.
+    unfold subs_init in e.
+    eapply All_on_Some_subs_add. all: eauto.
+    apply All_on_Some_subs_empty.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -5011,7 +5082,7 @@ Section ParallelSubstitution.
       untyped_subslet Γ σ Δ1 ->
       untyped_subslet Γ θ Δ2 ->
       subst0 σ p1 = subst0 θ p2 ->
-      ∑ φ ψ φm ψm ξ,
+      ∑ φ ψ ξ,
         (* Δ1 ,,, Δ2 ⊢ φ : Δ1 relative to mask m1 *)
         #|φ| = #|Δ1| ×
         (* Δ1 ,,, Δ2 ⊢ ψ : Δ2 relative to mask m2 *)
@@ -5019,8 +5090,8 @@ Section ParallelSubstitution.
         let npat := (npat1 + npat2)%nat in
         All (on_Some (pattern npat)) φ ×
         All (on_Some (pattern npat)) ψ ×
-        partial_subst_mask npat φ = Some φm ×
-        partial_subst_mask npat ψ = Some ψm ×
+        (∑ φm, partial_subst_mask npat φ = Some φm) ×
+        (∑ ψm, partial_subst_mask npat ψ = Some ψm) ×
         All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
         All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ) ×
         untyped_subslet Γ ξ (Δ1 ,,, Δ2) ×
@@ -5065,11 +5136,15 @@ Section ParallelSubstitution.
           lia.
       }
       intros φ e2.
-      exists φ, (id_mask 0 m2), Δ2, θ.
+      exists φ, (id_mask 0 m2), θ.
       repeat lazymatch goal with
       | |- _ × _ => split
-      | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
+      | |- let x := _ in _ => intro x
       end.
+      + apply subs_init_length in e2. assumption.
+      + rewrite id_mask_length. apply pattern_mask_length in hm2. assumption.
+      + eapply All_on_Some_subs_init. 1: eauto.
+        fail.
       + apply untyped_subslet_length in uσ.
         assert (e : #|σ| = npat1) by auto.
         clearbody npat1. clear - hm1 e1 e2 e.
