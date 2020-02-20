@@ -5071,6 +5071,29 @@ Section ParallelSubstitution.
     apply All_on_Some_subs_empty.
   Qed.
 
+  Lemma pattern_left :
+    forall npat1 npat2 p,
+      pattern npat1 p ->
+      pattern (npat1 + npat2) (lift0 npat2 p).
+  Proof.
+    intros npat1 npat2 p hp.
+    induction hp as [| ? ? ? ? ? ih] using pattern_all_rect.
+    - cbn. constructor. lia.
+    - rewrite lift_mkApps. cbn.
+      constructor. apply All_map. assumption.
+  Qed.
+
+  Lemma pattern_right :
+    forall npat1 npat2 p,
+      pattern npat2 p ->
+      pattern (npat1 + npat2) p.
+  Proof.
+    intros npat1 npat2 p hp.
+    induction hp as [| ? ? ? ? ? ih] using pattern_all_rect.
+    - constructor. lia.
+    - constructor. assumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
