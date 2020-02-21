@@ -5369,19 +5369,46 @@ Section ParallelSubstitution.
       f_equal. lia.
   Qed.
 
+  Lemma lin_merge_app :
+    forall x x' x'' y y' y'',
+      lin_merge x x' = Some x'' ->
+      lin_merge y y' = Some y'' ->
+      lin_merge (x ++ y) (x' ++ y') = Some (x'' ++ y'').
+  Proof.
+    intros x1 x2 x3 y1 y2 y3 hx hy.
+    induction x1 as [| b1 x1 ih] in x2, x3, y1, y2, y3, hx, hy |- *.
+    - destruct x2. 2: discriminate.
+      cbn in hx. apply some_inj in hx. subst.
+      cbn. assumption.
+    - destruct x2 as [| b2 x2].
+      1:{ cbn in hx. rewrite if_id in hx. discriminate. }
+      apply lin_merge_cons in hx as [x4 [hx [hb ?]]]. subst.
+      specialize ih with (1 := hx) (2 := hy).
+      eapply lin_merge_cons_make in ih. 2: eauto.
+      assumption.
+  Qed.
+
   Lemma partial_subst_mask_right :
     forall npat1 npat2 σ m,
       partial_subst_mask npat2 σ = Some m ->
-      partial_subst_mask (npat1 + npat2) σ = Some (linear_mask_init npat1 ++ m).
+      partial_subst_mask (npat1 + npat2) σ = Some (m ++ linear_mask_init npat1).
   Proof.
     intros npat1 npat2 σ m hm.
     induction σ as [| [p|] σ ih] in npat1, npat2, m, hm |- *.
     - cbn in hm. apply some_inj in hm. subst.
-      rewrite <- linear_mask_init_add. cbn. reflexivity.
+      rewrite <- linear_mask_init_add. cbn.
+      f_equal. f_equal. lia.
     - cbn in hm. destruct pattern_mask eqn:e1. 2: discriminate.
       destruct partial_subst_mask eqn:e2. 2: discriminate.
-      (* Need same for pattern *)
-  Abort.
+      cbn. apply pattern_mask_right with (npat1 := npat1) in e1. rewrite e1.
+      specialize ih with (1 := e2).
+      erewrite ih. apply lin_merge_app.
+      + assumption.
+      + rewrite <- lin_merge_linear_mask_init.
+        rewrite linear_mask_init_length. reflexivity.
+    - cbn in hm. cbn.
+      apply ih. assumption.
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
