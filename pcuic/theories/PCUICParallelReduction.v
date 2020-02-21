@@ -5702,20 +5702,30 @@ Section ParallelSubstitution.
           cbn in *.
           apply some_inj in hm1.
           apply some_inj in hm2. subst.
-          exists (subs_empty npat1), (subs_empty npat2), Γ, (idsubst Γ).
+          exists (subs_empty npat1), (subs_empty npat2), (idsubst Γ).
           repeat lazymatch goal with
           | |- _ × _ => split
           | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
           end.
-          -- unfold subs_empty. rewrite map_list_init. cbn.
-             eapply All2_mask_subst_linear_mask_init.
-             apply untyped_subslet_length in uσ. auto.
-          -- unfold subs_empty. rewrite map_list_init. cbn.
-             eapply All2_mask_subst_linear_mask_init.
-             apply untyped_subslet_length in uθ. auto.
-          -- apply untyped_subslet_idsubst.
-          -- reflexivity.
-        * destruct args' as [| p' l' _] using list_rect_rev.
+          --- rewrite subs_empty_length. reflexivity.
+          --- rewrite subs_empty_length. reflexivity.
+          --- apply All_on_Some_subs_empty.
+          --- apply All_on_Some_subs_empty.
+          --- rewrite partial_subst_mask_subs_empty.
+              eexists. reflexivity.
+          --- rewrite partial_subst_mask_subs_empty.
+              eexists. reflexivity.
+          --- unfold subs_empty. rewrite map_list_init. cbn.
+              eapply All2_mask_subst_linear_mask_init.
+              apply untyped_subslet_length in uσ. auto.
+          --- unfold subs_empty. rewrite map_list_init. cbn.
+              eapply All2_mask_subst_linear_mask_init.
+              apply untyped_subslet_length in uθ. auto.
+          --- (* TODO We probably want something relative to m1/m2 *)
+              give_up.
+          --- reflexivity.
+        * clear hl.
+          destruct args' as [| p' l' _] using list_rect_rev.
           1:{
             apply (f_equal (fun l => #|l|)) in e. cbn in e.
             rewrite map_length in e. rewrite app_length in e.
@@ -5736,10 +5746,12 @@ Section ParallelSubstitution.
           inversion pp'. subst. clear pp'.
           specialize ihp with (2 := eq_refl) (3 := pmp') (4 := uσ) (5 := uθ).
           forward ihp by auto. forward ihp by auto.
-          destruct ihp as [φ1 [ψ1 [Ξ1 [ξ1 [eφ1 [eψ1 [uξ1 h1]]]]]]].
+          destruct ihp
+          as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 [[φm1 hφm1] [[ψm1 hψm1] [eφ1 [eψ1 [uξ1 h1]]]]]]]]]]]].
           specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
           forward ih by auto. forward ih by auto.
-          destruct ih as [φ2 [ψ2 [Ξ2 [ξ2 [eφ2 [eψ2 [uξ2 h2]]]]]]].
+          destruct ih
+          as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 [[φm2 hφm2] [[ψm2 hψm2] [eφ2 [eψ2 [uξ2 h2]]]]]]]]]]]].
           eapply All2_mask_subst_lin_merge in hm1 as me. 2,3: eauto.
           destruct me as [φ [mφ eφ]].
           eapply All2_mask_subst_lin_merge in hm2 as me. 2,3: eauto.
@@ -5751,8 +5763,7 @@ Section ParallelSubstitution.
             Or have some subs_merge_map?
           *)
           (* PROBLEM 2:
-            What do we do with ξ? And even worse with Ξ1 and Ξ2, if they are
-            different it seems doomed.
+            What do we do with ξ?
           *)
           (* exists φ, ψ. *)
   Abort.
