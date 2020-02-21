@@ -5694,6 +5694,66 @@ Section ParallelSubstitution.
       assumption.
   Qed.
 
+  Lemma masks_nth_error_true :
+    forall m σ n,
+      masks m σ ->
+      nth_error m n = Some true ->
+      ∑ p, nth_error σ n = Some (Some p).
+  Proof.
+    intros m σ n hm e.
+    induction hm in n, e |- *.
+    - destruct n. all: discriminate.
+    - destruct n.
+      + cbn. eexists. reflexivity.
+      + cbn in *. apply IHhm. assumption.
+    - destruct n.
+      + cbn in e. discriminate.
+      + cbn in *. apply IHhm. assumption.
+  Qed.
+
+  Lemma subs_complete_subst_ext :
+    forall np m σ φ ψ p,
+      subs_complete σ φ ->
+      subs_complete σ ψ ->
+      masks m σ ->
+      pattern_mask np p = Some m ->
+      subst0 φ p = subst0 ψ p.
+  Proof.
+    intros np m σ φ ψ p hφ hψ hσ hp.
+    induction p in np, m, σ, φ, ψ, hφ, hψ, hσ, hp |- *.
+    all: try discriminate.
+    - cbn. replace (n - 0) with n by lia.
+      cbn in hp. rewrite lin_set_eq in hp.
+      destruct nth_error as [[]|] eqn:e. 1,3: discriminate.
+      apply some_inj in hp. subst.
+      apply nth_error_Some_length in e as l.
+      rewrite linear_mask_init_length in l.
+      unfold linear_mask_init in hσ.
+      rewrite firstn_list_init in hσ.
+      rewrite skipn_list_init in hσ.
+      replace (min n np) with n in hσ by lia.
+      apply subs_complete_spec in hφ as [lφ hφ].
+      apply subs_complete_spec in hψ as [lψ hψ].
+      apply masks_nth_error_true with (n := n) in hσ as h.
+      2:{
+        rewrite nth_error_app2.
+        { rewrite list_init_length. auto. }
+        rewrite list_init_length.
+        replace (n - n) with 0 by lia. cbn.
+        reflexivity.
+      }
+      destruct h as [p h].
+      erewrite -> hφ by eassumption.
+      erewrite -> hψ by eassumption.
+      reflexivity.
+    - cbn in *.
+      destruct (pattern_mask _ p1) eqn:e1. 2: discriminate.
+      destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+      (* We need to relax the masks condition
+        or have some m <= m' extra condition.
+      *)
+  Abort.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -5796,9 +5856,9 @@ Section ParallelSubstitution.
         assert (e : #|σ| = npat1) by auto.
         assert (e' : #|θ| = npat2) by auto.
         apply pattern_closedn in hp2.
-        clearbody npat1 npat2. clear - hm1 e1 e2 hp2 e e' hξ1 hξ2 hpθ.
+        clearbody npat1 npat2. clear - hm1 hm2 e1 e2 hp2 e e' hξ1 hξ2 hpθ.
         induction npat1
-        in npat2, φ, n, σ, m1, hm1, e1, e2, hp2, e, e', ξ1, hξ1, hpθ |- *.
+        in npat2, φ, n, σ, m1, hm1, m2, hm2, e1, e2, hp2, e, e', ξ1, hξ1, hpθ |- *.
         1:{ cbn in hm1. destruct n. all: discriminate. }
         cbn in hm1. destruct n.
         * cbn in hm1. apply some_inj in hm1. subst.
