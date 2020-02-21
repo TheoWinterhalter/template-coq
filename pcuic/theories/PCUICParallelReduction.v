@@ -5473,6 +5473,22 @@ Section ParallelSubstitution.
       (* In our case it's an assumption context so it should be fine... *)
   Abort. *)
 
+  Lemma pattern_closedn :
+    forall n p,
+      pattern n p ->
+      closedn n p.
+  Proof.
+    intros n p hp.
+    induction hp as [m hm | ind kn ui args h ih] using pattern_all_rect.
+    - unfold closedn. destruct (Nat.ltb_spec m n). 2: lia.
+      reflexivity.
+    - apply PCUICClosed.closedn_mkApps.
+      + cbn. reflexivity.
+      + induction ih as [| p args hp ha ih']. 1: constructor.
+        cbn. rewrite hp. cbn. apply ih'. inversion h.
+        assumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
@@ -5538,7 +5554,7 @@ Section ParallelSubstitution.
           lia.
       }
       intros φ e2.
-      exists φ, (id_mask 0 m2), θ.
+      exists φ, (id_mask 0 m2), (θ ++ idsubst Δ1).
       repeat lazymatch goal with
       | |- _ × _ => split
       | |- let x := _ in _ => intro x
@@ -5559,9 +5575,12 @@ Section ParallelSubstitution.
         rewrite hm2 in sm2.
         eexists. eapply partial_subst_mask_right. eassumption.
       + apply untyped_subslet_length in uσ.
+        apply untyped_subslet_length in uθ.
         assert (e : #|σ| = npat1) by auto.
-        clearbody npat1. clear - hm1 e1 e2 e.
-        induction npat1 in φ, n, σ, m1, hm1, e1, e2, e |- *.
+        assert (e' : #|θ| = npat2) by auto.
+        apply pattern_closedn in hp2.
+        clearbody npat1 npat2. clear - hm1 e1 e2 hp2 e e'.
+        induction npat1 in npat2, φ, n, σ, m1, hm1, e1, e2, hp2, e, e' |- *.
         1:{ cbn in hm1. destruct n. all: discriminate. }
         cbn in hm1. destruct n.
         * cbn in hm1. apply some_inj in hm1. subst.
@@ -5569,10 +5588,13 @@ Section ParallelSubstitution.
           cbn in e1. apply some_inj in e1. subst.
           cbn in e2. apply some_inj in e2. subst.
           cbn.
-          constructor. 1: reflexivity.
-          unfold skipn. rewrite map_list_init. cbn.
-          apply All2_mask_subst_linear_mask_init.
-          cbn in e. lia.
+          constructor.
+          --- rewrite subst_app_simpl. cbn. f_equal.
+              rewrite -> PCUICClosed.subst_closedn by assumption.
+              reflexivity.
+          --- unfold skipn. rewrite map_list_init. cbn.
+              apply All2_mask_subst_linear_mask_init.
+              cbn in e. lia.
         * cbn in hm1. destruct lin_set eqn:e3. 2: discriminate.
           apply some_inj in hm1. subst.
           destruct σ. 1: discriminate.
