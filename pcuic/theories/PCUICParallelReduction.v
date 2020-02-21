@@ -5536,7 +5536,10 @@ Section ParallelSubstitution.
       + eapply partial_subst_mask_subs_init in e2.
         2:{ eapply pattern_mask_right. eassumption. }
         eexists. eassumption.
-      + ?
+      + pose proof (partial_subst_mask_id_mask 0 m2) as sm2.
+        cbn in sm2. apply pattern_mask_length in hm2.
+        rewrite hm2 in sm2.
+        eexists. eapply partial_subst_mask_right. eassumption.
       + apply untyped_subslet_length in uσ.
         assert (e : #|σ| = npat1) by auto.
         clearbody npat1. clear - hm1 e1 e2 e.
