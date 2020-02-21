@@ -5749,15 +5749,16 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma subs_complete_subst_ext :
-    forall np m σ φ ψ p,
+    forall np m1 m2 σ φ ψ p,
       subs_complete σ φ ->
       subs_complete σ ψ ->
-      masks m σ ->
-      pattern_mask np p = Some m ->
+      masks m2 σ ->
+      pattern_mask np p = Some m1 ->
+      submask m1 m2 ->
       subst0 φ p = subst0 ψ p.
   Proof.
-    intros np m σ φ ψ p hφ hψ hσ hp.
-    induction p in np, m, σ, φ, ψ, hφ, hψ, hσ, hp |- *.
+    intros np m1 m2 σ φ ψ p hφ hψ hσ hp hsub.
+    induction p in np, m1, m2, σ, φ, ψ, hφ, hψ, hσ, hp, hsub |- *.
     all: try discriminate.
     - cbn. replace (n - 0) with n by lia.
       cbn in hp. rewrite lin_set_eq in hp.
@@ -5765,14 +5766,15 @@ Section ParallelSubstitution.
       apply some_inj in hp. subst.
       apply nth_error_Some_length in e as l.
       rewrite linear_mask_init_length in l.
-      unfold linear_mask_init in hσ.
-      rewrite firstn_list_init in hσ.
-      rewrite skipn_list_init in hσ.
-      replace (min n np) with n in hσ by lia.
+      unfold linear_mask_init in hsub.
+      rewrite firstn_list_init in hsub.
+      rewrite skipn_list_init in hsub.
+      replace (min n np) with n in hsub by lia.
       apply subs_complete_spec in hφ as [lφ hφ].
       apply subs_complete_spec in hψ as [lψ hψ].
       apply masks_nth_error_true with (n := n) in hσ as h.
       2:{
+        eapply submask_nth_error_true. 1: eassumption.
         rewrite nth_error_app2.
         { rewrite list_init_length. auto. }
         rewrite list_init_length.
@@ -5786,9 +5788,8 @@ Section ParallelSubstitution.
     - cbn in *.
       destruct (pattern_mask _ p1) eqn:e1. 2: discriminate.
       destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
-      (* We need to relax the masks condition
-        or have some m <= m' extra condition.
-      *)
+      erewrite IHp1. all: eauto.
+      (* Need lemma for lin_merge and submask *)
   Abort.
 
   Lemma pattern_unify_subst :
