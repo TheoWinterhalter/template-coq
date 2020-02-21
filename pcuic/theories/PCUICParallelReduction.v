@@ -5455,6 +5455,28 @@ Section ParallelSubstitution.
       rewrite <- app_assoc. reflexivity.
   Qed.
 
+  Definition cat_subst σ θ :=
+    θ ++ map (lift0 #|θ|) σ.
+
+  (* Definition cat_subst (σ θ : list term) :=
+    θ ++ σ. *)
+
+  Lemma cat_subst_untyped_subslet :
+    forall Γ Δ1 Δ2 σ θ,
+      untyped_subslet Γ σ Δ1 ->
+      untyped_subslet Γ θ Δ2 ->
+      untyped_subslet Γ (cat_subst σ θ) (Δ1 ,,, Δ2).
+  Proof.
+    intros Γ Δ1 Δ2 σ θ uσ uθ.
+    induction uθ in Δ1, σ, uσ |- *.
+    - cbn. rewrite map_id_f.
+      + intro x. rewrite lift0_id. reflexivity.
+      + assumption.
+    - cbn. constructor.
+      specialize (IHuθ _ _ uσ).
+      (* apply IHuθ. *)
+  Abort.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       let npat1 := #|Δ1| in
