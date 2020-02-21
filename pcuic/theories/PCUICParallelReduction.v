@@ -5798,7 +5798,7 @@ Section ParallelSubstitution.
         apply pattern_closedn in hp2.
         clearbody npat1 npat2. clear - hm1 e1 e2 hp2 e e' hξ1 hξ2 hpθ.
         induction npat1
-        in npat2, φ, n, σ, m1, hm1, e1, e2, hp2, e, e', hξ1, hξ2, hpθ |- *.
+        in npat2, φ, n, σ, m1, hm1, e1, e2, hp2, e, e', ξ1, hξ1, hpθ |- *.
         1:{ cbn in hm1. destruct n. all: discriminate. }
         cbn in hm1. destruct n.
         * cbn in hm1. apply some_inj in hm1. subst.
@@ -5835,10 +5835,8 @@ Section ParallelSubstitution.
           apply some_inj in e2. subst. cbn.
           constructor.
           eapply IHnpat1. all: eauto.
-          (* Need to generalise over ξ2 at least... *)
-          (* unfold subs_init, subs_add. rewrite e4.
-          reflexivity. *)
-          all: give_up.
+          unfold subs_init, subs_add. rewrite e4.
+          reflexivity.
       + apply all_nth_error_All2_mask_subst.
         * intros i e.
           destruct (nth_error θ i) eqn:e3.
