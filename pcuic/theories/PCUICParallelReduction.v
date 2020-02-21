@@ -5521,6 +5521,179 @@ Section ParallelSubstitution.
     apply weaks_length.
   Qed.
 
+  Fixpoint sub_mask m σ : option partial_subst :=
+    match m, σ with
+    | true :: m, t :: σ =>
+      θ <- sub_mask m σ ;;
+      ret (Some t :: θ)
+    | false :: m, _ :: σ =>
+      θ <- sub_mask m σ ;;
+      ret (None :: θ)
+    | [], [] => ret []
+    | _, _ => None
+    end.
+
+  Lemma sub_mask_Some :
+    forall m σ,
+      #|m| = #|σ| ->
+      ∑ θ, sub_mask m σ = Some θ.
+  Proof.
+    intros m σ e.
+    induction m as [| [] m ih] in σ, e |- *.
+    - destruct σ. 2: discriminate.
+      cbn. exists []. reflexivity.
+    - destruct σ. 1: discriminate.
+      cbn in *. specialize (ih σ).
+      forward ih by lia. destruct ih as [θ e1].
+      eexists. rewrite e1. reflexivity.
+    - destruct σ. 1: discriminate.
+      cbn in *. specialize (ih σ).
+      forward ih by lia. destruct ih as [θ e1].
+      eexists. rewrite e1. reflexivity.
+  Qed.
+
+  Lemma sub_mask_length_mask :
+    forall m σ θ,
+      sub_mask m σ = Some θ ->
+      #|m| = #|θ|.
+  Proof.
+    intros m σ θ e.
+    induction m as [| [] m ih] in σ, θ, e |- *.
+    - destruct σ. 2: discriminate.
+      cbn in e. apply some_inj in e. subst. reflexivity.
+    - destruct σ. 1: discriminate.
+      cbn in *. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. eapply ih. eassumption.
+    - destruct σ. 1: discriminate.
+      cbn in *. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. eapply ih. eassumption.
+  Qed.
+
+  Lemma sub_mask_length_subs :
+    forall m σ θ,
+      sub_mask m σ = Some θ ->
+      #|σ| = #|θ|.
+  Proof.
+    intros m σ θ e.
+    induction m as [| [] m ih] in σ, θ, e |- *.
+    - destruct σ. 2: discriminate.
+      cbn in e. apply some_inj in e. subst. reflexivity.
+    - destruct σ. 1: discriminate.
+      cbn in *. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. eapply ih. eassumption.
+    - destruct σ. 1: discriminate.
+      cbn in *. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. f_equal. eapply ih. eassumption.
+  Qed.
+
+  Lemma masks_app :
+    forall m1 m2 σ1 σ2,
+      masks m1 σ1 ->
+      masks m2 σ2 ->
+      masks (m1 ++ m2) (σ1 ++ σ2).
+  Proof.
+    intros m1 m2 σ1 σ2 h1 h2.
+    induction h1 in m2, σ2, h2 |- *.
+    - assumption.
+    - cbn. constructor.
+      apply IHh1. assumption.
+    - cbn. constructor.
+      apply IHh1. assumption.
+  Qed.
+
+  Lemma sub_mask_masks :
+    forall m σ θ,
+      sub_mask m σ = Some θ ->
+      masks m θ.
+  Proof.
+    intros m σ θ e.
+    induction m as [| [] m ih] in σ, θ, e |- *.
+    - destruct σ. 2: discriminate.
+      cbn in e. apply some_inj in e. subst.
+      constructor.
+    - destruct σ. 1: discriminate.
+      cbn in e. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      constructor. eapply ih. eassumption.
+    - destruct σ. 1: discriminate.
+      cbn in e. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      constructor. eapply ih. eassumption.
+  Qed.
+
+  Lemma id_mask_masks :
+    forall i m,
+      masks m (id_mask i m).
+  Proof.
+    intros i m.
+    induction m as [| [] m ih] in i |- *.
+    - cbn. constructor.
+    - cbn. constructor. apply ih.
+    - cbn. constructor. apply ih.
+  Qed.
+
+  Lemma subs_complete_firstn :
+    forall n σ θ,
+      subs_complete σ θ ->
+      subs_complete (firstn n σ) (firstn n θ).
+  Proof.
+    intros n σ θ h.
+    induction h in n |- *.
+    - destruct n. all: constructor.
+    - destruct n.
+      + cbn. constructor.
+      + cbn. constructor.
+        apply IHh.
+    - destruct n.
+      + cbn. constructor.
+      + cbn. constructor.
+        apply IHh.
+  Qed.
+
+  Lemma subs_complete_skipn :
+    forall n σ θ,
+      subs_complete σ θ ->
+      subs_complete (skipn n σ) (skipn n θ).
+  Proof.
+    intros n σ θ h.
+    induction h in n |- *.
+    - destruct n. all: constructor.
+    - destruct n.
+      + constructor. assumption.
+      + rewrite 2!skipn_S.
+        apply IHh.
+    - destruct n.
+      + constructor. assumption.
+      + rewrite 2!skipn_S.
+        apply IHh.
+  Qed.
+
+  Lemma subs_complete_app_inv :
+    forall σ θ ξ,
+      subs_complete (σ ++ θ) ξ ->
+      ∑ φ ψ,
+        ξ = φ ++ ψ ×
+        subs_complete σ φ ×
+        subs_complete θ ψ.
+  Proof.
+    intros σ θ ξ h.
+    exists (firstn #|σ| ξ), (skipn #|σ| ξ).
+    split. 2: split.
+    - rewrite firstn_skipn. reflexivity.
+    - apply subs_complete_firstn with (n := #|σ|) in h.
+      rewrite firstn_app in h.
+      replace (#|σ| - #|σ|) with 0 in h by lia. cbn in h.
+      rewrite app_nil_r in h. rewrite firstn_all in h.
+      assumption.
+    - apply subs_complete_skipn with (n := #|σ|) in h.
+      rewrite skipn_all_app in h.
+      assumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -5544,16 +5717,15 @@ Section ParallelSubstitution.
         All (on_Some (pattern npat)) ψ ×
         (∑ φm, partial_subst_mask npat φ = Some φm) ×
         (∑ ψm, partial_subst_mask npat ψ = Some ψm) ×
-        All2_mask_subst eq m1 σ (map (option_map (subst0 ξ)) φ) ×
-        All2_mask_subst eq m2 θ (map (option_map (subst0 ξ)) ψ) ×
-        untyped_subslet Γ ξ (Δ1 ,,, Δ2) ×
-        forall φ' ψ',
+        (* Γ ⊢ ξ : Δ1 ,,, Δ2 relative to mask m2 ++ m1 *)
+        #|ξ| = npat ×
+        masks (m2 ++ m1) ξ ×
+        forall φ' ψ' ξ',
           subs_complete φ φ' ->
           subs_complete ψ ψ' ->
-          (* Since Δ1 and Δ2 are assumptions contexts this always holds *)
-          (* Provided we use the lemma with assumptions contexts *)
-          (* untyped_subslet Ξ φ' Δ1 ->
-          untyped_subslet Ξ ψ' Δ2 -> *)
+          subs_complete ξ ξ' ->
+          All2_mask_subst eq m1 σ (map (option_map (subst0 ξ')) φ) ×
+          All2_mask_subst eq m2 θ (map (option_map (subst0 ξ')) ψ) ×
           subst0 φ' p1 = subst0 ψ' p2.
   Proof.
     intros σ θ p1 p2 m1 m2 Γ Δ1 Δ2 aΔ1 aΔ2 npat1 npat2 hp1 hp2 hm1 hm2 uσ uθ e.
@@ -5561,7 +5733,9 @@ Section ParallelSubstitution.
     as [n hn | ind n ui args pa ih]
     in p2, hp2, m1, hm1, m2, hm2, σ, uσ, θ, uθ, e |- *
     using pattern_all_rect.
-    - cbn in hm1. cbn in e.
+    - apply pattern_mask_length in hm1 as lm1.
+      apply pattern_mask_length in hm2 as lm2.
+      cbn in hm1. cbn in e.
       replace (n - 0) with n in e by lia.
       destruct nth_error eqn:e1.
       2:{
@@ -5588,33 +5762,43 @@ Section ParallelSubstitution.
           lia.
       }
       intros φ e2.
-      exists φ, (id_mask 0 m2), (θ ++ idsubst Δ1).
+      pose proof (sub_mask_Some m2 θ) as [pθ hpθ].
+      { apply untyped_subslet_length in uθ. lia. }
+      exists φ, (id_mask 0 m2), (pθ ++ id_mask 0 m1).
       repeat lazymatch goal with
       | |- _ × _ => split
       | |- let x := _ in _ => intro x
+      | |- forall x, _ => intros φ' ψ ξ hφ hψ hξ
       end.
       + apply subs_init_length in e2. assumption.
-      + rewrite id_mask_length. apply pattern_mask_length in hm2. assumption.
+      + rewrite id_mask_length. assumption.
       + eapply All_on_Some_subs_init. 1: eauto.
         apply pattern_right. assumption.
-      + apply pattern_mask_length in hm2.
-        apply id_mask_pattern_subst with (i := 0) in hm2.
-        eapply All_on_Some_impl. 1: exact hm2.
+      + apply id_mask_pattern_subst with (i := 0) in lm2.
+        eapply All_on_Some_impl. 1: exact lm2.
         intros p hp. apply pattern_right. assumption.
       + eapply partial_subst_mask_subs_init in e2.
         2:{ eapply pattern_mask_right. eassumption. }
         eexists. eassumption.
       + pose proof (partial_subst_mask_id_mask 0 m2) as sm2.
-        cbn in sm2. apply pattern_mask_length in hm2.
-        rewrite hm2 in sm2.
+        cbn in sm2. rewrite lm2 in sm2.
         eexists. eapply partial_subst_mask_right. eassumption.
-      + apply untyped_subslet_length in uσ.
+      + rewrite app_length. rewrite id_mask_length.
+        apply sub_mask_length_mask in hpθ.
+        lia.
+      + apply masks_app.
+        * eapply sub_mask_masks. eassumption.
+        * apply id_mask_masks.
+      + apply subs_complete_app_inv in hξ as [ξ1 [ξ2 [? [hξ1 hξ2]]]].
+        subst.
+        apply untyped_subslet_length in uσ.
         apply untyped_subslet_length in uθ.
         assert (e : #|σ| = npat1) by auto.
         assert (e' : #|θ| = npat2) by auto.
         apply pattern_closedn in hp2.
-        clearbody npat1 npat2. clear - hm1 e1 e2 hp2 e e'.
-        induction npat1 in npat2, φ, n, σ, m1, hm1, e1, e2, hp2, e, e' |- *.
+        clearbody npat1 npat2. clear - hm1 e1 e2 hp2 e e' hξ1 hξ2 hpθ.
+        induction npat1
+        in npat2, φ, n, σ, m1, hm1, e1, e2, hp2, e, e', hξ1, hξ2, hpθ |- *.
         1:{ cbn in hm1. destruct n. all: discriminate. }
         cbn in hm1. destruct n.
         * cbn in hm1. apply some_inj in hm1. subst.
@@ -5623,9 +5807,20 @@ Section ParallelSubstitution.
           cbn in e2. apply some_inj in e2. subst.
           cbn.
           constructor.
-          --- rewrite subst_app_simpl. cbn. f_equal.
-              rewrite -> PCUICClosed.subst_closedn by assumption.
-              reflexivity.
+          --- rewrite subst_app_simpl. cbn.
+              rewrite -> (PCUICClosed.subst_closedn ξ2).
+              2:{
+                apply subs_complete_spec in hξ1 as [l ?].
+                rewrite <- l.
+                apply sub_mask_length_subs in hpθ.
+                rewrite <- hpθ. assumption.
+              }
+              (* We need to beb able to conclude that they are both
+                extensions of pθ on the mask of p2
+                so that they coincide on it.
+                This will be some work.
+              *)
+              admit.
           --- unfold skipn. rewrite map_list_init. cbn.
               apply All2_mask_subst_linear_mask_init.
               cbn in e. lia.
@@ -5640,8 +5835,10 @@ Section ParallelSubstitution.
           apply some_inj in e2. subst. cbn.
           constructor.
           eapply IHnpat1. all: eauto.
-          unfold subs_init, subs_add. rewrite e4.
-          reflexivity.
+          (* Need to generalise over ξ2 at least... *)
+          (* unfold subs_init, subs_add. rewrite e4.
+          reflexivity. *)
+          all: give_up.
       + apply all_nth_error_All2_mask_subst.
         * intros i e.
           destruct (nth_error θ i) eqn:e3.
@@ -5649,7 +5846,6 @@ Section ParallelSubstitution.
             apply nth_error_Some_length in e.
             apply nth_error_None in e3.
             apply untyped_subslet_length in uθ.
-            apply pattern_mask_length in hm2.
             exfalso. lia.
           }
           rewrite nth_error_map.
@@ -5666,7 +5862,6 @@ Section ParallelSubstitution.
           apply nth_error_false_id_mask with (i := 0) in e as e3.
           rewrite e3. cbn. reflexivity.
         * apply untyped_subslet_length in uθ.
-          apply pattern_mask_length in hm2.
           lia.
         * rewrite map_length. rewrite id_mask_length. reflexivity.
       + apply untyped_subslet_assumption_context.
