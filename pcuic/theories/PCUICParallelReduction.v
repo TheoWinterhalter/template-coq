@@ -5489,8 +5489,42 @@ Section ParallelSubstitution.
         assumption.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma assumption_context_app :
+    forall Γ Δ,
+      assumption_context Γ ->
+      assumption_context Δ ->
+      assumption_context (Γ ,,, Δ).
+  Proof.
+    intros Γ Δ hΓ hΔ.
+    induction hΔ in Γ, hΓ |- *.
+    - assumption.
+    - cbn. constructor. apply IHhΔ. assumption.
+  Qed.
+
+  Lemma weaks_length :
+    forall n Γ,
+      #|weaks n Γ| = #|Γ|.
+  Proof.
+    intros n Γ.
+    induction Γ as [| [na [t|] A] Γ ih] in n |- *.
+    - reflexivity.
+    - cbn. f_equal. apply ih.
+    - cbn. f_equal. apply ih.
+  Qed.
+
+  Lemma idsubst_length :
+    forall Γ,
+      #|idsubst Γ| = #|Γ|.
+  Proof.
+    intro Γ. unfold idsubst.
+    apply weaks_length.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
+      assumption_context Δ1 ->
+      assumption_context Δ2 ->
       let npat1 := #|Δ1| in
       let npat2 := #|Δ2| in
       pattern npat1 p1 ->
@@ -5522,7 +5556,7 @@ Section ParallelSubstitution.
           untyped_subslet Ξ ψ' Δ2 -> *)
           subst0 φ' p1 = subst0 ψ' p2.
   Proof.
-    intros σ θ p1 p2 m1 m2 Γ Δ1 Δ2 npat1 npat2 hp1 hp2 hm1 hm2 uσ uθ e.
+    intros σ θ p1 p2 m1 m2 Γ Δ1 Δ2 aΔ1 aΔ2 npat1 npat2 hp1 hp2 hm1 hm2 uσ uθ e.
     induction hp1
     as [n hn | ind n ui args pa ih]
     in p2, hp2, m1, hm1, m2, hm2, σ, uσ, θ, uθ, e |- *
@@ -5622,6 +5656,8 @@ Section ParallelSubstitution.
           apply nth_error_id_mask with (i := 0) in e as e4. cbn in e4.
           rewrite e4. cbn - [subst]. cbn.
           replace (i - 0) with i by lia.
+          rewrite nth_error_app1.
+          { apply nth_error_Some_length in e3. assumption. }
           rewrite e3. rewrite lift0_id.
           eexists _, _.
           intuition reflexivity.
@@ -5633,8 +5669,13 @@ Section ParallelSubstitution.
           apply pattern_mask_length in hm2.
           lia.
         * rewrite map_length. rewrite id_mask_length. reflexivity.
-      + assumption.
-      + cbn. replace (n - 0) with n by lia.
+      + apply untyped_subslet_assumption_context.
+        * apply assumption_context_app. all: assumption.
+        * rewrite app_length. rewrite app_context_length.
+          rewrite idsubst_length.
+          apply untyped_subslet_length in uθ. lia.
+      + intros φ' ψ hφ hψ.
+        cbn. replace (n - 0) with n by lia.
         apply subs_complete_spec in hφ as [lφ hφ].
         apply subs_init_nth_error in e2 as e3.
         apply hφ in e3. rewrite e3. rewrite lift0_id.
