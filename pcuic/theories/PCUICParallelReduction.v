@@ -5424,46 +5424,36 @@ Section ParallelSubstitution.
   Lemma partial_subst_mask_id_mask :
     forall i m,
       partial_subst_mask (i + #|m|) (id_mask i m) =
-      Some (list_init false i ++ list_init true #|m|).
+      Some (list_init false i ++ m).
   Proof.
     intros i m.
     induction m as [| [] m ih] in i |- *.
     - cbn. rewrite app_nil_r. f_equal.
       unfold linear_mask_init. f_equal. lia.
-    - cbn. destruct i.
-      + cbn. rewrite (ih 1). cbn.
-        replace (list_init false #|m|)
-        with (list_init false #|list_init true #|m| |).
-        2:{ rewrite list_init_length. reflexivity. }
-        rewrite lin_merge_linear_mask_init.
-        reflexivity.
-      + cbn. rewrite lin_set_eq.
-        rewrite -> nth_error_list_init by lia.
-        specialize (ih (S (S i))). cbn in ih.
-        replace (S (i + S #|m|)) with (S (S (i + #|m|))) by lia.
-        rewrite ih. cbn.
-        rewrite firstn_list_init.
-        match goal with
-        | |- context [ min ?x ?y ] =>
-          replace (min x y) with x by lia
-        end.
-        rewrite skipn_list_init.
-        replace (i + S #|m| - S i) with #|m| by lia.
-        change (false :: list_init false i ++ list_init true #|m|)
-        with (list_init false (S i) ++ list_init true #|m|).
-        replace (S i) with (i + 1) by lia.
-        rewrite list_init_add.
-        rewrite <- app_assoc. cbn.
-        eapply match_Some_eq with (f := fun x => _).
-        apply lin_merge_app.
-        * rewrite <- lin_merge_linear_mask_init.
-          rewrite list_init_length. reflexivity.
-        * cbn. eapply match_Some_eq with (f := fun x => _).
-          rewrite <- lin_merge_linear_mask_init.
-          rewrite list_init_length. reflexivity.
+    - cbn. rewrite lin_set_eq.
+      rewrite -> nth_error_list_init by lia.
+      replace (i + S #|m|) with (S i + #|m|) by lia.
+      rewrite ih.
+      rewrite firstn_list_init. rewrite skipn_list_init.
+      match goal with
+      | |- context [ min ?x ?y ] =>
+        replace (min x y) with x by lia
+      end.
+      replace (S i + #|m| - S i) with #|m| by lia.
+      replace (S i) with (i + 1) by lia.
+      rewrite list_init_add. cbn.
+      rewrite <- app_assoc. cbn.
+      apply lin_merge_app.
+      + rewrite <- lin_merge_linear_mask_init.
+        rewrite list_init_length. reflexivity.
+      + cbn. eapply match_Some_eq with (f := fun x => _).
+        apply lin_merge_linear_mask_init.
     - cbn. replace (i + S #|m|) with (S i + #|m|) by lia.
       rewrite ih.
-  Abort.
+      replace (S i) with (i + 1) by lia.
+      rewrite list_init_add. cbn.
+      rewrite <- app_assoc. reflexivity.
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
