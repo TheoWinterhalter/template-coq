@@ -5711,6 +5711,43 @@ Section ParallelSubstitution.
       + cbn in *. apply IHhm. assumption.
   Qed.
 
+  Inductive submask : list bool -> list bool -> Type :=
+  | submask_nil : submask [] []
+  | submask_true :
+      forall m1 m2,
+        submask m1 m2 ->
+        submask (true :: m1) (true :: m2)
+  | submask_false :
+    forall m1 m2 b,
+      submask m1 m2 ->
+      submask (false :: m1) (b :: m2).
+
+  Lemma submask_nth_error_true :
+    forall n m1 m2,
+      submask m1 m2 ->
+      nth_error m1 n = Some true ->
+      nth_error m2 n = Some true.
+  Proof.
+    intros n m1 m2 h e.
+    induction h in n, e |- *.
+    - assumption.
+    - destruct n.
+      + reflexivity.
+      + cbn in *. apply IHh. assumption.
+    - destruct n.
+      + discriminate.
+      + cbn in *. apply IHh. assumption.
+  Qed.
+
+  Lemma submask_length :
+    forall m1 m2,
+      submask m1 m2 ->
+      #|m1| = #|m2|.
+  Proof.
+    intros m1 m2 h.
+    induction h. all: cbn ; auto.
+  Qed.
+
   Lemma subs_complete_subst_ext :
     forall np m σ φ ψ p,
       subs_complete σ φ ->
