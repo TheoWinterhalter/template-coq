@@ -5905,6 +5905,48 @@ Section ParallelSubstitution.
     - cbn. constructor. assumption.
   Qed.
 
+  Lemma masks_merge :
+    forall m1 m2 m σ1 σ2,
+      lin_merge m1 m2 = Some m ->
+      masks m1 σ1 ->
+      masks m2 σ2 ->
+      ∑ σ,
+        subs_merge σ1 σ2 = Some σ ×
+        masks m σ.
+  Proof.
+    intros m1 m2 m σ1 σ2 hm h1 h2.
+    induction h1 in m2, m, hm, σ2, h2 |- *.
+    - destruct m2. 2: discriminate.
+      cbn in hm. apply some_inj in hm. subst.
+      inversion h2. subst.
+      eexists. intuition reflexivity.
+    - destruct m2 as [| [] m2]. 1,2: discriminate.
+      cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      inversion h2. subst.
+      specialize IHh1 with (1 := e) (2 := H0).
+      destruct IHh1 as [σ' [e1 h]].
+      cbn. rewrite e1.
+      eexists. intuition eauto.
+      constructor. assumption.
+    - destruct m2 as [| b m2]. 1: discriminate.
+      cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      inversion h2.
+      + subst.
+        specialize IHh1 with (1 := e) (2 := H2).
+        destruct IHh1 as [σ' [e1 h]].
+        cbn. rewrite e1.
+        eexists. intuition eauto.
+        constructor. assumption.
+      + subst.
+        specialize IHh1 with (1 := e) (2 := H2).
+        destruct IHh1 as [σ' [e1 h]].
+        cbn. rewrite e1.
+        eexists. intuition eauto.
+        constructor. assumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -6148,23 +6190,34 @@ Section ParallelSubstitution.
           specialize ihp with (2 := eq_refl) (3 := pmp') (4 := uσ) (5 := uθ).
           forward ihp by auto. forward ihp by auto.
           destruct ihp
-          as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 [[φm1 hφm1] [[ψm1 hψm1] [eφ1 [eψ1 [uξ1 h1]]]]]]]]]]]].
+          as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 [[φm1 hφm1] [[ψm1 hψm1] h]]]]]]]]].
+          destruct h as [lξ1 [mξ1 h1]].
           specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
           forward ih by auto. forward ih by auto.
           destruct ih
-          as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 [[φm2 hφm2] [[ψm2 hψm2] [eφ2 [eψ2 [uξ2 h2]]]]]]]]]]]].
-          eapply All2_mask_subst_lin_merge in hm1 as me. 2,3: eauto.
+          as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 [[φm2 hφm2] [[ψm2 hψm2] h]]]]]]]]].
+          destruct h as [lξ2 [mξ2 h2]].
+          eapply lin_merge_app in hm1 as hm. 2: exact hm2.
+          eapply masks_merge in hm as me. 2,3: eauto.
+          destruct me as [ξ [sξ mξ]].
+          (* The masks of φ1 and φ2 aren't correlated at all...
+            They should be more specific. In particular we should know
+            that they are mergeable.
+          *)
+
+
+
+          (* eapply All2_mask_subst_lin_merge in hm1 as me. 2,3: eauto.
           destruct me as [φ [mφ eφ]].
           eapply All2_mask_subst_lin_merge in hm2 as me. 2,3: eauto.
-          destruct me as [ψ [mψ eψ]].
+          destruct me as [ψ [mψ eψ]]. *)
+
+
           (* PROBLEM 1:
             We don't have the right φ and ψ they are already "mapped".
             Maybe uses masks or some fancier All2_mask_subst_lin_merge
             to accont for the map?
             Or have some subs_merge_map?
-          *)
-          (* PROBLEM 2:
-            What do we do with ξ?
           *)
           (* exists φ, ψ. *)
   Abort.
