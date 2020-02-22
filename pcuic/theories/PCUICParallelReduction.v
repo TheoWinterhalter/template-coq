@@ -5835,7 +5835,10 @@ Section ParallelSubstitution.
       apply lin_merge_submask in hp as sm. destruct sm.
       erewrite IHp1. all: eauto.
       2:{ eapply submask_trans. all: eassumption. }
-  Abort.
+      erewrite IHp2. all: eauto.
+      eapply submask_trans. all: eassumption.
+    - cbn. reflexivity.
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
