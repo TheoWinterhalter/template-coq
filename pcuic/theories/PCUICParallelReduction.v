@@ -5840,6 +5840,37 @@ Section ParallelSubstitution.
     - cbn. reflexivity.
   Qed.
 
+  Lemma submask_refl :
+    forall m,
+      submask m m.
+  Proof.
+    intros m.
+    induction m as [| [] m ih].
+    - constructor.
+    - constructor. assumption.
+    - constructor. assumption.
+  Qed.
+
+  Lemma sub_mask_subs_complete :
+    forall m σ θ,
+      sub_mask m σ = Some θ ->
+      subs_complete θ σ.
+  Proof.
+    intros m σ θ e.
+    induction m as [| [] m ih] in σ, θ, e |- *.
+    - destruct σ. 2: discriminate.
+      cbn in e. apply some_inj in e. subst.
+      constructor.
+    - destruct σ as [| t σ]. 1: discriminate.
+      cbn in e. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      constructor. apply ih. assumption.
+    - destruct σ as [| t σ]. 1: discriminate.
+      cbn in e. destruct sub_mask eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      constructor. apply ih. assumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -5961,12 +5992,10 @@ Section ParallelSubstitution.
                 apply sub_mask_length_subs in hpθ.
                 rewrite <- hpθ. assumption.
               }
-              (* We need to beb able to conclude that they are both
-                extensions of pθ on the mask of p2
-                so that they coincide on it.
-                This will be some work.
-              *)
-              admit.
+              apply sub_mask_masks in hpθ as ?.
+              apply sub_mask_subs_complete in hpθ as ?.
+              eapply subs_complete_subst_ext. all: eauto.
+              apply submask_refl.
           --- unfold skipn. rewrite map_list_init. cbn.
               apply All2_mask_subst_linear_mask_init.
               cbn in e. lia.
