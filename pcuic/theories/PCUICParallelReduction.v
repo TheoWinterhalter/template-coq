@@ -6064,13 +6064,7 @@ Section ParallelSubstitution.
         * apply untyped_subslet_length in uθ.
           lia.
         * rewrite map_length. rewrite id_mask_length. reflexivity.
-      + apply untyped_subslet_assumption_context.
-        * apply assumption_context_app. all: assumption.
-        * rewrite app_length. rewrite app_context_length.
-          rewrite idsubst_length.
-          apply untyped_subslet_length in uθ. lia.
-      + intros φ' ψ hφ hψ.
-        cbn. replace (n - 0) with n by lia.
+      + cbn. replace (n - 0) with n by lia.
         apply subs_complete_spec in hφ as [lφ hφ].
         apply subs_init_nth_error in e2 as e3.
         apply hφ in e3. rewrite e3. rewrite lift0_id.
