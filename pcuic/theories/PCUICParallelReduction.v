@@ -5896,6 +5896,15 @@ Section ParallelSubstitution.
       + cbn in *. apply ih. all: auto.
   Qed.
 
+  Lemma masks_linear_mask_init :
+    forall n,
+      masks (linear_mask_init n) (subs_empty n).
+  Proof.
+    intro n. induction n.
+    - constructor.
+    - cbn. constructor. assumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -6091,10 +6100,11 @@ Section ParallelSubstitution.
           cbn in *.
           apply some_inj in hm1.
           apply some_inj in hm2. subst.
-          exists (subs_empty npat1), (subs_empty npat2), (idsubst Γ).
+          set (npat := npat1 + npat2).
+          exists (subs_empty npat1), (subs_empty npat2), (subs_empty npat).
           repeat lazymatch goal with
           | |- _ × _ => split
-          | |- forall _, _ => intros φ' ψ' hφ hψ (* uφ uψ *)
+          | |- forall _, _ => intros φ' ψ' ξ' hφ hψ hξ (* uφ uψ *)
           end.
           --- rewrite subs_empty_length. reflexivity.
           --- rewrite subs_empty_length. reflexivity.
@@ -6104,14 +6114,16 @@ Section ParallelSubstitution.
               eexists. reflexivity.
           --- rewrite partial_subst_mask_subs_empty.
               eexists. reflexivity.
+          --- apply subs_empty_length.
+          --- rewrite <- linear_mask_init_add.
+              replace (npat2 + npat1) with npat by lia.
+              apply masks_linear_mask_init.
           --- unfold subs_empty. rewrite map_list_init. cbn.
               eapply All2_mask_subst_linear_mask_init.
               apply untyped_subslet_length in uσ. auto.
           --- unfold subs_empty. rewrite map_list_init. cbn.
               eapply All2_mask_subst_linear_mask_init.
               apply untyped_subslet_length in uθ. auto.
-          --- (* TODO We probably want something relative to m1/m2 *)
-              give_up.
           --- reflexivity.
         * clear hl.
           destruct args' as [| p' l' _] using list_rect_rev.
