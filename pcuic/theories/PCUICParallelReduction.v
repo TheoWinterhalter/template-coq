@@ -5947,6 +5947,80 @@ Section ParallelSubstitution.
         constructor. assumption.
   Qed.
 
+  Lemma masks_firstn :
+    forall m σ n,
+      masks m σ ->
+      masks (firstn n m) (firstn n σ).
+  Proof.
+    intros m σ n h.
+    induction h in n |- *.
+    - destruct n. all: constructor.
+    - destruct n.
+      + cbn. constructor.
+      + cbn. constructor. apply IHh.
+    - destruct n.
+    + cbn. constructor.
+    + cbn. constructor. apply IHh.
+  Qed.
+
+  Lemma masks_skipn :
+    forall m σ n,
+      masks m σ ->
+      masks (skipn n m) (skipn n σ).
+  Proof.
+    intros m σ n h.
+    induction h in n |- *.
+    - destruct n. all: constructor.
+    - destruct n.
+      + unfold skipn. constructor. assumption.
+      + rewrite 2!skipn_S. apply IHh.
+    - destruct n.
+      + unfold skipn. constructor. assumption.
+      + rewrite 2!skipn_S. apply IHh.
+  Qed.
+
+  Lemma masks_subs_add :
+    forall n p σ θ m m',
+      subs_add n p σ = Some θ ->
+      lin_set n m = Some m' ->
+      masks m σ ->
+      masks m' θ.
+  Proof.
+    intros n p σ θ m m' ha hset hm.
+    unfold subs_add in ha.
+    rewrite lin_set_eq in hset.
+    destruct (nth_error m n) as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in hset. subst.
+    destruct nth_error as [[]|] eqn:e2. 1,3: discriminate.
+    apply some_inj in ha. subst.
+    apply masks_app.
+    - apply masks_firstn. assumption.
+    - constructor. apply masks_skipn. assumption.
+  Qed.
+
+  Lemma masks_subs_init :
+    forall npat n p σ m,
+      subs_init npat n p = Some σ ->
+      lin_set n (linear_mask_init npat) = Some m ->
+      masks m σ.
+  Proof.
+    intros npat n p σ m hs hm.
+    unfold subs_init in hs.
+    eapply masks_subs_add. all: eauto.
+    apply masks_linear_mask_init.
+  Qed.
+
+  Lemma masks_length :
+    forall m σ,
+      masks m σ ->
+      #|m| = #|σ|.
+  Proof.
+    intros m σ h.
+    induction h.
+    all: cbn.
+    all: lia.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -5970,6 +6044,8 @@ Section ParallelSubstitution.
         All (on_Some (pattern npat)) ψ ×
         (∑ φm, partial_subst_mask npat φ = Some φm) ×
         (∑ ψm, partial_subst_mask npat ψ = Some ψm) ×
+        masks m1 φ ×
+        masks m2 ψ ×
         (* Γ ⊢ ξ : Δ1 ,,, Δ2 relative to mask m2 ++ m1 *)
         #|ξ| = npat ×
         masks (m2 ++ m1) ξ ×
@@ -6036,6 +6112,8 @@ Section ParallelSubstitution.
       + pose proof (partial_subst_mask_id_mask 0 m2) as sm2.
         cbn in sm2. rewrite lm2 in sm2.
         eexists. eapply partial_subst_mask_right. eassumption.
+      + eapply masks_subs_init. all: eauto.
+      + apply id_mask_masks.
       + rewrite app_length. rewrite id_mask_length.
         apply sub_mask_length_mask in hpθ.
         lia.
@@ -6146,7 +6224,7 @@ Section ParallelSubstitution.
           exists (subs_empty npat1), (subs_empty npat2), (subs_empty npat).
           repeat lazymatch goal with
           | |- _ × _ => split
-          | |- forall _, _ => intros φ' ψ' ξ' hφ hψ hξ (* uφ uψ *)
+          | |- forall _, _ => intros φ' ψ' ξ' hφ hψ hξ
           end.
           --- rewrite subs_empty_length. reflexivity.
           --- rewrite subs_empty_length. reflexivity.
@@ -6156,6 +6234,8 @@ Section ParallelSubstitution.
               eexists. reflexivity.
           --- rewrite partial_subst_mask_subs_empty.
               eexists. reflexivity.
+          --- apply masks_linear_mask_init.
+          --- apply masks_linear_mask_init.
           --- apply subs_empty_length.
           --- rewrite <- linear_mask_init_add.
               replace (npat2 + npat1) with npat by lia.
@@ -6191,15 +6271,65 @@ Section ParallelSubstitution.
           forward ihp by auto. forward ihp by auto.
           destruct ihp
           as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 [[φm1 hφm1] [[ψm1 hψm1] h]]]]]]]]].
-          destruct h as [lξ1 [mξ1 h1]].
+          destruct h as [mφ1 [mψ1 [lξ1 [mξ1 h1]]]].
           specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
           forward ih by auto. forward ih by auto.
           destruct ih
           as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 [[φm2 hφm2] [[ψm2 hψm2] h]]]]]]]]].
-          destruct h as [lξ2 [mξ2 h2]].
+          destruct h as [mφ2 [mψ2 [lξ2 [mξ2 h2]]]].
           eapply lin_merge_app in hm1 as hm. 2: exact hm2.
           eapply masks_merge in hm as me. 2,3: eauto.
           destruct me as [ξ [sξ mξ]].
+          eapply masks_merge in hm1 as me. 2,3: eauto.
+          destruct me as [φ [sφ hmφ]].
+          eapply masks_merge in hm2 as me. 2,3: eauto.
+          destruct me as [ψ [sψ hmψ]].
+          exists φ, ψ, ξ.
+          repeat lazymatch goal with
+          | |- _ × _ => split
+          | |- let x := _ in _ => intro x
+          | |- forall x, _ => intros φ' ψ' ξ' hφ hψ hξ
+          end.
+          --- apply masks_length in hmφ.
+              apply lin_merge_length in hm1 as [? ?].
+              apply pattern_mask_length in pmp.
+              lia.
+          --- apply masks_length in hmψ.
+              apply lin_merge_length in hm2 as [? ?].
+              apply pattern_mask_length in pmp'.
+              lia.
+          --- admit.
+          --- admit.
+          --- (* This seems hard without more info. *)
+              give_up.
+          --- give_up.
+          --- assumption.
+          --- assumption.
+          --- apply masks_length in mξ.
+              rewrite app_length in mξ.
+              apply lin_merge_length in hm1 as [? ?].
+              apply pattern_mask_length in pmp.
+              apply lin_merge_length in hm2 as [? ?].
+              apply pattern_mask_length in pmp'.
+              lia.
+          --- assumption.
+          --- admit.
+          --- admit.
+          --- rewrite <- 2!mkApps_nested. cbn.
+              eapply subs_merge_complete in sφ as scφ. 2: eassumption.
+              eapply subs_merge_complete in sψ as scψ. 2: eassumption.
+              eapply subs_merge_complete in sξ as scξ. 2: eassumption.
+              destruct scφ as [scφ2 scφ1].
+              destruct scψ as [scψ2 scψ1].
+              destruct scξ as [scξ2 scξ1].
+              specialize (h1 _ _ _ scφ1 scψ1 scξ1) as [eφ1 [eψ1 e1]].
+              specialize (h2 _ _ _ scφ2 scψ2 scξ2) as [eφ2 [eψ2 e2]].
+              rewrite e2. f_equal.
+              assumption.
+
+              (* (DONE) *)
+
+
           (* The masks of φ1 and φ2 aren't correlated at all...
             They should be more specific. In particular we should know
             that they are mergeable.
