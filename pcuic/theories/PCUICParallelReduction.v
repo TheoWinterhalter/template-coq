@@ -6203,6 +6203,12 @@ Section ParallelSubstitution.
           (* The masks of φ1 and φ2 aren't correlated at all...
             They should be more specific. In particular we should know
             that they are mergeable.
+
+            Actually they ensure linearity that's a bit different.
+            We will still need to be precise I fear.
+            But we also need to get somes maks on φ1 and φ2.
+            Actually we know them to be l1 and l0 from h1 and h2.
+            But it's inside h1 and h2 so it's a bit annoying.
           *)
 
 
