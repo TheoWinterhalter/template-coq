@@ -5871,6 +5871,31 @@ Section ParallelSubstitution.
       constructor. apply ih. assumption.
   Qed.
 
+  Lemma sub_mask_nth_error_true :
+    forall m σ θ n,
+      sub_mask m σ = Some θ ->
+      nth_error m n = Some true ->
+      ∑ t,
+        nth_error σ n = Some t ×
+        nth_error θ n = Some (Some t).
+  Proof.
+    intros m σ θ n hs hm.
+    induction m as [| [] m ih] in σ, θ, n, hs, hm |- *.
+    - destruct n. all: discriminate.
+    - destruct σ. 1: discriminate.
+      cbn in hs. destruct sub_mask eqn:e. 2: discriminate.
+      apply some_inj in hs. subst.
+      destruct n.
+      + cbn. eexists. intuition reflexivity.
+      + cbn in *. apply ih. all: auto.
+    - destruct σ. 1: discriminate.
+      cbn in hs. destruct sub_mask eqn:e. 2: discriminate.
+      apply some_inj in hs. subst.
+      destruct n.
+      + discriminate.
+      + cbn in *. apply ih. all: auto.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -6012,21 +6037,23 @@ Section ParallelSubstitution.
           eapply IHnpat1. all: eauto.
           unfold subs_init, subs_add. rewrite e4.
           reflexivity.
-      + apply all_nth_error_All2_mask_subst.
+      + apply subs_complete_app_inv in hξ as [ξ1 [ξ2 [? [hξ1 hξ2]]]].
+        subst.
+        apply all_nth_error_All2_mask_subst.
         * intros i e.
-          destruct (nth_error θ i) eqn:e3.
-          2:{
-            apply nth_error_Some_length in e.
-            apply nth_error_None in e3.
-            apply untyped_subslet_length in uθ.
-            exfalso. lia.
-          }
+          eapply sub_mask_nth_error_true in e as nθ. 2: eauto.
+          destruct nθ as [t [e3 e5]].
           rewrite nth_error_map.
           apply nth_error_id_mask with (i := 0) in e as e4. cbn in e4.
           rewrite e4. cbn - [subst]. cbn.
           replace (i - 0) with i by lia.
+          apply subs_complete_spec in hξ1 as [? hξ1].
           rewrite nth_error_app1.
-          { apply nth_error_Some_length in e3. assumption. }
+          { apply nth_error_Some_length in e3.
+            apply sub_mask_length_subs in hpθ.
+            lia.
+          }
+          erewrite hξ1. 2: eassumption.
           rewrite e3. rewrite lift0_id.
           eexists _, _.
           intuition reflexivity.
