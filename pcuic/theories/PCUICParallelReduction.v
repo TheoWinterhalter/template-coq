@@ -5748,6 +5748,50 @@ Section ParallelSubstitution.
     induction h. all: cbn ; auto.
   Qed.
 
+  Lemma lin_merge_submask :
+    forall m1 m2 m,
+      lin_merge m1 m2 = Some m ->
+      submask m1 m × submask m2 m.
+  Proof.
+    intros m1 m2 m h.
+    induction m1 as [| [] m1 ih] in m2, m, h |- *.
+    - destruct m2. 2: discriminate.
+      cbn in h. apply some_inj in h. subst.
+      intuition constructor.
+    - destruct m2 as [| [] m2]. 1,2: discriminate.
+      cbn in h. destruct lin_merge eqn:e. 2: discriminate.
+      apply some_inj in h. subst.
+      apply ih in e as [].
+      intuition constructor ; auto.
+    - destruct m2 as [| [] m2]. 1: discriminate.
+      + cbn in h. destruct lin_merge eqn:e. 2: discriminate.
+        apply some_inj in h. subst.
+        apply ih in e as [].
+        intuition constructor ; auto.
+      + cbn in h. destruct lin_merge eqn:e. 2: discriminate.
+        apply some_inj in h. subst.
+        apply ih in e as [].
+        intuition constructor ; auto.
+  Qed.
+
+  Lemma submask_trans :
+    forall m1 m2 m3,
+      submask m1 m2 ->
+      submask m2 m3 ->
+      submask m1 m3.
+  Proof.
+    intros m1 m2 m3 h1 h2.
+    induction h1 in m3, h2 |- *.
+    - assumption.
+    - destruct m3 as [| [] m3]. 1,3: solve [ inversion h2 ].
+      constructor. apply IHh1. inversion h2. assumption.
+    - inversion h2.
+      + subst. constructor.
+        apply IHh1. assumption.
+      + subst. constructor.
+        apply IHh1. assumption.
+  Qed.
+
   Lemma subs_complete_subst_ext :
     forall np m1 m2 σ φ ψ p,
       subs_complete σ φ ->
@@ -5788,8 +5832,9 @@ Section ParallelSubstitution.
     - cbn in *.
       destruct (pattern_mask _ p1) eqn:e1. 2: discriminate.
       destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+      apply lin_merge_submask in hp as sm. destruct sm.
       erewrite IHp1. all: eauto.
-      (* Need lemma for lin_merge and submask *)
+      2:{ eapply submask_trans. all: eassumption. }
   Abort.
 
   Lemma pattern_unify_subst :
