@@ -6109,9 +6109,11 @@ Section ParallelSubstitution.
       + eapply partial_subst_mask_subs_init in e2.
         2:{ eapply pattern_mask_right. eassumption. }
         eexists. eassumption.
+        (* m2 ++ init npat1 *)
       + pose proof (partial_subst_mask_id_mask 0 m2) as sm2.
         cbn in sm2. rewrite lm2 in sm2.
         eexists. eapply partial_subst_mask_right. eassumption.
+        (* m2 ++ init npat1 *)
       + eapply masks_subs_init. all: eauto.
       + apply id_mask_masks.
       + rewrite app_length. rewrite id_mask_length.
@@ -6232,8 +6234,10 @@ Section ParallelSubstitution.
           --- apply All_on_Some_subs_empty.
           --- rewrite partial_subst_mask_subs_empty.
               eexists. reflexivity.
+              (* init npat *)
           --- rewrite partial_subst_mask_subs_empty.
               eexists. reflexivity.
+              (* init npat *)
           --- apply masks_linear_mask_init.
           --- apply masks_linear_mask_init.
           --- apply subs_empty_length.
@@ -6301,6 +6305,16 @@ Section ParallelSubstitution.
           --- admit.
           --- admit.
           --- (* This seems hard without more info. *)
+              (* Given the previous cases,
+                it seems we can factorise the linear masks so that we have
+                the same for φ and ψ...
+                That's not enough to conclude.
+                Maybe say they're both submasks of m2 ++ m1?
+                That way we can merge them to submaks of the merge.
+                Maybe the best is to give up on it for now.
+                I don't really need it, the fact that it's pattern substitutions
+                is more important.
+              *)
               give_up.
           --- give_up.
           --- assumption.
