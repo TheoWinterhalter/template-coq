@@ -6042,8 +6042,8 @@ Section ParallelSubstitution.
         let npat := (npat1 + npat2)%nat in
         All (on_Some (pattern npat)) φ ×
         All (on_Some (pattern npat)) ψ ×
-        (∑ φm, partial_subst_mask npat φ = Some φm) ×
-        (∑ ψm, partial_subst_mask npat ψ = Some ψm) ×
+        (* (∑ φm, partial_subst_mask npat φ = Some φm) × *)
+        (* (∑ ψm, partial_subst_mask npat ψ = Some ψm) × *)
         masks m1 φ ×
         masks m2 ψ ×
         (* Γ ⊢ ξ : Δ1 ,,, Δ2 relative to mask m2 ++ m1 *)
@@ -6106,13 +6106,13 @@ Section ParallelSubstitution.
       + apply id_mask_pattern_subst with (i := 0) in lm2.
         eapply All_on_Some_impl. 1: exact lm2.
         intros p hp. apply pattern_right. assumption.
-      + eapply partial_subst_mask_subs_init in e2.
+      (* + eapply partial_subst_mask_subs_init in e2.
         2:{ eapply pattern_mask_right. eassumption. }
-        eexists. eassumption.
+        eexists. eassumption. *)
         (* m2 ++ init npat1 *)
-      + pose proof (partial_subst_mask_id_mask 0 m2) as sm2.
+      (* + pose proof (partial_subst_mask_id_mask 0 m2) as sm2.
         cbn in sm2. rewrite lm2 in sm2.
-        eexists. eapply partial_subst_mask_right. eassumption.
+        eexists. eapply partial_subst_mask_right. eassumption. *)
         (* m2 ++ init npat1 *)
       + eapply masks_subs_init. all: eauto.
       + apply id_mask_masks.
@@ -6232,11 +6232,11 @@ Section ParallelSubstitution.
           --- rewrite subs_empty_length. reflexivity.
           --- apply All_on_Some_subs_empty.
           --- apply All_on_Some_subs_empty.
-          --- rewrite partial_subst_mask_subs_empty.
-              eexists. reflexivity.
+          (* --- rewrite partial_subst_mask_subs_empty.
+              eexists. reflexivity. *)
               (* init npat *)
-          --- rewrite partial_subst_mask_subs_empty.
-              eexists. reflexivity.
+          (* --- rewrite partial_subst_mask_subs_empty.
+              eexists. reflexivity. *)
               (* init npat *)
           --- apply masks_linear_mask_init.
           --- apply masks_linear_mask_init.
@@ -6274,12 +6274,14 @@ Section ParallelSubstitution.
           specialize ihp with (2 := eq_refl) (3 := pmp') (4 := uσ) (5 := uθ).
           forward ihp by auto. forward ihp by auto.
           destruct ihp
-          as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 [[φm1 hφm1] [[ψm1 hψm1] h]]]]]]]]].
+          (* as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 [[φm1 hφm1] [[ψm1 hψm1] h]]]]]]]]]. *)
+          as [φ1 [ψ1 [ξ1 [lφ1 [lψ1 [pφ1 [pψ1 h]]]]]]].
           destruct h as [mφ1 [mψ1 [lξ1 [mξ1 h1]]]].
           specialize ih with (2 := eq_refl) (3 := pm2) (4 := uσ) (5 := uθ).
           forward ih by auto. forward ih by auto.
           destruct ih
-          as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 [[φm2 hφm2] [[ψm2 hψm2] h]]]]]]]]].
+          (* as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 [[φm2 hφm2] [[ψm2 hψm2] h]]]]]]]]]. *)
+          as [φ2 [ψ2 [ξ2 [lφ2 [lψ2 [pφ2 [pψ2 h]]]]]]].
           destruct h as [mφ2 [mψ2 [lξ2 [mξ2 h2]]]].
           eapply lin_merge_app in hm1 as hm. 2: exact hm2.
           eapply masks_merge in hm as me. 2,3: eauto.
@@ -6304,19 +6306,6 @@ Section ParallelSubstitution.
               lia.
           --- admit.
           --- admit.
-          --- (* This seems hard without more info. *)
-              (* Given the previous cases,
-                it seems we can factorise the linear masks so that we have
-                the same for φ and ψ...
-                That's not enough to conclude.
-                Maybe say they're both submasks of m2 ++ m1?
-                That way we can merge them to submaks of the merge.
-                Maybe the best is to give up on it for now.
-                I don't really need it, the fact that it's pattern substitutions
-                is more important.
-              *)
-              give_up.
-          --- give_up.
           --- assumption.
           --- assumption.
           --- apply masks_length in mξ.
