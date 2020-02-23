@@ -6021,6 +6021,32 @@ Section ParallelSubstitution.
     all: lia.
   Qed.
 
+  Lemma All_on_Some_subs_merge :
+    forall P σ1 σ2 σ,
+      subs_merge σ1 σ2 = Some σ ->
+      All (on_Some P) σ1 ->
+      All (on_Some P) σ2 ->
+      All (on_Some P) σ.
+  Proof.
+    intros P σ1 σ2 σ e h1 h2.
+    induction h1 as [| [t|] σ1 ht h1 ih] in σ2, σ, e, h2 |- *.
+    - destruct σ2. 2: discriminate.
+      cbn in e. apply some_inj in e. subst.
+      constructor.
+    - destruct h2 as [| [t'|] σ2 ht' h2]. 1,2: discriminate.
+      cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      constructor.
+      + assumption.
+      + eapply ih. all: eassumption.
+    - destruct h2 as [| o σ2 ho h2]. 1: discriminate.
+      cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      constructor.
+      + assumption.
+      + eapply ih. all: eassumption.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -6304,8 +6330,8 @@ Section ParallelSubstitution.
               apply lin_merge_length in hm2 as [? ?].
               apply pattern_mask_length in pmp'.
               lia.
-          --- admit.
-          --- admit.
+          --- eapply All_on_Some_subs_merge. all: eauto.
+          --- eapply All_on_Some_subs_merge. all: eauto.
           --- assumption.
           --- assumption.
           --- apply masks_length in mξ.
