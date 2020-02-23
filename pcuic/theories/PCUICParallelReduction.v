@@ -6047,6 +6047,40 @@ Section ParallelSubstitution.
       + eapply ih. all: eassumption.
   Qed.
 
+  Lemma All2_mask_subst_map :
+    forall P m σ θ f,
+      All2_mask_subst (fun  x y => P x (f y)) m σ θ ->
+      All2_mask_subst P m σ (map (option_map f) θ).
+  Proof.
+    intros P m σ θ f h.
+    induction h.
+    - constructor.
+    - cbn. constructor.
+      + assumption.
+      + assumption.
+    - cbn. constructor. assumption.
+  Qed.
+
+  Lemma All2_mask_subst_map_inv :
+    forall P m σ θ f,
+      All2_mask_subst P m σ (map (option_map f) θ) ->
+      All2_mask_subst (fun  x y => P x (f y)) m σ θ.
+  Proof.
+    intros P m σ θ f h.
+    dependent induction h.
+    - destruct θ. 2: discriminate.
+      constructor.
+    - destruct θ as [| [] θ]. 1,3: discriminate.
+      cbn in H. inversion H. subst.
+      constructor.
+      + assumption.
+      + apply IHh. reflexivity.
+    - destruct θ as [| [] θ]. 1,2: discriminate.
+      cbn in H. inversion H. subst.
+      constructor.
+      apply IHh. reflexivity.
+  Qed.
+
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
       assumption_context Δ1 ->
@@ -6342,8 +6376,36 @@ Section ParallelSubstitution.
               apply pattern_mask_length in pmp'.
               lia.
           --- assumption.
-          --- admit.
-          --- admit.
+          --- eapply subs_merge_complete in sφ as scφ. 2: eassumption.
+              eapply subs_merge_complete in sψ as scψ. 2: eassumption.
+              eapply subs_merge_complete in sξ as scξ. 2: eassumption.
+              destruct scφ as [scφ2 scφ1].
+              destruct scψ as [scψ2 scψ1].
+              destruct scξ as [scξ2 scξ1].
+              specialize (h1 _ _ _ scφ1 scψ1 scξ1) as [eφ1 [eψ1 e1]].
+              specialize (h2 _ _ _ scφ2 scψ2 scξ2) as [eφ2 [eψ2 e2]].
+              apply All2_mask_subst_map.
+              apply All2_mask_subst_map_inv in eφ1.
+              apply All2_mask_subst_map_inv in eφ2.
+              eapply All2_mask_subst_lin_merge in hm1. 2,3: eauto.
+              destruct hm1 as [φ0 [eφ h]].
+              rewrite eφ in sφ. apply some_inj in sφ. subst.
+              assumption.
+          --- eapply subs_merge_complete in sφ as scφ. 2: eassumption.
+              eapply subs_merge_complete in sψ as scψ. 2: eassumption.
+              eapply subs_merge_complete in sξ as scξ. 2: eassumption.
+              destruct scφ as [scφ2 scφ1].
+              destruct scψ as [scψ2 scψ1].
+              destruct scξ as [scξ2 scξ1].
+              specialize (h1 _ _ _ scφ1 scψ1 scξ1) as [eφ1 [eψ1 e1]].
+              specialize (h2 _ _ _ scφ2 scψ2 scξ2) as [eφ2 [eψ2 e2]].
+              apply All2_mask_subst_map.
+              apply All2_mask_subst_map_inv in eψ1.
+              apply All2_mask_subst_map_inv in eψ2.
+              eapply All2_mask_subst_lin_merge in hm2. 2,3: eauto.
+              destruct hm2 as [ψ0 [eψ h]].
+              rewrite eψ in sψ. apply some_inj in sψ. subst.
+              assumption.
           --- rewrite <- 2!mkApps_nested. cbn.
               eapply subs_merge_complete in sφ as scφ. 2: eassumption.
               eapply subs_merge_complete in sψ as scψ. 2: eassumption.
