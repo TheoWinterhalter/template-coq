@@ -6442,6 +6442,10 @@ Section ParallelSubstitution.
               assert (hp1 : pattern npat1 p1).
               { constructor. assumption. }
               apply pattern_closedn in hp1.
+              apply sub_mask_masks in hpσ as ?.
+              apply sub_mask_subs_complete in hpσ as ?.
+              erewrite subs_complete_subst_ext. all: eauto.
+              2: apply submask_refl.
               (* rewrite -> (PCUICClosed.subst_closedn ξ1).
               2:{
                 eapply PCUICClosed.closedn_subst.
