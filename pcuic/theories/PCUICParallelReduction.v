@@ -6643,6 +6643,70 @@ Section ParallelSubstitution.
           subst.
           apply all_nth_error_All2_mask_subst.
           --- intros j e.
+              rewrite lin_set_eq in hm2.
+              destruct (nth_error (linear_mask_init _) _) as [[]|] eqn:e3.
+              1,3: discriminate.
+              apply some_inj in hm2. subst.
+              unfold linear_mask_init in e.
+              rewrite firstn_list_init in e.
+              rewrite skipn_list_init in e.
+              apply nth_error_Some_length in e3 as ln.
+              rewrite linear_mask_init_length in ln.
+              replace (min i npat2) with i in e by lia.
+              eapply nth_error_app_dec in e as e'.
+              destruct e' as [[h e'] | [li e']].
+              1:{
+                rewrite list_init_length in h.
+                rewrite -> nth_error_list_init in e' by assumption.
+                discriminate.
+              }
+              rewrite list_init_length in li.
+              rewrite list_init_length in e'.
+              case_eq (j - i).
+              2:{
+                intros ? bot. rewrite bot in e'. cbn in e'.
+                apply nth_error_Some_length in e' as h.
+                rewrite list_init_length in h.
+                rewrite -> nth_error_list_init in e' by assumption.
+                discriminate.
+              }
+              intro h.
+              assert (j = i) by lia. subst. rewrite h in e'. clear h li e'.
+              rewrite e1.
+              rewrite 2!nth_error_map.
+              eapply subs_init_nth_error in e2 as e4.
+              rewrite e4. cbn.
+              eexists _, _. intuition eauto.
+              rewrite subst_app_simpl. cbn.
+              apply subs_complete_spec in hξ1 as cξ1.
+              destruct cξ1 as [lξ1 cξ1].
+              rewrite id_mask_length in lξ1.
+              rewrite lm2 in lξ1.
+              assert (hp1 : pattern npat1 p1).
+              { constructor. assumption. }
+              apply pattern_closedn in hp1.
+              apply sub_mask_masks in hpσ as ?.
+              apply sub_mask_subs_complete in hpσ as ?.
+              erewrite subs_complete_subst_ext. all: eauto.
+              2: apply submask_refl.
+
+
+              (* rewrite -> (PCUICClosed.subst_closedn ξ2).
+              2:{
+                apply subs_complete_spec in hξ1 as [l ?].
+                rewrite <- l.
+                apply sub_mask_length_subs in hpθ.
+                rewrite <- hpθ.
+                apply untyped_subslet_length in uθ.
+                rewrite uθ.
+                apply pattern_closedn in hp2.
+                assumption.
+              } *)
+
+
+
+
+          (* intros j e.
               rewrite 2!nth_error_map.
               rewrite lin_set_eq in hm2.
               destruct (nth_error (linear_mask_init _) _) as [[]|] eqn:e3.
@@ -6652,7 +6716,7 @@ Section ParallelSubstitution.
               rewrite firstn_list_init in e.
               replace (min i npat2) with i in e by lia.
               apply nth_error_app_dec in e as e'.
-              destruct e' as [e' | e'].
+              destruct e' as [e' | e']. *)
               (* 1:{
                 apply nth_error_Some_length in e' as l.
                 rewrite list_init_length in l.
@@ -6717,7 +6781,6 @@ Section ParallelSubstitution.
               2:{
                 eapply PCUICClosed.closedn_lift with (k := 0) (n := 0).
               } *) *)
-              all: give_up.
           --- intros j e.
               rewrite 2!nth_error_map.
               assert (i <> j).
