@@ -6911,26 +6911,102 @@ Section ParallelSubstitution.
   Qed.
 
   Lemma elim_unify_subst :
-    forall σ θ npat e1 e2 m1 m2,
-      elim_pattern npat e1 ->
-      elim_pattern npat e2 ->
-      elim_mask npat e1 = Some m1 ->
-      elim_mask npat e2 = Some m2 ->
+    forall σ θ e1 e2 m1 m2 Γ Δ1 Δ2,
+      assumption_context Δ1 ->
+      assumption_context Δ2 ->
+      let npat1 := #|Δ1| in
+      let npat2 := #|Δ2| in
+      elim_pattern npat1 e1 ->
+      elim_pattern npat2 e2 ->
+      elim_mask npat1 e1 = Some m1 ->
+      elim_mask npat2 e2 = Some m2 ->
+      untyped_subslet Γ σ Δ1 ->
+      untyped_subslet Γ θ Δ2 ->
       subst_elim σ 0 e1 = subst_elim θ 0 e2 ->
-      ∑ φ ψ,
-        All_mask_subst (pattern npat) m1 φ ×
-        All_mask_subst (pattern npat) m2 ψ ×
-        forall φ' ψ',
+      ∑ φ ψ ξ,
+        #|φ| = #|Δ1| ×
+        #|ψ| = #|Δ2| ×
+        let npat := (npat1 + npat2)%nat in
+        All (on_Some (pattern npat)) φ ×
+        All (on_Some (pattern npat)) ψ ×
+        masks m1 φ ×
+        masks m2 ψ ×
+        #|ξ| = npat ×
+        forall φ' ψ' ξ',
           subs_complete φ φ' ->
           subs_complete ψ ψ' ->
+          subs_complete ξ ξ' ->
+          All2_mask_subst eq m1 σ (map (option_map (subst0 ξ')) φ) ×
+          All2_mask_subst eq m2 θ (map (option_map (subst0 ξ')) ψ) ×
           subst_elim φ' 0 e1 = subst_elim ψ' 0 e2.
   Proof.
-    intros σ θ npat e1 e2 m1 m2 he1 he2 hm1 hm2 e.
-    induction he1 in m1, hm1, m2, hm2, θ, e2, he2, e |- *.
+    intros σ θ e1 e2 m1 m2 Γ Δ1 Δ2 aΔ1 aΔ2 npat1 npat2 he1 he2 hm1 hm2 uσ uθ e.
+    induction he1 in e2, he2, m1, hm1, m2, hm2, σ, uσ, θ, uθ, e |- *.
     - cbn in e. destruct he2. all: try discriminate.
       cbn in e. inversion e as [h]. clear e.
-      (* Now we have to deal with patterns *)
-  Abort.
+      eapply pattern_unify_subst in h. 4-9: eauto. 2,3: auto.
+      destruct h as [φ [ψ [ξ [lφ [lψ [pφ [pψ [mφ [mψ [lξ [mξ h]]]]]]]]]]].
+      exists φ, ψ, ξ.
+      repeat lazymatch goal with
+      | |- _ × _ => split
+      | |- let x := _ in _ => intro x
+      end.
+      all: auto.
+      intros φ' ψ' ξ' hφ hψ hξ.
+      specialize (h _ _ _ hφ hψ hξ) as [? [? ?]].
+      repeat lazymatch goal with
+      | |- _ × _ => split
+      end.
+      all: auto.
+      cbn. f_equal. assumption.
+    - cbn in e. destruct he2. all: try discriminate.
+      cbn in e. inversion e. subst. clear e.
+      rename H1 into e1, H2 into e2.
+      cbn in hm1.
+      repeat match type of hm1 with
+      | match ?x with _ => _ end = _ =>
+        let e := fresh "e" in
+        destruct x eqn:e ; [| discriminate]
+      end.
+      cbn in hm2.
+      repeat match type of hm2 with
+      | match ?x with _ => _ end = _ =>
+        let e := fresh "e" in
+        destruct x eqn:e ; [| discriminate]
+      end.
+      (* TODO Later *)
+      admit.
+    - cbn in e. destruct he2. all: try discriminate.
+      cbn in e. symmetry in e. inversion e. subst. clear e.
+      cbn in hm1. apply some_inj in hm1.
+      cbn in hm2. apply some_inj in hm2. subst.
+      eexists (subs_empty npat1), (subs_empty npat2).
+      eexists (subs_empty (npat1 + npat2)).
+      repeat lazymatch goal with
+      | |- _ × _ => split
+      | |- let x := _ in _ => intro x
+      end.
+      + rewrite subs_empty_length. auto.
+      + rewrite subs_empty_length. auto.
+      + apply All_on_Some_subs_empty.
+      + apply All_on_Some_subs_empty.
+      + apply masks_linear_mask_init.
+      + apply masks_linear_mask_init.
+      + rewrite subs_empty_length. auto.
+      + intros φ' ψ' ξ' hφ hψ hξ.
+        repeat lazymatch goal with
+        | |- _ × _ => split
+        end.
+        * rewrite map_list_init. cbn.
+          eapply All2_mask_subst_linear_mask_init.
+          apply untyped_subslet_length in uσ.
+          lia.
+        * rewrite map_list_init. cbn.
+          eapply All2_mask_subst_linear_mask_init.
+          apply untyped_subslet_length in uθ.
+          lia.
+        * cbn. reflexivity.
+  Admitted.
 
   Lemma lhs_unify_subst :
     forall Σ k decl ui r r' σ θ m Γ,
