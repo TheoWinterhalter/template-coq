@@ -6568,7 +6568,7 @@ Section ParallelSubstitution.
         match type of e1 with
         | _ = Some (subst0 _ ?t) => set (p1 := t) in *
         end.
-        case_eq (subs_init npat2 i p1).
+        case_eq (subs_init npat2 i (lift0 npat2 p1)).
         2:{
           intros e2. exfalso.
           unfold subs_init, subs_add in e2.
@@ -6588,24 +6588,22 @@ Section ParallelSubstitution.
         intros ψ e2.
         pose proof (sub_mask_Some m1 σ) as [pσ hpσ].
         { apply untyped_subslet_length in uσ. lia. }
-        exists (psleft npat2 (id_mask 0 m1)), (psleft npat2 ψ).
-        exists (id_mask 0 m2 ++ pσ).
+        exists (psleft npat2 (id_mask 0 m1)), ψ, (id_mask 0 m2 ++ pσ).
         repeat lazymatch goal with
         | |- _ × _ => split
         | |- let x := _ in _ => intro x
         | |- forall x, _ => intros φ ψ' ξ hφ hψ hξ
         end.
         * rewrite map_length. rewrite id_mask_length. assumption.
-        * rewrite map_length. apply subs_init_length in e2. assumption.
+        * apply subs_init_length in e2. assumption.
         * apply id_mask_pattern_subst with (i := 0) in lm1.
           apply All_on_Some_map.
           eapply All_on_Some_impl. 1: exact lm1.
           intros p hp. apply pattern_left. assumption.
-        * apply All_on_Some_map.
-          eapply All_on_Some_subs_init. 1: eauto.
+        * eapply All_on_Some_subs_init. 1: eauto.
           eapply pattern_left. constructor. assumption.
         * apply masks_psleft. apply id_mask_masks.
-        * apply masks_psleft. eapply masks_subs_init. all: eauto.
+        * eapply masks_subs_init. all: eauto.
         * rewrite app_length. rewrite id_mask_length.
           apply sub_mask_length_mask in hpσ.
           lia.
@@ -6673,7 +6671,7 @@ Section ParallelSubstitution.
               intro h.
               assert (j = i) by lia. subst. rewrite h in e'. clear h li e'.
               rewrite e1.
-              rewrite 2!nth_error_map.
+              rewrite nth_error_map.
               eapply subs_init_nth_error in e2 as e4.
               rewrite e4. cbn.
               eexists _, _. intuition eauto.
@@ -6689,6 +6687,7 @@ Section ParallelSubstitution.
               apply sub_mask_subs_complete in hpσ as ?.
               erewrite subs_complete_subst_ext. all: eauto.
               2: apply submask_refl.
+              give_up.
 
 
               (* rewrite -> (PCUICClosed.subst_closedn ξ2).
@@ -6782,7 +6781,7 @@ Section ParallelSubstitution.
                 eapply PCUICClosed.closedn_lift with (k := 0) (n := 0).
               } *) *)
           --- intros j e.
-              rewrite 2!nth_error_map.
+              rewrite nth_error_map.
               assert (i <> j).
               { intro e4. subst.
                 rewrite lin_set_eq in hm2.
@@ -6807,14 +6806,11 @@ Section ParallelSubstitution.
               }
               rewrite e2. cbn. reflexivity.
           --- apply untyped_subslet_length in uθ. lia.
-          --- rewrite 2!map_length. apply subs_init_length in e2. lia.
+          --- rewrite map_length. apply subs_init_length in e2. lia.
         * cbn. replace (i - 0) with i by lia.
           apply subs_complete_spec in hψ as [lψ hψ].
           apply subs_init_nth_error in e2 as e3.
-          erewrite hψ.
-          2:{
-            rewrite nth_error_map. rewrite e3. cbn. reflexivity.
-          }
+          apply hψ in e3. rewrite e3.
           rewrite lift0_id.
           (* apply id_mask_subst. all: eauto. *)
           (* We need facility to substitute some psleft.
