@@ -6840,11 +6840,8 @@ Section ParallelSubstitution.
           apply subs_init_nth_error in e2 as e3.
           apply hψ in e3. rewrite e3.
           rewrite lift0_id.
-          (* apply id_mask_subst. all: eauto. *)
-          (* We need facility to substitute some psleft.
-            Some lift problem though?
-          *)
-          admit.
+          eapply psleft_complete_subst. all: eauto.
+          constructor. assumption.
       + rewrite 2!subst_mkApps in e. cbn in e.
         apply (f_equal decompose_app) in e.
         rewrite -> 2!decompose_app_mkApps in e by auto.
