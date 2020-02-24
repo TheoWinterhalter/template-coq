@@ -7009,31 +7009,46 @@ Section ParallelSubstitution.
   Admitted.
 
   Lemma lhs_unify_subst :
-    forall Σ k decl ui r r' σ θ m Γ,
+    forall Σ k decl ui r r' σ θ m Γ m1 m2,
       wf Σ ->
       is_rewrite_rule Σ k decl r ->
       is_rewrite_rule Σ k decl r' ->
       let ss := symbols_subst k 0 ui #|decl.(symbols)| in
-      untyped_subslet Γ σ (subst_context ss 0 r.(pat_context)) ->
-      untyped_subslet Γ θ (subst_context ss 0 r'.(pat_context)) ->
+      let Δ1 := r.(pat_context) in
+      let Δ2 := r'.(pat_context) in
+      untyped_subslet Γ σ (subst_context ss 0 Δ1) ->
+      untyped_subslet Γ θ (subst_context ss 0 Δ2) ->
       r.(head) = r'.(head) ->
       m <= #|r.(elims)| ->
-      let npat := #|r.(pat_context)| in
-      let prelhs1 := mkElims (tRel (npat + r.(head))) (firstn m r.(elims)) in
+      let npat1 := #|Δ1| in
+      let npat2 := #|Δ2| in
+      let prelhs1 := mkElims (tRel (npat1 + r.(head))) (firstn m r.(elims)) in
       let prelhs2 := subst ss #|σ| prelhs1 in
       let lhs' := subst ss #|θ| (lhs r') in
       subst0 σ prelhs2 = subst0 θ lhs' ->
-      ∑ mask φ ψ,
-        linear_mask npat (firstn m r.(elims)) = Some mask ×
-        All_mask_subst (pattern npat) mask φ ×
-        All (pattern npat) ψ ×
-        forall φ',
+      linear_mask npat1 (firstn m r.(elims)) = Some m1 ×
+      (* TODO This is actually the full mask so you can replace it
+        and adapt accordingly.
+      *)
+      linear_mask npat2 r'.(elims) = Some m2 ×
+      ∑ φ ψ ξ,
+        #|φ| = #|Δ1| ×
+        #|ψ| = #|Δ2| ×
+        let npat := (npat1 + npat2)%nat in
+        All (on_Some (pattern npat)) φ ×
+        All (on_Some (pattern npat)) ψ ×
+        masks m1 φ × (* m1 linear_mask of prelhs *)
+        masks m2 ψ × (* m2 linear_mask of r' *)
+        #|ξ| = npat ×
+        forall φ' ψ' ξ',
           subs_complete φ φ' ->
-          subst0 φ' prelhs2 = subst0 ψ lhs'.
-          (* + decomposition of substitutions *)
-          (* + intermediary contexts (maybe the same one?) and untyped_subslet *)
+          subs_complete ψ ψ' ->
+          subs_complete ξ ξ' ->
+          All2_mask_subst eq m1 σ (map (option_map (subst0 ξ')) φ) ×
+          All2_mask_subst eq m2 θ (map (option_map (subst0 ξ')) ψ) ×
+          subst0 φ' prelhs2 = subst0 ψ' lhs'.
   Proof.
-    intros Σ k decl ui r r' σ θ m Γ hΣ hr hr' ss uσ uθ eh hm npat prelhs1
+    (* intros Σ k decl ui r r' σ θ m Γ hΣ hr hr' ss uσ uθ eh hm npat prelhs1
       prelhs2 lhs' e.
     subst prelhs1 prelhs2 lhs'.
     unfold lhs in e. rewrite <- eh in e.
@@ -7058,7 +7073,9 @@ Section ParallelSubstitution.
     apply symbols_subst_nth_error in e3. subst. cbn in e.
     apply (f_equal decompose_elims) in e.
     rewrite 2!mkElims_decompose_elims in e. cbn in e.
-    inversion e as [h]. clear e.
+    inversion e as [h]. clear e. *)
+
+
     (* Now we have to conclude on unification of eliminations.
       Since they have the same length we can do it pointwise.
     *)
