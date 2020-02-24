@@ -6111,15 +6111,103 @@ Section ParallelSubstitution.
   Lemma nth_error_app_dec :
     forall A (l l' : list A) n x,
       nth_error (l ++ l') n = Some x ->
-      (nth_error l n = Some x) +
-      (nth_error l' (n - #|l|) = Some x).
+      (n < #|l| /\ nth_error l n = Some x) +
+      (n >= #|l| /\ nth_error l' (n - #|l|) = Some x).
   Proof.
     intros A l l' n x e.
     destruct (Nat.ltb_spec0 n #|l|).
     - left. rewrite -> nth_error_app1 in e by assumption.
-      assumption.
+      intuition lia.
     - right. rewrite -> nth_error_app2 in e by lia.
-      assumption.
+      intuition lia.
+  Qed.
+
+  (* TODO MOVE *)
+  Lemma nth_error_firstn :
+    forall A (l : list A) n m x,
+      n < m ->
+      nth_error l n = Some x ->
+      nth_error (firstn m l) n = Some x.
+  Proof.
+    intros A l n m x h e.
+    induction l in n, m, x, h, e |- *.
+    - destruct n. all: discriminate.
+    - destruct n.
+      + cbn in e. apply some_inj in e. subst.
+        destruct m. 1: lia.
+        cbn. reflexivity.
+      + cbn in e.
+        destruct m. 1: lia.
+        cbn. apply IHl.
+        * lia.
+        * assumption.
+  Qed.
+
+  (* TODO MOVE *)
+  Lemma nth_error_skipn :
+    forall A (l : list A) n m x,
+      m <= n ->
+      nth_error l n = Some x ->
+      nth_error (skipn m l) (n - m) = Some x.
+  Proof.
+    intros A l n m x h e.
+    induction l in n, m, x, h, e |- *.
+    - destruct n. all: discriminate.
+    - destruct m.
+      + unfold skipn.
+        destruct n.
+        * cbn in e. cbn. assumption.
+        * cbn in e. cbn. assumption.
+      + rewrite skipn_S.
+        destruct n. 1: lia.
+        cbn. cbn in e. apply IHl.
+        * lia.
+        * assumption.
+  Qed.
+
+  Lemma subs_add_nth_error_neq :
+    forall n t σ θ i u,
+      subs_add n t σ = Some θ ->
+      n <> i ->
+      nth_error σ i = Some u ->
+      nth_error θ i = Some u.
+  Proof.
+    intros n t σ θ i u hadd neq e.
+    unfold subs_add in hadd.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in hadd. subst.
+    destruct (Nat.ltb_spec0 i n).
+    - rewrite nth_error_app1.
+      { rewrite firstn_length.
+        apply nth_error_Some_length in e1.
+        lia.
+      }
+      apply nth_error_firstn. all: auto.
+    - rewrite nth_error_app2.
+      { rewrite firstn_length. lia. }
+      rewrite firstn_length.
+      apply nth_error_Some_length in e1 as ?.
+      replace (min n #|σ|) with n by lia.
+      case_eq (i - n).
+      1:{ intro bot. lia. }
+      intros k ek.
+      cbn. replace k with (i - S n) by lia.
+      eapply nth_error_skipn.
+      + lia.
+      + assumption.
+  Qed.
+
+  Lemma subs_init_nth_error_neq :
+    forall npat n t σ i,
+      subs_init npat n t = Some σ ->
+      n <> i ->
+      i < npat ->
+      nth_error σ i = Some None.
+  Proof.
+    intros npat n t σ i e neq hi.
+    unfold subs_init in e.
+    eapply subs_add_nth_error_neq. all: eauto.
+    apply nth_error_list_init. assumption.
   Qed.
 
   Lemma pattern_unify_subst :
@@ -6225,50 +6313,84 @@ Section ParallelSubstitution.
         * apply id_mask_masks.
       + apply subs_complete_app_inv in hξ as [ξ1 [ξ2 [? [hξ1 hξ2]]]].
         subst.
-        apply untyped_subslet_length in uσ.
-        apply untyped_subslet_length in uθ.
-        assert (e : #|σ| = npat1) by auto.
-        assert (e' : #|θ| = npat2) by auto.
-        apply pattern_closedn in hp2.
-        clearbody npat1 npat2. clear - hm1 hm2 e1 e2 hp2 e e' hξ1 hξ2 hpθ.
-        induction npat1
-        in npat2, φ, n, σ, m1, hm1, m2, hm2, e1, e2, hp2, e, e', ξ1, hξ1, hpθ |- *.
-        1:{ cbn in hm1. destruct n. all: discriminate. }
-        cbn in hm1. destruct n.
-        * cbn in hm1. apply some_inj in hm1. subst.
-          destruct σ. 1: discriminate.
-          cbn in e1. apply some_inj in e1. subst.
-          cbn in e2. apply some_inj in e2. subst.
-          cbn.
-          constructor.
-          --- rewrite subst_app_simpl. cbn.
-              rewrite -> (PCUICClosed.subst_closedn ξ2).
-              2:{
-                apply subs_complete_spec in hξ1 as [l ?].
-                rewrite <- l.
-                apply sub_mask_length_subs in hpθ.
-                rewrite <- hpθ. assumption.
-              }
-              apply sub_mask_masks in hpθ as ?.
-              apply sub_mask_subs_complete in hpθ as ?.
-              eapply subs_complete_subst_ext. all: eauto.
-              apply submask_refl.
-          --- unfold skipn. rewrite map_list_init. cbn.
-              apply All2_mask_subst_linear_mask_init.
-              cbn in e. lia.
-        * cbn in hm1. destruct lin_set eqn:e3. 2: discriminate.
-          apply some_inj in hm1. subst.
-          destruct σ. 1: discriminate.
-          cbn in e1. cbn in e.
-          unfold subs_init, subs_add in e2.
-          cbn in e2.
-          destruct (nth_error (list_init _ _) _) as [[]|] eqn:e4.
+        apply all_nth_error_All2_mask_subst.
+        * intros i e.
+          rewrite lin_set_eq in hm1.
+          destruct (nth_error (linear_mask_init _) _) as [[]|] eqn:e3.
           1,3: discriminate.
-          apply some_inj in e2. subst. cbn.
-          constructor.
-          eapply IHnpat1. all: eauto.
-          unfold subs_init, subs_add. rewrite e4.
-          reflexivity.
+          apply some_inj in hm1. subst.
+          unfold linear_mask_init in e.
+          rewrite firstn_list_init in e.
+          rewrite skipn_list_init in e.
+          apply nth_error_Some_length in e3 as ln.
+          rewrite linear_mask_init_length in ln.
+          replace (min n npat1) with n in e by lia.
+          eapply nth_error_app_dec in e as e'.
+          destruct e' as [[h e'] | [li e']].
+          1:{
+            rewrite list_init_length in h.
+            rewrite -> nth_error_list_init in e' by assumption.
+            discriminate.
+          }
+          rewrite list_init_length in li.
+          rewrite list_init_length in e'.
+          case_eq (i - n).
+          2:{
+            intros ? bot. rewrite bot in e'. cbn in e'.
+            apply nth_error_Some_length in e' as h.
+            rewrite list_init_length in h.
+            rewrite -> nth_error_list_init in e' by assumption.
+            discriminate.
+          }
+          intro h.
+          assert (i = n) by lia. subst. rewrite h in e'. clear h li e'.
+          rewrite e1.
+          rewrite nth_error_map.
+          eapply subs_init_nth_error in e2 as e4.
+          rewrite e4. cbn.
+          eexists _, _. intuition eauto.
+          rewrite subst_app_simpl. cbn.
+          rewrite -> (PCUICClosed.subst_closedn ξ2).
+          2:{
+            apply subs_complete_spec in hξ1 as [l ?].
+            rewrite <- l.
+            apply sub_mask_length_subs in hpθ.
+            rewrite <- hpθ.
+            apply untyped_subslet_length in uθ.
+            rewrite uθ.
+            apply pattern_closedn in hp2.
+            assumption.
+          }
+          apply sub_mask_masks in hpθ as ?.
+          apply sub_mask_subs_complete in hpθ as ?.
+          eapply subs_complete_subst_ext. all: eauto.
+          apply submask_refl.
+        * intros i e.
+          rewrite nth_error_map.
+          assert (n <> i).
+          { intro e4. subst.
+            rewrite lin_set_eq in hm1.
+            destruct (nth_error (linear_mask_init _) _) as [[]|] eqn:e3.
+            1,3: discriminate.
+            apply some_inj in hm1. subst.
+            unfold linear_mask_init in e.
+            rewrite firstn_list_init in e.
+            rewrite skipn_list_init in e.
+            apply nth_error_Some_length in e3 as ln.
+            rewrite linear_mask_init_length in ln.
+            replace (min i npat1) with i in e by lia.
+            rewrite nth_error_app2 in e.
+            { rewrite list_init_length. auto. }
+            rewrite list_init_length in e. replace (i - i) with 0 in e by lia.
+            cbn in e. discriminate.
+          }
+          eapply subs_init_nth_error_neq in e2. 2: eauto.
+          2:{
+            apply nth_error_Some_length in e. lia.
+          }
+          rewrite e2. cbn. reflexivity.
+        * apply untyped_subslet_length in uσ. lia.
+        * rewrite map_length. apply subs_init_length in e2. lia.
       + apply subs_complete_app_inv in hξ as [ξ1 [ξ2 [? [hξ1 hξ2]]]].
         subst.
         apply all_nth_error_All2_mask_subst.
