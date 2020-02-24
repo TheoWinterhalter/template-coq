@@ -6715,99 +6715,12 @@ Section ParallelSubstitution.
               apply sub_mask_subs_complete in hpσ as ?.
               erewrite subs_complete_subst_ext. all: eauto.
               2: apply submask_refl.
-              give_up.
-
-
-              (* rewrite -> (PCUICClosed.subst_closedn ξ2).
-              2:{
-                apply subs_complete_spec in hξ1 as [l ?].
-                rewrite <- l.
-                apply sub_mask_length_subs in hpθ.
-                rewrite <- hpθ.
-                apply untyped_subslet_length in uθ.
-                rewrite uθ.
-                apply pattern_closedn in hp2.
-                assumption.
-              } *)
-
-
-
-
-          (* intros j e.
-              rewrite 2!nth_error_map.
-              rewrite lin_set_eq in hm2.
-              destruct (nth_error (linear_mask_init _) _) as [[]|] eqn:e3.
-              1,3: discriminate.
-              apply some_inj in hm2. subst.
-              unfold linear_mask_init in e.
-              rewrite firstn_list_init in e.
-              replace (min i npat2) with i in e by lia.
-              apply nth_error_app_dec in e as e'.
-              destruct e' as [e' | e']. *)
-              (* 1:{
-                apply nth_error_Some_length in e' as l.
-                rewrite list_init_length in l.
-                rewrite -> nth_error_list_init in e' by assumption.
-                discriminate.
-              }
-              rewrite list_init_length in e'.
-              case_eq (j - i).
-              2:{
-                intros m em. rewrite em in e'. cbn in e'.
-                rewrite skipn_list_init in e'.
-                rewrite -> nth_error_list_init in e'.
-                2:{
-                  apply nth_error_Some_length in e'.
-                  rewrite list_init_length in e'. assumption.
-                }
-                discriminate.
-              }
-              intros eji.
-              destruct (Nat.ltb_spec0 j i).
-              1:{
-                exfalso.
-                rewrite nth_error_app1 in e.
-                { rewrite list_init_length. assumption. }
-                rewrite -> nth_error_list_init in e by assumption.
-                discriminate.
-              }
-              assert (j = i) by lia. subst.
-              apply subs_init_nth_error in e2 as e4.
-              rewrite e4. cbn.
-              rewrite e1.
-              eexists _, _. intuition eauto.
-              rewrite subst_app_simpl. cbn.
-              apply subs_complete_spec in hξ1 as cξ1.
-              destruct cξ1 as [lξ1 cξ1].
-              rewrite id_mask_length in lξ1.
-              rewrite lm2 in lξ1.
-              assert (hp1 : pattern npat1 p1).
-              { constructor. assumption. }
-              apply pattern_closedn in hp1.
-              apply sub_mask_masks in hpσ as ?.
-              apply sub_mask_subs_complete in hpσ as ?.
-              erewrite subs_complete_subst_ext. all: eauto.
-              2: apply submask_refl.
-              (* rewrite -> (PCUICClosed.subst_closedn ξ1).
-              2:{
-                eapply PCUICClosed.closedn_subst.
-              } *)
               change #|ξ1| with (0 + #|ξ1|).
               rewrite <- lξ1.
               rewrite <- commut_lift_subst_rec by auto.
-              apply subs_complete_spec in hξ2 as cξ2.
-              destruct cξ2 as [lξ2 cξ2].
-              apply sub_mask_length_mask in hpσ as ?.
-              rewrite -> lift_closed.
-              2:{
-                eapply PCUICClosed.closedn_subst with (k := 0).
-                - give_up. (* ??? Most likely NOT *)
-                - cbn. replace #|ξ2| with npat1 by lia. assumption.
-              }
-              (* rewrite -> (PCUICClosed.subst_closedn ξ1).
-              2:{
-                eapply PCUICClosed.closedn_lift with (k := 0) (n := 0).
-              } *) *)
+              rewrite lξ1.
+              rewrite -> simpl_subst_k by auto.
+              reflexivity.
           --- intros j e.
               rewrite nth_error_map.
               assert (i <> j).
@@ -6995,7 +6908,7 @@ Section ParallelSubstitution.
               specialize (h2 _ _ _ scφ2 scψ2 scξ2) as [eφ2 [eψ2 e2]].
               rewrite e2. f_equal.
               assumption.
-  Abort.
+  Qed.
 
   Lemma elim_unify_subst :
     forall σ θ npat e1 e2 m1 m2,
