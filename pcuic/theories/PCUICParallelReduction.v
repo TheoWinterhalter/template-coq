@@ -6210,7 +6210,7 @@ Section ParallelSubstitution.
     apply nth_error_list_init. assumption.
   Qed.
 
-  Inductive All2_mask {A} (P : A -> A -> Type) :
+  (* Inductive All2_mask {A} (P : A -> A -> Type) :
     list bool -> list A -> list A -> Type :=
   | All2_mask_nil : All2_mask P [] [] []
   | All2_mask_true :
@@ -6263,16 +6263,39 @@ Section ParallelSubstitution.
       eexists (tRel 0 :: φ). cbn. split.
       + constructor. assumption.
       + constructor. assumption.
+  Qed. *)
+
+  Lemma subs_merge_map :
+    forall σ1 σ2 σ f,
+      subs_merge σ1 σ2 = Some σ ->
+      subs_merge (map (option_map f) σ1) (map (option_map f) σ2) =
+      Some (map (option_map f) σ).
+  Proof.
+    intros σ1 σ2 σ f h.
+    induction σ1 as [| [] σ1 ih] in σ2, σ, h |- *.
+    - destruct σ2. 2: discriminate.
+      cbn in h. apply some_inj in h. subst.
+      reflexivity.
+    - destruct σ2 as [| [] σ2]. 1,2: discriminate.
+      cbn in h. destruct subs_merge eqn:e. 2: discriminate.
+      apply some_inj in h. subst.
+      cbn. erewrite -> ih by eauto.
+      reflexivity.
+    - destruct σ2 as [| o σ2]. 1: discriminate.
+      cbn in h. destruct subs_merge eqn:e. 2: discriminate.
+      apply some_inj in h. subst.
+      cbn. erewrite -> ih by eauto.
+      reflexivity.
   Qed.
 
-  (* Lemma psleft_complete_subst :
-    forall p m npat σ,
-      (* pattern npat p -> *)
-      pattern_mask npat p = Some m ->
-      subs_complete (id_mask 0 m) σ ->
-      subst0 σ p = .
+  Lemma psleft_complete_subst :
+    forall p m npat1 npat2 σ,
+      pattern npat1 p ->
+      pattern_mask npat1 p = Some m ->
+      subs_complete (psleft npat2 (id_mask 0 m)) σ ->
+      subst0 σ p = lift0 npat2 p.
   Proof.
-    intros p m npat σ hp hm hσ.
+    intros p m npat1 npat2 σ hp hm hσ.
     induction hp as [n hn | ind n ui args pa ih]
     in m, hm, σ, hσ |- * using pattern_all_rect.
     - cbn. replace (n - 0) with n by lia.
@@ -6287,7 +6310,7 @@ Section ParallelSubstitution.
       { rewrite linear_mask_init_length. lia. }
       rewrite linear_mask_init_length in e2.
       match type of e2 with
-      | ?n = _ => replace n with npat in e2 by lia
+      | ?n = _ => replace n with npat1 in e2 by lia
       end.
       destruct (nth_error (id_mask 0 m) n) as [[]|] eqn:e.
       3:{
@@ -6301,43 +6324,48 @@ Section ParallelSubstitution.
         { rewrite id_mask_length. rewrite firstn_length. lia. }
         rewrite id_mask_length in e. rewrite firstn_length in e.
         rewrite linear_mask_init_length in e.
-        replace (n - min n npat) with 0 in e by lia.
+        replace (n - min n npat1) with 0 in e by lia.
         cbn in e. discriminate.
       }
-      apply hσ in e as e3. rewrite e3.
+      specialize (hσ n (lift0 npat2 t)).
+      forward hσ.
+      { rewrite nth_error_map. rewrite e. cbn. reflexivity. }
+      rewrite hσ.
       rewrite lift0_id.
-      clear - e.
-      replace n with (0 + n) by lia.
-      revert e. generalize 0. intros i e.
-      induction m as [| [] m ih] in i, n, t, e |- *.
-      + cbn in e. destruct n. all: discriminate.
-      + cbn in e. destruct n.
-        * cbn in e. inversion e. f_equal. lia.
-        * cbn in e. apply ih in e. subst.
-          f_equal. lia.
-      + cbn in e. destruct n.
-        * cbn in e. discriminate.
-        * cbn in e. apply ih in e. subst.
-          f_equal. lia.
-    - rewrite subst_mkApps. cbn. f_equal.
+      rewrite nth_error_id_mask in e.
+      { subst. rewrite nth_error_app2.
+        { rewrite firstn_length. lia. }
+        rewrite firstn_length.
+        rewrite linear_mask_init_length.
+        match goal with
+        | |- nth_error _ ?n = _ => replace n with 0 by lia
+        end.
+        cbn. reflexivity.
+      }
+      cbn in e. inversion e. subst.
+      cbn. reflexivity.
+    - rewrite subst_mkApps. cbn.
+      rewrite lift_mkApps. cbn.
+      f_equal.
       eapply All_prod in pa. 2: exact ih.
       clear ih.
       induction pa as [| p l [ihp hp] hl ih]
       in σ, hσ, m, hm |- * using All_rev_rect.
       1: reflexivity.
-      rewrite map_app. cbn.
+      rewrite 2!map_app. cbn.
       rewrite <- mkApps_nested in hm. cbn in hm.
       destruct pattern_mask eqn:e1. 2: discriminate.
       destruct (pattern_mask _ p) eqn:e2. 2: discriminate.
       specialize ih with (1 := eq_refl).
       specialize ihp with (1 := eq_refl).
       apply lin_merge_id_mask with (i := 0) in hm as sm.
+      eapply subs_merge_map in sm.
       eapply subs_merge_complete in sm. 2: eassumption.
       destruct sm as [? ?].
       f_equal.
       + apply ih. assumption.
       + f_equal. apply ihp. assumption.
-  Qed. *)
+  Qed.
 
   Lemma pattern_unify_subst :
     forall σ θ p1 p2 m1 m2 Γ Δ1 Δ2,
