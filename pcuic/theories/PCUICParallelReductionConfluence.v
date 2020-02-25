@@ -1184,6 +1184,8 @@ Section Confluence.
 
     *)
 
+    (* Fixpoint rho_ext (ext : option (??)) Γ t : term *)
+
 
     Fixpoint rho Γ t : term :=
       (* if isAppSymb t then *)

@@ -4558,28 +4558,6 @@ Section ParallelSubstitution.
     - cbn. f_equal. rewrite ih. f_equal. f_equal. lia.
   Qed.
 
-  (* TODO MOVE *)
-  Lemma All_rev_rect :
-    forall A P (R : list A -> Type),
-      R [] ->
-      (forall x l,
-        P x ->
-        All P l ->
-        R l ->
-        R (l ++ [x])
-      ) ->
-      forall l, All P l -> R l.
-  Proof.
-    intros A P R Rnil Rcons l h.
-    rewrite <- rev_involutive.
-    apply All_rev in h. revert h.
-    generalize (List.rev l). clear l.
-    intros l h. induction h.
-    - apply Rnil.
-    - cbn. apply Rcons. all: auto.
-      apply All_rev. assumption.
-  Qed.
-
   Lemma lin_merge_id_mask :
     forall m1 m2 m i,
       lin_merge m1 m2 = Some m ->

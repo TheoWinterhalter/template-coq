@@ -313,3 +313,114 @@ Proof.
   end.
   cbn. reflexivity.
 Qed.
+
+(** Matching *)
+
+Definition assert_true (b : bool) : option () :=
+  if b then ret () else None.
+
+Definition assert_eq {A} `{ReflectEq A} (x y : A) : option () :=
+  assert_true (eqb x y).
+
+Fixpoint match_pattern npat p t :=
+  match p with
+  | tRel n => subs_init npat n t
+  | tConstruct ind n ui =>
+    assert_eq p t ;;
+    ret (subs_empty npat)
+  | tApp p1 p2 =>
+    match t with
+    | tApp u v =>
+      σ <- match_pattern npat p1 u ;;
+      θ <- match_pattern npat p2 v ;;
+      subs_merge σ θ
+    | _ => None
+    end
+  | _ => None
+  end.
+
+(* We could do it on the proof of pattern *)
+(* Fixpoint match_pattern {npat p} (hp : pattern npat p) t :=
+  match hp with
+  | pattern_variable n hn =>
+    subs_init npat n t
+  | pattern_construct ind n ui args hargs =>
+    let '(u,l) decompose_app t in
+    assert_eq (tConstruct ind n ui) u ;;
+    ??
+  end. *)
+
+(* TODO MOVE *)
+Lemma All_rev_rect :
+  forall A P (R : list A -> Type),
+    R [] ->
+    (forall x l,
+      P x ->
+      All P l ->
+      R l ->
+      R (l ++ [x])
+    ) ->
+    forall l, All P l -> R l.
+Proof.
+  intros A P R Rnil Rcons l h.
+  rewrite <- rev_involutive.
+  apply All_rev in h. revert h.
+  generalize (List.rev l). clear l.
+  intros l h. induction h.
+  - apply Rnil.
+  - cbn. apply Rcons. all: auto.
+    apply All_rev. assumption.
+Qed.
+
+Ltac assert_eq e :=
+  match type of e with
+  | context C [ assert_eq ?x ?y ] =>
+    let C1 := context C [ assert_true (eqb x y) ] in
+    let C2 := context C [ ret () ] in
+    change C1 in e ;
+    destruct (eqb_spec x y) ; [
+      change C2 in e
+    | discriminate
+    ]
+  end.
+
+Lemma match_pattern_sound :
+  forall npat p t σ,
+    pattern npat p ->
+    match_pattern npat p t = Some σ ->
+    forall θ,
+      subs_complete σ θ ->
+      t = subst0 θ p.
+Proof.
+  intros npat p t σ hp e θ hc.
+  induction hp
+  as [n hn | ind n ui args ha ih]
+  in t, σ, e, θ, hc |- *
+  using pattern_all_rect.
+  - cbn in e. cbn.
+    replace (n - 0) with n by lia.
+    eapply subs_init_nth_error in e.
+    apply subs_complete_spec in hc as [l h].
+    apply h in e. rewrite e.
+    rewrite lift0_id. reflexivity.
+  - eapply All_prod in ih. 2: exact ha.
+    clear ha.
+    induction ih
+    as [| p args [hp ihp] _ ih]
+    in t, σ, e, θ, hc |- *
+    using All_rev_rect.
+    + cbn. unfold mkApps in e.
+      unfold match_pattern in e.
+      assert_eq e. auto.
+    + rewrite <- mkApps_nested. cbn.
+      rewrite <- mkApps_nested in e. cbn in e.
+      destruct t. all: try discriminate.
+      destruct match_pattern eqn:e1. 2: discriminate.
+      move e at top.
+      destruct match_pattern eqn:e2. 2: discriminate.
+      eapply subs_merge_complete in e as sc. 2: eassumption.
+      destruct sc as [? ?].
+      eapply ihp in e2. 2: eassumption.
+      eapply ih in e1. 2: eassumption.
+      subst. reflexivity.
+Qed.
