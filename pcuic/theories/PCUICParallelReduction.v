@@ -7009,7 +7009,7 @@ Section ParallelSubstitution.
   Admitted.
 
   Lemma lhs_unify_subst :
-    forall Σ k decl ui r r' σ θ m Γ m1 m2,
+    forall Σ k decl ui r r' σ θ m Γ m1,
       wf Σ ->
       is_rewrite_rule Σ k decl r ->
       is_rewrite_rule Σ k decl r' ->
@@ -7027,26 +7027,20 @@ Section ParallelSubstitution.
       let lhs' := subst ss #|θ| (lhs r') in
       subst0 σ prelhs2 = subst0 θ lhs' ->
       linear_mask npat1 (firstn m r.(elims)) = Some m1 ×
-      (* TODO This is actually the full mask so you can replace it
-        and adapt accordingly.
-      *)
-      linear_mask npat2 r'.(elims) = Some m2 ×
       ∑ φ ψ ξ,
         #|φ| = #|Δ1| ×
         #|ψ| = #|Δ2| ×
         let npat := (npat1 + npat2)%nat in
         All (on_Some (pattern npat)) φ ×
-        All (on_Some (pattern npat)) ψ ×
+        All (pattern npat) ψ ×
         masks m1 φ × (* m1 linear_mask of prelhs *)
-        masks m2 ψ × (* m2 linear_mask of r' *)
         #|ξ| = npat ×
-        forall φ' ψ' ξ',
+        forall φ' ξ',
           subs_complete φ φ' ->
-          subs_complete ψ ψ' ->
           subs_complete ξ ξ' ->
           All2_mask_subst eq m1 σ (map (option_map (subst0 ξ')) φ) ×
-          All2_mask_subst eq m2 θ (map (option_map (subst0 ξ')) ψ) ×
-          subst0 φ' prelhs2 = subst0 ψ' lhs'.
+          θ = map (subst0 ξ') ψ ×
+          subst0 φ' prelhs2 = subst0 ψ lhs'.
   Proof.
     (* intros Σ k decl ui r r' σ θ m Γ hΣ hr hr' ss uσ uθ eh hm npat prelhs1
       prelhs2 lhs' e.
