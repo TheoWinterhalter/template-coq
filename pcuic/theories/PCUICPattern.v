@@ -424,3 +424,154 @@ Proof.
       eapply ih in e1. 2: eassumption.
       subst. reflexivity.
 Qed.
+
+Lemma nth_error_list_init :
+  forall A (x : A) n l,
+    n < l ->
+    nth_error (list_init x l) n = Some x.
+Proof.
+  intros A x n l h.
+  induction l in n, h |- *. 1: lia.
+  cbn. destruct n.
+  - cbn. reflexivity.
+  - cbn. apply IHl. lia.
+Qed.
+
+Lemma nth_error_subs_empty :
+  forall npat n,
+    n < npat ->
+    nth_error (subs_empty npat) n = Some None.
+Proof.
+  intros npat n h.
+  apply nth_error_list_init. assumption.
+Qed.
+
+(* Lemma list_init_length :
+  forall A (x : A) n,
+    #|list_init x n| = n.
+Proof.
+  intros A x n. induction n. 1: reflexivity.
+  cbn. f_equal. assumption.
+Qed. *)
+
+Lemma firstn_list_init :
+  forall A n m (x : A),
+    firstn n (list_init x m) = list_init x (min n m).
+Proof.
+  intros A n m x.
+  induction n in m |- *. 1: reflexivity.
+  destruct m. 1: reflexivity.
+  cbn. f_equal. apply IHn.
+Qed.
+
+Lemma skipn_list_init :
+  forall A n m (x : A),
+    skipn n (list_init x m) = list_init x (m - n).
+Proof.
+  intros A n m x.
+  induction m in n |- *.
+  - cbn. rewrite skipn_nil. reflexivity.
+  - destruct n. 1: reflexivity.
+    cbn. apply IHm.
+Qed.
+
+Lemma nth_error_app_dec :
+  forall A (l l' : list A) n x,
+    nth_error (l ++ l') n = Some x ->
+    (n < #|l| /\ nth_error l n = Some x) +
+    (n >= #|l| /\ nth_error l' (n - #|l|) = Some x).
+Proof.
+  intros A l l' n x e.
+  destruct (Nat.ltb_spec0 n #|l|).
+  - left. rewrite -> nth_error_app1 in e by assumption.
+    intuition lia.
+  - right. rewrite -> nth_error_app2 in e by lia.
+    intuition lia.
+Qed.
+
+Lemma subs_complete_subs_empty :
+  forall npat σ,
+    #|σ| = npat ->
+    subs_complete (subs_empty npat) σ.
+Proof.
+  intros npat σ eσ.
+  apply subs_complete_spec. split.
+  - rewrite subs_empty_length. auto.
+  - intros n t e.
+    apply nth_error_Some_length in e as l.
+    rewrite subs_empty_length in l.
+    rewrite nth_error_subs_empty in e by auto.
+    discriminate.
+Qed.
+
+Lemma match_pattern_complete :
+  forall npat p σ,
+    pattern npat p ->
+    #|σ| = npat ->
+    ∑ θ,
+      match_pattern npat p (subst0 σ p) = Some θ ×
+      subs_complete θ σ.
+Proof.
+  intros npat p σ hp eσ.
+  induction hp
+  as [n hn | ind n ui args ha ih]
+  in σ, eσ |- *
+  using pattern_all_rect.
+  - unfold match_pattern. cbn.
+    replace (n - 0) with n by lia.
+    destruct nth_error eqn:e.
+    2:{ apply nth_error_None in e. exfalso. lia. }
+    rewrite lift0_id.
+    unfold subs_init, subs_add.
+    rewrite nth_error_subs_empty. 2: auto.
+    eexists. intuition eauto.
+    rewrite firstn_list_init. rewrite skipn_list_init.
+    replace (min n npat) with n by lia.
+    apply subs_complete_spec. split.
+    + rewrite app_length. cbn.
+      rewrite 2!list_init_length. lia.
+    + intros i u ei.
+      eapply nth_error_app_dec in ei as [[hi ei] | [hi ei]].
+      1:{
+        rewrite list_init_length in hi.
+        rewrite -> nth_error_list_init in ei by auto.
+        discriminate.
+      }
+      rewrite list_init_length in ei. rewrite list_init_length in hi.
+      case_eq (i - n).
+      2:{
+        intros k ek.
+        rewrite ek in ei. cbn in ei.
+        apply nth_error_Some_length in ei as l.
+        rewrite list_init_length in l.
+        rewrite -> nth_error_list_init in ei by auto.
+        discriminate.
+      }
+      intros hh. assert (i = n) by lia. subst.
+      rewrite hh in ei. clear hh hi.
+      cbn in ei. inversion ei. subst.
+      assumption.
+  - eapply All_prod in ih. 2: exact ha.
+    clear ha.
+    induction ih
+    as [| p args [hp ihp] _ ih]
+    (* in σ, eσ |- * *)
+    using All_rev_rect.
+    + unfold mkApps. unfold match_pattern.
+      unfold subst. unfold assert_eq.
+      match goal with
+      | |- context [ eqb ?x ?y ] =>
+        destruct (eqb_spec x y)
+      end.
+      2:{ exfalso. auto. }
+      cbn.
+      eexists. intuition eauto.
+      apply subs_complete_subs_empty.
+      assumption.
+    + specialize (ihp σ). forward ihp by auto.
+      destruct ihp as [θ1 [e1 c1]].
+      destruct ih as [θ2 [e2 c2]].
+      rewrite <- mkApps_nested. cbn.
+      rewrite e2. rewrite e1.
+      (* TODO Missing linearity to conclude *)
+Abort.

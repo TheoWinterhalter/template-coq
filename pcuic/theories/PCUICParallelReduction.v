@@ -3533,47 +3533,6 @@ Section ParallelSubstitution.
         pred1 Σ (Γ ,, vass na A) (Γ' ,, vass na' A') u v'.
   Admitted. *)
 
-  Lemma list_init_length :
-    forall A (x : A) n,
-      #|list_init x n| = n.
-  Proof.
-    intros A x n. induction n. 1: reflexivity.
-    cbn. f_equal. assumption.
-  Qed.
-
-  Lemma nth_error_list_init :
-    forall A (x : A) n l,
-      n < l ->
-      nth_error (list_init x l) n = Some x.
-  Proof.
-    intros A x n l h.
-    induction l in n, h |- *. 1: lia.
-    cbn. destruct n.
-    - cbn. reflexivity.
-    - cbn. apply IHl. lia.
-  Qed.
-
-  Lemma firstn_list_init :
-    forall A n m (x : A),
-      firstn n (list_init x m) = list_init x (min n m).
-  Proof.
-    intros A n m x.
-    induction n in m |- *. 1: reflexivity.
-    destruct m. 1: reflexivity.
-    cbn. f_equal. apply IHn.
-  Qed.
-
-  Lemma skipn_list_init :
-    forall A n m (x : A),
-      skipn n (list_init x m) = list_init x (m - n).
-  Proof.
-    intros A n m x.
-    induction m in n |- *.
-    - cbn. rewrite skipn_nil. reflexivity.
-    - destruct n. 1: reflexivity.
-      cbn. rewrite skipn_S. apply IHm.
-  Qed.
-
   Lemma subs_add_empty :
     forall n t l,
       n < l ->
@@ -6084,20 +6043,6 @@ Section ParallelSubstitution.
     all: cbn.
     all: constructor.
     all: auto.
-  Qed.
-
-  Lemma nth_error_app_dec :
-    forall A (l l' : list A) n x,
-      nth_error (l ++ l') n = Some x ->
-      (n < #|l| /\ nth_error l n = Some x) +
-      (n >= #|l| /\ nth_error l' (n - #|l|) = Some x).
-  Proof.
-    intros A l l' n x e.
-    destruct (Nat.ltb_spec0 n #|l|).
-    - left. rewrite -> nth_error_app1 in e by assumption.
-      intuition lia.
-    - right. rewrite -> nth_error_app2 in e by lia.
-      intuition lia.
   Qed.
 
   (* TODO MOVE *)
