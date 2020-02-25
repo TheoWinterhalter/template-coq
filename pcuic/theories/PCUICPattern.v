@@ -265,34 +265,34 @@ Lemma subs_merge_complete :
 Proof.
   intros s1 s2 s e s' hs. induction hs in s1, s2, e |- *.
   - assert (h : s1 = [] /\ s2 = []).
-  { induction s1 as [| [] s1 ih] in s2, e |- *.
-    - destruct s2.
-      + intuition auto.
-      + cbn in e. discriminate.
-    - destruct s2 as [| [] s2]. 1-2: discriminate.
-      cbn in e. destruct subs_merge eqn:e1. all: discriminate.
-    - destruct s2 as [| [] s2]. 1: discriminate.
-      + cbn in e. destruct subs_merge eqn:e1. all: discriminate.
-      + cbn in e. destruct subs_merge eqn:e1. all: discriminate.
-  }
-  destruct h. subst. intuition constructor.
-- destruct s1 as [| [] s1], s2 as [| [] s2]. all: try discriminate.
-  + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-    apply some_inj in e. inversion e. subst. clear e.
-    eapply IHhs in es as [h1 h2].
-    intuition (constructor ; auto).
-  + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-    apply some_inj in e. inversion e. subst. clear e.
-    eapply IHhs in es as [h1 h2].
-    intuition (constructor ; auto).
-  + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-- destruct s1 as [| [] s1], s2 as [| [] s2]. all: try discriminate.
-  + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-  + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
-  + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
-    inversion e. subst.
-    eapply IHhs in es as [h1 h2].
-    intuition (constructor ; auto).
+    { induction s1 as [| [] s1 ih] in s2, e |- *.
+      - destruct s2.
+        + intuition auto.
+        + cbn in e. discriminate.
+      - destruct s2 as [| [] s2]. 1-2: discriminate.
+        cbn in e. destruct subs_merge eqn:e1. all: discriminate.
+      - destruct s2 as [| [] s2]. 1: discriminate.
+        + cbn in e. destruct subs_merge eqn:e1. all: discriminate.
+        + cbn in e. destruct subs_merge eqn:e1. all: discriminate.
+    }
+    destruct h. subst. intuition constructor.
+  - destruct s1 as [| [] s1], s2 as [| [] s2]. all: try discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      apply some_inj in e. inversion e. subst. clear e.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      apply some_inj in e. inversion e. subst. clear e.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+  - destruct s1 as [| [] s1], s2 as [| [] s2]. all: try discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. all: discriminate.
+    + cbn in e. destruct (subs_merge s1 s2) eqn: es. 2: discriminate.
+      inversion e. subst.
+      eapply IHhs in es as [h1 h2].
+      intuition (constructor ; auto).
 Qed.
 
 Lemma subs_init_nth_error :
@@ -504,18 +504,186 @@ Proof.
     discriminate.
 Qed.
 
+Inductive masks : list bool -> partial_subst -> Type :=
+| masks_nil : masks [] []
+| masks_true :
+    forall m σ t,
+      masks m σ ->
+      masks (true :: m) (Some t :: σ)
+| masks_false :
+    forall m σ,
+      masks m σ ->
+      masks (false :: m) (None :: σ).
+
+Lemma lin_set_eq :
+  forall n m,
+    lin_set n m =
+    match nth_error m n with
+    | Some true => None
+    | Some false => Some (firstn n m ++ true :: skipn (S n) m)
+    | None => None
+    end.
+Proof.
+  intros n m.
+  induction n in m |- *.
+  - cbn. destruct m as [| [] m]. all: reflexivity.
+  - cbn. destruct m as [| [] m].
+    + reflexivity.
+    + destruct lin_set eqn:e.
+      * cbn. rewrite IHn in e.
+        destruct nth_error as [[]|] eqn: e1. 1,3: discriminate.
+        apply some_inj in e. subst.
+        reflexivity.
+      * cbn. rewrite IHn in e.
+        destruct nth_error as [[]|] eqn: e1. 2: discriminate.
+        all: reflexivity.
+    + destruct lin_set eqn:e.
+      * cbn. rewrite IHn in e.
+        destruct nth_error as [[]|] eqn: e1. 1,3: discriminate.
+        apply some_inj in e. subst.
+        reflexivity.
+      * cbn. rewrite IHn in e.
+        destruct nth_error as [[]|] eqn: e1. 2: discriminate.
+        all: reflexivity.
+Qed.
+
+Lemma masks_app :
+  forall m1 m2 σ1 σ2,
+    masks m1 σ1 ->
+    masks m2 σ2 ->
+    masks (m1 ++ m2) (σ1 ++ σ2).
+Proof.
+  intros m1 m2 σ1 σ2 h1 h2.
+  induction h1 in m2, σ2, h2 |- *.
+  - assumption.
+  - cbn. constructor.
+    apply IHh1. assumption.
+  - cbn. constructor.
+    apply IHh1. assumption.
+Qed.
+
+Lemma masks_firstn :
+  forall m σ n,
+    masks m σ ->
+    masks (firstn n m) (firstn n σ).
+Proof.
+  intros m σ n h.
+  induction h in n |- *.
+  - destruct n. all: constructor.
+  - destruct n.
+    + cbn. constructor.
+    + cbn. constructor. apply IHh.
+  - destruct n.
+  + cbn. constructor.
+  + cbn. constructor. apply IHh.
+Qed.
+
+Lemma masks_skipn :
+  forall m σ n,
+    masks m σ ->
+    masks (skipn n m) (skipn n σ).
+Proof.
+  intros m σ n h.
+  induction h in n |- *.
+  - destruct n. all: constructor.
+  - destruct n.
+    + unfold skipn. constructor. assumption.
+    + rewrite 2!skipn_S. apply IHh.
+  - destruct n.
+    + unfold skipn. constructor. assumption.
+    + rewrite 2!skipn_S. apply IHh.
+Qed.
+
+Lemma masks_linear_mask_init :
+  forall n,
+    masks (linear_mask_init n) (subs_empty n).
+Proof.
+  intro n. induction n.
+  - constructor.
+  - cbn. constructor. assumption.
+Qed.
+
+Lemma masks_merge :
+  forall m1 m2 m σ1 σ2,
+    lin_merge m1 m2 = Some m ->
+    masks m1 σ1 ->
+    masks m2 σ2 ->
+    ∑ σ,
+      subs_merge σ1 σ2 = Some σ ×
+      masks m σ.
+Proof.
+  intros m1 m2 m σ1 σ2 hm h1 h2.
+  induction h1 in m2, m, hm, σ2, h2 |- *.
+  - destruct m2. 2: discriminate.
+    cbn in hm. apply some_inj in hm. subst.
+    inversion h2. subst.
+    eexists. intuition reflexivity.
+  - destruct m2 as [| [] m2]. 1,2: discriminate.
+    cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
+    apply some_inj in hm. subst.
+    inversion h2. subst.
+    specialize IHh1 with (1 := e) (2 := H0).
+    destruct IHh1 as [σ' [e1 h]].
+    cbn. rewrite e1.
+    eexists. intuition eauto.
+    constructor. assumption.
+  - destruct m2 as [| b m2]. 1: discriminate.
+    cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
+    apply some_inj in hm. subst.
+    inversion h2.
+    + subst.
+      specialize IHh1 with (1 := e) (2 := H2).
+      destruct IHh1 as [σ' [e1 h]].
+      cbn. rewrite e1.
+      eexists. intuition eauto.
+      constructor. assumption.
+    + subst.
+      specialize IHh1 with (1 := e) (2 := H2).
+      destruct IHh1 as [σ' [e1 h]].
+      cbn. rewrite e1.
+      eexists. intuition eauto.
+      constructor. assumption.
+Qed.
+
+Lemma subs_complete_merge :
+  forall σ1 σ2 σ θ,
+    subs_merge σ1 σ2 = Some σ ->
+    subs_complete σ1 θ ->
+    subs_complete σ2 θ ->
+    subs_complete σ θ.
+Proof.
+  intros σ1 σ2 σ θ me c1 c2.
+  induction c1 in σ2, σ, me, c2 |- *.
+  - destruct σ2. 2: discriminate.
+    cbn in me. apply some_inj in me. subst. constructor.
+  - destruct σ2 as [| [] σ2]. 1,2: discriminate.
+    cbn in me. destruct subs_merge eqn:e. 2: discriminate.
+    apply some_inj in me. subst.
+    constructor. eapply IHc1.
+    + eauto.
+    + inversion c2. assumption.
+  - destruct σ2 as [| o σ2]. 1: discriminate.
+    cbn in me. destruct subs_merge eqn:e. 2: discriminate.
+    apply some_inj in me. subst.
+    inversion c2.
+    + subst. constructor. eapply IHc1. all: eauto.
+    + subst. constructor. eapply IHc1. all: eauto.
+Qed.
+
 Lemma match_pattern_complete :
-  forall npat p σ,
+  forall npat p m σ,
     pattern npat p ->
+    pattern_mask npat p = Some m ->
     #|σ| = npat ->
     ∑ θ,
+      masks m θ ×
       match_pattern npat p (subst0 σ p) = Some θ ×
       subs_complete θ σ.
 Proof.
-  intros npat p σ hp eσ.
+  intros npat p m σ hp hm eσ.
   induction hp
   as [n hn | ind n ui args ha ih]
-  in σ, eσ |- *
+  in m, hm |- *
   using pattern_all_rect.
   - unfold match_pattern. cbn.
     replace (n - 0) with n by lia.
@@ -524,40 +692,47 @@ Proof.
     rewrite lift0_id.
     unfold subs_init, subs_add.
     rewrite nth_error_subs_empty. 2: auto.
+    cbn in hm. rewrite lin_set_eq in hm.
+    rewrite -> nth_error_list_init in hm by auto.
+    apply some_inj in hm. subst.
     eexists. intuition eauto.
-    rewrite firstn_list_init. rewrite skipn_list_init.
-    replace (min n npat) with n by lia.
-    apply subs_complete_spec. split.
-    + rewrite app_length. cbn.
-      rewrite 2!list_init_length. lia.
-    + intros i u ei.
-      eapply nth_error_app_dec in ei as [[hi ei] | [hi ei]].
-      1:{
-        rewrite list_init_length in hi.
-        rewrite -> nth_error_list_init in ei by auto.
-        discriminate.
-      }
-      rewrite list_init_length in ei. rewrite list_init_length in hi.
-      case_eq (i - n).
-      2:{
-        intros k ek.
-        rewrite ek in ei. cbn in ei.
-        apply nth_error_Some_length in ei as l.
-        rewrite list_init_length in l.
-        rewrite -> nth_error_list_init in ei by auto.
-        discriminate.
-      }
-      intros hh. assert (i = n) by lia. subst.
-      rewrite hh in ei. clear hh hi.
-      cbn in ei. inversion ei. subst.
-      assumption.
+    + apply masks_app.
+      * apply masks_firstn. apply masks_linear_mask_init.
+      * constructor. apply masks_skipn. apply masks_linear_mask_init.
+    + rewrite firstn_list_init. rewrite skipn_list_init.
+      replace (min n #|σ|) with n by lia.
+      apply subs_complete_spec. split.
+      * rewrite app_length. cbn.
+        rewrite 2!list_init_length. lia.
+      * intros i u ei.
+        eapply nth_error_app_dec in ei as [[hi ei] | [hi ei]].
+        1:{
+          rewrite list_init_length in hi.
+          rewrite -> nth_error_list_init in ei by auto.
+          discriminate.
+        }
+        rewrite list_init_length in ei. rewrite list_init_length in hi.
+        case_eq (i - n).
+        2:{
+          intros k ek.
+          rewrite ek in ei. cbn in ei.
+          apply nth_error_Some_length in ei as l.
+          rewrite list_init_length in l.
+          rewrite -> nth_error_list_init in ei by auto.
+          discriminate.
+        }
+        intros hh. assert (i = n) by lia. subst.
+        rewrite hh in ei. clear hh hi.
+        cbn in ei. inversion ei. subst.
+        assumption.
   - eapply All_prod in ih. 2: exact ha.
     clear ha.
     induction ih
     as [| p args [hp ihp] _ ih]
-    (* in σ, eσ |- * *)
+    in m, hm |- *
     using All_rev_rect.
-    + unfold mkApps. unfold match_pattern.
+    + cbn in hm. apply some_inj in hm. subst.
+      unfold mkApps. unfold match_pattern.
       unfold subst. unfold assert_eq.
       match goal with
       | |- context [ eqb ?x ?y ] =>
@@ -566,12 +741,21 @@ Proof.
       2:{ exfalso. auto. }
       cbn.
       eexists. intuition eauto.
-      apply subs_complete_subs_empty.
-      assumption.
-    + specialize (ihp σ). forward ihp by auto.
-      destruct ihp as [θ1 [e1 c1]].
-      destruct ih as [θ2 [e2 c2]].
+      * apply masks_linear_mask_init.
+      * apply subs_complete_subs_empty.
+        reflexivity.
+    + rewrite <- mkApps_nested in hm. cbn in hm.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      move hm at top.
+      destruct pattern_mask eqn:e2. 2: discriminate.
+      specialize ihp with (1 := eq_refl).
+      specialize ih with (1 := eq_refl).
+      destruct ihp as [θ1 [hm1 [mp1 c1]]].
+      destruct ih as [θ2 [hm2 [mp2 c2]]].
       rewrite <- mkApps_nested. cbn.
-      rewrite e2. rewrite e1.
-      (* TODO Missing linearity to conclude *)
-Abort.
+      rewrite mp2. rewrite mp1.
+      eapply masks_merge in hm. 2,3: eauto.
+      destruct hm as [θ [sm hm]].
+      eexists. intuition eauto.
+      eapply subs_complete_merge. all: eauto.
+Qed.

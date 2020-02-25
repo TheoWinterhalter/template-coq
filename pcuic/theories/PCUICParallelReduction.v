@@ -4192,39 +4192,6 @@ Section ParallelSubstitution.
   Qed.
 
   (* TODO MOVE *)
-  Lemma lin_set_eq :
-    forall n m,
-      lin_set n m =
-      match nth_error m n with
-      | Some true => None
-      | Some false => Some (firstn n m ++ true :: skipn (S n) m)
-      | None => None
-      end.
-  Proof.
-    intros n m.
-    induction n in m |- *.
-    - cbn. destruct m as [| [] m]. all: reflexivity.
-    - cbn. destruct m as [| [] m].
-      + reflexivity.
-      + destruct lin_set eqn:e.
-        * cbn. rewrite IHn in e.
-          destruct nth_error as [[]|] eqn: e1. 1,3: discriminate.
-          apply some_inj in e. subst.
-          reflexivity.
-        * cbn. rewrite IHn in e.
-          destruct nth_error as [[]|] eqn: e1. 2: discriminate.
-          all: reflexivity.
-      + destruct lin_set eqn:e.
-        * cbn. rewrite IHn in e.
-          destruct nth_error as [[]|] eqn: e1. 1,3: discriminate.
-          apply some_inj in e. subst.
-          reflexivity.
-        * cbn. rewrite IHn in e.
-          destruct nth_error as [[]|] eqn: e1. 2: discriminate.
-          all: reflexivity.
-  Qed.
-
-  (* TODO MOVE *)
   Lemma linear_mask_init_length :
     forall n,
       #|linear_mask_init n| = n.
@@ -4854,18 +4821,6 @@ Section ParallelSubstitution.
     intro Γ.
     apply untyped_subslet_weaks with (Δ := []).
   Qed.
-
-  (* TODO Maybe useless? *)
-  Inductive masks : list bool -> partial_subst -> Type :=
-  | masks_nil : masks [] []
-  | masks_true :
-      forall m σ t,
-        masks m σ ->
-        masks (true :: m) (Some t :: σ)
-  | masks_false :
-      forall m σ,
-        masks m σ ->
-        masks (false :: m) (None :: σ).
 
   (* Altered version of on_some *)
   Definition on_Some {A} (P : A -> Type) o :=
@@ -5527,21 +5482,6 @@ Section ParallelSubstitution.
       cbn. f_equal. eapply ih. eassumption.
   Qed.
 
-  Lemma masks_app :
-    forall m1 m2 σ1 σ2,
-      masks m1 σ1 ->
-      masks m2 σ2 ->
-      masks (m1 ++ m2) (σ1 ++ σ2).
-  Proof.
-    intros m1 m2 σ1 σ2 h1 h2.
-    induction h1 in m2, σ2, h2 |- *.
-    - assumption.
-    - cbn. constructor.
-      apply IHh1. assumption.
-    - cbn. constructor.
-      apply IHh1. assumption.
-  Qed.
-
   Lemma sub_mask_masks :
     forall m σ θ,
       sub_mask m σ = Some θ ->
@@ -5831,89 +5771,6 @@ Section ParallelSubstitution.
       destruct n.
       + discriminate.
       + cbn in *. apply ih. all: auto.
-  Qed.
-
-  Lemma masks_linear_mask_init :
-    forall n,
-      masks (linear_mask_init n) (subs_empty n).
-  Proof.
-    intro n. induction n.
-    - constructor.
-    - cbn. constructor. assumption.
-  Qed.
-
-  Lemma masks_merge :
-    forall m1 m2 m σ1 σ2,
-      lin_merge m1 m2 = Some m ->
-      masks m1 σ1 ->
-      masks m2 σ2 ->
-      ∑ σ,
-        subs_merge σ1 σ2 = Some σ ×
-        masks m σ.
-  Proof.
-    intros m1 m2 m σ1 σ2 hm h1 h2.
-    induction h1 in m2, m, hm, σ2, h2 |- *.
-    - destruct m2. 2: discriminate.
-      cbn in hm. apply some_inj in hm. subst.
-      inversion h2. subst.
-      eexists. intuition reflexivity.
-    - destruct m2 as [| [] m2]. 1,2: discriminate.
-      cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
-      apply some_inj in hm. subst.
-      inversion h2. subst.
-      specialize IHh1 with (1 := e) (2 := H0).
-      destruct IHh1 as [σ' [e1 h]].
-      cbn. rewrite e1.
-      eexists. intuition eauto.
-      constructor. assumption.
-    - destruct m2 as [| b m2]. 1: discriminate.
-      cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
-      apply some_inj in hm. subst.
-      inversion h2.
-      + subst.
-        specialize IHh1 with (1 := e) (2 := H2).
-        destruct IHh1 as [σ' [e1 h]].
-        cbn. rewrite e1.
-        eexists. intuition eauto.
-        constructor. assumption.
-      + subst.
-        specialize IHh1 with (1 := e) (2 := H2).
-        destruct IHh1 as [σ' [e1 h]].
-        cbn. rewrite e1.
-        eexists. intuition eauto.
-        constructor. assumption.
-  Qed.
-
-  Lemma masks_firstn :
-    forall m σ n,
-      masks m σ ->
-      masks (firstn n m) (firstn n σ).
-  Proof.
-    intros m σ n h.
-    induction h in n |- *.
-    - destruct n. all: constructor.
-    - destruct n.
-      + cbn. constructor.
-      + cbn. constructor. apply IHh.
-    - destruct n.
-    + cbn. constructor.
-    + cbn. constructor. apply IHh.
-  Qed.
-
-  Lemma masks_skipn :
-    forall m σ n,
-      masks m σ ->
-      masks (skipn n m) (skipn n σ).
-  Proof.
-    intros m σ n h.
-    induction h in n |- *.
-    - destruct n. all: constructor.
-    - destruct n.
-      + unfold skipn. constructor. assumption.
-      + rewrite 2!skipn_S. apply IHh.
-    - destruct n.
-      + unfold skipn. constructor. assumption.
-      + rewrite 2!skipn_S. apply IHh.
   Qed.
 
   Lemma masks_subs_add :
