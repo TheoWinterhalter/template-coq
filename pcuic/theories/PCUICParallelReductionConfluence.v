@@ -6,9 +6,10 @@ From Equations Require Import Equations.
 From Coq Require Import Bool String List Program BinPos Compare_dec Utf8 String
   ZArith Lia.
 From MetaCoq.Template Require Import config utils.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICSize
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICReduction PCUICWeakening PCUICSubstitution
-     PCUICReflect PCUICClosed PCUICParallelReduction.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
+  PCUICSize PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICReduction
+  PCUICWeakening PCUICSubstitution PCUICReflect PCUICClosed
+  PCUICParallelReduction PCUICPattern.
 
 Require Import monad_utils.
 Import MonadNotation.
@@ -1184,7 +1185,8 @@ Section Confluence.
 
     *)
 
-    (* Fixpoint rho_ext (ext : option (??)) Γ t : term *)
+    Definition match_rule k r t :=
+      match_lhs #|r.(pat_context)| k r.(head) r.(elims) t.
 
 
     Fixpoint rho Γ t : term :=
