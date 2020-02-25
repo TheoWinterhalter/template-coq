@@ -820,6 +820,18 @@ Lemma match_prelhs_sound :
       t = subst0 θ (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
 Admitted.
 
+Lemma match_prelhs_complete :
+  forall npat k n ui l m σ,
+    All (elim_pattern npat) l ->
+    linear_mask npat l = Some m ->
+    #|σ| = npat ->
+    ∑ θ,
+      masks m θ ×
+      let t := fold_right (fun e t => mkElim t e) (tSymb k n ui) l in
+      match_prelhs npat k n ui l (subst0 σ t) = Some θ ×
+      subs_complete θ σ.
+Admitted.
+
 Definition match_lhs npat k n ui l t :=
   σ <- match_prelhs npat k n ui (List.rev l) t ;;
   map_option_out σ.
@@ -853,3 +865,36 @@ Proof.
   - rewrite fold_left_rev_right in e1. assumption.
   - eapply All_rev. assumption.
 Qed.
+
+(* Lemma monad_map_rev :
+  forall M {hM : Monad M} A B (f : A -> M B) l l',
+    monad_map f l = ret l' ->
+    monad_map f (List.rev l) = ret (List.rev l').
+Proof.
+  intros M hM A B f l l' e.
+  induction l in l', e |- *.
+  - cbn in *. *)
+
+(* Lemma linear_mask_rev :
+  forall npat l m,
+    linear_mask npat l = Some m ->
+    linear_mask npat (List.rev l) = Some m.
+Proof.
+  intros npat l m h.
+  unfold linear_mask in *.
+  induction *)
+
+Lemma match_lhs_complete :
+  forall npat k n ui l σ,
+    All (elim_pattern npat) l ->
+    linear npat l ->
+    #|σ| = npat ->
+    match_lhs npat k n ui l (subst0 σ (mkElims (tSymb k n ui) l)) = Some σ.
+Proof.
+  intros npat k n ui l σ pl ll eσ.
+  unfold linear in ll.
+  destruct linear_mask eqn:e1. 2: discriminate.
+  unfold match_lhs.
+  apply All_rev in pl.
+  eapply match_prelhs_complete in pl. 3: eauto.
+Admitted.
