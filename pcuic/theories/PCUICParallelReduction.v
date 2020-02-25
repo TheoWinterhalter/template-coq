@@ -7009,7 +7009,7 @@ Section ParallelSubstitution.
   Admitted.
 
   Lemma lhs_unify_subst :
-    forall Σ k decl ui r r' σ θ m Γ m1,
+    forall Σ k decl ui r r' σ θ m Γ,
       wf Σ ->
       is_rewrite_rule Σ k decl r ->
       is_rewrite_rule Σ k decl r' ->
@@ -7026,8 +7026,8 @@ Section ParallelSubstitution.
       let prelhs2 := subst ss #|σ| prelhs1 in
       let lhs' := subst ss #|θ| (lhs r') in
       subst0 σ prelhs2 = subst0 θ lhs' ->
-      linear_mask npat1 (firstn m r.(elims)) = Some m1 ×
-      ∑ φ ψ ξ,
+      ∑ m1 φ ψ ξ,
+        linear_mask npat1 (firstn m r.(elims)) = Some m1 ×
         #|φ| = #|Δ1| ×
         #|ψ| = #|Δ2| ×
         let npat := (npat1 + npat2)%nat in
@@ -7073,6 +7073,6 @@ Section ParallelSubstitution.
     (* Now we have to conclude on unification of eliminations.
       Since they have the same length we can do it pointwise.
     *)
-  Abort.
+  Admitted.
 
 End ParallelSubstitution.
