@@ -771,18 +771,24 @@ Fixpoint option_map2 {A B C}
   | _, _ => None
   end.
 
-Fixpoint match_prelhs npat k n ui l t :=
+Fixpoint match_prelhs npat k n l t :=
   match l with
   | [] =>
-    assert_eq (tSymb k n ui) t ;;
-    ret (subs_empty npat)
+    match t with
+    | tSymb k' n' ui =>
+      assert_eq k k' ;;
+      assert_eq n n' ;;
+      ret (ui, subs_empty npat)
+    | _ => None
+    end
 
   | eApp p :: l =>
     match t with
     | tApp u v =>
       σ1 <- match_pattern npat p v ;;
-      σ2 <- match_prelhs npat k n ui l u ;;
-      subs_merge σ1 σ2
+      '(ui,σ2) <- match_prelhs npat k n l u ;;
+      σ <- subs_merge σ1 σ2 ;;
+      ret (ui, σ)
     | _ => None
     end
 
@@ -796,9 +802,10 @@ Fixpoint match_prelhs npat k n ui l t :=
               match_pattern npat br.2 br'.2
             ) brs brs' ;;
       σb <- monad_fold_right subs_merge σb (subs_empty npat) ;;
-      σc <- match_prelhs npat k n ui l c ;;
+      '(ui,σc) <- match_prelhs npat k n l c ;;
       σ1 <- subs_merge σp σb ;;
-      subs_merge σ1 σc
+      σ2 <- subs_merge σ1 σc ;;
+      ret (ui, σ2)
     | _ => None
     end
 
@@ -806,7 +813,7 @@ Fixpoint match_prelhs npat k n ui l t :=
     match t with
     | tProj p' u =>
       assert_eq p p' ;;
-      match_prelhs npat k n ui l u
+      match_prelhs npat k n l u
     | _ => None
     end
   end.
@@ -814,7 +821,7 @@ Fixpoint match_prelhs npat k n ui l t :=
 Lemma match_prelhs_sound :
   forall npat k n ui l t σ,
     All (elim_pattern npat) l ->
-    match_prelhs npat k n ui l t = Some σ ->
+    match_prelhs npat k n l t = Some (ui, σ) ->
     forall θ,
       subs_complete σ θ ->
       t = subst0 θ (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
@@ -828,13 +835,14 @@ Lemma match_prelhs_complete :
     ∑ θ,
       masks m θ ×
       let t := fold_right (fun e t => mkElim t e) (tSymb k n ui) l in
-      match_prelhs npat k n ui l (subst0 σ t) = Some θ ×
+      match_prelhs npat k n l (subst0 σ t) = Some (ui, θ) ×
       subs_complete θ σ.
 Admitted.
 
-Definition match_lhs npat k n ui l t :=
-  σ <- match_prelhs npat k n ui (List.rev l) t ;;
-  map_option_out σ.
+Definition match_lhs npat k n l t :=
+  '(ui,σ) <- match_prelhs npat k n (List.rev l) t ;;
+  σ <- map_option_out σ ;;
+  ret (ui, σ).
 
 Lemma map_option_out_subs_complete :
   forall s s',
@@ -853,14 +861,15 @@ Qed.
 Lemma match_lhs_sound :
   forall npat k n ui l t σ,
     All (elim_pattern npat) l ->
-    match_lhs npat k n ui l t = Some σ ->
+    match_lhs npat k n l t = Some (ui, σ) ->
     t = subst0 σ (mkElims (tSymb k n ui) l).
 Proof.
   intros npat k n ui l t σ pl e.
   unfold match_lhs in e.
-  destruct match_prelhs eqn:e1. 2: discriminate.
-  cbn in e.
-  apply map_option_out_subs_complete in e as hs.
+  destruct match_prelhs as [[? ?]|] eqn:e1. 2: discriminate.
+  cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+  inversion e. subst. clear e.
+  apply map_option_out_subs_complete in e2 as hs.
   eapply match_prelhs_sound in e1. 3: eauto.
   - rewrite fold_left_rev_right in e1. assumption.
   - eapply All_rev. assumption.
@@ -889,7 +898,7 @@ Lemma match_lhs_complete :
     All (elim_pattern npat) l ->
     linear npat l ->
     #|σ| = npat ->
-    match_lhs npat k n ui l (subst0 σ (mkElims (tSymb k n ui) l)) = Some σ.
+    match_lhs npat k n l (subst0 σ (mkElims (tSymb k n ui) l)) = Some (ui, σ).
 Proof.
   intros npat k n ui l σ pl ll eσ.
   unfold linear in ll.
@@ -898,8 +907,3 @@ Proof.
   apply All_rev in pl.
   eapply match_prelhs_complete in pl. 3: eauto.
 Admitted.
-
-(* TODO
-  Matching should not have to know the universe instance!
-  It should return it!
-*)
