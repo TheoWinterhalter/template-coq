@@ -811,6 +811,45 @@ Fixpoint match_prelhs npat k n ui l t :=
     end
   end.
 
+Lemma match_prelhs_sound :
+  forall npat k n ui l t σ,
+    All (elim_pattern npat) l ->
+    match_prelhs npat k n ui l t = Some σ ->
+    forall θ,
+      subs_complete σ θ ->
+      t = subst0 θ (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
+Admitted.
+
 Definition match_lhs npat k n ui l t :=
-  σ <- match_prelhs npat k n ui (rev l) t ;;
+  σ <- match_prelhs npat k n ui (List.rev l) t ;;
   map_option_out σ.
+
+Lemma map_option_out_subs_complete :
+  forall s s',
+    map_option_out s = Some s' ->
+    subs_complete s s'.
+Proof.
+  intros s s' e.
+  induction s in s', e |- *.
+  - cbn in e. apply some_inj in e. subst. constructor.
+  - cbn in e. destruct a. 2: discriminate.
+    destruct map_option_out eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    constructor. eapply IHs. reflexivity.
+Qed.
+
+Lemma match_lhs_sound :
+  forall npat k n ui l t σ,
+    All (elim_pattern npat) l ->
+    match_lhs npat k n ui l t = Some σ ->
+    t = subst0 σ (mkElims (tSymb k n ui) l).
+Proof.
+  intros npat k n ui l t σ pl e.
+  unfold match_lhs in e.
+  destruct match_prelhs eqn:e1. 2: discriminate.
+  cbn in e.
+  apply map_option_out_subs_complete in e as hs.
+  eapply match_prelhs_sound in e1. 3: eauto.
+  - rewrite fold_left_rev_right in e1. assumption.
+  - eapply All_rev. assumption.
+Qed.

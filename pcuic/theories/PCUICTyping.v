@@ -2028,20 +2028,6 @@ Proof.
     inversion h. assumption.
 Qed. *)
 
-Lemma map_option_out_subs_complete :
-  forall s s',
-    map_option_out s = Some s' ->
-    subs_complete s s'.
-Proof.
-  intros s s' e.
-  induction s in s', e |- *.
-  - cbn in e. apply some_inj in e. subst. constructor.
-  - cbn in e. destruct a. 2: discriminate.
-    destruct map_option_out eqn:e1. 2: discriminate.
-    apply some_inj in e. subst.
-    constructor. eapply IHs. reflexivity.
-Qed.
-
 (* TODO Maybe we don't want to do map_option_out in case some
    pattern variables aren't used.
    Or maybe we want to enforce all to appear at least once, which would make
