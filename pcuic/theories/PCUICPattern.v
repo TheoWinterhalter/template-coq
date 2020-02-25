@@ -759,3 +759,58 @@ Proof.
       eexists. intuition eauto.
       eapply subs_complete_merge. all: eauto.
 Qed.
+
+Fixpoint option_map2 {A B C}
+  (f : A -> B -> option C) (l1 : list A) (l2 : list B) : option (list C) :=
+  match l1, l2 with
+  | [], [] => ret []
+  | x :: l1, y :: l2 =>
+      z <- f x y ;;
+      l <- option_map2 f l1 l2 ;;
+      ret (z :: l)
+  | _, _ => None
+  end.
+
+Fixpoint match_prelhs npat k n ui l t :=
+  match l with
+  | [] =>
+    assert_eq (tSymb k n ui) t ;;
+    ret (subs_empty npat)
+
+  | eApp p :: l =>
+    match t with
+    | tApp u v =>
+      σ1 <- match_pattern npat p v ;;
+      σ2 <- match_prelhs npat k n ui l u ;;
+      subs_merge σ1 σ2
+    | _ => None
+    end
+
+  | eCase ind p brs :: l =>
+    match t with
+    | tCase ind' p' c brs' =>
+      assert_eq ind ind' ;;
+      σp <- match_pattern npat p p' ;;
+      σb <- option_map2 (fun br br' =>
+              assert_eq br.1 br'.1 ;;
+              match_pattern npat br.2 br'.2
+            ) brs brs' ;;
+      σb <- monad_fold_right subs_merge σb (subs_empty npat) ;;
+      σc <- match_prelhs npat k n ui l c ;;
+      σ1 <- subs_merge σp σb ;;
+      subs_merge σ1 σc
+    | _ => None
+    end
+
+  | eProj p :: l =>
+    match t with
+    | tProj p' u =>
+      assert_eq p p' ;;
+      match_prelhs npat k n ui l u
+    | _ => None
+    end
+  end.
+
+Definition match_lhs npat k n ui l t :=
+  σ <- match_prelhs npat k n ui (rev l) t ;;
+  map_option_out σ.

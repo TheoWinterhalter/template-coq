@@ -1217,17 +1217,6 @@ Proof.
       eapply IHX. assumption.
 Qed.
 
-Fixpoint option_map2 {A B C}
-  (f : A -> B -> option C) (l1 : list A) (l2 : list B) : option (list C) :=
-  match l1, l2 with
-  | [], [] => ret []
-  | x :: l1, y :: l2 =>
-      z <- f x y ;;
-      l <- option_map2 f l1 l2 ;;
-      ret (z :: l)
-  | _, _ => None
-  end.
-
 Require PCUICSize.
 
 Equations rec_pattern_discr
