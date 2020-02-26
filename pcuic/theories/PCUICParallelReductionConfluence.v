@@ -1185,8 +1185,26 @@ Section Confluence.
 
     *)
 
-    Definition match_rule k r t :=
-      match_lhs #|r.(pat_context)| k r.(head) r.(elims) t.
+    (** NOTE
+      In r.(elims) the symbols are not yet instantiated.
+      We do not know the universe instance in advance so we still call
+      match_lhs on it.
+      Is it a good idea to do the substitution at this point though?
+    *)
+    Definition match_rule k nsymb r t :=
+      '(ui, σ) <- match_lhs #|r.(pat_context)| k r.(head) r.(elims) t ;;
+      let ss := symbols_subst k 0 ui nsymb in
+      ret (ui, map (subst0 ss) σ).
+
+    (* Definition
+
+    Fixpoint rho_ext (ext : option (kername * list rewrite_rule)) Γ t : term :=
+      match ext with
+      | Some (k, lr) =>
+
+
+      let '(u, l) := decompose_elims t in *)
+
 
 
     Fixpoint rho Γ t : term :=
