@@ -1226,6 +1226,27 @@ Section Confluence.
       '(r, _, σ) <- find_rule rl k #|decl.(symbols)| t ;;
       ret (k, n, ui, l, σ, r).
 
+    Record rew_ext := {
+      r_kername : kername ;
+      r_nsymb   : nat ;
+      r_rules   : list rewrite_rule
+    }.
+
+    Definition find_lhs_ext (rex : rew_ext) t :=
+      '(k, n, ui, l) <- decompose_lhs t ;;
+      '(r, _, σ) <- find_rule rex.(r_rules) rex.(r_kername) rex.(r_nsymb) t ;;
+      ret (k, n, ui, l, σ, r).
+
+    Definition try_find_lhs_ext (rex : option rew_ext) t :=
+      rex <- rex ;;
+      find_lhs_ext rex t.
+
+    Definition try_rewrite_rule (rex : option rew_ext) t :=
+      match try_find_lhs_ext rex t with
+      | Some (k, n, ui, l, σ, r) => ret (k, n, ui, l, σ, r)
+      | None => find_lhs t
+      end.
+
     (* The extension info contains the kername, the number of symbols
       and the combined list of parallel and regular rewrite rules.
     *)
