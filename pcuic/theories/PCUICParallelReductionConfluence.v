@@ -1346,39 +1346,10 @@ Section Confluence.
         | tInd _ _ | tConstruct _ _ _ | tSymb _ _ _ => t
         end
       end.
-    (* Solve All Obligations with (cbn ; lia). *)
+    Solve All Obligations with (program_simpl ; cbn ; lia).
     Next Obligation.
       todo "try_rewrite_rule_size"%string.
     Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      cbn. lia.
-    Qed.
-    Next Obligation.
-      (* cbn. lia. *)
     Admit Obligations.
 
     Definition rho Γ t :=
