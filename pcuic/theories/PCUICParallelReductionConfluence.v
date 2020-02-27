@@ -1224,7 +1224,7 @@ Section Confluence.
       decl <- lookup_rewrite_decl k ;;
       let rl := decl.(prules) ++ decl.(rules) in
       '(r, _, σ) <- find_rule rl k #|decl.(symbols)| t ;;
-      ret (k, n, ui, l, σ, r).
+      ret (k, n, ui, l, σ, r, #|decl.(symbols)|).
 
     Record rew_ext := {
       r_kername : kername ;
@@ -1235,7 +1235,7 @@ Section Confluence.
     Definition find_lhs_ext (rex : rew_ext) t :=
       '(k, n, ui, l) <- decompose_lhs t ;;
       '(r, _, σ) <- find_rule rex.(r_rules) rex.(r_kername) rex.(r_nsymb) t ;;
-      ret (k, n, ui, l, σ, r).
+      ret (k, n, ui, l, σ, r, rex.(r_nsymb)).
 
     Definition try_find_lhs_ext (rex : option rew_ext) t :=
       rex <- rex ;;
@@ -1243,29 +1243,149 @@ Section Confluence.
 
     Definition try_rewrite_rule (rex : option rew_ext) t :=
       match try_find_lhs_ext rex t with
-      | Some (k, n, ui, l, σ, r) => ret (k, n, ui, l, σ, r)
+      | Some x => ret x
       | None => find_lhs t
       end.
 
-    (* The extension info contains the kername, the number of symbols
-      and the combined list of parallel and regular rewrite rules.
-    *)
+    Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)} : term :=
+      match try_rewrite_rule rex t with
+      | Some (k, n, ui, l, σ, r, nsymb) =>
+        let ss := symbols_subst k 0 ui nsymb in
+        subst0 (map (fun t => rho_ext rex Γ t) σ) (subst ss #|σ| (rhs r))
+      | None =>
+        match t with
+        | tApp (tLambda na T b) u =>
+          (rho_ext rex (vass na (rho_ext rex Γ T) :: Γ) b) {0 := rho_ext rex Γ u}
+        | tLetIn na d t b =>
+          (subst10
+            (rho_ext rex Γ d)
+            (rho_ext rex (vdef na (rho_ext rex Γ d) (rho_ext rex Γ t) :: Γ) b))
+        | tRel i =>
+          match option_map decl_body (nth_error Γ i) with
+          | Some (Some body) => (lift0 (S i) body)
+          | Some None => tRel i
+          | None => tRel i
+          end
+        | tCase (ind, pars) p x brs =>
+          let p' := rho_ext rex Γ p in
+          let x' := rho_ext rex Γ x in
+          let brs' := List.map (fun x => (fst x, rho_ext rex Γ (snd x))) brs in
+          match decompose_app x, decompose_app x' with
+          | (tConstruct ind' c u, args), (tConstruct ind'' c' u', args') =>
+            if eqb ind ind' then
+              iota_red pars c args' brs'
+            else tCase (ind, pars) p' x' brs'
+          | (tCoFix mfix idx, args), (tCoFix mfix' idx', args') =>
+            match unfold_cofix mfix' idx with
+            | Some (narg, fn) =>
+              tCase (ind, pars) p' (mkApps fn args') brs'
+            | None =>
+              tCase (ind, pars) p' (mkApps (tCoFix mfix' idx) args') brs'
+            end
+          | _, _ => tCase (ind, pars) p' x' brs'
+          end
+        | tProj ((i, pars, narg) as p) x =>
+          let x' := rho_ext rex Γ x in
+          match decompose_app x, decompose_app x' with
+          | (tConstruct ind c u, args), (tConstruct ind' c' u', args') =>
+            match nth_error args' (pars + narg) with
+            | Some arg1 =>
+              if eqb i ind' then arg1
+              else tProj p x'
+            | None => tProj p x'
+            end
+          | (tCoFix mfix idx, args), (tCoFix mfix' idx', args') =>
+            match unfold_cofix mfix' idx with
+            | Some (narg, fn) => tProj p (mkApps fn args')
+            | None => tProj p (mkApps (tCoFix mfix' idx') args')
+            end
+          | _, _ => tProj p x'
+          end
+        | tConst c u =>
+          match lookup_env Σ c with
+          | Some (ConstantDecl decl) =>
+            match decl.(cst_body) with
+            | Some body => subst_instance_constr u body
+            | None => tConst c u
+            end
+          | _ => tConst c u
+          end
+        | tApp t u =>
+          let t' := rho_ext rex Γ t in
+          let u' := rho_ext rex Γ u in
+          match decompose_app (tApp t u), decompose_app (tApp t' u') with
+          | (tFix mfix0 idx0, args0), (tFix mfix1 idx1, args1)  =>
+            match unfold_fix mfix1 idx1 with
+            | Some (rarg, fn) =>
+              if is_constructor rarg args1 then
+                mkApps fn args1
+              else tApp t' u'
+            | None => tApp t' u'
+            end
+          | _, _ => tApp t' u'
+          end
+        | tLambda na t u =>
+          tLambda
+            na
+            (rho_ext rex Γ t)
+            (rho_ext rex (vass na (rho_ext rex Γ t) :: Γ) u)
+        | tProd na t u =>
+          tProd
+            na
+            (rho_ext rex Γ t)
+            (rho_ext rex (vass na (rho_ext rex Γ t) :: Γ) u)
+        | tVar i => tVar i
+        | tEvar n l => tEvar n (map (fun t => rho_ext rex Γ t) l)
+        | tSort s => tSort s
+        | tFix mfix idx =>
+          let mfixctx := fold_fix_context (fun Γ t => rho_ext rex Γ t) Γ [] mfix in
+          tFix (map_fix (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
+        | tCoFix mfix idx =>
+          let mfixctx := fold_fix_context (fun Γ t => rho_ext rex Γ t) Γ [] mfix in
+          tCoFix (map_fix (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
+        | tInd _ _ | tConstruct _ _ _ | tSymb _ _ _ => t
+        end
+      end.
+    (* Solve All Obligations with (cbn ; lia). *)
+    Next Obligation.
+      todo "try_rewrite_rule_size"%string.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      cbn. lia.
+    Qed.
+    Next Obligation.
+      (* cbn. lia. *)
+    Admit Obligations.
 
-    (* Definition
+    Definition rho Γ t :=
+      rho_ext None Γ t.
 
-    Fixpoint rho_ext (ext : option (kername * nat * list rewrite_rule)) Γ t : term :=
-      match ext with
-      | Some (k, lr) =>
-
-
-      let '(u, l) := decompose_elims t in *)
-
-
-
-    Fixpoint rho Γ t : term :=
-      (* if isAppSymb t then *)
-
-      (* else *) match t with
+    (* Fixpoint rho Γ t : term :=
+      match t with
       | tApp (tLambda na T b) u => (rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ u}
       | tLetIn na d t b => (subst10 (rho Γ d) (rho (vdef na (rho Γ d) (rho Γ t) :: Γ) b))
       | tRel i =>
@@ -1344,7 +1464,7 @@ Section Confluence.
         let mfixctx := fold_fix_context rho Γ [] mfix in
         tCoFix (map_fix rho Γ mfixctx mfix) idx
       | tInd _ _ | tConstruct _ _ _ => t
-      end.
+      end. *)
     Transparent rho.
 
     Section rho_ctx.
