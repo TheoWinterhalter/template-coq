@@ -1194,7 +1194,7 @@ Section Confluence.
     Definition match_rule k nsymb r t :=
       '(ui, σ) <- match_lhs #|r.(pat_context)| k r.(head) r.(elims) t ;;
       let ss := symbols_subst k 0 ui nsymb in
-      ret (ui, map (subst0 ss) σ).
+      ret (ui, map (subst ss #|r.(pat_context)|) σ).
 
     Definition decompose_lhs t :=
       let '(u, l) := decompose_elims t in
