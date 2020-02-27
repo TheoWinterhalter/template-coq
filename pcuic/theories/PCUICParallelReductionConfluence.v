@@ -1196,9 +1196,43 @@ Section Confluence.
       let ss := symbols_subst k 0 ui nsymb in
       ret (ui, map (subst0 ss) σ).
 
+    Definition decompose_lhs t :=
+      let '(u, l) := decompose_elims t in
+      match u with
+      | tSymb k n ui => ret (k, n, ui, l)
+      | _ => None
+      end.
+
+    Definition lookup_rewrite_decl k :=
+      match lookup_env Σ k with
+      | Some (RewriteDecl decl) => Some decl
+      | _ => None
+      end.
+
+    Fixpoint find_rule rl k nsymb t :=
+      match rl with
+      | r :: rl =>
+        match match_rule k nsymb r t with
+        | Some (ui, σ) => ret (r, ui, σ)
+        | None => find_rule rl k nsymb t
+        end
+      | [] => None
+      end.
+
+    Definition find_lhs t :=
+      '(k, n, ui, l) <- decompose_lhs t ;;
+      decl <- lookup_rewrite_decl k ;;
+      let rl := decl.(prules) ++ decl.(rules) in
+      '(r, _, σ) <- find_rule rl k #|decl.(symbols)| t ;;
+      ret (k, n, ui, l, σ, r).
+
+    (* The extension info contains the kername, the number of symbols
+      and the combined list of parallel and regular rewrite rules.
+    *)
+
     (* Definition
 
-    Fixpoint rho_ext (ext : option (kername * list rewrite_rule)) Γ t : term :=
+    Fixpoint rho_ext (ext : option (kername * nat * list rewrite_rule)) Γ t : term :=
       match ext with
       | Some (k, lr) =>
 
