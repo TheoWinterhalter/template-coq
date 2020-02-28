@@ -1492,7 +1492,10 @@ Section Confluence.
         cbn in e1. inversion e1. subst. clear e1.
         eapply in_map_iff in h as [y [ey h]]. subst.
         eapply match_lhs_size in e2. 2: eassumption.
-        (* The size will be offset... Is that a problem? *)
+        (* It is a bit hard to conclude here!
+          It would probably better if we could avoid the substitution here
+          or postpone it somehow. Can we apply it after rho?
+        *)
         admit.
       - eapply IHrl. assumption.
     Abort.
