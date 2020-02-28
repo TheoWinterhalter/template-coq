@@ -1247,11 +1247,76 @@ Section Confluence.
       | None => find_lhs t
       end.
 
+    (* From RoseTree example of Equations *)
+    Equations map_In {A B : Type}
+      (l : list A) (f : ∀ (x : A), In x l → B) : list B :=
+      map_In [] _ := [] ;
+      map_In (x :: xs) f := f x _ :: map_In xs (fun x H => f x _).
+
+    Lemma map_In_spec {A B : Type} (f : A → B) (l : list A) :
+      map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
+    Proof.
+      remember (fun (x : A) (_ : In x l) => f x) as g.
+      funelim (map_In l g); rewrite ?H; trivial.
+    Qed.
+
+    Lemma In_list_size :
+      ∀ A (f : A → nat) x xs, In x xs → f x < S (list_size f xs).
+    Proof.
+      intros A f x xs h.
+      induction xs as [| a xs ih].
+      - cbn in h. destruct h.
+      - cbn in h. destruct h as [e | h].
+        + subst. cbn. lia.
+        + cbn. apply ih in h. lia.
+    Qed.
+
+    Definition map_fix_In (rho : context → term → term) Γ mfixctx (mfix : mfixpoint term) :=
+      (map_In mfix (fun d h => map_def (rho Γ) (rho (Γ ,,, mfixctx)) d)).
+
+    Equations fold_fix_context_In
+      (m : mfixpoint term)
+      (f : context → ∀ t, In t (map dtype m) → term) (Γ acc : context)
+      : context :=
+      fold_fix_context_In [] f Γ acc := acc ;
+      fold_fix_context_In (def :: m') f Γ acc :=
+        fold_fix_context_In
+          m'
+          (fun Δ t h => f Δ t _)
+          Γ
+          (vass def.(dname) (lift0 #|acc| (f Γ def.(dtype) _)) :: acc).
+
+    Lemma fold_fix_context_In_spec :
+      ∀ m f Γ acc,
+        fold_fix_context_In m (fun Δ t _ => f Δ t) Γ acc =
+        fold_fix_context f Γ acc m.
+    Proof.
+      intros m f Γ acc.
+      remember (fun Δ t _ => f Δ t) as g.
+      funelim (fold_fix_context_In m g Γ acc).
+      - cbn. reflexivity.
+      - rewrite H. trivial.
+    Qed.
+
+    Lemma In_mfixpoint_size :
+      ∀ (f : term → nat) t m,
+        In t (map dtype m) →
+        f t < S (mfixpoint_size f m).
+    Proof.
+      intros f t m h.
+      unfold mfixpoint_size.
+      eapply In_list_size with (f := f) in h.
+      eapply Nat.lt_le_trans. 1: eauto.
+      apply le_n_S.
+      eapply list_size_map_le.
+      intro x. unfold def_size. lia.
+    Qed.
+
     Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)} : term :=
       match try_rewrite_rule rex t with
       | Some (k, n, ui, l, σ, r, nsymb) =>
         let ss := symbols_subst k 0 ui nsymb in
-        subst0 (map (fun t => rho_ext rex Γ t) σ) (subst ss #|σ| (rhs r))
+        subst0 (map_In σ (fun t h => rho_ext rex Γ t)) (subst ss #|σ| (rhs r))
       | None =>
         match t with
         | tApp (tLambda na T b) u =>
@@ -1269,7 +1334,7 @@ Section Confluence.
         | tCase (ind, pars) p x brs =>
           let p' := rho_ext rex Γ p in
           let x' := rho_ext rex Γ x in
-          let brs' := List.map (fun x => (fst x, rho_ext rex Γ (snd x))) brs in
+          let brs' := map_In brs (fun x h => (fst x, rho_ext rex Γ (snd x))) in
           match decompose_app x, decompose_app x' with
           | (tConstruct ind' c u, args), (tConstruct ind'' c' u', args') =>
             if eqb ind ind' then
@@ -1335,14 +1400,18 @@ Section Confluence.
             (rho_ext rex Γ t)
             (rho_ext rex (vass na (rho_ext rex Γ t) :: Γ) u)
         | tVar i => tVar i
-        | tEvar n l => tEvar n (map (fun t => rho_ext rex Γ t) l)
+        | tEvar n l => tEvar n (map_In l (fun t h => rho_ext rex Γ t))
         | tSort s => tSort s
         | tFix mfix idx =>
-          let mfixctx := fold_fix_context (fun Γ t => rho_ext rex Γ t) Γ [] mfix in
-          tFix (map_fix (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
+          let mfixctx :=
+            fold_fix_context_In mfix (fun Γ t h => rho_ext rex Γ t) Γ []
+          in
+          tFix (map_fix_In (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
         | tCoFix mfix idx =>
-          let mfixctx := fold_fix_context (fun Γ t => rho_ext rex Γ t) Γ [] mfix in
-          tCoFix (map_fix (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
+          let mfixctx :=
+            fold_fix_context_In mfix (fun Γ t h => rho_ext rex Γ t) Γ []
+          in
+          tCoFix (map_fix_In (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
         | tInd _ _ | tConstruct _ _ _ | tSymb _ _ _ => t
         end
       end.
@@ -1350,7 +1419,570 @@ Section Confluence.
     Next Obligation.
       todo "try_rewrite_rule_size"%string.
     Qed.
-    Admit Obligations.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x ?l |- context [ list_size ?g ?l ] =>
+        eapply In_list_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      split.
+      - intros mfix idx args mfix' idx' args'. intuition auto.
+        discriminate.
+      - intros. intuition auto. discriminate.
+    Qed.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x ?l |- context [ list_size ?g ?l ] =>
+        eapply In_list_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x (map dtype ?l) |- context [ mfixpoint_size ?g ?l ] =>
+        eapply In_mfixpoint_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+    Admitted.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x (map dtype ?l) |- context [ mfixpoint_size ?g ?l ] =>
+        eapply In_mfixpoint_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+    Admitted.
 
     Definition rho Γ t :=
       rho_ext None Γ t.
