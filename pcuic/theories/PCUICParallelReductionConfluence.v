@@ -1263,45 +1263,226 @@ Section Confluence.
       - cbn. auto.
     Qed.
 
-    Lemma match_prelhs_size :
-      ∀ f npat k n l t ui σ,
-        match_prelhs npat k n l t = Some (ui, σ) →
-        list_size (option_size f) σ < f t.
+    Lemma In_Some_subs_merge :
+      ∀ σ1 σ2 σ x,
+        subs_merge σ1 σ2 = Some σ →
+        In (Some x) σ →
+        In (Some x) σ1 ∨ In (Some x) σ2.
     Proof.
-      intros f npat k n l t ui σ e.
-      induction l as [| [] l ih] in t, ui, σ, e |- *.
+      intros σ1 σ2 σ x sm h.
+      induction σ1 as [| [] σ1 ih] in σ2, σ, x, sm, h |- *.
+      - destruct σ2 as [| o σ2]. 2: discriminate.
+        cbn in sm. apply some_inj in sm. subst.
+        cbn in h. destruct h.
+      - destruct σ2 as [| [] σ2]. 1,2: discriminate.
+        cbn in sm. destruct subs_merge eqn:e. 2: discriminate.
+        apply some_inj in sm. subst.
+        cbn in h. destruct h as [h | h].
+        + left. cbn. left. assumption.
+        + eapply ih in e. 2: eassumption.
+          destruct e as [e | e].
+          * left. cbn. right. assumption.
+          * right. cbn. right. assumption.
+      - destruct σ2 as [| o σ2]. 1: discriminate.
+        cbn in sm. destruct subs_merge eqn:e. 2: discriminate.
+        apply some_inj in sm. subst.
+        cbn in h. destruct h as [h | h].
+        + right. cbn. left. assumption.
+        + eapply ih in e. 2: eassumption.
+          destruct e as [e | e].
+          * left. cbn. right. assumption.
+          * right. cbn. right. assumption.
+    Qed.
+
+    Lemma In_firstn_In :
+      forall A (l : list A) n x,
+        In x (firstn n l) →
+        In x l.
+    Proof.
+      intros A l n x h.
+      induction l in n, x, h |- *.
+      - destruct n. all: auto.
+      - destruct n.
+        + cbn in *. destruct h.
+        + cbn in h. destruct h.
+          * left. assumption.
+          * right. eapply IHl. eassumption.
+    Qed.
+
+    Lemma In_skipn_In :
+      forall A (l : list A) n x,
+        In x (skipn n l) →
+        In x l.
+    Proof.
+      intros A l n x h.
+      induction l in n, x, h |- *.
+      - destruct n. all: auto.
+      - destruct n.
+        + unfold skipn in h. assumption.
+        + rewrite skipn_S in h. right. eapply IHl. eassumption.
+    Qed.
+
+    Lemma In_Some_subs_add :
+      ∀ n t σ θ x,
+        subs_add n t σ = Some θ →
+        In (Some x) θ →
+        x = t ∨ In (Some x) σ.
+    Proof.
+      intros n t σ θ x sa h.
+      unfold subs_add in sa.
+      destruct nth_error as [[]|] eqn:e. 1,3: discriminate.
+      apply some_inj in sa. subst.
+      apply in_app_or in h as [h | h].
+      - right. eapply In_firstn_In. eassumption.
+      - cbn in h. destruct h as [h | h].
+        + left. apply some_inj in h. auto.
+        + right. eapply In_skipn_In. eassumption.
+    Qed.
+
+    Lemma In_Some_list_None :
+      forall A n (x : A),
+        In (Some x) (list_init None n) ->
+        False.
+    Proof.
+      intros A n x h.
+      induction n.
+      - cbn in h. assumption.
+      - cbn in h. destruct h as [h | h].
+        + discriminate.
+        + auto.
+    Qed.
+
+    Lemma In_Some_subs_init :
+      ∀ npat n t σ x,
+        subs_init npat n t = Some σ →
+        In (Some x) σ →
+        x = t.
+    Proof.
+      intros npat n t σ x si h.
+      unfold subs_init in si.
+      eapply In_Some_subs_add in si. 2: eassumption.
+      destruct si as [e | e].
+      - assumption.
+      - apply In_Some_list_None in e. destruct e.
+    Qed.
+
+    Lemma match_pattern_size :
+      ∀ npat p t σ x,
+        match_pattern npat p t = Some σ →
+        In (Some x) σ →
+        size x ≤ size t.
+    Proof.
+      intros npat p t σ x hp h.
+      induction p in t, σ, x, hp, h |- *.
+      all: try discriminate.
+      - unfold match_pattern in hp.
+        eapply In_Some_subs_init in h. 2: eassumption.
+        subst. auto.
+      - cbn in hp. destruct t. all: try discriminate.
+        destruct match_pattern eqn:e1. 2: discriminate.
+        move hp at top.
+        destruct match_pattern eqn:e2. 2: discriminate.
+        eapply In_Some_subs_merge in h. 2: eassumption.
+        destruct h as [h | h].
+        + cbn. eapply IHp1 in e1. 2: eassumption.
+          lia.
+        + cbn. eapply IHp2 in e2. 2: eassumption.
+          lia.
+      - unfold match_pattern in hp. assert_eq hp.
+        cbn in hp. apply some_inj in hp. subst.
+        apply In_Some_list_None in h. destruct h.
+    Qed.
+
+    Lemma match_prelhs_size :
+      ∀ npat k n l t ui σ x,
+        match_prelhs npat k n l t = Some (ui, σ) →
+        In (Some x) σ →
+        size x < size t.
+    Proof.
+      intros npat k n l t ui σ x e h.
+      induction l as [| [] l ih] in t, ui, σ, e, x, h |- *.
       - cbn in e. destruct t. all: try discriminate.
         assert_eq e. cbn in e.
         assert_eq e. cbn in e.
         inversion e. subst. clear e.
-        rewrite list_option_None_size.
-        cbn.
-        (* Should use the real size *)
-        (* Should not go through list_size *)
-      (* -
-      -
-      -
-    Qed. *)
-    Abort.
+        apply In_Some_list_None in h. destruct h.
+      - cbn in e. destruct t. all: try discriminate.
+        destruct match_pattern as [σ1|] eqn:e1. 2: discriminate.
+        destruct match_prelhs as [[ui' σ2]|] eqn:e2. 2: discriminate.
+        destruct subs_merge eqn:e3. 2: discriminate.
+        inversion e. subst. clear e.
+        cbn. eapply In_Some_subs_merge in h. 2: eassumption.
+        destruct h as [h | h].
+        + eapply match_pattern_size in e1. 2: eassumption.
+          lia.
+        + eapply ih in e2. 2: eassumption.
+          lia.
+      - cbn in e. destruct t. all: try discriminate.
+        assert_eq e. cbn in e.
+        destruct match_pattern eqn:e1. 2: discriminate.
+        destruct option_map2 eqn:e2. 2: discriminate.
+        destruct monad_fold_right eqn:e3. 2: discriminate.
+        destruct match_prelhs as [[ui' σ']|] eqn:e4. 2: discriminate.
+        destruct subs_merge eqn:e5. 2: discriminate.
+        move e at top.
+        destruct subs_merge eqn:e6. 2: discriminate.
+        inversion e. subst. clear e.
+        cbn. eapply In_Some_subs_merge in h. 2: eassumption.
+        destruct h as [h | h].
+        + eapply In_Some_subs_merge in h. 2: eassumption.
+          destruct h as [h | h].
+          * eapply match_pattern_size in e1. 2: eassumption.
+            lia.
+          * admit.
+        + eapply ih in e4. 2: eassumption.
+          lia.
+      - cbn in e. destruct t. all: try discriminate.
+        assert_eq e. cbn in e.
+        eapply ih in e. 2: eassumption.
+        cbn. lia.
+    Admitted.
+
+    Lemma In_map_option_out :
+      ∀ A l (l' : list A) x,
+        map_option_out l = Some l' →
+        In x l' →
+        In (Some x) l.
+    Proof.
+      intros A l l' x e h.
+      induction l as [| [] l ih] in l', x, e, h |- *.
+      - cbn in e. inversion e. subst. destruct h.
+      - cbn in e. destruct map_option_out eqn:e1. 2: discriminate.
+        apply some_inj in e. subst.
+        cbn in h. destruct h as [h | h].
+        + left. f_equal. assumption.
+        + right. eapply ih. 2: eassumption.
+          reflexivity.
+      - cbn in e. discriminate.
+    Qed.
 
     Lemma match_lhs_size :
-      ∀ f npat k n l t ui σ,
+      ∀ npat k n l t ui σ x,
         match_lhs npat k n l t = Some (ui, σ) →
-        list_size f σ < f t.
+        In x σ →
+        size x < size t.
     Proof.
-      intros f npat k n l t ui σ e.
+      intros npat k n l t ui σ x e h.
       unfold match_lhs in e.
       destruct match_prelhs as [[ui' σ']|] eqn:e1. 2: discriminate.
       cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
       inversion e. subst. clear e.
-    Abort.
+      eapply In_map_option_out in h. 2: eassumption.
+      eapply match_prelhs_size in e1. 2: eassumption.
+      assumption.
+    Qed.
 
     Lemma find_rule_size :
-      ∀ f rl kn nsymb t r u σ,
+      ∀ rl kn nsymb t r u σ x,
         find_rule rl kn nsymb t = Some (r, u, σ) →
-        list_size f σ < f t.
+        In x σ →
+        size x < size t.
     Proof.
-      intros f rl kn nsymb t r u σ e.
+      intros rl kn nsymb t r u σ x e h.
       induction rl. 1: discriminate.
       cbn - [match_rule] in e.
       destruct match_rule as [[ui' σ']|] eqn:e1.
@@ -1309,7 +1490,11 @@ Section Confluence.
         unfold match_rule in e1.
         destruct match_lhs as [[ui' σ']|] eqn:e2. 2: discriminate.
         cbn in e1. inversion e1. subst. clear e1.
-      (* - *)
+        eapply in_map_iff in h as [y [ey h]]. subst.
+        eapply match_lhs_size in e2. 2: eassumption.
+        (* The size will be offset... Is that a problem? *)
+        admit.
+      - eapply IHrl. assumption.
     Abort.
 
     Lemma try_rewrite_rule_size :
