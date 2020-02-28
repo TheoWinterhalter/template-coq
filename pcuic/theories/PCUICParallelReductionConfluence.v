@@ -1247,6 +1247,89 @@ Section Confluence.
       | None => find_lhs t
       end.
 
+    Definition option_size {A} (f : A → nat) (o : option A) : nat :=
+      match o with
+      | Some x => f x
+      | None => 0
+      end.
+
+    Lemma list_option_None_size :
+      forall A (f : A → nat) n,
+        list_size (option_size f) (list_init None n) = n.
+    Proof.
+      intros A f n.
+      induction n.
+      - reflexivity.
+      - cbn. auto.
+    Qed.
+
+    Lemma match_prelhs_size :
+      ∀ f npat k n l t ui σ,
+        match_prelhs npat k n l t = Some (ui, σ) →
+        list_size (option_size f) σ < f t.
+    Proof.
+      intros f npat k n l t ui σ e.
+      induction l as [| [] l ih] in t, ui, σ, e |- *.
+      - cbn in e. destruct t. all: try discriminate.
+        assert_eq e. cbn in e.
+        assert_eq e. cbn in e.
+        inversion e. subst. clear e.
+        rewrite list_option_None_size.
+        cbn.
+        (* Should use the real size *)
+        (* Should not go through list_size *)
+      (* -
+      -
+      -
+    Qed. *)
+    Abort.
+
+    Lemma match_lhs_size :
+      ∀ f npat k n l t ui σ,
+        match_lhs npat k n l t = Some (ui, σ) →
+        list_size f σ < f t.
+    Proof.
+      intros f npat k n l t ui σ e.
+      unfold match_lhs in e.
+      destruct match_prelhs as [[ui' σ']|] eqn:e1. 2: discriminate.
+      cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+      inversion e. subst. clear e.
+    Abort.
+
+    Lemma find_rule_size :
+      ∀ f rl kn nsymb t r u σ,
+        find_rule rl kn nsymb t = Some (r, u, σ) →
+        list_size f σ < f t.
+    Proof.
+      intros f rl kn nsymb t r u σ e.
+      induction rl. 1: discriminate.
+      cbn - [match_rule] in e.
+      destruct match_rule as [[ui' σ']|] eqn:e1.
+      - inversion e. subst. clear e.
+        unfold match_rule in e1.
+        destruct match_lhs as [[ui' σ']|] eqn:e2. 2: discriminate.
+        cbn in e1. inversion e1. subst. clear e1.
+      (* - *)
+    Abort.
+
+    Lemma try_rewrite_rule_size :
+      ∀ f k n ui l σ r nsymb rex t,
+        try_rewrite_rule rex t = Some (k, n, ui, l, σ, r, nsymb) →
+        list_size f σ < f t.
+    Proof.
+      intros f k n ui l σ r nsymb rex t e.
+      unfold try_rewrite_rule in e.
+      destruct try_find_lhs_ext eqn:e1.
+      - apply some_inj in e. subst.
+        unfold try_find_lhs_ext in e1.
+        destruct rex as [[kn nsy rl]|]. 2: discriminate.
+        cbn in e1.
+        destruct decompose_lhs as [[[[k' n'] ui'] l']|] eqn:e2. 2: discriminate.
+        destruct find_rule as [[[r' ?] σ']|] eqn:e3. 2: discriminate.
+        inversion e1. subst. clear e1.
+      (* - *)
+    Abort.
+
     (* From RoseTree example of Equations *)
     Equations map_In {A B : Type}
       (l : list A) (f : ∀ (x : A), In x l → B) : list B :=
