@@ -1476,6 +1476,67 @@ Section Confluence.
       assumption.
     Qed.
 
+    Lemma subst_size_id :
+      ∀ l k t,
+        Forall (fun t => size t = 1) l →
+        size (subst l k t) = size t.
+    Proof.
+      intros l k t h.
+      induction t in l, k, h |- * using term_forall_list_ind.
+      all: try solve [
+        cbn ;
+        repeat match goal with
+        | ih : ∀ l k, _ -> _ = size ?t |- context [ size (subst ?l ?k ?t) ] =>
+          rewrite -> ih by auto
+        end ;
+        reflexivity
+      ].
+      - cbn. destruct (Nat.leb_spec0 k n).
+        + destruct nth_error eqn:e.
+          * rewrite size_lift.
+            eapply nth_error_forall in e. 2: eassumption.
+            assumption.
+          * cbn. reflexivity.
+        + reflexivity.
+      - cbn. f_equal.
+        induction H.
+        + reflexivity.
+        + cbn. specialize p with (1 := h).
+          rewrite IHAll. rewrite p. reflexivity.
+      - cbn. rewrite -> IHt1 by auto. rewrite -> IHt2 by auto.
+        f_equal. f_equal.
+        induction X.
+        + reflexivity.
+        + cbn. rewrite IHX. rewrite -> p0 by auto. reflexivity.
+      - cbn. f_equal. generalize #|m|. intro q.
+        induction X in q, k, h |- *.
+        + reflexivity.
+        + cbn. destruct p as [p1 p2].
+          rewrite -> p1 by auto. rewrite -> p2 by auto.
+          unfold mfixpoint_size in IHX.
+          rewrite -> IHX by auto. reflexivity.
+      - cbn. f_equal. generalize #|m|. intro q.
+        induction X in q, k, h |- *.
+        + reflexivity.
+        + cbn. destruct p as [p1 p2].
+          rewrite -> p1 by auto. rewrite -> p2 by auto.
+          unfold mfixpoint_size in IHX.
+          rewrite -> IHX by auto. reflexivity.
+    Qed.
+
+    Lemma symbols_subst_size :
+      ∀ k n ui m,
+        Forall (fun t => size t = 1) (symbols_subst k n ui m).
+    Proof.
+      intros k n ui m. unfold symbols_subst.
+      generalize (m - n). intro j.
+      induction j in n |- *.
+      - constructor.
+      - cbn. constructor.
+        + reflexivity.
+        + apply IHj.
+    Qed.
+
     Lemma find_rule_size :
       ∀ rl kn nsymb t r u σ x,
         find_rule rl kn nsymb t = Some (r, u, σ) →
@@ -1492,13 +1553,11 @@ Section Confluence.
         cbn in e1. inversion e1. subst. clear e1.
         eapply in_map_iff in h as [y [ey h]]. subst.
         eapply match_lhs_size in e2. 2: eassumption.
-        (* It is a bit hard to conclude here!
-          It would probably better if we could avoid the substitution here
-          or postpone it somehow. Can we apply it after rho?
-        *)
-        admit.
+        rewrite subst_size_id.
+        + apply symbols_subst_size.
+        + assumption.
       - eapply IHrl. assumption.
-    Abort.
+    Qed.
 
     Lemma try_rewrite_rule_size :
       ∀ f k n ui l σ r nsymb rex t,
