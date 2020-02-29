@@ -1560,11 +1560,12 @@ Section Confluence.
     Qed.
 
     Lemma try_rewrite_rule_size :
-      ∀ f k n ui l σ r nsymb rex t,
+      ∀ k n ui l σ r nsymb rex t x,
         try_rewrite_rule rex t = Some (k, n, ui, l, σ, r, nsymb) →
-        list_size f σ < f t.
+        In x σ →
+        size x < size t.
     Proof.
-      intros f k n ui l σ r nsymb rex t e.
+      intros k n ui l σ r nsymb rex t x e h.
       unfold try_rewrite_rule in e.
       destruct try_find_lhs_ext eqn:e1.
       - apply some_inj in e. subst.
@@ -1574,8 +1575,17 @@ Section Confluence.
         destruct decompose_lhs as [[[[k' n'] ui'] l']|] eqn:e2. 2: discriminate.
         destruct find_rule as [[[r' ?] σ']|] eqn:e3. 2: discriminate.
         inversion e1. subst. clear e1.
-      (* - *)
-    Abort.
+        eapply find_rule_size in h. 2: eassumption.
+        assumption.
+      - unfold find_lhs in e.
+        destruct decompose_lhs as [[[[k' n'] ui'] l']|] eqn:e2. 2: discriminate.
+        cbn in e.
+        destruct lookup_rewrite_decl eqn:e3. 2: discriminate.
+        destruct find_rule as [[[r' ?] σ']|] eqn:e4. 2: discriminate.
+        inversion e. subst. clear e.
+        eapply find_rule_size in h. 2: eassumption.
+        assumption.
+    Qed.
 
     (* From RoseTree example of Equations *)
     Equations map_In {A B : Type}
