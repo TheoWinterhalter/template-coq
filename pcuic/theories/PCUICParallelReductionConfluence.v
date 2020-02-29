@@ -1652,7 +1652,8 @@ Section Confluence.
       intro x. unfold def_size. lia.
     Qed.
 
-    Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)} : term :=
+    Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)}
+      : term :=
       match try_rewrite_rule rex t with
       | Some (k, n, ui, l, σ, r, nsymb) =>
         let ss := symbols_subst k 0 ui nsymb in
@@ -1757,7 +1758,8 @@ Section Confluence.
       end.
     Solve All Obligations with (program_simpl ; cbn ; lia).
     Next Obligation.
-      todo "try_rewrite_rule_size"%string.
+      eapply try_rewrite_rule_size in h. 2: eauto.
+      assumption.
     Qed.
     Next Obligation.
       cbn.
