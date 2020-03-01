@@ -410,6 +410,6 @@ Proof.
   destruct (eqb_spec na na'); subst;
     destruct (eqb_spec b b'); subst;
       destruct (eqb_spec ty ty'); subst; constructor; congruence.
-Qed.
+Defined.
 
 Instance eqb_ctx : ReflectEq context := _.
