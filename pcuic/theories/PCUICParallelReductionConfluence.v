@@ -1947,25 +1947,27 @@ Section Confluence.
       induction Γ; simpl; auto. destruct a. destruct decl_body; simpl; auto with arith.
     Qed.
 
-    Lemma rho_ctx_over_app Γ' Γ Δ :
-      rho_ctx_over Γ' (Γ ,,, Δ) =
-      rho_ctx_over Γ' Γ ,,, rho_ctx_over (Γ' ,,, rho_ctx_over Γ' Γ) Δ.
+    Lemma rho_ctx_over_app :
+      ∀ Γ' Γ Δ,
+        rho_ctx_over Γ' (Γ ,,, Δ) =
+        rho_ctx_over Γ' Γ ,,, rho_ctx_over (Γ' ,,, rho_ctx_over Γ' Γ) Δ.
     Proof.
-      induction Δ; simpl; auto.
-      destruct a as [na [b|] ty].
-      - simpl. f_equal; auto.
-        now rewrite IHΔ app_context_assoc.
-      - now rewrite IHΔ app_context_assoc.
+      intros Γ' Γ Δ.
+      induction Δ as [| [na [b|] A] Δ ih].
+      - reflexivity.
+      - simpl. rewrite ih. rewrite app_context_assoc. reflexivity.
+      - simpl. rewrite ih. rewrite app_context_assoc. reflexivity.
     Qed.
 
-    Lemma rho_ctx_app Γ Δ : rho_ctx (Γ ,,, Δ) = rho_ctx Γ ,,, rho_ctx_over (rho_ctx Γ) Δ.
+    Lemma rho_ctx_app :
+      ∀ Γ Δ,
+        rho_ctx (Γ ,,, Δ) = rho_ctx Γ ,,, rho_ctx_over (rho_ctx Γ) Δ.
     Proof.
-      induction Δ; simpl; auto.
-      destruct a as [na [b|] ty].
-      - simpl. f_equal.
-        + rewrite app_context_nil_l. now rewrite IHΔ.
-        + auto.
-      - rewrite app_context_nil_l. now rewrite IHΔ.
+      intros Γ Δ.
+      induction Δ as [| [na [b|] A] Δ ih].
+      - reflexivity.
+      - simpl. rewrite app_context_nil_l. rewrite ih. reflexivity.
+      - simpl. rewrite app_context_nil_l. rewrite ih. reflexivity.
     Qed.
 
     Ltac pcuic := try repeat red; cbn in *;
