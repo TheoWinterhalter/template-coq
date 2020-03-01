@@ -2024,6 +2024,8 @@ Section Confluence.
         intuition red; auto using All2_local_env_app_inv.
     Qed.
 
+    Opaque rho.
+
     Lemma rho_All_All2_local_env_inv :
       ∀ Γ Γ' : context, pred1_ctx Σ Γ' (rho_ctx Γ) → ∀ Δ Δ' : context,
           All2_local_env (on_decl (on_decl_over (pred1 Σ) Γ' (rho_ctx Γ))) Δ
