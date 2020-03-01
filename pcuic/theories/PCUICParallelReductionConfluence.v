@@ -1611,8 +1611,8 @@ Section Confluence.
         + cbn. apply ih in h. lia.
     Qed.
 
-    Definition map_fix_In (rho : context → term → term) Γ mfixctx (mfix : mfixpoint term) :=
-      (map_In mfix (fun d h => map_def (rho Γ) (rho (Γ ,,, mfixctx)) d)).
+    (* Definition map_fix_In (rho : context → term → term) Γ mfixctx (mfix : mfixpoint term) :=
+      (map_In mfix (fun d h => map_def (rho Γ) (rho (Γ ,,, mfixctx)) d)). *)
 
     Equations fold_fix_context_In
       (m : mfixpoint term)
@@ -1641,6 +1641,20 @@ Section Confluence.
     Lemma In_mfixpoint_size :
       ∀ (f : term → nat) t m,
         In t (map dtype m) →
+        f t < S (mfixpoint_size f m).
+    Proof.
+      intros f t m h.
+      unfold mfixpoint_size.
+      eapply In_list_size with (f := f) in h.
+      eapply Nat.lt_le_trans. 1: eauto.
+      apply le_n_S.
+      eapply list_size_map_le.
+      intro x. unfold def_size. lia.
+    Qed.
+
+    Lemma In_mfixpoint_size_body :
+      ∀ (f : term → nat) t m,
+        In t (map dbody m) →
         f t < S (mfixpoint_size f m).
     Proof.
       intros f t m h.
@@ -1747,12 +1761,28 @@ Section Confluence.
           let mfixctx :=
             fold_fix_context_In mfix (fun Γ t h => rho_ext rex Γ t) Γ []
           in
-          tFix (map_fix_In (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
+          tFix
+            (map_In mfix (fun d h => {|
+              dname := d.(dname) ;
+              dtype := rho_ext rex Γ d.(dtype) ;
+              dbody := rho_ext rex (Γ ,,, mfixctx) d.(dbody) ;
+              rarg  := d.(rarg)
+            |}))
+            idx
+          (* tFix (map_fix_In (fun Γ t h => rho_ext rex Γ t) Γ mfixctx mfix) idx *)
         | tCoFix mfix idx =>
           let mfixctx :=
             fold_fix_context_In mfix (fun Γ t h => rho_ext rex Γ t) Γ []
           in
-          tCoFix (map_fix_In (fun Γ t => rho_ext rex Γ t) Γ mfixctx mfix) idx
+          tCoFix
+            (map_In mfix (fun d h => {|
+              dname := d.(dname) ;
+              dtype := rho_ext rex Γ d.(dtype) ;
+              dbody := rho_ext rex (Γ ,,, mfixctx) d.(dbody) ;
+              rarg  := d.(rarg)
+            |}))
+            idx
+          (* tCoFix (map_fix_In (fun Γ t h => rho_ext rex Γ t) Γ mfixctx mfix) idx *)
         | tInd _ _ | tConstruct _ _ _ | tSymb _ _ _ => t
         end
       end.
@@ -1790,7 +1820,11 @@ Section Confluence.
       cbn in *. lia.
     Qed.
     Next Obligation.
-    Admitted.
+      cbn. eapply In_mfixpoint_size. eapply in_map. assumption.
+    Qed.
+    Next Obligation.
+      cbn. eapply In_mfixpoint_size_body. eapply in_map. assumption.
+    Qed.
     Next Obligation.
       cbn.
       lazymatch goal with
@@ -1800,7 +1834,11 @@ Section Confluence.
       cbn in *. lia.
     Qed.
     Next Obligation.
-    Admitted.
+      cbn. eapply In_mfixpoint_size. eapply in_map. assumption.
+    Qed.
+    Next Obligation.
+      cbn. eapply In_mfixpoint_size_body. eapply in_map. assumption.
+    Qed.
 
     Definition rho Γ t :=
       rho_ext None Γ t.
