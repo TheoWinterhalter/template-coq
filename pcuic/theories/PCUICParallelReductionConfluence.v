@@ -3162,7 +3162,7 @@ Section Confluence.
       | Some d =>
         match decl_body d return Prop with
         | Some b =>
-          ∃ b',
+          exists b',
             option_map decl_body (nth_error Δ (r x)) = Some (Some b') ∧
             b'.[↑^(S (r x))] = b.[↑^(S x) ∘ ren r]
             (* whose body is b substituted with the previous variables *)
