@@ -1666,6 +1666,80 @@ Section Confluence.
       intro x. unfold def_size. lia.
     Qed.
 
+    Equations rho_atom (t : term) : Prop :=
+      rho_atom (tInd _ _) := True ;
+      rho_atom (tConstruct _ _ _) := True ;
+      rho_atom (tSymb _ _ _) := True ;
+      rho_atom _ := False.
+
+    (* TODO Carry also the information that try_rewrite_rule failed
+      in other branches?
+    *)
+    Inductive rho_ext_view (rex : option rew_ext) : term -> Type :=
+    | rhov_rewrite_rule k n ui l σ r nsymb t :
+        try_rewrite_rule rex t = Some (k, n, ui, l, σ, r, nsymb) →
+        rho_ext_view rex t
+    | rhov_beta na T b u : rho_ext_view rex (tApp (tLambda na T b) u)
+    | rhov_let na d t b : rho_ext_view rex (tLetIn na d t b)
+    | rhov_rel i : rho_ext_view rex (tRel i)
+    (* TODO Go deeper? *)
+    | rhov_case ind pars p x brs : rho_ext_view rex (tCase (ind, pars) p x brs)
+    (* TODO Deeper? *)
+    | rhov_proj p x : rho_ext_view rex (tProj p x)
+    | rhov_const c u : rho_ext_view rex (tConst c u)
+    | rhov_app t u : rho_ext_view rex (tApp t u)
+    | rhov_lam na t u : rho_ext_view rex (tLambda na t u)
+    | rhov_prod na t u : rho_ext_view rex (tProd na t u)
+    | rhov_var i : rho_ext_view rex (tVar i)
+    | rhov_evar n l : rho_ext_view rex (tEvar n l)
+    | rhov_sort s : rho_ext_view rex (tSort s)
+    | rhov_fix mfix idx : rho_ext_view rex (tFix mfix idx)
+    | rhov_cofix mfix idx : rho_ext_view rex (tCoFix mfix idx)
+    | rhov_atom t : rho_atom t → rho_ext_view rex t.
+
+    Arguments rhov_rewrite_rule {_}.
+    Arguments rhov_beta {_}.
+    Arguments rhov_let {_}.
+    Arguments rhov_rel {_}.
+    Arguments rhov_case {_}.
+    Arguments rhov_proj {_}.
+    Arguments rhov_const {_}.
+    Arguments rhov_app {_}.
+    Arguments rhov_lam {_}.
+    Arguments rhov_prod {_}.
+    Arguments rhov_var {_}.
+    Arguments rhov_evar {_}.
+    Arguments rhov_sort {_}.
+    Arguments rhov_fix {_}.
+    Arguments rhov_cofix {_}.
+    Arguments rhov_atom {_ _} _.
+
+    (* Equations rho_ext_viewc rex t : rho_ext_view rex t :=
+      rho_ext_viewc rex t with inspect (try_rewrite_rule rex t) := {
+      | @exist (Some (k, n, ui, l, σ, r, nsymb)) e :=
+        rhov_rewrite_rule k n ui l σ r nsymb t _ ;
+      | @exist None h with t := {
+        | tApp (tLambda na T b) u := rhov_beta na T b u ;
+        | tLetIn na d t b := rhov_let na d t b ;
+        | tRel i := rhov_rel i ;
+        | tCase (ind, pars) p x brs := rhov_case ind pars p x brs ;
+        | tProj p x := rhov_proj p x ;
+        | tConst c u := rhov_const c u ;
+        | tApp t u := rhov_app t u ;
+        | tLambda na t u := rhov_lam na t u ;
+        | tProd na t u := rhov_prod na t u ;
+        | tVar i := rhov_var i ;
+        | tEvar n l := rhov_evar n l ;
+        | tSort s := rhov_sort s ;
+        | tFix mfix idx := rhov_fix mfix idx ;
+        | tCoFix mfix idx := rhov_cofix mfix idx ;
+        | _ := rhov_atom _
+        }
+      }.
+    Solve All Obligations with (program_simpl ; exact I).
+    Next Obligation.
+    Abort. *)
+
     Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)}
       : term :=
       match try_rewrite_rule rex t with
