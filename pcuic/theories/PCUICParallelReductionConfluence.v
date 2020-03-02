@@ -3144,28 +3144,35 @@ Section Confluence.
   Qed.
 
   Definition rho_ctxmap φ (Γ Δ : context) (s : nat -> term) :=
-    forall x d, nth_error Γ x = Some d ->
-                match decl_body d return Type with
-                | Some b => ∑ i, (s x = tRel i) * (* The image is a variable i in Δ *)
-                                 (option_map decl_body (nth_error Δ i) = Some (Some b.[↑^(S x) ∘ s]))
-                (* whose body is b substituted with the previous variables *)
-                | None => (Σ, φ) ;;; Δ |- s x : d.(decl_type).[↑^(S x) ∘ s]
-                end.
+    ∀ x d,
+      nth_error Γ x = Some d →
+      match decl_body d return Type with
+      | Some b =>
+        ∑ i,
+          (s x = tRel i) * (* The image is a variable i in Δ *)
+          (option_map decl_body (nth_error Δ i) = Some (Some b.[↑^(S x) ∘ s]))
+          (* whose body is b substituted with the previous variables *)
+      | None =>
+        (Σ, φ) ;;; Δ |- s x : d.(decl_type).[↑^(S x) ∘ s]
+      end.
 
   Definition renaming Γ Δ r :=
-    forall x, match nth_error Γ x with
-              | Some d =>
-                match decl_body d return Prop with
-                | Some b =>
-                  exists b', option_map decl_body (nth_error Δ (r x)) = Some (Some b') /\
-                             b'.[↑^(S (r x))] = b.[↑^(S x) ∘ ren r]
-                (* whose body is b substituted with the previous variables *)
-                | None => option_map decl_body (nth_error Δ (r x)) = Some None
-                end
-              | None => nth_error Δ (r x) = None
-              end.
+    ∀ x,
+      match nth_error Γ x with
+      | Some d =>
+        match decl_body d return Prop with
+        | Some b =>
+          ∃ b',
+            option_map decl_body (nth_error Δ (r x)) = Some (Some b') ∧
+            b'.[↑^(S (r x))] = b.[↑^(S x) ∘ ren r]
+            (* whose body is b substituted with the previous variables *)
+        | None => option_map decl_body (nth_error Δ (r x)) = Some None
+        end
+      | None => nth_error Δ (r x) = None
+      end.
 
-  Instance renaming_ext Γ Δ : Morphisms.Proper (`=1` ==> iff)%signature (renaming Γ Δ).
+  Instance renaming_ext Γ Δ :
+    Morphisms.Proper (`=1` ==> iff)%signature (renaming Γ Δ).
   Proof.
     red. red. intros.
     split; intros.
@@ -3189,7 +3196,7 @@ Section Confluence.
 
   Lemma shiftn1_renaming Γ Δ c c' r :
     renaming Γ Δ r ->
-    (decl_body c' = option_map (fun x => x.[ren r]) (decl_body c)) ->
+    (decl_body c' = option_map (fun x => x.[ren r]) (decl_body c)) →
     renaming (c :: Γ) (c' :: Δ) (shiftn 1 r).
   Proof.
     intros.
@@ -3215,9 +3222,11 @@ Section Confluence.
   Qed.
 
   Lemma shift_renaming Γ Δ ctx ctx' r :
-    All2i (fun n decl decl' => (decl_body decl' = option_map (fun x => x.[ren (shiftn n r)]) (decl_body decl)))
-          ctx ctx' ->
-    renaming Γ Δ r ->
+    All2i (fun n decl decl' =>
+      decl_body decl' =
+      option_map (fun x => x.[ren (shiftn n r)]) (decl_body decl)
+    ) ctx ctx' →
+    renaming Γ Δ r →
     renaming (Γ ,,, ctx) (Δ ,,, ctx') (shiftn #|ctx| r).
   Proof.
     induction 1.
