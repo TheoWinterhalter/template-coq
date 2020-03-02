@@ -1714,7 +1714,7 @@ Section Confluence.
     Arguments rhov_cofix {_}.
     Arguments rhov_atom {_ _} _.
 
-    (* Equations rho_ext_viewc rex t : rho_ext_view rex t :=
+    Equations(noind) rho_ext_viewc rex t : rho_ext_view rex t :=
       rho_ext_viewc rex t with inspect (try_rewrite_rule rex t) := {
       | @exist (Some (k, n, ui, l, σ, r, nsymb)) e :=
         rhov_rewrite_rule k n ui l σ r nsymb t _ ;
@@ -1737,8 +1737,6 @@ Section Confluence.
         }
       }.
     Solve All Obligations with (program_simpl ; exact I).
-    Next Obligation.
-    Abort. *)
 
     Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)}
       : term :=
