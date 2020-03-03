@@ -1139,6 +1139,11 @@ Section Confluence.
     | is_symb k n ui l : decompose_symb_view (mkElims (tSymb k n ui) l)
     | is_not_symb t : decompose_symb t = None -> decompose_symb_view t.
 
+    Set Equations Transparent.
+
+    (* TODO Duplicate *)
+    Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
+
     Equations decompose_symb_viewc t : decompose_symb_view t :=
       decompose_symb_viewc t with inspect (decompose_symb t) := {
       | @exist (Some (k,n,ui,l)) e := _ ;
@@ -1738,11 +1743,6 @@ Section Confluence.
       }.
     Solve All Obligations with (program_simpl ; exact I).
 
-    Set Equations Transparent.
-
-    (* TODO Duplicate *)
-    Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
-
     Inductive decompose_app_view : term -> Set :=
     | is_apps t l (e : isApp t = false) : decompose_app_view (mkApps t l).
 
@@ -1905,27 +1905,24 @@ Section Confluence.
             }
           }
         } ;
-      (* | rhov_proj p x with diag_constr_cofix_viewc x x' := {
-        | diag_app_construct ind c u args ind' c' u' args'
-          with nth_error args' (pars + narg) := {
-          | Some arg1 :=
-            if eqb i ind'
-            then arg1
-            else tProj p x' ;
-          | None := tProj p x'
-          } ;
-        | diag_app_cofix mfix idx args mfix' idx' args'
-          with unfold_cofix mfix' idx := {
-          | Some (narg, fn) := tProj p (mkaApps fn args') ;
-          | None := tProj p (mkApps (tCoFix mfix' idx') args')
-          } ;
-        | diag_constr_cofix_outside x x' h := tProj p x'
-        }
-        where
-          x' : term :=
-          { x' := rho_ext rex Γ x }
-        ; *)
-      | rhov_proj p x := tRel 0 ;
+      | rhov_proj (i, pars, narg) x with rho_ext rex Γ x := {
+        | x' with diag_constr_cofix_viewc x x' := {
+          | diag_app_construct ind c u args ind' c' u' args'
+            with nth_error args' (pars + narg) := {
+            | Some arg1 :=
+              if eqb i ind'
+              then arg1
+              else tProj (i, pars, narg) (mkApps (tConstruct ind' c' u') args') ;
+            | None := tProj (i, pars, narg) (mkApps (tConstruct ind' c' u') args')
+            } ;
+          | diag_app_cofix mfix idx args mfix' idx' args'
+            with unfold_cofix mfix' idx := {
+            | Some (narg, fn) := tProj (i, pars, narg) (mkApps fn args') ;
+            | None := tProj (i, pars, narg) (mkApps (tCoFix mfix' idx') args')
+            } ;
+          | diag_constr_cofix_outside x x' h := tProj (i, pars, narg) x'
+          }
+        } ;
       | rhov_const c u with lookup_env Σ c := {
         | Some (ConstantDecl decl) with decl.(cst_body) := {
           | Some body := subst_instance_constr u body ;
