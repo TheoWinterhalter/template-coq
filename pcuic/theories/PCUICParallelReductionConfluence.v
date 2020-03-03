@@ -1738,6 +1738,25 @@ Section Confluence.
       }.
     Solve All Obligations with (program_simpl ; exact I).
 
+    Set Equations Transparent.
+
+    (* TODO Duplicate *)
+    Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
+
+    Inductive decompose_app_view : term -> Set :=
+    | is_apps t l (e : isApp t = false) : decompose_app_view (mkApps t l).
+
+    Equations decompose_app_viewc t : decompose_app_view t :=
+      decompose_app_viewc t with inspect (decompose_app t) := {
+      | @exist (u,l) e := _
+      }.
+    Next Obligation.
+      symmetry in e.
+      apply decompose_app_inv in e as e'.
+      apply decompose_app_notApp in e as h. subst.
+      constructor. assumption.
+    Defined.
+
     Equations diag_constr_cofix_discr (t t' : term) : Prop :=
       diag_constr_cofix_discr t t' with decompose_app_viewc t := {
       | is_apps (tConstruct ind c u) args e
@@ -1753,6 +1772,64 @@ Section Confluence.
       | _ := True
       }.
 
+    Definition isCoFix t :=
+      match t with
+      | tCoFix m i => true
+      | _ => false
+      end.
+
+    Lemma diag_constr_cofix_discr_left_mkApps :
+      ∀ {u args t},
+        isApp u = false →
+        isConstruct u = false →
+        isCoFix u = false →
+        diag_constr_cofix_discr (mkApps u args) t.
+    Proof.
+      intros u args t ha hc hf.
+      funelim (diag_constr_cofix_discr (mkApps u args) t).
+      all: try exact I.
+      - eapply (f_equal decompose_app) in H.
+        rewrite -> 2!decompose_app_mkApps in H. 3: auto.
+        2:{ rewrite ha. cbn. auto. }
+        inversion H. subst.
+        cbn in hc. discriminate.
+      - eapply (f_equal decompose_app) in H.
+        rewrite -> 2!decompose_app_mkApps in H. 3: auto.
+        2:{ rewrite ha. cbn. auto. }
+        inversion H. subst.
+        cbn in hf. discriminate.
+    Defined.
+
+    Lemma diag_constr_cofix_discr_right_mkApps :
+      ∀ {u args v args'},
+        isApp u = false →
+        isApp v = false →
+        ~~ ((isConstruct u && isConstruct v) || (isCoFix u && isCoFix v)) →
+        diag_constr_cofix_discr (mkApps u args) (mkApps v args').
+    Proof.
+      intros u args v args' hu hv h.
+      funelim (diag_constr_cofix_discr (mkApps u args) (mkApps v args')).
+      all: try exact I.
+      - eapply (f_equal decompose_app) in H.
+        eapply (f_equal decompose_app) in H0.
+        rewrite -> 2!decompose_app_mkApps in H. 3: auto.
+        2:{ rewrite hu. cbn. auto. }
+        rewrite -> 2!decompose_app_mkApps in H0. 3: auto.
+        2:{ rewrite hv. cbn. auto. }
+        inversion H. subst.
+        inversion H0. subst.
+        cbn in h. discriminate.
+      - eapply (f_equal decompose_app) in H.
+        eapply (f_equal decompose_app) in H0.
+        rewrite -> 2!decompose_app_mkApps in H. 3: auto.
+        2:{ rewrite hu. cbn. auto. }
+        rewrite -> 2!decompose_app_mkApps in H0. 3: auto.
+        2:{ rewrite hv. cbn. auto. }
+        inversion H. subst.
+        inversion H0. subst.
+        cbn in h. discriminate.
+    Defined.
+
     Inductive diag_constr_cofix_view : term → term → Type :=
     | diag_app_construct ind c u args ind' c' u' args' :
         diag_constr_cofix_view
@@ -1766,28 +1843,29 @@ Section Confluence.
         diag_constr_cofix_discr t t' →
         diag_constr_cofix_view t t'.
 
-    Equations diag_constr_cofix_viewc (t t' : term)
+    #[program] Equations diag_constr_cofix_viewc (t t' : term)
       : diag_constr_cofix_view t t' :=
       diag_constr_cofix_viewc t t' with decompose_app_viewc t := {
       | is_apps (tConstruct ind c u) args e
         with decompose_app_viewc t' := {
         | is_apps (tConstruct ind' c' u') args' e' :=
           diag_app_construct ind c u args ind' c' u' args' ;
-        | _ := diag_constr_cofix_outside _ _ _
+        | is_apps v l e' :=
+          diag_constr_cofix_outside _ _
+            (diag_constr_cofix_discr_right_mkApps e e' _)
         } ;
       | is_apps (tCoFix mfix idx) args e
         with decompose_app_viewc t' := {
         | is_apps (tCoFix mfix' idx') args' e' :=
           diag_app_cofix mfix idx args mfix' idx' args' ;
-        | _ := diag_constr_cofix_outside _ _ _
+        | is_apps v l e' :=
+          diag_constr_cofix_outside _ _
+            (diag_constr_cofix_discr_right_mkApps e e' _)
         } ;
-      | _ := diag_constr_cofix_outside _ _ _
+      | is_apps u args e :=
+        diag_constr_cofix_outside _ _
+          (diag_constr_cofix_discr_left_mkApps e _ _)
       }.
-    Next Obligation.
-      funelim (diag_constr_cofix_discr (mkApps (tRel n) l) t').
-      all: try exact I.
-    Admitted.
-    Admit Obligations.
 
     Equations rho_ext (rex : option rew_ext) (Γ : context) (t : term) : term
       by wf (size t) lt :=
