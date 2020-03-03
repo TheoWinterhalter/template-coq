@@ -1738,7 +1738,216 @@ Section Confluence.
       }.
     Solve All Obligations with (program_simpl ; exact I).
 
-    Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)}
+    Equations diag_constr_cofix_discr (t t' : term) : Prop :=
+      diag_constr_cofix_discr t t' with decompose_app_viewc t := {
+      | is_apps (tConstruct ind c u) args e
+        with decompose_app_viewc t' := {
+        | is_apps (tConstruct ind' c' u') args' e' := False ;
+        | _ := True
+        } ;
+      | is_apps (tCoFix mfix idx) args e
+        with decompose_app_viewc t' := {
+        | is_apps (tCoFix mfix' idx') args' e' := False ;
+        | _ := True
+        } ;
+      | _ := True
+      }.
+
+    Inductive diag_constr_cofix_view : term → term → Type :=
+    | diag_app_construct ind c u args ind' c' u' args' :
+        diag_constr_cofix_view
+          (mkApps (tConstruct ind c u) args)
+          (mkApps (tConstruct ind' c' u') args')
+    | diag_app_cofix mfix idx args mfix' idx' args' :
+        diag_constr_cofix_view
+          (mkApps (tCoFix mfix idx) args)
+          (mkApps (tCoFix mfix' idx') args')
+    | diag_constr_cofix_outside t t' :
+        diag_constr_cofix_discr t t' →
+        diag_constr_cofix_view t t'.
+
+    Equations diag_constr_cofix_viewc (t t' : term)
+      : diag_constr_cofix_view t t' :=
+      diag_constr_cofix_viewc t t' with decompose_app_viewc t := {
+      | is_apps (tConstruct ind c u) args e
+        with decompose_app_viewc t' := {
+        | is_apps (tConstruct ind' c' u') args' e' :=
+          diag_app_construct ind c u args ind' c' u' args' ;
+        | _ := diag_constr_cofix_outside _ _ _
+        } ;
+      | is_apps (tCoFix mfix idx) args e
+        with decompose_app_viewc t' := {
+        | is_apps (tCoFix mfix' idx') args' e' :=
+          diag_app_cofix mfix idx args mfix' idx' args' ;
+        | _ := diag_constr_cofix_outside _ _ _
+        } ;
+      | _ := diag_constr_cofix_outside _ _ _
+      }.
+    Next Obligation.
+      funelim (diag_constr_cofix_discr (mkApps (tRel n) l) t').
+      all: try exact I.
+    Admitted.
+    Admit Obligations.
+
+    Equations rho_ext (rex : option rew_ext) (Γ : context) (t : term) : term
+      by wf (size t) lt :=
+      rho_ext rex Γ t with rho_ext_viewc rex t := {
+      | rhov_rewrite_rule k n ui l σ r nsymb t e :=
+        let ss := symbols_subst k 0 ui nsymb in
+        subst0 (map_In σ (fun t h => rho_ext rex Γ t)) (subst ss #|σ| (rhs r)) ;
+      | rhov_beta na T b u :=
+        (rho_ext rex (vass na (rho_ext rex Γ T) :: Γ) b) {0 := rho_ext rex Γ u} ;
+      | rhov_let na d t b :=
+        subst10
+          (rho_ext rex Γ d)
+          (rho_ext rex (vdef na (rho_ext rex Γ d) (rho_ext rex Γ t) :: Γ) b) ;
+      | rhov_rel i with option_map decl_body (nth_error Γ i) := {
+        | Some (Some body) := (lift0 (S i) body) ;
+        | Some None := tRel i ;
+        | None := tRel i
+        } ;
+      | rhov_case ind pars p x brs with rho_ext rex Γ p := {
+        | p' with rho_ext rex Γ x := {
+          | x' with map_In brs (fun x h => (fst x, rho_ext rex Γ (snd x))) := {
+            | brs' with diag_constr_cofix_viewc x x' := {
+              | diag_app_construct ind' c u args ind'' c' u' args' :=
+                if eqb ind ind'
+                then iota_red pars c args' brs'
+                else tCase (ind, pars) p' (mkApps (tConstruct ind'' c' u') args') brs' ;
+              | diag_app_cofix mfix idx args mfix' idx' args'
+                with unfold_cofix mfix' idx := {
+                | Some (narg, fn) :=
+                  tCase (ind, pars) p' (mkApps fn args') brs' ;
+                | None :=
+                  tCase (ind, pars) p' (mkApps (tCoFix mfix' idx) args') brs'
+                } ;
+              | diag_constr_cofix_outside x x' h :=
+                tCase (ind, pars) p' x' brs'
+              }
+            }
+          }
+        } ;
+      (* | rhov_proj p x with diag_constr_cofix_viewc x x' := {
+        | diag_app_construct ind c u args ind' c' u' args'
+          with nth_error args' (pars + narg) := {
+          | Some arg1 :=
+            if eqb i ind'
+            then arg1
+            else tProj p x' ;
+          | None := tProj p x'
+          } ;
+        | diag_app_cofix mfix idx args mfix' idx' args'
+          with unfold_cofix mfix' idx := {
+          | Some (narg, fn) := tProj p (mkaApps fn args') ;
+          | None := tProj p (mkApps (tCoFix mfix' idx') args')
+          } ;
+        | diag_constr_cofix_outside x x' h := tProj p x'
+        }
+        where
+          x' : term :=
+          { x' := rho_ext rex Γ x }
+        ; *)
+      | rhov_proj p x := tRel 0 ;
+      | rhov_const c u with lookup_env Σ c := {
+        | Some (ConstantDecl decl) with decl.(cst_body) := {
+          | Some body := subst_instance_constr u body ;
+          | None := tConst c u
+          } ;
+        | _ := tConst c u
+        } ;
+      | rhov_app t u := tRel 0 ;
+      | rhov_lam na t u :=
+        tLambda
+          na
+          (rho_ext rex Γ t)
+          (rho_ext rex (vass na (rho_ext rex Γ t) :: Γ) u) ;
+      | rhov_prod na t u :=
+        tProd
+          na
+          (rho_ext rex Γ t)
+          (rho_ext rex (vass na (rho_ext rex Γ t) :: Γ) u) ;
+      | rhov_var i := tVar i ;
+      | rhov_evar n l := tEvar n (map_In l (fun t h => rho_ext rex Γ t)) ;
+      | rhov_sort s := tSort s ;
+      | rhov_fix mfix idx :=
+        tFix
+          (map_In mfix (fun d h => {|
+            dname := d.(dname) ;
+            dtype := rho_ext rex Γ d.(dtype) ;
+            dbody := rho_ext rex (Γ ,,, mfixctx) d.(dbody) ;
+            rarg  := d.(rarg)
+          |}))
+          idx
+        where mfixctx : context :=
+        { mfixctx :=
+          fold_fix_context_In mfix (fun Γ t h => rho_ext rex Γ t) Γ []
+        } ;
+      | rhov_cofix mfix idx :=
+        tCoFix
+          (map_In mfix (fun d h => {|
+            dname := d.(dname) ;
+            dtype := rho_ext rex Γ d.(dtype) ;
+            dbody := rho_ext rex (Γ ,,, mfixctx) d.(dbody) ;
+            rarg  := d.(rarg)
+          |}))
+          idx
+        where mfixctx : context :=
+        { mfixctx :=
+          fold_fix_context_In mfix (fun Γ t h => rho_ext rex Γ t) Γ []
+        } ;
+      | @rhov_atom t h := t
+      }.
+    Solve All Obligations with (program_simpl ; cbn ; lia).
+    Next Obligation.
+      eapply try_rewrite_rule_size in h. 2: eauto.
+      assumption.
+    Qed.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x ?l |- context [ list_size ?g ?l ] =>
+        eapply In_list_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x ?l |- context [ list_size ?g ?l ] =>
+        eapply In_list_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x (map dtype ?l) |- context [ mfixpoint_size ?g ?l ] =>
+        eapply In_mfixpoint_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+      cbn. eapply In_mfixpoint_size. eapply in_map. assumption.
+    Qed.
+    Next Obligation.
+      cbn. eapply In_mfixpoint_size_body. eapply in_map. assumption.
+    Qed.
+    Next Obligation.
+      cbn.
+      lazymatch goal with
+      | h : In ?x (map dtype ?l) |- context [ mfixpoint_size ?g ?l ] =>
+        eapply In_mfixpoint_size with (f := g) in h
+      end.
+      cbn in *. lia.
+    Qed.
+    Next Obligation.
+      cbn. eapply In_mfixpoint_size. eapply in_map. assumption.
+    Qed.
+    Next Obligation.
+      cbn. eapply In_mfixpoint_size_body. eapply in_map. assumption.
+    Qed.
+
+    (* Program Fixpoint rho_ext (rex : option rew_ext) Γ t {measure (size t)}
       : term :=
       match try_rewrite_rule rex t with
       | Some (k, n, ui, l, σ, r, nsymb) =>
@@ -1910,7 +2119,7 @@ Section Confluence.
     Qed.
     Next Obligation.
       cbn. eapply In_mfixpoint_size_body. eapply in_map. assumption.
-    Qed.
+    Qed. *)
 
     Definition rho Γ t :=
       rho_ext None Γ t.
@@ -2095,8 +2304,6 @@ Section Confluence.
       - red in p |- *. rewrite rho_ctx_app in p.
         intuition red; auto using All2_local_env_app_inv.
     Qed.
-
-    Opaque rho.
 
     Lemma rho_All_All2_local_env_inv :
       ∀ Γ Γ' : context, pred1_ctx Σ Γ' (rho_ctx Γ) → ∀ Δ Δ' : context,
