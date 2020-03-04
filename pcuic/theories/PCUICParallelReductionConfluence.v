@@ -3684,12 +3684,6 @@ Section Confluence.
       + apply r0.
   Qed.
 
-  Definition isFix (t : term) : bool :=
-    match t with
-    | tFix _ _ => true
-    | _ => false
-    end.
-
   Definition discr_fix (t : term) : Prop :=
     match t with
     | tFix _ _ => False
