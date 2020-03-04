@@ -1867,6 +1867,83 @@ Section Confluence.
           (diag_constr_cofix_discr_left_mkApps e _ _)
       }.
 
+    Equations diag_appfix_discr (t t' : term) : Prop :=
+      diag_appfix_discr t t' with decompose_app_viewc t := {
+      | is_apps (tFix mfix idx) args e
+        with decompose_app_viewc t' := {
+        | is_apps (tFix mfix' idx') args' e' := False ;
+        | _ := True
+        } ;
+      | _ := True
+      }.
+
+    Definition isFix t :=
+      match t with
+      | tFix m i => true
+      | _ => false
+      end.
+
+    Lemma diag_appfix_discr_left_mkApps :
+      ∀ {u args t},
+        isApp u = false →
+        isFix u = false →
+        diag_appfix_discr (mkApps u args) t.
+    Proof.
+      intros u args t ha hf.
+      funelim (diag_appfix_discr (mkApps u args) t).
+      all: try exact I.
+      eapply (f_equal decompose_app) in H.
+      rewrite -> 2!decompose_app_mkApps in H. 3: auto.
+      2:{ rewrite ha. cbn. auto. }
+      inversion H. subst.
+      cbn in hf. discriminate.
+    Defined.
+
+    Lemma diag_appfix_discr_right_mkApps :
+      ∀ {u args v args'},
+        isApp u = false →
+        isApp v = false →
+        ~~ (isFix u && isFix v) →
+        diag_appfix_discr (mkApps u args) (mkApps v args').
+    Proof.
+      intros u args v args' hu hv h.
+      funelim (diag_appfix_discr (mkApps u args) (mkApps v args')).
+      all: try exact I.
+      eapply (f_equal decompose_app) in H.
+      eapply (f_equal decompose_app) in H0.
+      rewrite -> 2!decompose_app_mkApps in H. 3: auto.
+      2:{ rewrite hu. cbn. auto. }
+      rewrite -> 2!decompose_app_mkApps in H0. 3: auto.
+      2:{ rewrite hv. cbn. auto. }
+      inversion H. subst.
+      inversion H0. subst.
+      cbn in h. discriminate.
+    Defined.
+
+    Inductive diag_appfix_view : term → term → Type :=
+    | diag_appfix m id args m' id' args' :
+        diag_appfix_view
+          (mkApps (tFix m id) args)
+          (mkApps (tFix m' id') args')
+    | diag_appfix_outside t t' :
+        diag_appfix_discr t t' →
+        diag_appfix_view t t'.
+
+    Equations diag_appfix_viewc (t t' : term) : diag_appfix_view t t' :=
+      diag_appfix_viewc t t' with decompose_app_viewc t := {
+      | is_apps (tFix m id) args e
+        with decompose_app_viewc t' := {
+        | is_apps (tFix m' id') args' e' :=
+          diag_appfix m id args m' id' args' ;
+        | is_apps v l e' :=
+          diag_appfix_outside _ _
+            (diag_appfix_discr_right_mkApps e e' _)
+        } ;
+      | is_apps u args e :=
+        diag_appfix_outside _ _
+          (diag_appfix_discr_left_mkApps e _)
+      }.
+
     Equations rho_ext (rex : option rew_ext) (Γ : context) (t : term) : term
       by wf (size t) lt :=
       rho_ext rex Γ t with rho_ext_viewc rex t := {
@@ -1930,7 +2007,23 @@ Section Confluence.
           } ;
         | _ := tConst c u
         } ;
-      | rhov_app t u := tRel 0 ;
+      | rhov_app t u with rho_ext rex Γ t := {
+        | t' with rho_ext rex Γ u := {
+          (* | u' with diag_appfix_viewc (tApp t u) (tApp t' u') := { *)
+          | u' with diag_appfix_viewc t t' := {
+            | diag_appfix mfix0 idx0 args0 mfix1 idx1 args1
+              with unfold_fix mfix1 idx1 := {
+              | Some (rarg, fn) :=
+                (* if is_constructor rarg args1
+                then mkApps fn args1
+                else tApp t' u' ; *)
+                _ ;
+              | None := (* tApp t' u' *) _
+              } ;
+            | diag_appfix_outside t'' u'' h := tApp t'' u''
+            }
+          }
+        } ;
       | rhov_lam na t u :=
         tLambda
           na
