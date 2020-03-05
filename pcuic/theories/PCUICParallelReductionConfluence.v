@@ -2009,16 +2009,14 @@ Section Confluence.
         } ;
       | rhov_app t u with rho_ext rex Γ t := {
         | t' with rho_ext rex Γ u := {
-          (* | u' with diag_appfix_viewc (tApp t u) (tApp t' u') := { *)
           | u' with diag_appfix_viewc t t' := {
             | diag_appfix mfix0 idx0 args0 mfix1 idx1 args1
               with unfold_fix mfix1 idx1 := {
               | Some (rarg, fn) :=
-                (* if is_constructor rarg args1
-                then mkApps fn args1
-                else tApp t' u' ; *)
-                _ ;
-              | None := (* tApp t' u' *) _
+                if is_constructor rarg (args1 ++ [u'])
+                then mkApps fn (args1 ++ [u'])
+                else tApp (mkApps (tFix mfix1 idx1) args1) u' ;
+              | None := tApp (mkApps (tFix mfix1 idx1) args1) u'
               } ;
             | diag_appfix_outside t'' u'' h := tApp t'' u''
             }
