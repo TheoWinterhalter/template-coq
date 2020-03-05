@@ -1619,6 +1619,21 @@ Section Confluence.
     (* Definition map_fix_In (rho : context → term → term) Γ mfixctx (mfix : mfixpoint term) :=
       (map_In mfix (fun d h => map_def (rho Γ) (rho (Γ ,,, mfixctx)) d)). *)
 
+    Lemma map_fix_In_spec :
+      ∀ mfix Γ mfixctx f,
+        map_In mfix (fun d h => {|
+          dname := d.(dname) ;
+          dtype := f Γ d.(dtype) ;
+          dbody := f (Γ ,,, mfixctx) d.(dbody) ;
+          rarg  := d.(rarg)
+        |}) = map_fix f Γ mfixctx mfix.
+    Proof.
+      intros mfix Γ mfixctx f.
+      rewrite map_In_spec.
+      unfold map_fix. unfold map_def.
+      reflexivity.
+    Qed.
+
     Equations fold_fix_context_In
       (m : mfixpoint term)
       (f : context → ∀ t, In t (map dtype m) → term) (Γ acc : context)
@@ -3801,15 +3816,29 @@ Section Confluence.
     rho Γ (mkApps (tFix mfix idx) l) = rho_fix Γ (tFix mfix idx) l.
   Proof.
     induction l using rev_ind; simpl; try reflexivity.
-    - rewrite /rho_fix /= /unfold_fix nth_error_map_fix.
+    - unfold rho_fix.
+      unfold rho. simp rho_ext.
+      rewrite map_fix_In_spec.
+      unfold unfold_fix. rewrite nth_error_map_fix.
       case nth: (nth_error mfix idx) => [d|] /= //.
       case isl: isLambda => //.
       case isc: is_constructor => //.
       move: isc. rewrite /is_constructor nth_error_nil //.
     - rewrite -mkApps_nested.
       destruct l.
-      + simpl.
-        simpl in IHl.
+      + simpl. simpl in IHl. unfold rho.
+        simp rho_ext. unfold rho_ext_unfold_clause_1_clause_8_clause_1_clause_1.
+        simp diag_appfix_viewc. unfold diag_appfix_viewc_clause_1.
+        simp decompose_app_viewc.
+        unfold decompose_app_viewc_obligations_obligation_1.
+        simpl.
+        (* Why doesn't equations behave better here? *)
+
+
+        move: IHl. unfold rho_fix.
+        unfold rho. simp rho_ext. rewrite map_fix_In_spec.
+        simpl.
+
         now move: IHl; rewrite /rho_fix /=.
       + simpl in *. move eq_mkApps: (mkApps _ l) IHl => a.
         rewrite mkApps_tApp_tApp in eq_mkApps.
