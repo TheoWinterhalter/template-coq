@@ -1,17 +1,17 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec.
-From MetaCoq.Template Require Import config monad_utils utils.
-From MetaCoq.Checker Require Import uGraph.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICLiftSubst
-     PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICSafeLemmata
-     PCUICUnivSubst PCUICTyping PCUICChecker PCUICConversion PCUICCumulativity PCUICSN PCUICValidity.
+From Coq Require Import Bool String List Program.
+From MetaCoq.Template Require Import config monad_utils utils uGraph.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICInduction PCUICLiftSubst
+     PCUICUnivSubst PCUICTyping PCUICSafeLemmata PCUICValidity.
 From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeChecker.
-Require Import String ssreflect.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import monad_utils.MonadNotation.
-  Derive NoConfusion for type_error.
+
+Derive NoConfusion for type_error.
+
+Set Equations With UIP.
 
 Add Search Blacklist "_graph_mut".
 
@@ -34,16 +34,15 @@ Section TypeOf.
   Proof.
     intros H.
     destruct hΣ. destruct Hφ.
-    apply validity in H; auto. destruct H as [wfg [wfA | [s tyT]]].
+    apply validity in H; auto. destruct H as [wfA | [s tyT]].
     right. constructor. auto. left. econstructor; eauto.
-    now eapply typing_wf_local.
   Qed.
 
 
   Section SortOf.
     Context (type_of : forall Γ t, welltyped Σ Γ t -> typing_result (∑ T, ∥ Σ ;;; Γ |- t : T ∥)).
 
-    Program Definition type_of_as_sort Γ t (wf : welltyped Σ Γ t) : typing_result universe :=
+    Program Definition type_of_as_sort Γ t (wf : welltyped Σ Γ t) : typing_result Universe.t :=
       tx <- type_of Γ t wf ;;
       wfs <- @reduce_to_sort cf Σ hΣ Γ (projT1 tx) _ ;;
       ret (m:=typing_result) (projT1 wfs).
@@ -144,7 +143,7 @@ Section TypeOf.
     econstructor; eauto using typing_wf_local.
   Defined.
 
-  Solve All Obligations with program_simpl; match goal with
+  Solve All Obligations with program_simpl; try match goal with
                                               [ |- ∥ _ ∥ ] => todo "PCUICSafeRetyping.type_of"
                                             | [ |- welltyped _ _ _ ] => todo "PCUICSafeRetyping.type_of"
                                             | [ |- wellformed _ _ _ ] => todo "PCUICSafeRetyping.type_of"
@@ -249,8 +248,6 @@ Section TypeOf.
     | TypeError e => TypeError e
     end.
 
-  From Equations Require Import Equations DepElim.
-  Set Equations With UIP.
   Theorem type_of_principal :
     forall {Γ t B} ,
       forall (wt : welltyped Σ Γ t) wt',

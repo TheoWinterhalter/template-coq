@@ -1,22 +1,18 @@
 (* Distributed under the terms of the MIT license.   *)
-Require Import ssreflect ssrbool.
-From MetaCoq Require Import LibHypsNaming.
-From Equations Require Import Equations.
-From Coq Require Import Bool String List Program BinPos Compare_dec String Lia.
-From MetaCoq.Template Require Import config monad_utils utils.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-  PCUICSize PCUICPattern PCUICLiftSubst PCUICUnivSubst PCUICTyping
-  PCUICReduction PCUICWeakening PCUICSubstitution PCUICReflect.
+Require Import ssreflect.
+From Coq Require Import Bool List Lia.
+From MetaCoq.Template Require Import config utils.
+From MetaCoq.PCUIC Require Import PCUICUtils PCUICAst PCUICSize
+     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICWeakening PCUICSubstitution.
 
 Import MonadNotation.
 
 (* Type-valued relations. *)
 Require Import CRelationClasses.
-Require Import Equations.Type.Relation Equations.Type.Relation_Properties.
 Local Set Keyed Unification.
 Set Asymmetric Patterns.
 
-Require Import Equations.Prop.DepElim.
+From Equations Require Import Equations.
 
 Set Default Goal Selector "!".
 
@@ -93,7 +89,7 @@ Lemma term_forall_ctx_list_ind :
         P Γ t -> forall t0 : term, P Γ t0 -> forall t1 : term, P (vdef n t t0 :: Γ) t1 -> P Γ (tLetIn n t t0 t1)) ->
     (forall Γ (t u : term), P Γ t -> P Γ u -> P Γ (tApp t u)) ->
     (forall Γ (s : String.string) (n : nat) (u : list Level.t), P Γ (tSymb s n u)) ->
-    (forall Γ (s : String.string) (u : list Level.t), P Γ (tConst s u)) ->
+    (forall Γ s (u : list Level.t), P Γ (tConst s u)) ->
     (forall Γ (i : inductive) (u : list Level.t), P Γ (tInd i u)) ->
     (forall Γ (i : inductive) (n : nat) (u : list Level.t), P Γ (tConstruct i n u)) ->
     (forall Γ (p : inductive * nat) (t : term),
@@ -109,8 +105,8 @@ Lemma term_forall_ctx_list_ind :
     forall Γ (t : term), P Γ t.
 Proof.
   intros.
-  revert Γ t. set(foo:=Tactics.the_end_of_the_section). intros.
-  Subterm.rec_wf_rel aux t (MR lt size). simpl. clear H1.
+  revert Γ t. set(foo:=CoreTactics.the_end_of_the_section). intros.
+  Subterm.rec_wf_rel aux t (precompose lt size). simpl. clear H1.
   assert (auxl : forall Γ {A} (l : list A) (f : A -> term), list_size (fun x => size (f x)) l < size pr0 ->
                                                             All (fun x => P Γ (f x)) l).
   { induction l; constructor.
@@ -174,20 +170,7 @@ Proof.
     + red. apply All_pair. split; apply auxl; simpl; auto.
 Defined.
 
-Lemma simpl_subst' :
-  forall N M n p k, k = List.length N -> p <= n -> subst N p (lift0 (k + n) M) = lift0 n M.
-Proof.
-  intros. subst k. rewrite simpl_subst_rec; auto. 2: lia.
-  now rewrite Nat.add_0_r.
-Qed.
-
 (** All2 lemmas *)
-
-(* Duplicate *)
-Lemma All2_app {A} {P : A -> A -> Type} {l l' r r'} :
-  All2 P l l' -> All2 P r r' ->
-  All2 P (l ++ r) (l' ++ r').
-Proof. induction 1; simpl; auto. Qed.
 
 Definition All2_prop_eq Γ Γ' {A B} (f : A -> term) (g : A -> B) (rel : forall (Γ Γ' : context) (t t' : term), Type) :=
   All2 (on_Trel_eq (rel Γ Γ') f g).
@@ -523,7 +506,7 @@ Section ParallelReduction.
       All2_prop2_eq Γ Γ' (Γ ,,, fix_context mfix0) (Γ' ,,, fix_context mfix1)
                     dtype dbody (fun x => (dname x, rarg x)) pred1 mfix0 mfix1 ->
       unfold_fix mfix1 idx = Some (narg, fn) ->
-      is_constructor narg args1 = true ->
+      is_constructor narg args0 = true ->
       All2 (pred1 Γ Γ') args0 args1 ->
       pred1 Γ Γ' (mkApps (tFix mfix0 idx) args0) (mkApps fn args1)
 
@@ -684,7 +667,7 @@ Section ParallelReduction.
   (*         All2_local_env (on_decl pred1) Γ Γ' -> *)
   (*         All2_local_env (on_decl P) Γ Γ' -> *)
   (*         P Γ Γ' (tRel i) (tRel i)) -> *)
-  (*     (forall (Γ Γ' : context) (ind : inductive) (pars c : nat) (u : universe_instance) (args0 args1 : list term) *)
+  (*     (forall (Γ Γ' : context) (ind : inductive) (pars c : nat) (u : Instance.t) (args0 args1 : list term) *)
   (*             (p : term) (brs0 brs1 : list (nat * term)), *)
   (*         All2_local_env (on_decl pred1) Γ Γ' -> *)
   (*         All2_local_env (on_decl P) Γ Γ' -> *)
@@ -716,13 +699,13 @@ Section ParallelReduction.
   (*         All2_local_env (on_decl pred1) Γ Γ' -> *)
   (*         All2_local_env (on_decl P) Γ Γ' -> *)
   (*         declared_constant Σ c decl -> *)
-  (*         forall u : universe_instance, cst_body decl = Some body -> *)
+  (*         forall u : Instance.t, cst_body decl = Some body -> *)
   (*                                       P Γ Γ' (tConst c u) (subst_instance_constr u body)) -> *)
-  (*     (forall (Γ Γ' : context) (c : ident) (u : universe_instance), *)
+  (*     (forall (Γ Γ' : context) (c : ident) (u : Instance.t), *)
   (*         All2_local_env (on_decl pred1) Γ Γ' -> *)
   (*         All2_local_env (on_decl P) Γ Γ' -> *)
   (*         P Γ Γ' (tConst c u) (tConst c u)) -> *)
-  (*     (forall (Γ Γ' : context) (i : inductive) (pars narg : nat) (k : nat) (u : universe_instance) *)
+  (*     (forall (Γ Γ' : context) (i : inductive) (pars narg : nat) (k : nat) (u : Instance.t) *)
   (*             (args0 args1 : list term) (arg1 : term), *)
   (*         All2_local_env (on_decl pred1) Γ Γ' -> *)
   (*         All2_local_env (on_decl P) Γ Γ' -> *)
@@ -862,7 +845,7 @@ Section ParallelReduction.
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           P Γ Γ' (tRel i) (tRel i)) ->
-      (forall (Γ Γ' : context) (ind : inductive) (pars c : nat) (u : universe_instance) (args0 args1 : list term)
+      (forall (Γ Γ' : context) (ind : inductive) (pars c : nat) (u : Instance.t) (args0 args1 : list term)
               (p : term) (brs0 brs1 : list (nat * term)),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
@@ -877,7 +860,7 @@ Section ParallelReduction.
           All2_prop2_eq Γ Γ' (Γ ,,, fix_context mfix0) (Γ' ,,, fix_context mfix1) dtype dbody
                         (fun x => (dname x, rarg x)) P' mfix0 mfix1 ->
           unfold_fix mfix1 idx = Some (narg, fn) ->
-          is_constructor narg args1 = true ->
+          is_constructor narg args0 = true ->
           All2 (P' Γ Γ') args0 args1 ->
           P Γ Γ' (mkApps (tFix mfix0 idx) args0) (mkApps fn args1)) ->
       (forall (Γ Γ' : context) (ip : inductive * nat) (p0 p1 : term) (mfix0 mfix1 : mfixpoint term) (idx : nat)
@@ -938,13 +921,13 @@ Section ParallelReduction.
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           declared_constant Σ c decl ->
-          forall u : universe_instance, cst_body decl = Some body ->
+          forall u : Instance.t, cst_body decl = Some body ->
                                         P Γ Γ' (tConst c u) (subst_instance_constr u body)) ->
-      (forall (Γ Γ' : context) (c : ident) (u : universe_instance),
+      (forall (Γ Γ' : context) c (u : Instance.t),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           P Γ Γ' (tConst c u) (tConst c u)) ->
-      (forall (Γ Γ' : context) (i : inductive) (pars narg : nat) (k : nat) (u : universe_instance)
+      (forall (Γ Γ' : context) (i : inductive) (pars narg : nat) (k : nat) (u : Instance.t)
               (args0 args1 : list term) (arg1 : term),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
@@ -1177,7 +1160,7 @@ Hint Constructors All2_local_env : pcuic.
 Hint Resolve pred1_ctx_refl : pcuic.
 
 Ltac pcuic_simplify :=
-  simpl || split || destruct_conjs || red.
+  simpl || split || rdest || red.
 
 Hint Extern 10 => progress pcuic_simplify : pcuic.
 
@@ -1399,7 +1382,7 @@ Section ParallelWeakening.
 
     - (* Beta *)
       specialize (forall_Γ _ (Γ'0,, vass na t0) eq_refl _ (Δ' ,, vass na t1) eq_refl heq_length _ _ X5).
-      specialize (forall_Γ1 _ _ eq_refl _ _ eq_refl heq_length _ _ X5).
+      specialize (forall_Γ1 _ _ eq_refl heq_length _ _ X5).
       econstructor; now rewrite !lift_context_snoc0 !Nat.add_0_r in forall_Γ.
 
     - (* Zeta *)

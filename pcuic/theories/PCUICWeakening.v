@@ -1,15 +1,12 @@
 (* Distributed under the terms of the MIT license.   *)
-From Equations Require Import Equations.
-From Coq Require Import Bool String List BinPos Compare_dec ZArith Lia.
-Require Import Coq.Program.Syntax Coq.Program.Basics.
+From Coq Require Import Bool List ZArith Lia.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICTyping PCUICWeakeningEnv
-  PCUICClosed PCUICReduction PCUICPosition.
-Require Import ssreflect ssrbool.
+  PCUICClosed PCUICReduction PCUICPosition PCUICGeneration.
+Require Import ssreflect.
 
 From Equations Require Import Equations.
-Require Import Equations.Prop.DepElim.
 
 Set Default Goal Selector "!".
 
@@ -24,7 +21,7 @@ Derive Signature NoConfusion for All_local_env.
 Derive Signature for All_local_env_over.
 
 (* FIXME inefficiency in equations: using a very slow "pattern_sigma" to simplify an equality between sigma types *)
-Ltac Tactics.destruct_tele_eq H ::= noconf H.
+Ltac Equations.CoreTactics.destruct_tele_eq H ::= noconf H.
 
 (* Derive Signature NoConfusion for All_local_env. *)
 Derive NoConfusion for All_local_env_over.
@@ -44,6 +41,16 @@ Proof.
   apply (lift_closed n) in H0.
   simpl in *. forward H1 by lia.
   now apply (lift_closed n) in H1.
+Qed.
+
+
+Lemma closed_ctx_lift n k ctx : closed_ctx ctx -> lift_context n k ctx = ctx.
+Proof.
+  induction ctx in n, k |- *; auto.
+  unfold closed_ctx, id. simpl.
+  rewrite mapi_app forallb_app List.rev_length /= lift_context_snoc0 /snoc Nat.add_0_r.
+  move/andb_and => /= [Hctx /andb_and [Ha _]].
+  rewrite IHctx // lift_decl_closed //. now apply: closed_decl_upwards.
 Qed.
 
 Lemma weaken_nth_error_ge {Γ Γ' v Γ''} : #|Γ'| <= v ->
@@ -68,6 +75,18 @@ Proof.
     do 2 f_equal. lia.
   - lia.
   - now rewrite lift_context_length.
+Qed.
+
+Lemma lift_context_lift_context n k Γ : lift_context n 0 (lift_context k 0 Γ) =
+  lift_context (n + k) 0 Γ.
+Proof. rewrite !lift_context_alt.
+  rewrite mapi_compose.
+  apply mapi_ext.
+  intros n' x.
+  rewrite /lift_decl compose_map_decl.
+  apply map_decl_ext => y.
+  rewrite mapi_length; autorewrite with  len.
+  rewrite simpl_lift //; lia.
 Qed.
 
 Lemma lift_simpl {Γ'' Γ' : context} {i t} :
@@ -100,15 +119,42 @@ Proof.
       * destruct H2. rewrite H2. simpl. now rewrite Nat.sub_0_r.
 Qed.
 
+Ltac lia_f_equal := repeat (lia || f_equal).
+
+Lemma smash_context_lift Δ k n Γ : 
+  smash_context (lift_context n (k + #|Γ|) Δ) (lift_context n k Γ) =
+  lift_context n k (smash_context Δ Γ).
+Proof.
+  revert Δ. induction Γ as [|[na [b|] ty]]; intros Δ; simpl; auto.
+  - now rewrite Nat.add_0_r.
+  - rewrite -IHΓ.
+    rewrite lift_context_snoc /=. f_equal.
+    rewrite !subst_context_alt !lift_context_alt !mapi_compose.
+    apply mapi_ext=> n' x.
+    destruct x as [na' [b'|] ty']; simpl.
+    * rewrite !mapi_length /lift_decl /subst_decl /= /map_decl /=; f_equal.
+      + f_equal. rewrite Nat.add_0_r distr_lift_subst_rec /=.
+        lia_f_equal.
+      + rewrite Nat.add_0_r distr_lift_subst_rec; simpl. lia_f_equal.
+    * rewrite !mapi_length /lift_decl /subst_decl /= /map_decl /=; f_equal.
+      rewrite Nat.add_0_r distr_lift_subst_rec /=.
+      repeat (lia || f_equal).
+  - rewrite -IHΓ.
+    rewrite lift_context_snoc /= // /lift_decl /subst_decl /map_decl /=.
+    f_equal.
+    rewrite lift_context_app. simpl.
+    rewrite /app_context; lia_f_equal.
+    rewrite /lift_context // /fold_context /= /map_decl /=.
+    now lia_f_equal.
+Qed.
+
 Lemma lift_unfold_fix n k mfix idx narg fn :
   unfold_fix mfix idx = Some (narg, fn) ->
   unfold_fix (map (map_def (lift n k) (lift n (#|mfix| + k))) mfix) idx = Some (narg, lift n k fn).
 Proof.
   unfold unfold_fix.
   rewrite nth_error_map. destruct (nth_error mfix idx) eqn:Hdef; try congruence.
-  case e: isLambda => //.
   intros [= <- <-]. simpl.
-  rewrite isLambda_lift //.
   repeat f_equal.
   rewrite (distr_lift_subst_rec _ _ n 0 k).
   rewrite fix_subst_length. f_equal.
@@ -116,7 +162,7 @@ Proof.
   generalize #|mfix| at 2 3. induction n0; auto. simpl.
   f_equal. apply IHn0.
 Qed.
-Hint Resolve lift_unfold_fix.
+Hint Resolve lift_unfold_fix : pcuic.
 
 Lemma lift_unfold_cofix n k mfix idx narg fn :
   unfold_cofix mfix idx = Some (narg, fn) ->
@@ -131,15 +177,13 @@ Proof.
   generalize #|mfix| at 2 3. induction n0; auto. simpl.
   f_equal. apply IHn0.
 Qed.
-Hint Resolve lift_unfold_cofix.
+Hint Resolve lift_unfold_cofix : pcuic.
 
 Lemma decompose_app_rec_lift n k t l :
   let (f, a) := decompose_app_rec t l in
   decompose_app_rec (lift n k t) (map (lift n k) l)  = (lift n k f, map (lift n k) a).
 Proof.
-  induction t in k, l |- *; simpl; auto.
-
-  - destruct Nat.leb; reflexivity.
+  induction t in k, l |- *; simpl; auto with pcuic.
   - specialize (IHt1 k (t2 :: l)).
     destruct decompose_app_rec. now rewrite IHt1.
 Qed.
@@ -164,7 +208,7 @@ Proof.
   eapply decompose_app_lift in Heq as ->.
   destruct t0; try discriminate || reflexivity.
 Qed.
-Hint Resolve lift_is_constructor.
+Hint Resolve lift_is_constructor : core.
 
 Hint Rewrite lift_subst_instance_constr : lift.
 Hint Rewrite lift_mkApps : lift.
@@ -209,18 +253,14 @@ Proof.
       simpl in *. forward H0 by lia. forward H1 by lia.
       apply (lift_closed n k) in H0.
       apply (lift_closed n k) in H1. rewrite H0 H1. reflexivity.
-    + constructor.
+
   - red in decl'.
     destruct decl'.
-    apply typecheck_closed in t.
-    + destruct t as [_ ccst].
-      rewrite -> andb_and in ccst. destruct ccst as [ccst _].
-      eapply closed_upwards in ccst; simpl.
-      * apply (lift_closed n k) in ccst. unfold map_constant_body. simpl.
-        rewrite ccst. reflexivity.
-      * lia.
-    + auto.
-    + constructor.
+    apply subject_closed in t; auto.
+    eapply closed_upwards in t; simpl.
+    * apply (lift_closed n k) in t. unfold map_constant_body. simpl.
+      rewrite t. reflexivity.
+    * lia.
 Qed.
 
 Definition lift_mutual_inductive_body n k m :=
@@ -241,79 +281,40 @@ Proof.
     + eapply typed_liftn in t0 as [Ht HT]; eauto. lia.
 Qed.
 
-Lemma closed_wf_local `{checker_flags} Σ Γ :
-  wf Σ.1 ->
-  wf_local Σ Γ ->
-  closed_ctx Γ.
-Proof.
-  intros wfΣ. unfold closed_ctx, mapi. intros wf. generalize 0.
-  induction wf; intros n; auto; unfold closed_ctx, snoc; simpl;
-    rewrite mapi_rec_app forallb_app; unfold id, closed_decl.
-  - simpl.
-    destruct t0 as [s Hs].
-    eapply typecheck_closed in Hs as [closedΓ tcl]; eauto.
-    rewrite -> andb_and in *. simpl in *; rewrite andb_true_r in tcl |- *.
-    simpl in *. intuition auto.
-    + apply IHwf.
-    + erewrite closed_upwards; eauto. rewrite List.rev_length. lia.
-  - simpl. eapply typecheck_closed in t1 as [closedΓ tcl]; eauto.
-    rewrite -> andb_and in *. intuition auto.
-    + apply IHwf.
-    + erewrite closed_upwards; eauto.
-      * erewrite closed_upwards; eauto.
-        rewrite List.rev_length. lia.
-      * rewrite List.rev_length. lia.
-Qed.
-
-Lemma lift_declared_minductive `{checker_flags} Σ cst decl n k :
+Lemma lift_declared_minductive `{checker_flags} {Σ : global_env} cst decl n k :
   wf Σ ->
   declared_minductive Σ cst decl ->
   lift_mutual_inductive_body n k decl = decl.
 Proof.
-  intros wfΣ Hdecl. eapply on_declared_minductive in Hdecl; eauto.
-  destruct decl. simpl in *. f_equal.
-  - apply onParams in Hdecl. simpl in *.
-    eapply lift_wf_local; eauto; eauto.
-  - apply onInductives in Hdecl.
-    revert Hdecl. simpl. generalize ind_bodies at 2 4 5.
-    intros.
-    eapply (Alli_mapi_id Hdecl).
-    clear Hdecl. intros.
-    destruct x; simpl in *.
-    destruct (decompose_prod_assum [] ind_type) eqn:Heq.
-    destruct (decompose_prod_assum [] (lift n k ind_type)) eqn:Heq'.
-    destruct X. simpl in *.
-    assert (lift n k ind_type = ind_type).
-    { repeat red in onArity.
-      destruct onArity as [s Hs].
-      eapply typed_liftn; eauto; eauto.
-      - constructor.
-      - simpl. lia.
-    }
-    rewrite H0 in Heq'. rewrite Heq in Heq'. revert Heq'; intros [= <- <-].
-    f_equal; auto.
-    + eapply All_map_id. eapply All2_All_left; tea.
-      intros [[x p] n'] y [[s Hty] [cs Hargs]].
-      unfold on_pi2; cbn; f_equal; f_equal.
-      simpl in Hty.
-      eapply typed_liftn. 4:eapply Hty.
-      * eauto.
-      * apply typing_wf_local in Hty; eauto.
-      * change PCUICEnvironment.arities_context with arities_context. lia.
-    + destruct(eq_dec ind_projs []) as [Hp|Hp].
-      * subst; auto.
-      * specialize (onProjections Hp).
-        destruct onProjections as [_ _ _ onProjections].
-        apply (Alli_map_id onProjections).
-        intros n1 [x p].
-        unfold on_projection. simpl.
-        intros [s Hty].
-        unfold on_snd; f_equal; f_equal.
-        eapply typed_liftn. 4:eapply Hty. all:eauto.
-        -- eapply typing_wf_local in Hty; eauto.
-        -- simpl.
-           rewrite smash_context_length. simpl.
-           rewrite context_assumptions_fold. lia.
+  intros wfΣ Hdecl.
+  pose proof (on_declared_minductive wfΣ Hdecl). apply onNpars in X.
+  apply (declared_inductive_closed (Σ:=(empty_ext Σ))) in Hdecl; auto.
+  move: Hdecl.
+  rewrite /closed_inductive_decl /lift_mutual_inductive_body.
+  destruct decl; simpl.
+  move/andP => [clpar clbodies]. f_equal.
+  - now rewrite [fold_context _ _]closed_ctx_lift. 
+  - eapply forallb_All in clbodies.
+    eapply Alli_mapi_id.
+    * eapply (All_Alli clbodies). intros; eauto.
+      intros. eapply H0.
+    * simpl; intros.
+      move: H0. rewrite /closed_inductive_body.
+      destruct x; simpl. move=> /andP[/andP [ci ct] cp].
+      f_equal.
+      + rewrite lift_closed; eauto.
+        eapply closed_upwards; eauto; lia.
+      + eapply All_map_id. eapply forallb_All in ct.
+        eapply (All_impl ct). intros x.
+        destruct x as [[id ty] arg]; unfold on_pi2; intros c; simpl; repeat f_equal.
+        apply lift_closed. unfold cdecl_type in c; simpl in c.
+        eapply closed_upwards; eauto; lia.
+      + simpl in X. rewrite -X in cp.
+        eapply forallb_All in cp. eapply All_map_id; eauto.
+        eapply (All_impl cp); firstorder auto.
+        destruct x; unfold on_snd; simpl; f_equal.
+        apply lift_closed. rewrite context_assumptions_fold.
+        eapply closed_upwards; eauto; lia.
 Qed.
 
 Lemma lift_declared_inductive `{checker_flags} Σ ind mdecl idecl n k :
@@ -324,7 +325,7 @@ Lemma lift_declared_inductive `{checker_flags} Σ ind mdecl idecl n k :
                          (inductive_ind ind) idecl = idecl.
 Proof.
   unfold declared_inductive. intros wfΣ [Hmdecl Hidecl].
-  eapply (lift_declared_minductive _ _ _ n k) in Hmdecl. 2: auto.
+  eapply (lift_declared_minductive _ _ n k) in Hmdecl. 2: auto.
   unfold lift_mutual_inductive_body in Hmdecl.
   destruct mdecl. simpl in *.
   injection Hmdecl. intros Heq.
@@ -376,22 +377,11 @@ Lemma lift_declared_projection `{checker_flags} Σ c mdecl idecl pdecl n k :
   on_snd (lift n (S (ind_npars mdecl + k))) pdecl = pdecl.
 Proof.
   intros.
-  destruct H0 as [[Hmdecl Hidecl] [Hpdecl Hnpar]].
-  eapply declared_decl_closed in Hmdecl; auto.
-  simpl in Hmdecl.
-  pose proof (onNpars _ _ _ _ Hmdecl).
-  apply onInductives in Hmdecl.
-  eapply nth_error_alli in Hmdecl; eauto.
-  pose proof (onProjections Hmdecl) as onp; eauto. forward onp.
-  1: now eapply nth_error_Some_non_nil in Hpdecl.
-  eapply on_projs, nth_error_alli in onp; eauto.
-  move: onp => /= /andb_and[Hd _]. simpl in Hd.
-  rewrite smash_context_length in Hd. simpl in *.
-  change PCUICEnvironment.context_assumptions with context_assumptions in H0.
-  rewrite H0 in Hd.
-  destruct pdecl as [id ty]. unfold on_snd; simpl in *.
-  f_equal. eapply lift_closed.
-  eapply closed_upwards; eauto. lia.
+  eapply (declared_projection_closed (Σ:=empty_ext Σ)) in H0; auto.
+  unfold on_snd. simpl.
+  rewrite lift_closed. 
+  - eapply closed_upwards; eauto; try lia.
+  - destruct pdecl; reflexivity.
 Qed.
 
 Lemma lift_fix_context:
@@ -434,7 +424,6 @@ Lemma lift_destArity ctx t n k :
 Proof.
   revert ctx.
   induction t in n, k |- * using term_forall_list_ind; intros ctx; simpl; trivial.
-  - destruct Nat.leb; reflexivity.
   - move: (IHt2 n k (ctx,, vass n0 t1)).
     now rewrite lift_context_snoc /= /lift_decl /map_decl /vass /= => ->.
   - move: (IHt3 n k (ctx,, vdef n0 t1 t2)).
@@ -462,15 +451,13 @@ Proof.
     (* clear t; intros t. *)
     destruct a as [na [body|] ty]; simpl; try congruence.
     + destruct t; simpl; try congruence.
-      * now destruct (Nat.leb (#|s| + k) n0).
-      * specialize (IHparams n k args (subst0 s body :: s) t3).
-        rewrite <- Nat.add_succ_r. simpl in IHparams.
-        rewrite Nat.add_succ_r.
-        replace (#|s| + k + S #|params|) with (S (#|s| + k + #|params|)) by lia.
-        rewrite <- IHparams.
-        rewrite distr_lift_subst. reflexivity.
+      specialize (IHparams n k args (subst0 s body :: s) t3).
+      rewrite <- Nat.add_succ_r. simpl in IHparams.
+      rewrite Nat.add_succ_r.
+      replace (#|s| + k + S #|params|) with (S (#|s| + k + #|params|)) by lia.
+      rewrite <- IHparams.
+      rewrite distr_lift_subst. reflexivity.
     + destruct t; simpl; try congruence.
-      1: now destruct (Nat.leb (#|s| + k) n0).
       destruct args; simpl; try congruence.
       specialize (IHparams n k args (t :: s) t2). simpl in IHparams.
       replace (#|s| + k + S #|params|) with (S (#|s| + k + #|params|)) by lia.
@@ -495,58 +482,6 @@ Proof.
       intros. erewrite IHparams; eauto. simpl. lia.
     + destruct t; simpl; try congruence.
       intros. erewrite IHparams; eauto. simpl. lia.
-Qed.
-
-Lemma lift_decl_closed n k d : closed_decl k d -> lift_decl n k d = d.
-Proof.
-  case: d => na [body|] ty; rewrite /closed_decl /lift_decl /map_decl /=.
-  - move/andP => [cb cty]. now rewrite !lift_closed //.
-  - move=> cty; now rewrite !lift_closed //.
-Qed.
-
-Lemma closed_decl_upwards k d : closed_decl k d -> forall k', k <= k' -> closed_decl k' d.
-Proof.
-  case: d => na [body|] ty; rewrite /closed_decl /=.
-  - move/andP => [cb cty] k' lek'. do 2 rewrite (@closed_upwards k) //.
-  - move=> cty k' lek'; rewrite (@closed_upwards k) //.
-Qed.
-
-Lemma closedn_ctx_lift :
-  forall n k Γ,
-    closedn_ctx k Γ ->
-    lift_context n k Γ = Γ.
-Proof.
-  intros n k Γ h.
-  induction Γ as [| [na [b|] A] Γ ih ] in n, k, h |- *.
-  - reflexivity.
-  - apply closedn_ctx_cons in h. apply utils.andP in h as [hΓ hd].
-    unfold closed_decl in hd. cbn in hd.
-    apply utils.andP in hd as [? ?].
-    rewrite lift_context_snoc. rewrite -> ih by auto.
-    unfold ",,". f_equal.
-    unfold lift_decl, map_decl. cbn.
-    rewrite -> 2!lift_closed.
-    1: reflexivity.
-    all: replace (#|Γ| + k) with (k + #|Γ|) by lia.
-    all: assumption.
-  - apply closedn_ctx_cons in h. apply utils.andP in h as [hΓ hd].
-    unfold closed_decl in hd. cbn in hd.
-    rewrite lift_context_snoc. rewrite -> ih by auto.
-    unfold ",,". f_equal.
-    unfold lift_decl, map_decl. cbn. f_equal.
-    rewrite -> lift_closed.
-    1: reflexivity.
-    replace (#|Γ| + k) with (k + #|Γ|) by lia.
-    assumption.
-Qed.
-
-Lemma closed_ctx_lift n k ctx : closed_ctx ctx -> lift_context n k ctx = ctx.
-Proof.
-  induction ctx in n, k |- *; auto.
-  unfold closed_ctx, id. simpl.
-  rewrite mapi_app forallb_app List.rev_length /= lift_context_snoc0 /snoc Nat.add_0_r.
-  move/andb_and => /= [Hctx /andb_and [Ha _]].
-  rewrite IHctx // lift_decl_closed //. now apply: closed_decl_upwards.
 Qed.
 
 Lemma closed_tele_lift n k ctx :
@@ -580,15 +515,28 @@ Proof.
 Qed.
 Hint Rewrite lift_instantiate_params : lift.
 
-(* bug eauto with let .. in hypothesis failing *)
+Lemma decompose_prod_assum_ctx ctx t : decompose_prod_assum ctx t = 
+  let (ctx', t') := decompose_prod_assum [] t in
+  (ctx ,,, ctx', t').
+Proof.
+  induction t in ctx |- *; simpl; auto.
+  - simpl. rewrite IHt2.
+    rewrite (IHt2 ([] ,, vass _ _)).
+    destruct (decompose_prod_assum [] t2). simpl.
+    unfold snoc. now rewrite app_context_assoc.
+  - simpl. rewrite IHt3.
+    rewrite (IHt3 ([] ,, vdef _ _ _)).
+    destruct (decompose_prod_assum [] t3). simpl.
+    unfold snoc. now rewrite app_context_assoc.
+Qed.
+
 Lemma lift_decompose_prod_assum_rec ctx t n k :
-  let (ctx', t') := decompose_prod_assum ctx t in
-  (lift_context n k ctx', lift n (length ctx' + k) t') =
+  (let (ctx', t') := decompose_prod_assum ctx t in
+  (lift_context n k ctx', lift n (length ctx' + k) t')) =
   decompose_prod_assum (lift_context n k ctx) (lift n (length ctx + k) t).
 Proof.
   induction t in n, k, ctx |- *; simpl;
     try rewrite -> Nat.sub_diag, Nat.add_0_r; try (eauto; congruence).
-  - now destruct (Nat.leb (#|ctx| + k) n0).
   - specialize (IHt2 (ctx ,, vass na t1) n k).
     destruct decompose_prod_assum. rewrite IHt2. simpl.
     rewrite lift_context_snoc. reflexivity.
@@ -598,8 +546,8 @@ Proof.
 Qed.
 
 Lemma lift_decompose_prod_assum t n k :
-  let (ctx', t') := decompose_prod_assum [] t in
-  (lift_context n k ctx', lift n (length ctx' + k) t') =
+  (let (ctx', t') := decompose_prod_assum [] t in
+  (lift_context n k ctx', lift n (length ctx' + k) t')) =
   decompose_prod_assum [] (lift n k t).
 Proof. apply lift_decompose_prod_assum_rec. Qed.
 
@@ -618,7 +566,8 @@ Hint Rewrite lift_it_mkProd_or_LetIn : lift.
 Lemma to_extended_list_lift n k c :
   to_extended_list (lift_context n k c) = to_extended_list c.
 Proof.
-  unfold to_extended_list, to_extended_list_k. generalize 0. generalize (nil term) at 1 2.
+  unfold to_extended_list, to_extended_list_k. generalize 0.
+  unf_term. generalize (nil term) at 1 2.
   induction c in n, k |- *; simpl; intros. 1: reflexivity.
   rewrite -> lift_context_snoc0. unfold snoc. simpl.
   destruct a. destruct decl_body.
@@ -631,7 +580,7 @@ Lemma to_extended_list_map_lift:
   forall (n k : nat) (c : context), to_extended_list c = map (lift n (#|c| + k)) (to_extended_list c).
 Proof.
   intros n k c.
-  pose proof (to_extended_list_lift_above c).
+  pose proof (to_extended_list_lift_above c). unf_term.
   symmetry. solve_all.
   destruct H as [x' [-> Hx]]. simpl.
   destruct (leb_spec_Set (#|c| + k) x').
@@ -823,7 +772,7 @@ Proof.
   remember (Γ ,,, Γ') as Γ0. revert Γ Γ' Γ'' HeqΓ0.
   induction H using red1_ind_all in |- *; intros Γ0 Γ' Γ'' HeqΓ0; try subst Γ; simpl;
     autorewrite with lift;
-    try solve [  econstructor; eauto ].
+    try solve [  econstructor; eauto with pcuic ].
 
   - elim (leb_spec_Set); intros Hn.
     + rewrite -> simpl_lift; try lia. rewrite -> Nat.add_succ_r.
@@ -835,13 +784,13 @@ Proof.
       rewrite -> (weaken_nth_error_lt Hn).
       now unfold lift_decl; rewrite -> option_map_decl_body_map_decl, H.
 
-  - econstructor; eauto.
+  - econstructor; eauto with pcuic.
     rewrite H0. f_equal.
     eapply (lookup_on_global_env _ _ _ _ wfΣ) in H.
     destruct H as [Σ' [wfΣ' decl']].
     red in decl'. red in decl'.
     rewrite -> H0 in decl'.
-    apply typecheck_closed in decl'; eauto. 2: constructor.
+    apply typecheck_closed in decl'; eauto.
     destruct decl'.
     rewrite -> andb_and in i. destruct i as [Hclosed _].
     simpl in Hclosed.
@@ -1120,7 +1069,7 @@ Proof.
   intros ity eq.
   pose proof (lift_destArity [] ity n k) as H; cbn in H. rewrite H; clear H.
   destruct destArity as [[ctx s] | ]; [|reflexivity]. simpl. f_equal.
-  rewrite lift_it_mkProd_or_LetIn; cbn. f_equal. f_equal.
+  rewrite lift_it_mkProd_or_LetIn; cbn. unf_term. f_equal. f_equal.
   - destruct idecl; reflexivity.
   - rewrite lift_mkApps; cbn; f_equal. rewrite map_app. f_equal.
     + rewrite !map_map lift_context_length; apply map_ext. clear.
@@ -1164,25 +1113,91 @@ Proof.
   now rewrite -> to_extended_list_lift, <- to_extended_list_map_lift.
 Qed.
 
-
-Lemma weakening_typing `{cf : checker_flags} Σ Γ Γ' Γ'' (t : term) :
-  wf Σ.1 ->
-  wf_local Σ (Γ ,,, Γ') ->
-  wf_local Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ') ->
-  `(Σ ;;; Γ ,,, Γ' |- t : T ->
-    Σ ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' |-
-    lift #|Γ''| #|Γ'| t : lift #|Γ''| #|Γ'| T).
+Lemma destInd_lift n k t : destInd (lift n k t) = destInd t.
 Proof.
-  intros HΣ HΓΓ' HΓ'' * H.
-  generalize_eqs H. intros eqw. rewrite <- eqw in HΓΓ'.
-  revert Γ Γ' Γ'' HΓ'' eqw.
-  revert Σ HΣ Γ0 HΓΓ' t T H.
-  apply (typing_ind_env (fun Σ Γ0 t T =>  forall Γ Γ' Γ'' : context,
-    wf_local Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ') ->
-    Γ0 = Γ ,,, Γ' ->
-    Σ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' |- lift #|Γ''| #|Γ'| t : lift #|Γ''| #|Γ'| T));
-    intros Σ wfΣ Γ0; !!intros; subst Γ0; simpl in *; try solve [econstructor; eauto].
+  destruct t; simpl; try congruence.
+Qed.
 
+Lemma nth_error_rev_inv {A} (l : list A) i : 
+  i < #|l| ->
+  nth_error (List.rev l) i = nth_error l (#|l| - S i).
+Proof.
+  intros Hi.
+  rewrite nth_error_rev; autorewrite with len; auto.
+  now rewrite List.rev_involutive.
+Qed.
+
+Lemma weakening_check_one_fix (Γ' Γ'' : context) mfix :
+  map
+       (fun x : def term =>
+        check_one_fix (map_def (lift #|Γ''| #|Γ'|) (lift #|Γ''| (#|mfix| + #|Γ'|)) x)) mfix =
+  map check_one_fix mfix.
+Proof.
+  apply map_ext. move=> [na ty def rarg] /=.
+  rewrite decompose_prod_assum_ctx.
+  destruct (decompose_prod_assum _ ty) eqn:decomp.
+  rewrite decompose_prod_assum_ctx in decomp.
+  rewrite -lift_decompose_prod_assum.
+  destruct (decompose_prod_assum [] ty) eqn:decty.
+  noconf decomp. rewrite !app_context_nil_l (smash_context_lift []).
+  destruct (nth_error_spec (List.rev (smash_context [] c0)) rarg);
+  autorewrite with len in *; simpl in *.
+  - rewrite nth_error_rev_inv; autorewrite with len; simpl; auto.
+    rewrite nth_error_lift_context_eq.
+    simpl.
+    rewrite nth_error_rev_inv in e; autorewrite with len; auto.
+    autorewrite with len in e. simpl in e. rewrite e. simpl.
+    destruct (decompose_app (decl_type x)) eqn:Happ.
+    erewrite decompose_app_lift; eauto.
+    rewrite destInd_lift. reflexivity.
+  - erewrite (proj2 (nth_error_None _ _)); auto.
+    autorewrite with len. simpl; lia.
+Qed.
+
+Lemma weakening_check_one_cofix (Γ' Γ'' : context) mfix :
+  map
+       (fun x : def term =>
+        check_one_cofix (map_def (lift #|Γ''| #|Γ'|) (lift #|Γ''| (#|mfix| + #|Γ'|)) x)) mfix =
+  map check_one_cofix mfix.
+Proof.
+  apply map_ext. move=> [na ty def rarg] /=.
+  rewrite decompose_prod_assum_ctx.
+  destruct (decompose_prod_assum _ ty) eqn:decomp.
+  rewrite decompose_prod_assum_ctx in decomp.
+  rewrite -lift_decompose_prod_assum.
+  destruct (decompose_prod_assum [] ty) eqn:decty.
+  noconf decomp.
+  destruct (decompose_app t) eqn:Happ.
+  erewrite decompose_app_lift; eauto.
+  rewrite destInd_lift. reflexivity.
+Qed.
+
+Lemma weakening_typing_prop {cf:checker_flags} : env_prop (fun Σ Γ0 t T =>
+  forall Γ Γ' Γ'' : context,
+  wf_local Σ (Γ ,,, Γ'') ->
+  Γ0 = Γ ,,, Γ' ->
+  Σ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' |- lift #|Γ''| #|Γ'| t : lift #|Γ''| #|Γ'| T)
+  (fun Σ Γ0 _  => 
+  forall Γ Γ' Γ'' : context,
+  Γ0 = Γ ,,, Γ' ->
+  wf_local Σ (Γ ,,, Γ'') ->
+  wf_local Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ')).
+Proof.
+  apply typing_ind_env;   
+    intros Σ wfΣ Γ0; !!intros; subst Γ0; simpl in *; try solve [econstructor; eauto];
+        try specialize (forall_Γ  _ _ _ eq_refl wf).
+    
+  - induction Γ'; simpl; auto.
+    depelim X; unfold snoc in H; noconf H;
+    rewrite lift_context_snoc; simpl; constructor.
+    + eapply IHΓ'; eauto.
+    + red. exists (tu.π1). simpl.
+      rewrite Nat.add_0_r. apply t0; auto.
+    + eapply IHΓ'; eauto. 
+    + red. exists (tu.π1). simpl.
+      rewrite Nat.add_0_r. apply t1; auto.
+    + simpl. rewrite Nat.add_0_r. apply t0; auto.
+  
   - elim (leb_spec_Set); intros Hn.
     + rewrite -> simpl_lift; try lia. rewrite -> Nat.add_succ_r.
       constructor. 1: auto.
@@ -1197,35 +1212,21 @@ Proof.
         now rewrite -> (weaken_nth_error_lt Hn), heq_nth_error.
 
   - econstructor; auto.
-    specialize (IHb Γ (Γ' ,, vass n t) Γ'').
-    forward IHb.
-    { rewrite -> lift_context_snoc. simpl. econstructor; eauto.
-      simpl. rewrite -> Nat.add_0_r. exists s1; eapply IHt; auto.
-    }
+    specialize (IHb Γ (Γ' ,, vass n t) Γ'' wf eq_refl).
     rewrite -> lift_context_snoc, plus_0_r in IHb.
-    eapply IHb. reflexivity.
+    eapply IHb.
 
   - econstructor; auto.
     simpl.
-    specialize (IHb Γ (Γ' ,, vass n t) Γ'').
-    forward IHb.
-    { rewrite -> lift_context_snoc. simpl; econstructor; eauto.
-      simpl.  rewrite -> Nat.add_0_r. exists s1; eapply IHt; auto.
-    }
+    specialize (IHb Γ (Γ' ,, vass n t) Γ'' wf eq_refl).
     rewrite -> lift_context_snoc, plus_0_r in IHb.
-    eapply IHb. reflexivity.
+    eapply IHb.
 
   - econstructor; auto.
     specialize (IHb Γ Γ' Γ'' wf eq_refl). simpl.
-    specialize (IHb' Γ (Γ' ,, vdef n b b_ty) Γ'').
-    (* specialize (IHb_ty Γ Γ' Γ''). *)
-    forward IHb'.
-    { rewrite -> lift_context_snoc. simpl; econstructor; eauto.
-      - simpl. eexists. rewrite -> Nat.add_0_r. auto.
-      - simpl. rewrite -> Nat.add_0_r. auto.
-    }
+    specialize (IHb' Γ (Γ' ,, vdef n b b_ty) Γ'' wf eq_refl).
     rewrite -> lift_context_snoc, plus_0_r in IHb'.
-    apply IHb'. reflexivity.
+    apply IHb'.
 
   - eapply refine_type. 1: econstructor; auto.
     now rewrite -> distr_lift_subst10.
@@ -1258,7 +1259,7 @@ Proof.
       rewrite closedn_subst_instance_context.
       eapply closed_wf_local in Hmdecl; eauto. }
     simpl. econstructor.
-    7:{ cbn. rewrite -> firstn_map.
+    8:{ cbn. rewrite -> firstn_map.
         erewrite lift_build_branches_type; tea.
         rewrite map_option_out_map_option_map.
         subst params. erewrite heq_map_option_out. reflexivity. }
@@ -1290,187 +1291,109 @@ Proof.
     + now rewrite -> map_length.
 
   - rewrite -> (map_dtype _ (lift #|Γ''| (#|mfix| + #|Γ'|))).
-    assert (wf_local Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' ,,, lift_context #|Γ''| #|Γ'| (fix_context mfix))).
-    + subst types.
-      apply All_local_env_app in X as [X Hfixc].
-      apply All_local_env_app_inv. intuition.
-      revert Hfixc. clear X0 X heq_nth_error.
-      induction 1; simpl; auto; try constructor; rewrite -> lift_context_snoc.
-      * econstructor; auto.
-        destruct t0 as [u [Ht IHt]].
-        specialize (IHt Γ (Γ' ,,, Γ0) Γ'').
-        forward IHt.
-        { apply All_local_env_app in wf.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> lift_context_app.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> Nat.add_0_r. eapply All_local_env_impl; eauto.
-          intros.
-          now unfold app_context in *; rewrite <- app_assoc.
-        }
-        rewrite -> lift_context_app, Nat.add_0_r in IHt.
-        unfold app_context in *. rewrite <- !app_assoc, app_length in IHt.
-        specialize (IHt eq_refl). simpl. exists u. apply IHt.
-      * destruct t0 as [u [Ht IHt]]. destruct t1 as [Ht' IHt'].
-        specialize (IHt Γ (Γ' ,,, Γ0) Γ'').
-        forward IHt.
-        { apply All_local_env_app in wf.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> lift_context_app.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> Nat.add_0_r. eapply All_local_env_impl; eauto. intros.
-          now unfold app_context in *; rewrite <- app_assoc.
-        }
-        specialize (IHt' Γ (Γ' ,,, Γ0) Γ'').
-        forward IHt'.
-        { apply All_local_env_app in wf.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> lift_context_app.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> Nat.add_0_r. eapply All_local_env_impl; eauto. intros.
-          now unfold app_context in *; rewrite <- app_assoc.
-        }
-        constructor; auto.
-        -- simpl. eexists.
-           rewrite -> lift_context_app, Nat.add_0_r in IHt.
-           unfold app_context in *. rewrite <- !app_assoc, app_length in IHt.
-           specialize (IHt eq_refl). simpl. apply IHt.
-        -- simpl. rewrite -> lift_context_app, Nat.add_0_r in IHt'.
-           unfold app_context in *. rewrite <- !app_assoc, app_length in IHt'.
-           specialize (IHt' eq_refl). simpl. apply IHt'.
-    + eapply type_Fix.
-      * eapply fix_guard_lift ; eauto.
-      * rewrite -> nth_error_map, heq_nth_error. reflexivity.
-      * now rewrite -> lift_fix_context.
-      * rewrite -> lift_fix_context.
-        apply All_map.
-        clear X. eapply All_impl; eauto.
-        clear X0. unfold Basics.compose; simpl; intros [na ty bod] [[Htyd Hlam] IH].
-        simpl in *. intuition.
-        specialize (IH Γ (Γ' ,,, fix_context mfix) Γ'').
-        rewrite -> lift_context_app in IH.
-        rewrite -> !app_context_assoc, Nat.add_0_r, !app_context_length, fix_context_length in IH.
-        specialize (IH X1 eq_refl).
-        rewrite -> permute_lift, lift_context_length, fix_context_length by lia.
-        subst types; rewrite -> fix_context_length in IH.
-        rewrite (Nat.add_comm #|Γ'|). apply IH.
+    eapply type_Fix; auto.
+    * eapply fix_guard_lift ; eauto.
+    * rewrite -> nth_error_map, heq_nth_error. reflexivity.
+    * eapply All_map.
+      eapply (All_impl X0); simpl.
+      intros x [s [Hs Hs']]; exists s.
+      now specialize (Hs' _ _ _ wf eq_refl).
+    * eapply All_map.
+      eapply (All_impl X1); simpl.
+      intros x [[Hb Hlam] IH].
+      rewrite lift_fix_context.
+      specialize (IH Γ (Γ' ,,,  (fix_context mfix)) Γ'' wf).
+      rewrite app_context_assoc in IH. specialize (IH eq_refl).
+      split; auto.
+      + rewrite lift_context_app Nat.add_0_r app_context_assoc in IH.
+        rewrite app_context_length fix_context_length in IH.
+        rewrite lift_context_length fix_context_length.
+        rewrite permute_lift; try lia. now rewrite (Nat.add_comm #|Γ'|).
+      + now rewrite isLambda_lift.
+    * red; rewrite <-H1. unfold wf_fixpoint.
+      rewrite map_map_compose.
+      now rewrite weakening_check_one_fix.
+      
+  - rewrite -> (map_dtype _ (lift #|Γ''| (#|mfix| + #|Γ'|))).
+    eapply type_CoFix; auto.
+    * eapply cofix_guard_lift ; eauto.
+    * rewrite -> nth_error_map, heq_nth_error. reflexivity.
+    * eapply All_map.
+      eapply (All_impl X0); simpl.
+      intros x [s [Hs Hs']]; exists s.
+      now specialize (Hs' _ _ _ wf eq_refl).
+    * eapply All_map.
+      eapply (All_impl X1); simpl.
+      intros x [Hb IH].
+      rewrite lift_fix_context.
+      specialize (IH Γ (Γ' ,,,  (fix_context mfix)) Γ'' wf).
+      rewrite app_context_assoc in IH. specialize (IH eq_refl).
+      rewrite lift_context_app Nat.add_0_r app_context_assoc in IH.
+      rewrite app_context_length fix_context_length in IH.
+      rewrite lift_context_length fix_context_length.
+      rewrite permute_lift; try lia. now rewrite (Nat.add_comm #|Γ'|).
+    * red; rewrite <-H1. unfold wf_cofixpoint.
+      rewrite map_map_compose.
+      now rewrite weakening_check_one_cofix.
 
-  - assert (wf_local Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' ,,, lift_context #|Γ''| #|Γ'| (fix_context mfix))).
-    { subst types.
-      apply All_local_env_app in X as [X Hfixc].
-      apply All_local_env_app_inv. intuition.
-      revert Hfixc. clear X0 X.
-      induction 1; simpl; auto; try constructor; rewrite -> lift_context_snoc.
-      - econstructor; auto.
-        destruct t0 as [u [Ht IHt]].
-        specialize (IHt Γ (Γ' ,,, Γ0) Γ'').
-        forward IHt.
-        { apply All_local_env_app in wf.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> lift_context_app.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> Nat.add_0_r. eapply All_local_env_impl; eauto. intros.
-          now unfold app_context in *; rewrite <- app_assoc.
-        }
-        rewrite -> lift_context_app, Nat.add_0_r in IHt.
-        unfold app_context in *. rewrite <- !app_assoc, app_length in IHt.
-        specialize (IHt eq_refl). exists u; apply IHt.
-      - destruct t0 as [u [Ht IHt]].
-        specialize (IHt Γ (Γ' ,,, Γ0) Γ''). forward IHt.
-        { apply All_local_env_app in wf.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> lift_context_app.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> Nat.add_0_r. eapply All_local_env_impl; eauto. intros.
-          now unfold app_context in *; rewrite <- app_assoc.
-        }
-        destruct t1 as [Ht' IHt'].
-        specialize (IHt' Γ (Γ' ,,, Γ0) Γ'').
-        forward IHt'.
-        { apply All_local_env_app in wf.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> lift_context_app.
-          apply All_local_env_app_inv. intuition.
-          rewrite -> Nat.add_0_r. eapply All_local_env_impl; eauto. intros.
-          now unfold app_context in *; rewrite <- app_assoc.
-        }
-        constructor; auto.
-        + simpl. eexists. rewrite -> lift_context_app, Nat.add_0_r in IHt.
-          unfold app_context in *. rewrite <- !app_assoc, app_length in IHt.
-          specialize (IHt eq_refl). simpl. apply IHt.
-        + simpl. rewrite -> lift_context_app, Nat.add_0_r in IHt'.
-          unfold app_context in *. rewrite <- !app_assoc, app_length in IHt'.
-          specialize (IHt' eq_refl). simpl. apply IHt'.
-    }
-    rewrite -> (map_dtype _ (lift #|Γ''| (#|mfix| + #|Γ'|))).
-    eapply type_CoFix.
-    + assumption.
-    + now rewrite -> nth_error_map, heq_nth_error.
-    + now rewrite -> lift_fix_context.
-    + rewrite -> lift_fix_context.
-      apply All_map.
-      clear X. eapply All_impl; eauto.
-      clear X0. unfold compose; simpl; intros [na ty bod] [Htyd IH].
-      simpl in *. intuition.
-      specialize (IH Γ (Γ' ,,, fix_context mfix) Γ'').
-      rewrite -> lift_context_app in IH.
-      rewrite -> !app_context_assoc, Nat.add_0_r, !app_context_length, fix_context_length in IH.
-      specialize (IH X1 eq_refl).
-      rewrite -> permute_lift, lift_context_length, fix_context_length by lia.
-      subst types; rewrite -> fix_context_length in IH.
-      rewrite (Nat.add_comm #|Γ'|).
-      apply IH.
+  - econstructor; eauto; [|now eapply weakening_cumul].
+    destruct IHB.
+    + left. destruct i as [[ctx [u [Hd IH]]]]. simpl in *.
+      exists (lift_context #|Γ''| #|Γ'| ctx), u.
+      rewrite (lift_destArity [] B #|Γ''| #|Γ'|) ?Hd.
+      split; auto.
+      apply All_local_env_app_inv; intuition auto.
+      clear -wf a.
+      induction ctx; try constructor; depelim a.
+      -- rewrite lift_context_snoc.
+          inversion H. subst. simpl in H3; noconf H3.
+          simpl in H0; noconf H0.
+          constructor; auto.
+          * eapply IHctx. eapply a.
+          * simpl. destruct tu as [u tu]. exists u.
+            specialize (t0 Γ (Γ' ,,, ctx) Γ''). forward t0; auto.
+            rewrite app_context_assoc in t0.
+            specialize (t0 eq_refl). simpl in t0.
+            rewrite app_context_length lift_context_app app_context_assoc Nat.add_0_r in t0. apply t0.
+      -- rewrite lift_context_snoc.
+          inversion H. subst. noconf H3.
+          constructor; auto.
+          ++ eapply IHctx. eapply a.
+          ++ simpl.
+            specialize (t1 Γ (Γ' ,,, ctx) Γ''). forward t1 by auto.
+            rewrite app_context_assoc in t1.
+            specialize (t1 eq_refl). simpl in t1.
+            rewrite app_context_length lift_context_app app_context_assoc Nat.add_0_r in t1.
+            eexists. apply t1.
+          ++ simpl.
+            specialize (t0 Γ (Γ' ,,, ctx) Γ'' wf).
+            rewrite app_context_assoc in t0.
+            specialize (t0 eq_refl). simpl in t0.
+            rewrite app_context_length lift_context_app app_context_assoc Nat.add_0_r in t0.
+            apply t0.
+    + right. destruct s as [u Hu]; exists u. intuition; now eapply weakening_cumul.
+Qed.
 
-  - econstructor; eauto.
-    + destruct IHB.
-      * left. destruct i as [[ctx [u [Hd IH]]]]. simpl in *.
-        exists (lift_context #|Γ''| #|Γ'| ctx), u.
-        rewrite (lift_destArity [] B #|Γ''| #|Γ'|) Hd.
-        split; auto.
-        apply All_local_env_app_inv; intuition auto.
-        clear -wf a.
-        induction ctx; try constructor; depelim a.
-        -- rewrite lift_context_snoc. unfold vass, snoc in H. noconf H.
-           constructor; auto.
-           ++ eapply IHctx. eapply a.
-           ++ simpl. destruct tu as [u tu]. exists u.
-              specialize (t0 Γ (Γ' ,,, ctx) Γ'').
-              forward t0.
-              { rewrite lift_context_app app_context_assoc Nat.add_0_r.
-                apply All_local_env_app_inv. split; auto.
-                eapply IHctx. eapply a.
-              }
-              rewrite app_context_assoc in t0.
-              specialize (t0 eq_refl). simpl in t0.
-              rewrite app_context_length lift_context_app app_context_assoc Nat.add_0_r in t0.
-              apply t0.
-        -- rewrite lift_context_snoc. unfold vass, snoc in H; noconf H.
-           constructor; auto.
-            ++ eapply IHctx. eapply a.
-            ++ simpl.
-               specialize (t1 Γ (Γ' ,,, ctx) Γ'').
-               forward t1.
-               { rewrite lift_context_app app_context_assoc Nat.add_0_r.
-                 apply All_local_env_app_inv. split; auto.
-                 eapply IHctx. eapply a.
-               }
-               rewrite app_context_assoc in t1.
-               specialize (t1 eq_refl). simpl in t1.
-               rewrite app_context_length lift_context_app app_context_assoc Nat.add_0_r in t1.
-               eexists. apply t1.
-            ++ simpl.
-               specialize (t0 Γ (Γ' ,,, ctx) Γ''). forward t0.
-               { rewrite lift_context_app app_context_assoc Nat.add_0_r.
-                 apply All_local_env_app_inv. split; auto.
-                 eapply IHctx. eapply a.
-               }
-               rewrite app_context_assoc in t0.
-               specialize (t0 eq_refl). simpl in t0.
-               rewrite app_context_length lift_context_app app_context_assoc Nat.add_0_r in t0.
-               apply t0.
-      * right. destruct s as [u Hu]; exists u.
-        intuition; now eapply weakening_cumul.
-    + now eapply weakening_cumul.
+Lemma weakening_typing `{cf : checker_flags} Σ Γ Γ' Γ'' (t : term) :
+  wf Σ.1 ->
+  wf_local Σ (Γ ,,, Γ'') ->
+  forall T, Σ ;;; Γ ,,, Γ' |- t : T ->
+       Σ ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' |-
+       lift #|Γ''| #|Γ'| t : lift #|Γ''| #|Γ'| T.
+Proof.
+  intros HΣ HΓ'' T H.
+  exact ((weakening_typing_prop Σ HΣ _ t T H).2 _ _ _ HΓ'' eq_refl).
+Qed.
+
+Lemma weakening_wf_local `{cf : checker_flags} Σ Γ Γ' Γ'' :
+  wf Σ.1 ->
+  wf_local Σ (Γ ,,, Γ') ->
+  wf_local Σ (Γ ,,, Γ'') ->
+  wf_local Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ').
+Proof.
+  intros HΣ HΓΓ' HΓ''.
+  exact (env_prop_wf_local _ _ weakening_typing_prop
+                           Σ HΣ _ HΓΓ' _ _ _ eq_refl HΓ'').
 Qed.
 
 Lemma weakening `{cf : checker_flags} Σ Γ Γ' (t : term) T :
@@ -1481,7 +1404,6 @@ Proof.
   intros HΣ HΓΓ' * H.
   pose (weakening_typing Σ Γ [] Γ' t).
   forward t0; eauto.
-  forward t0; eauto. now eapply wf_local_app in HΓΓ'.
 Qed.
 
 (** Variant with more freedom on the length to apply it in backward-chainings. *)
@@ -1492,3 +1414,123 @@ Lemma weakening_length {cf:checker_flags} Σ Γ Γ' t T n :
   Σ ;;; Γ |- t : T ->
   Σ ;;; Γ ,,, Γ' |- (lift0 n) t : (lift0 n) T.
 Proof. intros wfΣ ->; now apply weakening. Qed.
+
+Lemma weakening_conv `{cf:checker_flags} :
+  forall Σ Γ Γ' Γ'' M N,
+    wf Σ.1 ->
+    Σ ;;; Γ ,,, Γ' |- M = N ->
+    Σ ;;; Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ' |- lift #|Γ''| #|Γ'| M = lift #|Γ''| #|Γ'| N.
+Proof.
+  intros Σ Γ Γ' Γ'' M N wfΣ. induction 1.
+  - constructor.
+    now apply lift_eq_term.
+  - eapply weakening_red1 in r ; auto.
+    econstructor 2 ; eauto.
+  - eapply weakening_red1 in r ; auto.
+    econstructor 3 ; eauto.
+  - eapply conv_eta_l. 2: eassumption.
+    eapply weakening_eta_expands. assumption.
+  - eapply conv_eta_r. 1: eassumption.
+    eapply weakening_eta_expands. assumption.
+Qed.
+
+Lemma weaken_wf_local {cf:checker_flags} {Σ Γ } Δ : 
+  wf Σ.1 -> 
+  wf_local Σ Δ ->
+  wf_local Σ Γ -> wf_local Σ (Δ ,,, Γ).
+Proof.
+  intros wfΣ wfΔ wfΓ.
+  move: (weakening_wf_local _ [] Γ Δ wfΣ).
+  rewrite !app_context_nil_l.
+  move/(_ wfΓ wfΔ).
+  rewrite closed_ctx_lift //.
+  now eapply closed_wf_local.
+Qed.
+
+Lemma weaken_ctx {cf:checker_flags} {Σ Γ t T} Δ : 
+  wf Σ.1 -> wf_local Σ Δ ->
+  Σ ;;; Γ |- t : T ->
+  Σ ;;; Δ ,,, Γ |- t : T.
+Proof.
+  intros wfΣ wfΔ ty.
+  epose proof (weakening_typing Σ [] Γ Δ t wfΣ).
+  rewrite !app_context_nil_l in X.
+  forward X by eauto using typing_wf_local.
+  pose proof (typing_wf_local ty).
+  pose proof (closed_wf_local wfΣ (typing_wf_local ty)).
+  specialize (X _ ty).
+  eapply PCUICClosed.typecheck_closed in ty as [_ closed]; auto.
+  move/andP: closed => [ct cT].
+  rewrite !lift_closed // in X.
+  now rewrite closed_ctx_lift in X.
+Qed.
+
+Lemma weakening_gen : forall (cf : checker_flags) (Σ : global_env × universes_decl)
+  (Γ Γ' : context) (t T : term) n, n = #|Γ'| ->
+  wf Σ.1 ->
+  wf_local Σ (Γ ,,, Γ') ->
+  Σ;;; Γ |- t : T -> Σ;;; Γ ,,, Γ' |- (lift0 n) t : (lift0 n) T.
+Proof.
+  intros ; subst n; now apply weakening.
+Qed.
+
+Corollary All_mfix_wf {cf:checker_flags} Σ Γ mfix :
+ wf Σ.1 -> wf_local Σ Γ ->
+ All (fun d : def term => isType Σ Γ (dtype d)) mfix ->
+ wf_local Σ (Γ ,,, fix_context mfix).
+Proof.
+  move=> wfΣ wf a; move: wf.
+  change (fix_context mfix) with (fix_context_gen #|@nil context_decl| mfix).
+  change Γ with (Γ ,,, []).
+  generalize (@nil context_decl) as Δ.
+  rewrite /fix_context_gen.
+  intros Δ wfΔ.  
+  eapply All_local_env_app_inv. split; auto.
+  induction a in Δ, wfΔ |- *; simpl; auto.
+  + constructor.
+  + simpl.
+    eapply All_local_env_app_inv. split; auto.
+    * repeat constructor.
+      simpl.
+      destruct p as [s Hs].
+      exists s. eapply (weakening Σ Γ Δ _ (tSort s)); auto.
+    * specialize (IHa (Δ ,,, [vass (dname x) (lift0 #|Δ| (dtype x))])).
+      rewrite app_length in IHa. simpl in IHa.
+      forward IHa.
+      ** simpl; constructor; auto.
+        destruct p as [s Hs]. 
+        exists s. eapply (weakening Σ Γ Δ _ (tSort s)); auto.
+      ** eapply All_local_env_impl; eauto.
+        simpl; intros.
+        rewrite app_context_assoc. apply X.
+Qed.
+
+
+Lemma isWfArity_or_Type_lift {cf:checker_flags} {Σ : global_env_ext} {n Γ ty} 
+  (isdecl : n <= #|Γ|):
+  wf Σ -> wf_local Σ Γ ->
+  isWfArity_or_Type Σ (skipn n Γ) ty ->
+  isWfArity_or_Type Σ Γ (lift0 n ty).
+Proof.
+  intros wfΣ wfΓ wfty. rewrite <- (firstn_skipn n Γ) in wfΓ |- *.
+  assert (n = #|firstn n Γ|).
+  { rewrite firstn_length_le; auto with arith. }
+  destruct wfty.
+  - red. left. destruct i as [ctx [u [da Hd]]].
+    exists (lift_context n 0 ctx), u. split.
+    1: now rewrite (lift_destArity [] ty n 0) da.
+    eapply All_local_env_app_inv.
+    eapply All_local_env_app in Hd. intuition eauto.
+    rewrite {3}H.
+    clear -wfΣ wfΓ isdecl a b.
+    induction b; rewrite ?lift_context_snoc; econstructor; simpl; auto.
+    + destruct t0 as [u Hu]. exists u. rewrite Nat.add_0_r.
+      unshelve eapply (weakening_typing Σ (skipn n Γ) Γ0 (firstn n Γ) t _ _ (tSort u)); eauto with wf.
+    + destruct t0 as [u Hu]. exists u. rewrite Nat.add_0_r.
+      unshelve eapply (weakening_typing Σ (skipn n Γ) Γ0 (firstn n Γ) t _ _ (tSort u)); eauto with wf.
+    + rewrite Nat.add_0_r.
+      unshelve eapply (weakening_typing Σ (skipn n Γ) Γ0 (firstn n Γ) b _ _ t); eauto with wf.
+  - right. destruct i as [u Hu]. exists u.
+    rewrite {3}H.
+    unshelve eapply (weakening_typing Σ (skipn n Γ) [] (firstn n Γ) ty _ _ (tSort u)); eauto with wf.
+Qed.

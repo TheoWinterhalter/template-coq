@@ -1,17 +1,19 @@
-From Coq Require Import Ascii String Bool OrderedType Lia List Program Arith.
-From MetaCoq.Template Require Import utils AstUtils.
-From MetaCoq.Template Require Import BasicAst.
+From Coq Require Import Ascii String OrderedType Lia Arith.
+From MetaCoq.Template Require Import utils uGraph.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICSize.
 Import List.ListNotations.
 Require Import ssreflect.
 
 From Equations Require Import Equations.
-Require Import Equations.Prop.DepElim.
 
 Set Asymmetric Patterns.
 
 Derive NoConfusion for term.
+Derive Signature for All.
 Derive Signature for All2.
+
+Axiom todounivs : forall {A}, A.
+Ltac todounivs := apply todounivs.
 
 Open Scope pcuic.
 Local Open Scope string_scope.
@@ -29,7 +31,7 @@ Fixpoint string_of_term (t : term) :=
                                  ++ "," ++ string_of_term t' ++ "," ++ string_of_term t ++ ")"
   | tApp f l => "App(" ++ string_of_term f ++ "," ++ string_of_term l ++ ")"
   | tSymb k n u => "Symb(" ++ k ++ "," ++ string_of_nat n ++ "," ++ string_of_universe_instance u ++ ")"
-  | tConst c u => "Const(" ++ c ++ "," ++ string_of_universe_instance u ++ ")"
+  | tConst c u => "Const(" ++ string_of_kername c ++ "," ++ string_of_universe_instance u ++ ")"
   | tInd i u => "Ind(" ++ string_of_inductive i ++ "," ++ string_of_universe_instance u ++ ")"
   | tConstruct i n u => "Construct(" ++ string_of_inductive i ++ "," ++ string_of_nat n ++ ","
                                     ++ string_of_universe_instance u ++ ")"
@@ -43,102 +45,6 @@ Fixpoint string_of_term (t : term) :=
   | tCoFix l n => "CoFix(" ++ (string_of_list (string_of_def string_of_term) l) ++ "," ++ string_of_nat n ++ ")"
   end.
 Local Close Scope string_scope.
-
-(** Make a lambda/let-in string of abstractions from a context [Γ], ending with term [t]. *)
-
-Definition mkLambda_or_LetIn d t :=
-  match d.(decl_body) with
-  | None => tLambda d.(decl_name) d.(decl_type) t
-  | Some b => tLetIn d.(decl_name) b d.(decl_type) t
-  end.
-
-Definition it_mkLambda_or_LetIn (l : context) (t : term) :=
-  List.fold_left (fun acc d => mkLambda_or_LetIn d acc) l t.
-
-(** Make a prod/let-in string of abstractions from a context [Γ], ending with term [t]. *)
-
-Definition mkProd_or_LetIn d t :=
-  match d.(decl_body) with
-  | None => tProd d.(decl_name) d.(decl_type) t
-  | Some b => tLetIn d.(decl_name) b d.(decl_type) t
-  end.
-
-Definition it_mkProd_or_LetIn (l : context) (t : term) :=
-  List.fold_left (fun acc d => mkProd_or_LetIn d acc) l t.
-
-Definition map_decl f (d : context_decl) :=
-  {| decl_name := d.(decl_name);
-     decl_body := option_map f d.(decl_body);
-     decl_type := f d.(decl_type) |}.
-
-Lemma map_decl_type f decl : f (decl_type decl) = decl_type (map_decl f decl).
-Proof. destruct decl; reflexivity. Qed.
-
-Lemma map_decl_body f decl : option_map f (decl_body decl) = decl_body (map_decl f decl).
-Proof. destruct decl; reflexivity. Qed.
-
-Lemma option_map_decl_body_map_decl f x :
-  option_map decl_body (option_map (map_decl f) x) =
-  option_map (option_map f) (option_map decl_body x).
-Proof. destruct x; reflexivity. Qed.
-
-Lemma option_map_decl_type_map_decl f x :
-  option_map decl_type (option_map (map_decl f) x) =
-  option_map f (option_map decl_type x).
-Proof. destruct x; reflexivity. Qed.
-
-Definition map_context f c :=
-  List.map (map_decl f) c.
-
-Definition map_constant_body f decl :=
-  {| cst_type := f decl.(cst_type);
-     cst_body := option_map f decl.(cst_body);
-     cst_universes := decl.(cst_universes) |}.
-
-Lemma map_cst_type f decl : f (cst_type decl) = cst_type (map_constant_body f decl).
-Proof. destruct decl; reflexivity. Qed.
-
-Lemma map_cst_body f decl : option_map f (cst_body decl) = cst_body (map_constant_body f decl).
-Proof. destruct decl; reflexivity. Qed.
-
-Definition map_def {A B : Set} (tyf bodyf : A -> B) (d : def A) :=
-  {| dname := d.(dname); dtype := tyf d.(dtype); dbody := bodyf d.(dbody); rarg := d.(rarg) |}.
-
-Lemma map_dtype {A B : Set} (f : A -> B) (g : A -> B) (d : def A) :
-  f (dtype d) = dtype (map_def f g d).
-Proof. destruct d; reflexivity. Qed.
-
-Lemma map_dbody {A B : Set} (f : A -> B) (g : A -> B) (d : def A) :
-  g (dbody d) = dbody (map_def f g d).
-Proof. destruct d; reflexivity. Qed.
-
-Definition app_context (Γ Γ' : context) : context := (Γ' ++ Γ)%list.
-Notation " Γ  ,,, Γ' " := (app_context Γ Γ') (at level 25, Γ' at next level, left associativity) : pcuic.
-
-Lemma app_context_assoc Γ Γ' Γ'' : Γ ,,, (Γ' ,,, Γ'') = Γ ,,, Γ' ,,, Γ''.
-Proof. unfold app_context; now rewrite app_assoc. Qed.
-
-Lemma app_context_cons Γ Γ' A : Γ ,,, (Γ' ,, A) = (Γ ,,, Γ') ,, A.
-Proof.
-  now rewrite (app_context_assoc _ _ [A]).
-Qed.
-
-Lemma app_context_length Γ Γ' : #|Γ ,,, Γ'| = #|Γ'| + #|Γ|.
-Proof. unfold app_context. now rewrite app_length. Qed.
-
-Lemma nth_error_app_context_ge v Γ Γ' : #|Γ'| <= v -> nth_error (Γ ,,, Γ') v = nth_error Γ (v - #|Γ'|).
-Proof. apply nth_error_app_ge. Qed.
-
-Lemma nth_error_app_context_lt v Γ Γ' : v < #|Γ'| -> nth_error (Γ ,,, Γ') v = nth_error Γ' v.
-Proof. apply nth_error_app_lt. Qed.
-
-Lemma app_context_nil_l Γ : [] ,,, Γ = Γ.
-Proof. unfold app_context; now rewrite app_nil_r. Qed.
-
-Lemma map_app_context f Γ Γ' : map f (Γ ,,, Γ') = map f Γ ,,, map f Γ'.
-Proof.
-  induction Γ'; simpl; congruence.
-Qed.
 
 Fixpoint decompose_app_rec (t : term) l :=
   match t with
@@ -177,12 +83,6 @@ Fixpoint decompose_prod (t : term) : (list name) * (list term) * term :=
   | _ => ([], [], t)
   end.
 
-Definition get_ident (n : name) : string :=
-  match n with
-  | nAnon => "XX"
-  | nNamed i => i
-  end.
-
 Fixpoint remove_arity (n : nat) (t : term) : term :=
   match n with
   | O => t
@@ -197,14 +97,6 @@ Definition isConstruct_app t :=
   | tConstruct _ _ _ => true
   | _ => false
   end.
-
-Fixpoint lookup_mind_decl (id : ident) (decls : global_env)
- := match decls with
-    | nil => None
-    | (kn, InductiveDecl d) :: tl =>
-      if ident_eq kn id then Some d else lookup_mind_decl id tl
-    | _ :: tl => lookup_mind_decl id tl
-    end.
 
 (* was mind_decl_to_entry *)
 Definition mind_body_to_entry (decl : mutual_inductive_body)
@@ -225,7 +117,7 @@ Proof.
     apply (List.firstn decl.(ind_npars)) in names.
     apply (List.firstn decl.(ind_npars)) in types.
     refine (List.combine _ _).
-    exact (List.map get_ident names).
+    exact (List.map string_of_name names).
     exact (List.map LocalAssum types).
   - refine (List.map _ decl.(ind_bodies)).
     intros [].
@@ -239,12 +131,6 @@ Proof.
     refine (List.map (fun x => remove_arity decl.(ind_npars)
                                                 (snd (fst x))) ind_ctors).
 Defined.
-
-Definition arities_context (l : list one_inductive_body) :=
-  rev_map (fun ind => vass (nNamed ind.(ind_name)) ind.(ind_type)) l.
-
-Lemma arities_context_length l : #|arities_context l| = #|l|.
-Proof. unfold arities_context. now rewrite rev_map_length. Qed.
 
 Fixpoint decompose_prod_assum (Γ : context) (t : term) : context * term :=
   match t with
@@ -264,10 +150,7 @@ Fixpoint decompose_prod_n_assum (Γ : context) n (t : term) : option (context * 
     end
   end.
 
-Lemma it_mkProd_or_LetIn_app l l' t :
-  it_mkProd_or_LetIn (l ++ l') t = it_mkProd_or_LetIn l' (it_mkProd_or_LetIn l t).
-Proof. induction l in l', t |- *; simpl; auto. Qed.
-
+(* todo move *)
 Lemma it_mkLambda_or_LetIn_app l l' t :
   it_mkLambda_or_LetIn (l ++ l') t = it_mkLambda_or_LetIn l' (it_mkLambda_or_LetIn l t).
 Proof. induction l in l', t |- *; simpl; auto. Qed.
@@ -303,16 +186,6 @@ Proof.
   move=> Hty. rewrite it_mkProd_or_LetIn_app /=.
   case: x => [na [body|] ty'] /=; by rewrite IHctx' // /snoc -app_assoc.
 Qed.
-
-Fixpoint reln (l : list term) (p : nat) (Γ0 : list context_decl) {struct Γ0} : list term :=
-  match Γ0 with
-  | [] => l
-  | {| decl_body := Some _ |} :: hyps => reln l (p + 1) hyps
-  | {| decl_body := None |} :: hyps => reln (tRel p :: l) (p + 1) hyps
-  end.
-
-Definition to_extended_list_k Γ k := reln [] k Γ.
-Definition to_extended_list Γ := to_extended_list_k Γ 0.
 
 Lemma reln_list_lift_above l p Γ :
   Forall (fun x => exists n, x = tRel n /\ p <= n /\ n < p + length Γ) l ->
@@ -378,267 +251,40 @@ Proof.
   now rewrite -app_assoc !app_nil_r Nat.add_1_r.
 Qed.
 
-Fixpoint context_assumptions (Γ : context) :=
-  match Γ with
-  | [] => 0
-  | d :: Γ =>
-    match d.(decl_body) with
-    | Some _ => context_assumptions Γ
-    | None => S (context_assumptions Γ)
-    end
-  end.
-
-Definition map_one_inductive_body npars arities f (n : nat) m :=
-  match m with
-  | Build_one_inductive_body ind_name ind_type ind_kelim ind_ctors ind_projs =>
-    Build_one_inductive_body ind_name
-                             (f 0 ind_type)
-                             ind_kelim
-                             (map (on_pi2 (f arities)) ind_ctors)
-                             (map (on_snd (f (S npars))) ind_projs)
-  end.
-
-Definition fold_context f (Γ : context) : context :=
-  List.rev (mapi (fun k' decl => map_decl (f k') decl) (List.rev Γ)).
-
-Lemma fold_context_alt f Γ :
-  fold_context f Γ =
-  mapi (fun k' d => map_decl (f (Nat.pred (length Γ) - k')) d) Γ.
+Lemma context_assumptions_length_bound Γ : context_assumptions Γ <= #|Γ|.
 Proof.
-  unfold fold_context. rewrite rev_mapi. rewrite List.rev_involutive.
-  apply mapi_ext. intros. f_equal. now rewrite List.rev_length.
+  induction Γ; simpl; auto. destruct a as [? [?|] ?]; simpl; auto.
+  lia.
 Qed.
 
-Lemma fold_context_length f Γ : length (fold_context f Γ) = length Γ.
+Lemma mapi_rec_compose {A B C} (g : nat -> B -> C) (f : nat -> A -> B) k l :
+  mapi_rec g (mapi_rec f l k) k = mapi_rec (fun k x => g k (f k x)) l k.
 Proof.
-  unfold fold_context. now rewrite !List.rev_length mapi_length List.rev_length.
+  induction l in k |- *; simpl; auto. now rewrite IHl.
 Qed.
 
-Lemma fold_context_snoc0 f Γ d : fold_context f (d :: Γ) = fold_context f Γ ,, map_decl (f (length Γ)) d.
+Lemma mapi_compose {A B C} (g : nat -> B -> C) (f : nat -> A -> B) l :
+  mapi g (mapi f l) = mapi (fun k x => g k (f k x)) l.
+Proof. apply mapi_rec_compose. Qed.
+
+Lemma compose_map_decl f g x : map_decl f (map_decl g x) = map_decl (f ∘ g) x.
 Proof.
-  unfold fold_context.
-  rewrite !rev_mapi !rev_involutive. unfold mapi; rewrite mapi_rec_eqn.
-  unfold snoc. f_equal. now rewrite Nat.sub_0_r List.rev_length.
-  rewrite mapi_rec_Sk. simpl. apply mapi_rec_ext. intros.
-  rewrite app_length !List.rev_length. simpl. f_equal. f_equal. lia.
+  destruct x as [? [?|] ?]; reflexivity.
 Qed.
 
-Lemma fold_context_app f Γ Δ :
-  fold_context f (Δ ++ Γ) = fold_context (fun k => f (length Γ + k)) Δ ++ fold_context f Γ.
+Lemma map_decl_ext f g x : (forall x, f x = g x) -> map_decl f x = map_decl g x.
 Proof.
-  unfold fold_context.
-  rewrite List.rev_app_distr.
-  rewrite mapi_app. rewrite <- List.rev_app_distr. f_equal. f_equal.
-  apply mapi_ext. intros. f_equal. rewrite List.rev_length. f_equal.
+  intros H; destruct x as [? [?|] ?]; rewrite /map_decl /=; f_equal; auto.
+  now rewrite (H t).
 Qed.
-
-Lemma context_assumptions_fold Γ f : context_assumptions (fold_context f Γ) = context_assumptions Γ.
-Proof.
-  rewrite fold_context_alt.
-  unfold mapi. generalize 0 (Nat.pred #|Γ|).
-  induction Γ as [|[na [body|] ty] tl]; cbn; intros; eauto.
-Qed.
-
-Lemma nth_error_fold_context (f : nat -> term -> term):
-  forall (Γ' Γ'' : context) (v : nat),
-    v < length Γ' -> forall nth,
-    nth_error Γ' v = Some nth ->
-    nth_error (fold_context f Γ') v = Some (map_decl (f (length Γ' - S v)) nth).
-Proof.
-  induction Γ'; intros.
-  - easy.
-  - simpl. destruct v; rewrite fold_context_snoc0.
-    + simpl. repeat f_equal; try lia. simpl in *. congruence.
-    + simpl. apply IHΓ'; simpl in *; (lia || congruence).
-Qed.
-
-Lemma nth_error_fold_context_eq:
-  forall (Γ' : context) (v : nat) f,
-    nth_error (fold_context f Γ') v =
-    option_map (map_decl (f (length Γ' - S v))) (nth_error Γ' v).
-Proof.
-  induction Γ'; intros.
-  - simpl. unfold fold_context, fold_context; simpl. now rewrite nth_error_nil.
-  - simpl. destruct v; rewrite fold_context_snoc0.
-    + simpl. repeat f_equal; try lia.
-    + simpl. apply IHΓ'; simpl in *; (lia || congruence).
-Qed.
-
-Lemma nth_error_ge {Γ Γ' v Γ''} f : length Γ' <= v ->
-  nth_error (Γ' ++ Γ) v =
-  nth_error (fold_context (f 0) Γ' ++ Γ'' ++ Γ) (length Γ'' + v).
-Proof.
-  intros Hv.
-  rewrite -> !nth_error_app_ge, ?fold_context_length. f_equal. lia.
-  rewrite fold_context_length. lia.
-  rewrite fold_context_length. lia. auto.
-Qed.
-
-Lemma nth_error_lt {Γ Γ' Γ'' v} (f : nat -> term -> term) : v < length Γ' ->
-  nth_error (fold_context f Γ' ++ Γ'' ++ Γ) v =
-  option_map (map_decl (f (length Γ' - S v))) (nth_error (Γ' ++ Γ) v).
-Proof.
-  simpl. intros Hv.
-  rewrite -> !nth_error_app_lt.
-  rewrite nth_error_fold_context_eq.
-  do 2 f_equal. lia. now rewrite fold_context_length.
-Qed.
-
-Definition map_mutual_inductive_body f m :=
-  match m with
-  | Build_mutual_inductive_body finite ind_npars ind_pars ind_bodies ind_universes =>
-    let arities := arities_context ind_bodies in
-    let pars := fold_context f ind_pars in
-    Build_mutual_inductive_body finite ind_npars pars
-      (mapi (map_one_inductive_body (context_assumptions pars) (length arities) f) ind_bodies)
-      ind_universes
-  end.
-
-Lemma ind_type_map f npars_ass arities n oib :
-  ind_type (map_one_inductive_body npars_ass arities f n oib) = f 0 (ind_type oib).
-Proof. destruct oib. reflexivity. Qed.
-
-Lemma ind_ctors_map f npars_ass arities n oib :
-  ind_ctors (map_one_inductive_body npars_ass arities f n oib) =
-  map (on_pi2 (f arities)) (ind_ctors oib).
-Proof. destruct oib; simpl; reflexivity. Qed.
-
-Lemma ind_pars_map f m :
-  ind_params (map_mutual_inductive_body f m) =
-  fold_context f (ind_params m).
-Proof. destruct m; simpl; reflexivity. Qed.
-
-Lemma ind_projs_map f npars_ass arities n oib :
-  ind_projs (map_one_inductive_body npars_ass arities f n oib) =
-  map (on_snd (f (S npars_ass))) (ind_projs oib).
-Proof. destruct oib; simpl. reflexivity. Qed.
-
-Definition test_def {A : Set} (tyf bodyf : A -> bool) (d : def A) :=
-  tyf d.(dtype) && bodyf d.(dbody).
-
-Definition tCaseBrsProp {A} (P : A -> Type) (l : list (nat * A)) :=
-  All (fun x => P (snd x)) l.
-
-Definition tFixProp {A : Set} (P P' : A -> Type) (m : mfixpoint A) :=
-  All (fun x : def A => P x.(dtype) * P' x.(dbody))%type m.
-
 
 Ltac merge_All :=
   unfold tFixProp, tCaseBrsProp in *;
   repeat toAll.
 
-
-Lemma map_def_map_def {A B C : Set} (f f' : B -> C) (g g' : A -> B) (d : def A) :
-  map_def f f' (map_def g g' d) = map_def (fun x => f (g x)) (fun x => f' (g' x)) d.
-Proof.
-  destruct d; reflexivity.
-Qed.
-
-Lemma compose_map_def {A B C : Set} (f f' : B -> C) (g g' : A -> B) :
-  compose (A:=def A) (map_def f f') (map_def g g') = map_def (compose f g) (compose f' g').
-Proof. reflexivity. Qed.
-
-Lemma map_def_id {t : Set} x : map_def (@id t) (@id t) x = x.
-Proof. now destruct x. Qed.
 Hint Rewrite @map_def_id @map_id : map.
 
-Lemma map_def_spec {A B : Set} (P P' : A -> Type) (f f' g g' : A -> B) (x : def A) :
-  P' x.(dbody) -> P x.(dtype) -> (forall x, P x -> f x = g x) ->
-  (forall x, P' x -> f' x = g' x) ->
-  map_def f f' x = map_def g g' x.
-Proof.
-  intros. destruct x. unfold map_def. simpl.
-  rewrite !H // !H0 //.
-Qed.
-
-Lemma case_brs_map_spec {A B : Set} {P : A -> Type} {l} {f g : A -> B} :
-  tCaseBrsProp P l -> (forall x, P x -> f x = g x) ->
-  map (on_snd f) l = map (on_snd g) l.
-Proof.
-  intros. red in X.
-  eapply All_map_eq. eapply All_impl; eauto. simpl; intros.
-  apply on_snd_eq_spec; eauto.
-Qed.
-
-Lemma tfix_map_spec {A B : Set} {P P' : A -> Type} {l} {f f' g g' : A -> B} :
-  tFixProp P P' l -> (forall x, P x -> f x = g x) ->
-  (forall x, P' x -> f' x = g' x) ->
-  map (map_def f f') l = map (map_def g g') l.
-Proof.
-  intros.
-  eapply All_map_eq. red in X. eapply All_impl; eauto. simpl.
-  intros. destruct X0;
-  eapply map_def_spec; eauto.
-Qed.
-
-
-Lemma map_def_test_spec {A B : Set}
-      (P P' : A -> Type) (p p' : pred A) (f f' g g' : A -> B) (x : def A) :
-  P x.(dtype) -> P' x.(dbody) -> (forall x, P x -> p x -> f x = g x) ->
-  (forall x, P' x -> p' x -> f' x = g' x) ->
-  test_def p p' x ->
-  map_def f f' x = map_def g g' x.
-Proof.
-  intros. destruct x. unfold map_def. simpl.
-  unfold test_def in H1; simpl in H1. rewrite -> andb_and in H1. intuition.
-  rewrite !H // !H0 //; intuition auto.
-Qed.
-
-Lemma case_brs_forallb_map_spec {A B : Set} {P : A -> Type} {p : A -> bool}
-      {l} {f g : A -> B} :
-  tCaseBrsProp P l ->
-  forallb (test_snd p) l ->
-  (forall x, P x -> p x -> f x = g x) ->
-  map (on_snd f) l = map (on_snd g) l.
-Proof.
-  intros.
-  eapply All_map_eq. red in X. apply forallb_All in H.
-  merge_All. eapply All_impl; eauto. simpl. intros. intuition.
-  eapply on_snd_test_spec; eauto.
-Qed.
-
-Lemma tfix_forallb_map_spec {A B : Set} {P P' : A -> Prop} {p p'} {l} {f f' g g' : A -> B} :
-  tFixProp P P' l ->
-  forallb (test_def p p') l ->
-  (forall x, P x -> p x -> f x = g x) ->
-  (forall x, P' x -> p' x -> f' x = g' x) ->
-  map (map_def f f') l = map (map_def g g') l.
-Proof.
-  intros.
-  eapply All_map_eq; red in X. apply forallb_All in H.
-  merge_All. eapply All_impl; eauto. simpl; intros; intuition.
-  eapply map_def_test_spec; eauto.
-Qed.
-
-Ltac apply_spec :=
-  match goal with
-  | H : All _ _, H' : forallb _ _ = _ |- map _ _ = map _ _ =>
-    eapply (All_forallb_map_spec H H')
-  | H : All _ _, H' : forallb _ _ = _ |- forallb _ _ = _ =>
-    eapply (All_forallb_forallb_spec H H')
-  | H : tCaseBrsProp _ _, H' : forallb _ _ = _ |- map _ _ = map _ _ =>
-    eapply (case_brs_forallb_map_spec H H')
-  | H : All _ _, H' : is_true (forallb _ _) |- map _ _ = map _ _ =>
-    eapply (All_forallb_map_spec H H')
-  | H : All _ _, H' : is_true (forallb _ _) |- forallb _ _ = _ =>
-    eapply (All_forallb_forallb_spec H H')
-  | H : tCaseBrsProp _ _, H' : is_true (forallb _ _) |- map _ _ = map _ _ =>
-    eapply (case_brs_forallb_map_spec H H')
-  | H : tCaseBrsProp _ _ |- map _ _ = map _ _ =>
-    eapply (case_brs_map_spec H)
-  | H : tFixProp _ _ _, H' : forallb _ _ = _ |- map _ _ = map _ _ =>
-    eapply (tfix_forallb_map_spec H H')
-  | H : tFixProp _ _ _ |- map _ _ = map _ _ =>
-    eapply (tfix_map_spec H)
-  | H : All _ _ |- map _ _ = map _ _ =>
-    eapply (All_map_eq H)
-  | H : All _ _ |- map _ _ = _ =>
-    eapply (All_map_id H)
-  | H : All _ _ |- is_true (forallb _ _) =>
-    eapply (All_forallb _ _ H); clear H
-  end.
-
-
+(* todo move *)
 Ltac close_All :=
   match goal with
   | H : Forall _ _ |- Forall _ _ => apply (Forall_impl H); clear H; simpl
@@ -813,16 +459,19 @@ Proof.
   induction l in x |- *; simpl; simp list_size. lia.
   rewrite IHl. simpl. lia.
 Qed.
+
 Lemma mkApps_eq_head {x l} : mkApps x l = x -> l = [].
 Proof.
-  assert (WF := _ : WellFounded (MR lt size)).
+  assert (WF : WellFounded (precompose lt size))
+    by apply wf_precompose, lt_wf.
   induction l. simpl. constructor.
   apply apply_noCycle_right. simpl. red. rewrite mkApps_size. simpl. lia.
 Qed.
 
 Lemma mkApps_eq_inv {x y l} : x = mkApps y l -> size y <= size x.
 Proof.
-  assert (WF := _ : WellFounded (MR lt size)).
+  assert (WF : WellFounded (precompose lt size))
+    by apply wf_precompose, lt_wf.
   induction l in x, y |- *. simpl. intros -> ; constructor.
   simpl. intros. specialize (IHl _ _ H). simpl in IHl. lia.
 Qed.
@@ -845,8 +494,6 @@ Proof.
   rewrite !decompose_app_rec_mkApps in H. apply decompose_app_eq_right in H.
   now rewrite !app_nil_r in H.
 Qed.
-
-Require Import ssrbool.
 
 Lemma atom_decompose_app t l : ~~ isApp t -> decompose_app_rec t l = pair t l.
 Proof. destruct t; simpl; congruence. Qed.
@@ -887,6 +534,7 @@ Ltac finish_discr :=
          | [ H : mkApps _ _ = mkApps _ _ |- _ ] =>
            let H0 := fresh in let H1 := fresh in
                               specialize (mkApps_eq_inj H eq_refl eq_refl) as [H0 H1];
+                              clear H;
                               try (congruence || (noconf H0; noconf H1))
          | [ H : mkApps _ _ = _ |- _ ] => apply mkApps_eq_head in H
          end.
@@ -920,14 +568,6 @@ Proof.
   destruct f; simpl; try discriminate; congruence.
 Qed.
 Close Scope string_scope.
-
-Lemma firstn_add {A} x y (args : list A) : firstn (x + y) args = firstn x args ++ firstn y (skipn x args).
-Proof.
-  induction x in y, args |- *. simpl. reflexivity.
-  simpl. destruct args. simpl.
-  now rewrite firstn_nil.
-  rewrite IHx. now rewrite app_comm_cons.
-Qed.
 
 Lemma decompose_app_rec_inv' f l hd args :
   decompose_app_rec f l = (hd, args) ->
@@ -984,6 +624,16 @@ Lemma mkApps_nisApp {t t' l} : mkApps t l = t' -> ~~ isApp t' -> t = t' /\ l = [
 Proof.
   induction l in t |- *; simpl; auto.
   intros. destruct (IHl _ H). auto. subst. simpl in H0. discriminate.
+Qed.
+
+Lemma tApp_mkApps_inj f a f' l :
+  tApp f a = mkApps f' l -> l <> [] ->
+  f = mkApps f' (removelast l) /\ (a = last l a).
+Proof.
+  induction l in f' |- *; simpl; intros H. noconf H. intros Hf. congruence.
+  intros . destruct l; simpl in *. now noconf H.
+  specialize (IHl _ H). forward IHl by congruence.
+  apply IHl.
 Qed.
 
 Definition application_atom t :=

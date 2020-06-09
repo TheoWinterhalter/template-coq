@@ -1,20 +1,18 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia
-     Classes.RelationClasses.
-From MetaCoq.Template Require Import config Universes monad_utils utils BasicAst
-     AstUtils UnivSubst.
-From MetaCoq.Checker Require Import uGraph.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
+From Coq Require Import Bool String List Program Arith Lia.
+From MetaCoq.Template Require Import config monad_utils utils
+     uGraph.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils
      PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICTyping
-     PCUICCumulativity PCUICSR PCUICEquality PCUICNameless PCUICConversion
+     PCUICCumulativity PCUICEquality PCUICConversion
      PCUICSafeLemmata PCUICNormal PCUICInversion PCUICReduction PCUICPosition
-     PCUICContextConversion PCUICConfluence PCUICSN PCUICAlpha PCUICUtils
-     PCUICReduction.
+     PCUICContextConversion PCUICSN PCUICUtils
+     PCUICWeakening.
 From MetaCoq.SafeChecker Require Import PCUICSafeReduce.
+Require Import Equations.Prop.DepElim.
 From Equations Require Import Equations.
 
-Require Import Equations.Prop.DepElim.
 Local Set Keyed Unification.
 
 Set Default Goal Selector "!".
@@ -37,7 +35,7 @@ Definition wf_global_uctx_invariants {cf:checker_flags} Σ :
 Proof.
   intros [HΣ]. split.
   - cbn. unfold global_levels.
-    cut (LevelSet.In lSet (LevelSet_pair Level.lSet Level.lProp)).
+    cut (LevelSet.In Level.lSet (LevelSet_pair Level.lSet Level.lProp)).
     + generalize (LevelSet_pair Level.lSet Level.lProp).
       clear HΣ. induction Σ; simpl. 1: easy.
       intros X H. apply LevelSet.union_spec. now right.
@@ -56,12 +54,10 @@ Proof.
               destruct cst_universes ; [
                 eapply (HH (l, ct, l') Hctr)
               | apply ConstraintSetFact.empty_iff in Hctr ; contradiction
-              | apply ConstraintSetFact.empty_iff in Hctr; contradiction
               ].
            ++ destruct decl. simpl in *.
               destruct ind_universes ; [
                 eapply (HH (l, ct, l') Hctr)
-              | apply ConstraintSetFact.empty_iff in Hctr; contradiction
               | apply ConstraintSetFact.empty_iff in Hctr; contradiction
               ].
         -- inversion HΣ. subst.
@@ -72,12 +68,10 @@ Proof.
               destruct cst_universes ; [
                 eapply (HH (l, ct, l') Hctr)
               | apply ConstraintSetFact.empty_iff in Hctr; contradiction
-              | apply ConstraintSetFact.empty_iff in Hctr; contradiction
               ].
            ++ destruct decl. simpl in *.
               destruct ind_universes; [
                 eapply (HH (l, ct, l') Hctr)
-              | apply ConstraintSetFact.empty_iff in Hctr; contradiction
               | apply ConstraintSetFact.empty_iff in Hctr; contradiction
               ].
       * inversion HΣ. subst.
@@ -94,7 +88,7 @@ Definition wf_ext_global_uctx_invariants {cf:checker_flags} Σ :
 Proof.
   intros [HΣ]. split.
   - apply LevelSet.union_spec. right. unfold global_levels.
-    cut (LevelSet.In lSet (LevelSet_pair Level.lSet Level.lProp)).
+    cut (LevelSet.In Level.lSet (LevelSet_pair Level.lSet Level.lProp)).
     + generalize (LevelSet_pair Level.lSet Level.lProp).
       induction Σ.1; simpl. 1: easy.
       intros X H. apply LevelSet.union_spec. now right.
@@ -527,12 +521,12 @@ Section Conversion.
     pose proof hΣ'.
     apply eqb_term_upto_univ_impl.
     - intros u1 u2.
-      eapply (check_eqb_universe_spec G (global_ext_uctx Σ)).
+      eapply (check_eqb_universe_spec' G (global_ext_uctx Σ)).
       + now eapply wf_ext_global_uctx_invariants.
       + now eapply global_ext_uctx_consistent.
       + assumption.
     - intros u1 u2.
-      eapply (check_leqb_universe_spec G (global_ext_uctx Σ)).
+      eapply (check_leqb_universe_spec' G (global_ext_uctx Σ)).
       + now eapply wf_ext_global_uctx_invariants.
       + now eapply global_ext_uctx_consistent.
       + assumption.
@@ -545,12 +539,12 @@ Section Conversion.
     pose proof hΣ'.
     apply eqb_term_upto_univ_impl.
     - intros u1 u2.
-      eapply (check_eqb_universe_spec G (global_ext_uctx Σ)).
+      eapply (check_eqb_universe_spec' G (global_ext_uctx Σ)).
       + now eapply wf_ext_global_uctx_invariants.
       + now eapply global_ext_uctx_consistent.
       + assumption.
     - intros u1 u2.
-      eapply (check_eqb_universe_spec G (global_ext_uctx Σ)).
+      eapply (check_eqb_universe_spec' G (global_ext_uctx Σ)).
       + now eapply wf_ext_global_uctx_invariants.
       + now eapply global_ext_uctx_consistent.
       + assumption.
@@ -630,7 +624,7 @@ Section Conversion.
   Lemma eqb_termp_spec :
     forall leq u v Γ,
       eqb_termp leq u v ->
-      conv leq Σ Γ u v.
+      conv_cum leq Σ Γ u v.
   Proof.
     intros leq u v Γ e.
     destruct leq.
@@ -659,11 +653,11 @@ Section Conversion.
     (∥ conv_context Σ (Γ ,,, stack_context π1) (Γ ,,, stack_context π2) ∥).
 
   Notation conv_term leq Γ t π t' π' :=
-    (conv leq Σ (Γ ,,, stack_context π) (zipp t π) (zipp t' π'))
+    (conv_cum leq Σ (Γ ,,, stack_context π) (zipp t π) (zipp t' π'))
       (only parsing).
 
   Notation alt_conv_term Γ t π t' π' :=
-    (∥ Σ ;;; Γ ,,, stack_context π |- zipp t π == zipp t' π' ∥)
+    (∥ Σ ;;; Γ ,,, stack_context π |- zipp t π = zipp t' π' ∥)
       (only parsing).
 
   Inductive ConversionError :=
@@ -766,7 +760,7 @@ Section Conversion.
       conv_stack_ctx Γ π π' ->
       (match s with Fallback | Term => isred (t, π) | _ => True end) ->
       (match s with Fallback | Term => isred (t', π') | _ => True end) ->
-      (match s with Args => conv leq Σ (Γ ,,, stack_context π) t t' | _ => True end) ->
+      (match s with Args => conv_cum leq Σ (Γ ,,, stack_context π) t t' | _ => True end) ->
       ConversionResult (conv_term leq Γ t π t' π').
 
   Definition Aux s Γ t1 π1 t2 π2 h2 :=
@@ -1102,16 +1096,13 @@ Section Conversion.
     rewrite stack_context_appstack.
 
     destruct hx as [hx].
-    eapply conv_trans'.
-    - assumption.
-    - eapply red_conv_l ; try assumption.
-      eassumption.
-    - eapply conv_trans'.
-      + assumption.
+    etransitivity.
+    - eapply red_conv_cum_l; eassumption.
+    - etransitivity.
       + eassumption.
-      + eapply conv_context_convp.
+      + eapply conv_cum_context_convp.
         * assumption.
-        * eapply red_conv_r. all: eauto.
+        * eapply red_conv_cum_r. all: eauto.
         * eapply conv_context_sym. all: auto.
   Qed.
 
@@ -1361,7 +1352,7 @@ Section Conversion.
     prog_discr (tCoFix _ _) (tCoFix _ _) := False ;
     prog_discr _ _ := True.
 
-  Inductive prog_view : term -> term -> Set :=
+  Inductive prog_view : term -> term -> Type :=
   | prog_view_App u1 v1 u2 v2 :
       prog_view (tApp u1 v1) (tApp u2 v2)
 
@@ -1439,9 +1430,9 @@ Section Conversion.
   Qed.
 
   Equations(noeqns) unfold_constants (Γ : context) (leq : conv_pb)
-            (c : kername) (u : universe_instance) (π1 : stack)
+            (c : kername) (u : Instance.t) (π1 : stack)
             (h1 : wtp Γ (tConst c u) π1)
-            (c' : kername) (u' : universe_instance) (π2 : stack)
+            (c' : kername) (u' : Instance.t) (π2 : stack)
             (h2 : wtp Γ (tConst c' u') π2)
             (hx : conv_stack_ctx Γ π1 π2)
             (aux : Aux Term Γ (tConst c u) π1 (tConst c' u') π2 h2)
@@ -1474,8 +1465,8 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ.
-    eapply conv_trans' ; try eassumption.
-    eapply red_conv_r ; try assumption.
+    etransitivity ; try eassumption.
+    eapply red_conv_cum_r ; try assumption.
     eapply red_zipp. eapply red_const. eassumption.
   Qed.
   Next Obligation.
@@ -1489,8 +1480,8 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ as [wΣ].
-    eapply conv_trans' ; try eassumption.
-    eapply red_conv_l ; try assumption.
+    etransitivity ; try eassumption.
+    eapply red_conv_cum_l ; try assumption.
     eapply red_zipp. eapply red_const. eassumption.
   Qed.
   Next Obligation.
@@ -1503,8 +1494,8 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ as [wΣ].
-    eapply conv_trans' ; try eassumption.
-    eapply red_conv_l ; try assumption.
+    etransitivity ; try eassumption.
+    eapply red_conv_cum_l ; try assumption.
     eapply red_zipp. eapply red_const. eassumption.
   Qed.
   Next Obligation.
@@ -1517,8 +1508,8 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ as [wΣ].
-    eapply conv_trans' ; try eassumption.
-    eapply red_conv_l ; try assumption.
+    etransitivity ; try eassumption.
+    eapply red_conv_cum_l ; try assumption.
     eapply red_zipp. eapply red_const. eassumption.
   Qed.
 
@@ -1536,7 +1527,7 @@ Section Conversion.
     unfold eqb_universe_instance in e.
     eapply forallb2_Forall2 in e.
     eapply Forall2_impl. 1: eassumption.
-    intros. eapply (check_eqb_universe_spec G (global_ext_uctx Σ)).
+    intros. eapply (check_eqb_universe_spec' G (global_ext_uctx Σ)).
     all: auto.
     - eapply wf_ext_global_uctx_invariants.
       eapply hΣ'.
@@ -1578,9 +1569,9 @@ Section Conversion.
     (p' c' : term) (brs1' brs2' : list (nat × term))
     (π' : stack) (h' : wtp Γ (tCase (ind, par) p' c' (brs1' ++ brs2')) π')
     (hx : conv_stack_ctx Γ π π')
-    (h1 : ∥ All2 (fun u v => u.1 = v.1 × Σ ;;; Γ ,,, stack_context π |- u.2 == v.2) brs1 brs1' ∥)
+    (h1 : ∥ All2 (fun u v => u.1 = v.1 × Σ ;;; Γ ,,, stack_context π |- u.2 = v.2) brs1 brs1' ∥)
     (aux : Aux Term Γ (tCase (ind, par) p c (brs1 ++ brs2)) π (tCase (ind, par) p' c' (brs1' ++ brs2')) π' h')
-    : ConversionResult (∥ All2 (fun u v => u.1 = v.1 × Σ ;;; Γ ,,, stack_context π |- u.2 == v.2) brs2 brs2' ∥)
+    : ConversionResult (∥ All2 (fun u v => u.1 = v.1 × Σ ;;; Γ ,,, stack_context π |- u.2 = v.2) brs2 brs2' ∥)
     by struct brs2 :=
 
     isconv_branches Γ ind par
@@ -1694,7 +1685,7 @@ Section Conversion.
     (hx : conv_stack_ctx Γ π π')
     (ei : ind = ind') (ep : par = par')
     (aux : Aux Term Γ (tCase (ind, par) p c brs) π (tCase (ind', par') p' c' brs') π' h')
-    : ConversionResult (∥ All2 (fun u v => u.1 = v.1 ×  Σ ;;; Γ ,,, stack_context π |- u.2 == v.2) brs brs' ∥) :=
+    : ConversionResult (∥ All2 (fun u v => u.1 = v.1 ×  Σ ;;; Γ ,,, stack_context π |- u.2 = v.2) brs brs' ∥) :=
 
     isconv_branches' Γ ind par p c brs π h ind' par' p' c' brs' π' h' hx ei ep aux :=
       isconv_branches Γ ind par p c [] brs π _ p' c' [] brs' π' _ _ _ _.
@@ -1713,12 +1704,12 @@ Section Conversion.
     (h' : wtp Γ (tFix (mfix1' ++ mfix2') idx) π')
     (hx : conv_stack_ctx Γ π π')
     (h1 : ∥ All2 (fun u v =>
-                   Σ ;;; Γ ,,, stack_context π |- u.(dtype) == v.(dtype) ×
+                   Σ ;;; Γ ,,, stack_context π |- u.(dtype) = v.(dtype) ×
                    u.(rarg) = v.(rarg)
             ) mfix1 mfix1' ∥)
     (aux : Aux Term Γ (tFix (mfix1 ++ mfix2) idx) π (tFix (mfix1' ++ mfix2') idx) π' h')
     : ConversionResult (∥ All2 (fun u v =>
-          Σ ;;; Γ ,,, stack_context π |- u.(dtype) == v.(dtype) ×
+          Σ ;;; Γ ,,, stack_context π |- u.(dtype) = v.(dtype) ×
           u.(rarg) = v.(rarg)
       ) mfix2 mfix2' ∥)
     by struct mfix2 :=
@@ -1848,13 +1839,13 @@ Section Conversion.
     (mfix1' mfix2' : mfixpoint term) (π' : stack)
     (h' : wtp Γ (tFix (mfix1' ++ mfix2') idx) π')
     (hx : conv_stack_ctx Γ π π')
-    (h1 : ∥ All2 (fun u v => Σ ;;; Γ ,,, stack_context π ,,, fix_context_alt (map def_sig mfix1 ++ map def_sig mfix2) |- u.(dbody) == v.(dbody)) mfix1 mfix1' ∥)
+    (h1 : ∥ All2 (fun u v => Σ ;;; Γ ,,, stack_context π ,,, fix_context_alt (map def_sig mfix1 ++ map def_sig mfix2) |- u.(dbody) = v.(dbody)) mfix1 mfix1' ∥)
     (ha : ∥ All2 (fun u v =>
-                    Σ ;;; Γ ,,, stack_context π |- u.(dtype) == v.(dtype) ×
+                    Σ ;;; Γ ,,, stack_context π |- u.(dtype) = v.(dtype) ×
                     u.(rarg) = v.(rarg)
            ) (mfix1 ++ mfix2) (mfix1' ++ mfix2') ∥)
     (aux : Aux Term Γ (tFix (mfix1 ++ mfix2) idx) π (tFix (mfix1' ++ mfix2') idx) π' h')
-    : ConversionResult (∥ All2 (fun u v => Σ ;;; Γ ,,, stack_context π ,,, fix_context_alt (map def_sig mfix1 ++ map def_sig mfix2) |- u.(dbody) == v.(dbody)) mfix2 mfix2' ∥)
+    : ConversionResult (∥ All2 (fun u v => Σ ;;; Γ ,,, stack_context π ,,, fix_context_alt (map def_sig mfix1 ++ map def_sig mfix2) |- u.(dbody) = v.(dbody)) mfix2 mfix2' ∥)
     by struct mfix2 :=
 
   isconv_fix_bodies Γ idx mfix1 (u :: mfix2) π h mfix1' (v :: mfix2') π' h' hx h1 ha aux
@@ -1930,7 +1921,7 @@ Section Conversion.
     clear Γ. intros Γ Γ' hx ha.
     assert (h :
       All2
-        (fun d d' => conv_alt Σ Γ d.2 d'.2)
+        (fun d d' => conv Σ Γ d.2 d'.2)
         (map def_sig Δ) (map def_sig Δ')
     ).
     { apply All2_map. eapply All2_impl. 1: eassumption.
@@ -1959,7 +1950,7 @@ Section Conversion.
       constructor. 2: eapply IHh.
       intros Ξ Θ eΞ. constructor.
       rewrite <- eΞ.
-      eapply @weakening_conv_alt with (Γ' := []). all: assumption.
+      eapply @weakening_conv with (Γ' := []). all: assumption.
     }
     clear h.
     revert hi.
@@ -2064,8 +2055,8 @@ Section Conversion.
     (ei : idx = idx')
     (aux : Aux Term Γ (tFix mfix idx) π (tFix mfix' idx') π' h')
     : ConversionResult (∥ All2 (fun u v =>
-          Σ ;;; Γ ,,, stack_context π |- u.(dtype) == v.(dtype) ×
-          Σ ;;; Γ ,,, stack_context π ,,, fix_context mfix |- u.(dbody) == v.(dbody) ×
+          Σ ;;; Γ ,,, stack_context π |- u.(dtype) = v.(dtype) ×
+          Σ ;;; Γ ,,, stack_context π ,,, fix_context mfix |- u.(dbody) = v.(dbody) ×
           u.(rarg) = v.(rarg)
       ) mfix mfix' ∥) :=
 
@@ -2105,7 +2096,7 @@ Section Conversion.
     destruct h1 as [h1], h2 as [h2].
     constructor.
     rewrite fix_context_fix_context_alt.
-    pose proof (PCUICParallelReductionConfluence.All2_mix h1 h2) as h3.
+    pose proof (All2_mix h1 h2) as h3.
     eapply All2_impl. 1: exact h3.
     intros [? ? ? ?] [? ? ? ?] ?. simpl in *.
     intuition eauto.
@@ -2298,7 +2289,7 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ.
-    eapply conv_conv. 1: assumption.
+    eapply conv_conv_cum.
     constructor. constructor.
     constructor. eapply eqb_universe_instance_spec. auto.
   Qed.
@@ -2322,13 +2313,12 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ.
-    eapply conv_trans'.
-    - assumption.
-    - eapply red_conv_l ; try assumption.
+    etransitivity.
+    - eapply red_conv_cum_l ; try assumption.
       eapply red_zipp.
       eapply red_const. eassumption.
-    - eapply conv_trans' ; try eassumption.
-      eapply red_conv_r ; try assumption.
+    - etransitivity ; try eassumption.
+      eapply red_conv_cum_r ; try assumption.
       eapply red_zipp.
       eapply red_const. eassumption.
   Qed.
@@ -2374,7 +2364,7 @@ Section Conversion.
     destruct l2 ; try discriminate hl2. clear hl2.
     simpl in *.
     destruct hΣ.
-    now eapply conv_Lambda.
+    now eapply conv_cum_Lambda.
   Qed.
 
   (* tProd *)
@@ -2423,7 +2413,7 @@ Section Conversion.
     apply mkApps_Prod_nil' in h2 ; auto. subst.
 
     simpl.
-    eapply conv_Prod. all: auto.
+    eapply conv_cum_Prod. all: auto.
   Qed.
 
   (* tCase *)
@@ -2434,7 +2424,7 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ.
-    eapply conv_conv. 1: assumption.
+    eapply conv_conv_cum.
     constructor. constructor.
     eapply eqb_term_spec. auto.
   Qed.
@@ -2489,7 +2479,7 @@ Section Conversion.
     destruct h1 as [h1], h2 as [h2], h3 as [h3].
     unfold zipp in h1, h2. simpl in h1, h2.
     destruct hΣ as [wΣ].
-    eapply conv_conv. 1: assumption.
+    eapply conv_conv_cum.
     constructor.
     change (eq_inductive ind ind') with (eqb ind ind') in eq4.
     destruct (eqb_spec ind ind'). 2: discriminate.
@@ -2605,9 +2595,8 @@ Section Conversion.
       pose proof (reduce_term_sound f Σ hΣ Γ c' h) as hr'
     end.
     destruct hr as [hr], hr' as [hr'].
-    eapply conv_trans'.
-    - assumption.
-    - eapply red_conv_l ; try assumption.
+    etransitivity.
+    - eapply red_conv_cum_l ; try assumption.
       eapply red_zipp.
       eapply red_case.
       + constructor.
@@ -2615,10 +2604,10 @@ Section Conversion.
       + instantiate (1 := brs).
         clear.
         induction brs ; eauto.
-    - eapply conv_trans' ; try eassumption.
-      eapply conv_context_convp.
+    - etransitivity ; try eassumption.
+      eapply conv_cum_context_convp.
       + assumption.
-      + eapply red_conv_r. 1: assumption.
+      + eapply red_conv_cum_r. 1: assumption.
         eapply red_zipp.
         eapply red_case. 2: eassumption.
         * constructor.
@@ -2643,7 +2632,7 @@ Section Conversion.
     destruct h1 as [h].
     change (true = eqb p p') in eq1.
     destruct (eqb_spec p p'). 2: discriminate. subst.
-    eapply conv_conv. 1: assumption.
+    eapply conv_conv_cum.
     constructor.
     eapply conv_Proj_c. assumption.
   Qed.
@@ -2656,7 +2645,7 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ.
-    eapply conv_conv. 1: assumption.
+    eapply conv_conv_cum.
     constructor. constructor.
     eapply eqb_term_spec. auto.
   Qed.
@@ -2800,9 +2789,8 @@ Section Conversion.
       pose proof (decompose_stack_eq _ _ _ e1). subst.
       rewrite stack_context_appstack. reflexivity.
     }
-    eapply conv_trans'.
-    - assumption.
-    - eapply red_conv_l. all: eassumption.
+    etransitivity.
+    - eapply red_conv_cum_l. all: eassumption.
     - rewrite e. assumption.
   Qed.
   Next Obligation.
@@ -2950,14 +2938,13 @@ Section Conversion.
     destruct r2' as [r2'].
     destruct hx as [hx].
     pose proof (red_trans _ _ _ _ _ r1 r2') as r.
-    eapply conv_trans' ; revgoals.
-    - eapply conv_context_convp.
+    etransitivity ; revgoals.
+    - eapply conv_cum_context_convp.
       + assumption.
-      + eapply red_conv_r. 1: assumption.
+      + eapply red_conv_cum_r. 1: assumption.
         eassumption.
       + eapply conv_context_sym. 1: auto.
         assumption.
-    - assumption.
     - assumption.
   Qed.
   Next Obligation.
@@ -2974,7 +2961,7 @@ Section Conversion.
   Next Obligation.
     destruct h1 as [h1].
     destruct hΣ.
-    eapply conv_conv_l. 1: assumption.
+    eapply conv_conv_cum_l. 1: assumption.
     change (true = eqb idx idx') in eq4.
     destruct (eqb_spec idx idx'). 2: discriminate.
     subst.
@@ -2989,7 +2976,7 @@ Section Conversion.
   Qed.
   Next Obligation.
     destruct hΣ.
-    eapply conv_conv. 1: assumption.
+    eapply conv_conv_cum.
     constructor. constructor.
     eapply eqb_term_spec. auto.
   Qed.
@@ -3004,9 +2991,9 @@ Section Conversion.
   (* TODO MOVE *)
   Lemma App_conv' :
     forall leq Γ t1 t2 u1 u2,
-      conv leq Σ Γ t1 t2 ->
-      Σ ;;; Γ |- u1 == u2 ->
-      conv leq Σ Γ (tApp t1 u1) (tApp t2 u2).
+      conv_cum leq Σ Γ t1 t2 ->
+      Σ ;;; Γ |- u1 = u2 ->
+      conv_cum leq Σ Γ (tApp t1 u1) (tApp t2 u2).
   Proof.
     intros leq Γ t1 t2 u1 u2 ht hu.
     destruct hΣ.
@@ -3043,7 +3030,7 @@ Section Conversion.
             (h2 : wtp Γ t2 (appstack l2 π2))
             (hπ2 : isStackApp π2 = false)
             (hx : conv_stack_ctx Γ π1 π2)
-            (h : conv leq Σ (Γ ,,, stack_context π1) (mkApps t1 args1) t2)
+            (h : conv_cum leq Σ (Γ ,,, stack_context π1) (mkApps t1 args1) t2)
             (aux : Aux' Γ t1 args1 l1 π1 t2 (appstack l2 π2) h2)
     : ConversionResult (conv_term leq Γ (mkApps t1 args1) (appstack l1 π1) t2 (appstack l2 π2)) by struct l1 :=
     _isconv_args' leq Γ t1 args1 (u1 :: l1) π1 h1 hπ1 t2 (u2 :: l2) π2 h2 hπ2 hx h aux
@@ -3157,7 +3144,7 @@ Section Conversion.
            (t1 : term) (π1 : stack) (h1 : wtp Γ t1 π1)
            (t2 : term) (π2 : stack) (h2 : wtp Γ t2 π2)
            (hx : conv_stack_ctx Γ π1 π2)
-           (he : conv leq Σ (Γ ,,, stack_context π1) t1 t2)
+           (he : conv_cum leq Σ (Γ ,,, stack_context π1) t1 t2)
            (aux : Aux Args Γ t1 π1 t2 π2 h2)
     : ConversionResult (conv_term leq Γ t1 π1 t2 π2) :=
     _isconv_args leq Γ t1 π1 h1 t2 π2 h2 hx he aux with inspect (decompose_stack π1) := {
@@ -3671,13 +3658,13 @@ Section Conversion.
     rewrite stack_context_appstack.
     rewrite stack_cat_appstack in h.
     rewrite stack_context_appstack in h.
-    eapply conv_trans' ; try eassumption.
+    etransitivity ; try eassumption.
     unfold zipp. rewrite e'.
     unfold zipp in r1. rewrite e' in r1. rewrite <- eq2 in r1.
     rewrite decompose_stack_appstack.
     erewrite decompose_stack_twice ; eauto. simpl.
     rewrite app_nil_r.
-    eapply red_conv_l ; try assumption.
+    eapply red_conv_cum_l ; try assumption.
     rewrite stack_context_appstack in r1.
     eapply red_trans ; try eassumption.
     clear eq3. symmetry in eq2. apply decompose_stack_eq in eq2. subst.
@@ -3819,15 +3806,15 @@ Section Conversion.
     clear eq3.
     rewrite stack_context_appstack in hx.
     destruct hx as [hx].
-    eapply conv_trans' ; try eassumption.
+    etransitivity ; try eassumption.
     unfold zipp.
     rewrite stack_cat_appstack.
     rewrite decompose_stack_appstack.
     erewrite decompose_stack_twice ; eauto. simpl.
     rewrite app_nil_r.
-    eapply conv_context_convp.
+    eapply conv_cum_context_convp.
     - assumption.
-    - eapply red_conv_r. 1: assumption.
+    - eapply red_conv_cum_r. 1: assumption.
       rewrite stack_context_appstack in r1.
       eapply red_trans ; try eassumption.
       symmetry in eq2. apply decompose_stack_eq in eq2. subst.
@@ -3909,7 +3896,7 @@ Section Conversion.
   Theorem isconv_sound :
     forall Γ leq t1 π1 h1 t2 π2 h2 hx,
       isconv Γ leq t1 π1 h1 t2 π2 h2 hx = Success I ->
-      conv leq Σ (Γ ,,, stack_context π1) (zipp t1 π1) (zipp t2 π2).
+      conv_cum leq Σ (Γ ,,, stack_context π1) (zipp t1 π1) (zipp t2 π2).
   Proof.
     unfold isconv.
     intros Γ leq t1 π1 h1 t2 π2 h2 hx.
@@ -3924,7 +3911,7 @@ Section Conversion.
   Theorem isconv_term_sound :
     forall Γ leq t1 h1 t2 h2,
       isconv_term Γ leq t1 h1 t2 h2 = Success I ->
-      conv leq Σ Γ t1 t2.
+      conv_cum leq Σ Γ t1 t2.
   Proof.
     intros Γ leq t1 h1 t2 h2.
     unfold isconv_term. intro h.

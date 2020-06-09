@@ -1,17 +1,11 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia
-     Classes.CRelationClasses ProofIrrelevance.
-From MetaCoq.Template Require Import config Universes monad_utils utils BasicAst
-     AstUtils UnivSubst.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICTyping
-     PCUICCumulativity PCUICPosition PCUICEquality PCUICNameless
+From Coq Require Import Bool List Lia.
+From MetaCoq.Template Require Import config monad_utils utils.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils
+     PCUICLiftSubst PCUICTyping PCUICWeakening
+     PCUICCumulativity PCUICEquality
      PCUICContextConversion PCUICValidity.
-From Equations Require Import Equations.
-
-Require Import Equations.Prop.DepElim.
-Require Import Equations.Type.Relation_Properties.
 Derive Signature for red.
 Import MonadNotation.
 
@@ -153,6 +147,24 @@ Section Alpha.
     - f_equal. all: auto.
   Qed.
 
+  Lemma decompose_app_upto {Re Rle x y hd tl} : 
+    eq_term_upto_univ Re Rle x y ->
+    decompose_app x = (hd, tl) ->
+    ∑ hd' tl', (y = mkApps hd' tl') *
+    eq_term_upto_univ Re Rle hd hd' *
+    negb (isApp hd') *
+    All2 (eq_term_upto_univ Re Re) tl tl'.
+  Proof.
+    intros eq dapp.
+    pose proof (decompose_app_notApp _ _ _ dapp).
+    apply decompose_app_inv in dapp.
+    subst x.
+    eapply eq_term_upto_univ_mkApps_l_inv in eq as [u' [l' [[eqh eqtl] ->]]].
+    eexists _, _; intuition eauto.
+    revert H.
+    inv eqh; simpl in *; try discriminate; auto.
+  Qed.
+
 Lemma All2_trans' {A B C}
       (P : A -> B -> Type) (Q : B -> C -> Type) (R : A -> C -> Type)
       (H : forall x y z, P x y × Q y z -> R x z) {l1 l2 l3}
@@ -163,6 +175,91 @@ Proof.
   - inversion 1; subst. constructor; eauto.
 Qed.
 
+  Lemma decompose_prod_assum_upto_names' ctx ctx' x y : 
+    eq_context_upto eq ctx ctx' -> upto_names' x y -> 
+    let (ctx0, x0) := decompose_prod_assum ctx x in 
+    let (ctx1, x1) := decompose_prod_assum ctx' y in
+    eq_context_upto eq ctx0 ctx1 * upto_names' x0 x1.
+  Proof.
+    induction x in ctx, ctx', y |- *; intros eqctx eqt; inv eqt; simpl; 
+      try split; auto; try constructor; auto.
+    - specialize (IHx2 (ctx,, vass na x1) (ctx',,vass na' a') b').
+      apply IHx2; auto. constructor; auto.
+    - apply IHx3; auto. constructor; auto. 
+  Qed.
+
+  Lemma destInd_spec t : 
+    match destInd t with
+    | Some (ind, u) => t = tInd ind u
+    | None => forall ind u, t <> tInd ind u
+    end.
+  Proof.
+    destruct t; congruence.
+  Qed.
+
+  Lemma upto_names_destInd Re Rle t u : 
+    eq_term_upto_univ Re Rle t u ->
+    rel_option (fun '(ind, u) '(ind', u') => (ind = ind') * R_universe_instance Re u u')%type (destInd t) (destInd u).
+  Proof.
+    induction 1; simpl; constructor; try congruence.
+    split; auto.
+  Qed.
+
+  Lemma upto_names_check_fix mfix mfix' :
+     All2
+      (fun x y : def term =>
+        (upto_names' (dtype x) (dtype y) × upto_names' (dbody x) (dbody y))
+        × rarg x = rarg y) mfix mfix' ->
+      map check_one_fix mfix = map check_one_fix mfix'.
+  Proof.
+    induction 1; simpl; auto.
+    rewrite IHX. f_equal.
+    unfold check_one_fix.
+    destruct x as [name ty body rarg].
+    destruct y as [name' ty' body' rarg'].
+    simpl in r. destruct r as [[eqty eqb] eqrarg].
+    pose proof (decompose_prod_assum_upto_names' [] [] ty ty' ltac:(constructor) eqty).
+    do 2 destruct decompose_prod_assum.
+    destruct X0 as [eqctx eqt].
+    apply (eq_context_upto_smash_context [] []) in eqctx; try constructor.
+    apply eq_context_upto_rev' in eqctx.
+    eapply (eq_context_upto_nth_error _ _ _ rarg) in eqctx.
+    subst rarg'.
+    destruct (nth_error (List.rev (smash_context [] c)) rarg).
+    inv eqctx. destruct X0.
+    destruct (decompose_app) eqn:eqdec.
+    destruct (decompose_app_upto e eqdec) as [hd' [tl' [[[eq eqhd] napp] eqtl]]].
+    rewrite eq. rewrite decompose_app_mkApps; auto.
+    apply upto_names_destInd in eqhd.
+    inv eqhd; auto.
+    destruct a as [ind u], b0 as [ind' u']; simpl in *; auto.
+    destruct X0 as [-> _]; auto.
+    now inv eqctx.
+  Qed.
+
+  Lemma upto_names_check_cofix mfix mfix' :
+    All2 (fun x y : def term =>
+     (upto_names' (dtype x) (dtype y) × upto_names' (dbody x) (dbody y))
+     × rarg x = rarg y) mfix mfix' ->
+   map check_one_cofix mfix = map check_one_cofix mfix'.
+  Proof.
+    induction 1; simpl; auto.
+    rewrite IHX. f_equal.
+    unfold check_one_cofix. clear X IHX.
+    destruct x as [name ty body rarg].
+    destruct y as [name' ty' body' rarg'].
+    simpl in r. destruct r as [[eqty eqb] <-].
+    pose proof (decompose_prod_assum_upto_names' [] [] ty ty' ltac:(constructor) eqty).
+    do 2 destruct decompose_prod_assum.
+    destruct X as [_ eqt].
+    destruct (decompose_app) eqn:eqdec.
+    destruct (decompose_app_upto eqt eqdec) as [hd' [tl' [[[eq eqhd] napp] eqtl]]].
+    rewrite eq. rewrite decompose_app_mkApps; auto.
+    apply upto_names_destInd in eqhd.
+    inv eqhd; auto.
+    destruct a as [ind u], b as [ind' u']; simpl in *; auto.
+    destruct X as [-> _]; auto.
+  Qed.
 
   Lemma typing_alpha :
     forall Σ Γ u v A,
@@ -176,17 +273,16 @@ Qed.
                   forall v,
                     eq_term_upto_univ eq eq u v ->
                     Σ ;;; Γ |- v : A)
+              (fun Σ Γ wfΓ => wf_local Σ Γ)
     ).
     eapply typing_ind_env.
     all: intros Σ wfΣ Γ wfΓ.
-    - intros n decl hnth ih v e.
-      dependent destruction e.
+    - auto.
+    - intros n decl hnth ih v e; invs e.
       eapply type_Rel ; eassumption.
-    - intros l ih hl v e.
-      dependent destruction e. subst.
+    - intros l ih hl v e; invs e.
       eapply type_Sort; assumption.
-    - intros na A B s1 s2 ih hA ihA hB ihB v e.
-      dependent destruction e.
+    - intros na A B s1 s2 ih hA ihA hB ihB v e; invs e.
       econstructor.
       + eapply ihA. assumption.
       + eapply context_conversion'.
@@ -198,8 +294,7 @@ Qed.
           -- apply conv_ctx_refl ; auto.
           -- constructor. constructor.
              eapply upto_names_impl_eq_term. assumption.
-    - intros na A t s1 B ih hA ihA hB ihB v e.
-      dependent destruction e.
+    - intros na A t s1 B ih hA ihA hB ihB v e; invs e.
       econstructor.
       + econstructor.
         * eapply ihA. assumption.
@@ -220,8 +315,7 @@ Qed.
         constructor.
         all: try (eapply upto_names_impl_eq_term ; assumption).
         all: eapply eq_term_refl.
-    - intros na b B t s1 A ih hB ihB hb ihb hA ihA v e.
-      dependent destruction e.
+    - intros na b B t s1 A ih hB ihB hb ihb hA ihA v e; invs e.
       econstructor.
       + econstructor.
         * eapply ihB. assumption.
@@ -258,8 +352,7 @@ Qed.
         constructor.
         all: try (eapply upto_names_impl_eq_term ; assumption).
         all: eapply eq_term_refl.
-    - intros t na A B u ih ht iht hu ihu v e.
-      dependent destruction e.
+    - intros t na A B u ih ht iht hu ihu v e; invs e.
       econstructor.
       + econstructor.
         * eapply iht. assumption.
@@ -277,29 +370,25 @@ Qed.
       { intros x y h. inversion h. reflexivity. }
       subst.
       constructor. all: auto.
-    - intros cst u decl ? ? hdecl hcons v e.
-      dependent destruction e.
-      apply Forall2_eq in r. apply map_inj in r ; revgoals.
-      { intros x y h. inversion h. reflexivity. }
+    - intros cst u decl ? ? hdecl hcons v e; invs e.
+      apply Forall2_eq in H2. apply map_inj in H2 ; revgoals.
+      { apply Universe.make_inj. }
       subst.
       constructor ; auto.
-    - intros ind u mdecl idecl isdecl ? ? hcons v e.
-      dependent destruction e.
-      apply Forall2_eq in r. apply map_inj in r ; revgoals.
-      { intros x y h. inversion h. reflexivity. }
+    - intros ind u mdecl idecl isdecl ? ? hcons v e; invs e.
+      apply Forall2_eq in H2. apply map_inj in H2 ; revgoals.
+      { apply Universe.make_inj. }
       subst.
       econstructor ; eauto.
-    - intros ind i u mdecl idecl cdecl isdecl ? ? ? v e.
-      dependent destruction e.
-      apply Forall2_eq in r. apply map_inj in r ; revgoals.
-      { intros x y h. inversion h. reflexivity. }
+    - intros ind i u mdecl idecl cdecl isdecl ? ? ? v e; invs e.
+      apply Forall2_eq in H4. apply map_inj in H4 ; revgoals.
+      { apply Universe.make_inj. }
       subst.
       econstructor ; eauto.
     - intros ind u npar p c brs args mdecl idecl isdecl X X0 H pars ps pty
-             Hcpt X1 X2 H1 X3 X4 btys Hbbt Hbrs v e.
+             Hcpt X1 X2 H1 H2 X3 X4 btys Hbbt Hbrs v e; invs e.
       (* intros ind u npar p c brs args mdecl idecl isdecl X X0 H pars pty X1 *)
       (*        indctx pctx ps btys htc H1 H2 ihp hc ihc ihbrs v e. *)
-      dependent destruction e.
       (* eapply types_of_case_eq_term in htc as htc' ; eauto. *)
       (* destruct htc' as [btys' [ebtys' he]]. *)
       econstructor.
@@ -322,7 +411,7 @@ Qed.
           intros v H. unshelve eapply (upto_names_trans _ _ _ _) in H; tea.
           eauto.
       + eapply validity_term ; eauto.
-        instantiate (1 := tCase (ind, npar) p c brs).
+        instantiate (1 := tCase (ind, ind_npars mdecl) p c brs).
         econstructor ; eauto.
         apply All2_prod_inv in Hbrs as [a1 a4].
         apply All2_prod_inv in a1 as [a1 a3].
@@ -337,8 +426,7 @@ Qed.
         * eapply All2_same. intro. eapply eq_term_refl.
         * constructor ; eauto.
           eapply upto_names_impl_eq_term. assumption.
-    - intros p c u mdecl idecl pdecl isdecl args X X0 hc ihc H ty v e.
-      dependent destruction e.
+    - intros p c u mdecl idecl pdecl isdecl args X X0 hc ihc H ty v e; invs e.
       econstructor.
       + econstructor. all: try eassumption.
         eapply ihc. assumption.
@@ -352,323 +440,143 @@ Qed.
         * constructor ; auto.
           eapply All2_same.
           intro. eapply eq_term_upto_univ_refl ; auto.
-    - intros mfix n decl types hnth hguard hwf ihmfix v e.
-      dependent destruction e.
+    - intros mfix n decl types hguard hnth hwf ihmfix ihmfixb wffix v e; invs e.
       eapply All2_nth_error_Some in hnth as hnth' ; eauto.
       destruct hnth' as [decl' [hnth' hh]].
       destruct hh as [[ety ebo] era].
       assert (hwf' : wf_local Σ (Γ ,,, fix_context mfix')).
-      { rename types into Δ. set (Ξ := fix_context mfix').
-        assert (e : eq_context_upto eq Δ Ξ).
-        { eapply eq_context_upto_rev'.
-          clear - a.
-          unfold mapi. generalize 0 at 2 4. intro n.
-          induction a in n |- *.
-          - constructor.
-          - simpl. constructor.
-            + eapply eq_term_upto_univ_lift. apply r.
-            + eapply IHa.
-        }
-        clearbody Δ Ξ.
-        clear - e hwf wfΣ wfΓ.
-        induction e.
-        - assumption.
-        - simpl in *. inversion hwf. subst.
-          constructor.
-          + eapply IHe. assumption.
-          + simpl. destruct X0 as [? [? ih]].
-            eexists.
-            eapply context_conversion'.
-            * assumption.
-            * eapply IHe. assumption.
-            * eapply ih. assumption.
-            * eapply eq_context_upto_univ_conv_context.
-              eapply eq_context_impl ; revgoals.
-              -- eapply eq_context_upto_cat. 2: eassumption.
-                 eapply eq_context_upto_refl. auto.
-              -- intros ? ? []. eapply eq_universe_refl.
-        - simpl in *. inversion hwf. subst.
-          constructor.
-          + eapply IHe. assumption.
-          + simpl. destruct X0 as [? [? ih]].
-            eexists.
-            eapply context_conversion'.
-            * assumption.
-            * eapply IHe. assumption.
-            * eapply ih. assumption.
-            * eapply eq_context_upto_univ_conv_context.
-              eapply eq_context_impl ; revgoals.
-              -- eapply eq_context_upto_cat. 2: eassumption.
-                 eapply eq_context_upto_refl. auto.
-              -- intros ? ? []. eapply eq_universe_refl.
-          + simpl in *. destruct X0 as [? [? ih1]]. destruct X1 as [? ih2].
-            eapply context_conversion'.
-            * assumption.
-            * eapply IHe. assumption.
-            * eapply type_Cumul.
-              -- eapply ih2. assumption.
-              -- right. eexists. eapply ih1. assumption.
-              -- eapply cumul_refl.
-                 eapply eq_term_upto_univ_impl. 3: eassumption.
-                 all: intros ? ? [].
-                 ++ eapply eq_universe_refl.
-                 ++ eapply leq_universe_refl.
-            * eapply eq_context_upto_univ_conv_context.
-              eapply eq_context_impl ; revgoals.
-              -- eapply eq_context_upto_cat. 2: eassumption.
-                 eapply eq_context_upto_refl. auto.
-              -- intros ? ? []. eapply eq_universe_refl.
-      }
+      { apply PCUICWeakening.All_mfix_wf; auto.
+        eapply (All2_All_mix_left ihmfix) in X.
+        clear -X.
+        induction X; constructor; simpl; auto.
+        destruct r as [[s [Hs IH]] [[eqty eqbod] eqrarg]].
+        exists s; apply IH; eauto. }
+      assert (convctx : conv_context Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix')).
+      { eapply eq_context_upto_univ_conv_context.
+        eapply (eq_context_impl eq). intros x y eqx. subst. reflexivity. 
+        change (fix_context mfix) with (fix_context_gen 0 mfix).
+        change (fix_context mfix') with (fix_context_gen 0 mfix').
+        eapply eq_context_upto_cat.
+        * apply eq_context_upto_refl. typeclasses eauto.
+        * generalize 0.
+          unfold fix_context_gen.
+          eapply (All2_All_mix_left ihmfix) in X.
+          clear -X.
+          induction X; try constructor; simpl; intros n; auto.
+          destruct r as [[s [Hs IH]] [[eqty eqbod] eqrarg]].
+          eapply eq_context_upto_cat.
+          + constructor; [|constructor].
+            now eapply eq_term_upto_univ_lift.
+          + apply IHX. }
+      assert(#|fix_context mfix| = #|fix_context mfix'|).
+      { now rewrite !fix_context_length, (All2_length _ _ X). } 
       eapply type_Cumul.
       + econstructor.
-        * eapply fix_guard_eq_term ; eauto.
+        * eapply (fix_guard_eq_term _ _ n); eauto.
           constructor. assumption.
         * eassumption.
         * assumption.
-        * assert (val :
-            All (fun d =>
-              lift_typing typing Σ (Γ ,,, fix_context mfix')
-                          ((lift0 #|fix_context mfix'|) (dtype d))
-                          None
-            ) mfix'
-          ).
-          { eapply forall_nth_error_All.
-            intros i d e.
-            apply fix_context_nth_error in e as e'.
-            apply nth_error_weak_context with (Γ := Γ) in e'.
-            eapply wf_local_nth_error_vass in e'. all: try eassumption.
-            rewrite simpl_lift in e' by lia.
-            apply nth_error_Some_length in e as hl.
-            replace (S (#|mfix'| - S i) + i)
-              with (#|mfix'|)
-              in e'
-              by lia.
-            rewrite fix_context_length. assumption.
-          }
-          rename types into Δ. set (Ξ := fix_context mfix') in *.
-          assert (e : eq_context_upto eq Δ Ξ).
-          { eapply eq_context_upto_rev'.
-            clear - a.
-            unfold mapi. generalize 0 at 2 4. intro n.
-            induction a in n |- *.
-            - constructor.
-            - simpl. constructor.
-              + eapply eq_term_upto_univ_lift. apply r.
-              + eapply IHa.
-          }
-          clearbody Δ Ξ.
-          assert (el : #|Δ| = #|Ξ|).
-          { eapply eq_context_upto_length. eassumption. }
-          clear - e a ihmfix wfΣ hwf' el val.
-          induction a.
-          -- constructor.
-          -- inversion ihmfix. subst.
-             destruct X as [[? ?] ih].
-             constructor.
-             ++ split.
-                ** eapply context_conversion'.
-                   --- assumption.
-                   --- assumption.
-                   --- eapply type_Cumul.
-                       +++ eapply ih. intuition eauto.
-                       +++ right. simpl in val. inversion val. subst.
-                           destruct X.
-                           eexists. eapply context_conversion'.
-                           *** assumption.
-                           *** eauto using typing_wf_local.
-                           *** eassumption.
-                           *** eapply eq_context_upto_univ_conv_context.
-                               eapply eq_context_upto_sym.
-                               ---- intros ? ? ?. eapply eq_universe_sym.
-                                    assumption.
-                               ---- eapply eq_context_impl ; revgoals.
-                                    ++++ eapply eq_context_upto_cat.
-                                         2: eassumption.
-                                         eapply eq_context_upto_refl. auto.
-                                    ++++ intros ? ? []. eapply eq_universe_refl.
-                       +++ eapply cumul_refl. rewrite <- el.
-                           eapply eq_term_upto_univ_lift.
-                           eapply eq_term_upto_univ_impl.
-                           3: intuition eauto.
-                           all: intros ? ? [].
-                           *** eapply eq_universe_refl.
-                           *** eapply leq_universe_refl.
-                   --- eapply eq_context_upto_univ_conv_context.
-                       eapply eq_context_impl ; revgoals.
-                       +++ eapply eq_context_upto_cat. 2: eassumption.
-                           eapply eq_context_upto_refl. auto.
-                       +++ intros ? ? []. eapply eq_universe_refl.
-                ** eapply isLambda_eq_term_l.
-                   --- eassumption.
-                   --- intuition eauto.
-             ++ eapply IHa.
-                ** assumption.
-                ** inversion val. assumption.
-      + eapply validity_term ; eauto.
-        instantiate (1 := tFix mfix n).
-        econstructor ; eauto.
-        * apply All_local_env_lift_prod_inv in hwf as [? ?]. assumption.
-        * apply All_prod_inv in ihmfix as [? ?]. assumption.
-      + constructor. eapply eq_term_leq_term.
-        apply eq_term_sym.
-        eapply upto_names_impl_eq_term. assumption.
-    - intros mfix n decl types hnth hwf ihmfix hac v e. subst types.
-      dependent destruction e.
-      eapply All2_nth_error_Some in hnth as hnth' ; eauto.
-      destruct hnth' as [decl' [hnth' hh]].
-      destruct hh as [[ety ebo] era].
-      assert (hwf' : wf_local Σ (Γ ,,, fix_context mfix')).
-      { set (Δ := fix_context mfix) in *.
-        set (Ξ := fix_context mfix').
-        assert (e : eq_context_upto eq Δ Ξ).
-        { eapply eq_context_upto_rev'.
-          clear - a.
-          unfold mapi. generalize 0 at 2 4. intro n.
-          induction a in n |- *.
-          - constructor.
-          - simpl. constructor.
-            + eapply eq_term_upto_univ_lift. apply r.
-            + eapply IHa.
-        }
-        clearbody Δ Ξ.
-        clear - e hwf wfΣ wfΓ.
-        induction e.
-        - assumption.
-        - simpl in *. inversion hwf. subst.
-          constructor.
-          + eapply IHe. assumption.
-          + simpl. destruct X0 as [? [? ih]].
-            eexists.
-            eapply context_conversion'.
-            * assumption.
-            * eapply IHe. assumption.
-            * eapply ih. assumption.
-            * eapply eq_context_upto_univ_conv_context.
-              eapply eq_context_impl ; revgoals.
-              -- eapply eq_context_upto_cat. 2: eassumption.
-                 eapply eq_context_upto_refl. auto.
-              -- intros ? ? []. eapply eq_universe_refl.
-        - simpl in *. inversion hwf. subst.
-          constructor.
-          + eapply IHe. assumption.
-          + simpl. destruct X0 as [? [? ih]].
-            eexists.
-            eapply context_conversion'.
-            * assumption.
-            * eapply IHe. assumption.
-            * eapply ih. assumption.
-            * eapply eq_context_upto_univ_conv_context.
-              eapply eq_context_impl ; revgoals.
-              -- eapply eq_context_upto_cat. 2: eassumption.
-                 eapply eq_context_upto_refl. auto.
-              -- intros ? ? []. eapply eq_universe_refl.
-          + simpl in *. destruct X0 as [? [? ih1]]. destruct X1 as [? ih2].
-            eapply context_conversion'.
-            * assumption.
-            * eapply IHe. assumption.
-            * eapply type_Cumul.
-              -- eapply ih2. assumption.
-              -- right. eexists. eapply ih1. assumption.
-              -- eapply cumul_refl.
-                 eapply eq_term_upto_univ_impl. 3: eassumption.
-                 all: intros ? ? [].
-                 ++ eapply eq_universe_refl.
-                 ++ eapply leq_universe_refl.
-            * eapply eq_context_upto_univ_conv_context.
-              eapply eq_context_impl ; revgoals.
-              -- eapply eq_context_upto_cat. 2: eassumption.
-                 eapply eq_context_upto_refl. auto.
-              -- intros ? ? []. eapply eq_universe_refl.
-      }
-      eapply type_Cumul.
-      + econstructor.
-        * assumption.
-        * eassumption.
-        * assumption.
-        * assert (val :
-            All (fun d =>
-              lift_typing typing Σ (Γ ,,, fix_context mfix')
-                          ((lift0 #|fix_context mfix'|) (dtype d))
-                          None
-            ) mfix'
-          ).
-          { eapply forall_nth_error_All.
-            intros i d e.
-            apply fix_context_nth_error in e as e'.
-            apply nth_error_weak_context with (Γ := Γ) in e'.
-            eapply wf_local_nth_error_vass in e'. all: try eassumption.
-            rewrite simpl_lift in e' by lia.
-            apply nth_error_Some_length in e as hl.
-            replace (S (#|mfix'| - S i) + i)
-              with (#|mfix'|)
-              in e'
-              by lia.
-            rewrite fix_context_length. assumption.
-          }
-          set (Δ := fix_context mfix) in *.
-          set (Ξ := fix_context mfix') in *.
-          assert (e : eq_context_upto eq Δ Ξ).
-          { eapply eq_context_upto_rev'.
-            clear - a.
-            unfold mapi. generalize 0 at 2 4. intro n.
-            induction a in n |- *.
-            - constructor.
-            - simpl. constructor.
-              + eapply eq_term_upto_univ_lift. apply r.
-              + eapply IHa.
-          }
-          clearbody Δ Ξ.
-          assert (el : #|Δ| = #|Ξ|).
-          { eapply eq_context_upto_length. eassumption. }
-          clear - e a ihmfix wfΣ hwf' el val.
-          induction a.
-          -- constructor.
-          -- inversion ihmfix. subst.
-             destruct X as [? ih].
-             constructor.
-             ++ eapply context_conversion'.
-                ** assumption.
-                ** assumption.
-                ** eapply type_Cumul.
-                   --- eapply ih. intuition eauto.
-                   --- right. simpl in val. inversion val. subst.
-                       destruct X.
-                       eexists. eapply context_conversion'.
-                       +++ assumption.
-                       +++ eauto using typing_wf_local.
-                       +++ eassumption.
-                       +++ eapply eq_context_upto_univ_conv_context.
-                           eapply eq_context_upto_sym.
-                           *** intros ? ? ?. eapply eq_universe_sym.
-                               assumption.
-                           *** eapply eq_context_impl ; revgoals.
-                               ---- eapply eq_context_upto_cat.
-                                    2: eassumption.
-                                    eapply eq_context_upto_refl. auto.
-                               ---- intros ? ? []. eapply eq_universe_refl.
-                   --- eapply cumul_refl. rewrite <- el.
-                       eapply eq_term_upto_univ_lift.
-                       eapply eq_term_upto_univ_impl.
-                       3: intuition eauto.
-                       all: intros ? ? [].
-                       +++ eapply eq_universe_refl.
-                       +++ eapply leq_universe_refl.
-                ** eapply eq_context_upto_univ_conv_context.
-                   eapply eq_context_impl ; revgoals.
-                   --- eapply eq_context_upto_cat. 2: eassumption.
-                       eapply eq_context_upto_refl. auto.
-                   --- intros ? ? []. eapply eq_universe_refl.
-             ++ eapply IHa.
-                ** assumption.
-                ** inversion val. assumption.
-      + eapply validity_term ; eauto.
-        instantiate (1 := tCoFix mfix n).
-        econstructor ; eauto.
-        * apply All_local_env_lift_prod_inv in hwf as [? ?]. assumption.
-        * apply All_prod_inv in ihmfix as [? ?]. assumption.
-      + constructor. eapply eq_term_leq_term.
-        apply eq_term_sym.
-        eapply upto_names_impl_eq_term. assumption.
+        * eapply (All2_All_mix_left ihmfix) in X.
+          clear -X.
+          induction X; constructor; simpl; auto.
+          destruct r as [[s [Hs IH]] [[eqty eqbod] eqrarg]].
+          exists s; apply IH; eauto.
+        * solve_all.
+          ** destruct a0 as [s [Hs IH]].
+            specialize (IH _ a2).
+            specialize (b _ b0).
+            eapply context_conversion'; eauto.
+            eapply type_Cumul with (lift0 #|fix_context mfix| (dtype x)); auto.
+            right. exists s. rewrite <-H.
+            eapply (weakening _ _ _ _ (tSort _)); eauto. now eapply typing_wf_local in b.
+            apply cumul_refl. rewrite <- H.
+            eapply eq_term_upto_univ_lift.
+            eapply eq_term_upto_univ_impl.
+            3: intuition eauto.
+            all: intros ? ? [].
+            *** eapply eq_universe_refl.
+            *** eapply leq_universe_refl.
+          ** eapply isLambda_eq_term_l.
+            --- eassumption.
+            --- intuition eauto.
+        * revert wffix.
+          unfold wf_fixpoint.
+          enough (map check_one_fix mfix = map check_one_fix mfix') as ->; auto.
+          now apply upto_names_check_fix.
+        + eapply All_nth_error in ihmfix as [s [Hs _]]; eauto.
+        + apply cumul_refl. eapply eq_term_upto_univ_impl.
+          3:intuition eauto. 3:symmetry; eauto.
+          all: intros ? ? [].
+          * eapply eq_universe_refl.
+          * eapply leq_universe_refl.
+
+
+  - intros mfix n decl types guard hnth hwf ihmfix ihmfixb wfcofix v e; invs e.
+    eapply All2_nth_error_Some in hnth as hnth' ; eauto.
+    destruct hnth' as [decl' [hnth' hh]].
+    destruct hh as [[ety ebo] era].
+    assert (hwf' : wf_local Σ (Γ ,,, fix_context mfix')).
+    { apply PCUICWeakening.All_mfix_wf; auto.
+      eapply (All2_All_mix_left ihmfix) in X.
+      clear -X.
+      induction X; constructor; simpl; auto.
+      destruct r as [[s [Hs IH]] [[eqty eqbod] eqrarg]].
+      exists s; apply IH; eauto. }
+    assert (convctx : conv_context Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix')).
+    { eapply eq_context_upto_univ_conv_context.
+      eapply (eq_context_impl eq). intros x y eqx. subst. reflexivity. 
+      change (fix_context mfix) with (fix_context_gen 0 mfix).
+      change (fix_context mfix') with (fix_context_gen 0 mfix').
+      eapply eq_context_upto_cat.
+      * apply eq_context_upto_refl. typeclasses eauto.
+      * generalize 0.
+        unfold fix_context_gen.
+        eapply (All2_All_mix_left ihmfix) in X.
+        clear -X.
+        induction X; try constructor; simpl; intros n; auto.
+        destruct r as [[s [Hs IH]] [[eqty eqbod] eqrarg]].
+        eapply eq_context_upto_cat.
+        + constructor; [|constructor].
+          now eapply eq_term_upto_univ_lift.
+        + apply IHX. }
+    assert(#|fix_context mfix| = #|fix_context mfix'|).
+    { now rewrite !fix_context_length, (All2_length _ _ X). } 
+    eapply type_Cumul.
+    + econstructor.
+      * eapply (cofix_guard_eq_term _ _ n) ; eauto.
+        constructor. assumption.
+      * eassumption.
+      * eassumption.
+      * eapply (All2_All_mix_left ihmfix) in X.
+        clear -X.
+        induction X; constructor; simpl; auto.
+        destruct r as [[s [Hs IH]] [[eqty eqbod] eqrarg]].
+        exists s; apply IH; eauto.
+      * solve_all.
+        destruct a0 as [s [Hs IH]].
+        specialize (IH _ a2).
+        specialize (b _ b0).
+        eapply context_conversion'; eauto.
+        eapply type_Cumul with (lift0 #|fix_context mfix| (dtype x)); auto.
+        right. exists s. rewrite <-H.
+        eapply (weakening _ _ _ _ (tSort _)); eauto. now eapply typing_wf_local in b.
+        apply cumul_refl. rewrite <- H.
+        eapply eq_term_upto_univ_lift.
+        eapply eq_term_upto_univ_impl.
+        3: intuition eauto.
+        all: intros ? ? [].
+        *** eapply eq_universe_refl.
+        *** eapply leq_universe_refl.
+      * revert wfcofix; unfold wf_cofixpoint.
+        enough (map check_one_cofix mfix = map check_one_cofix mfix') as ->; auto.
+        now apply upto_names_check_cofix.
+      + eapply All_nth_error in ihmfix as [s [Hs _]]; eauto.
+      + apply cumul_refl. eapply eq_term_upto_univ_impl.
+        3:intuition eauto. 3:symmetry; eauto.
+        all: intros ? ? [].
+        * eapply eq_universe_refl.
+        * eapply leq_universe_refl.
+
     - intros t A B X ht iht har hcu v e.
       eapply type_Cumul.
       + eapply iht. assumption.
@@ -679,19 +587,6 @@ Qed.
     - rename wfΣ into Γ, wfΓ into v, Γ into u.
       intros A hΣ hu e.
       eapply tm ; eauto.
-      eapply typing_wf_local. eassumption.
-    Unshelve. exact 0.
-  Qed.
-
-  Corollary type_nameless :
-    forall Σ Γ u A,
-      wf Σ.1 ->
-      Σ ;;; Γ |- u : A ->
-      Σ ;;; Γ |- nl u : A.
-  Proof.
-    intros Σ Γ u A hΣ h.
-    eapply typing_alpha ; eauto.
-    eapply eq_term_upto_univ_tm_nl. all: auto.
   Qed.
 
   Local Ltac inv H := inversion H; subst; clear H.
@@ -704,7 +599,7 @@ Qed.
     revert t u Rle. fix aux 4.
     destruct 1; cbn; intros t'' u'' H' H0';
       inv H'; inv H0'; try econstructor; eauto.
-    - revert args'0 args'1 H2 H3.
+    - revert args'0 args'1 X X0.
       induction a; simpl; intros args0 args'0 H1 H2.
       + inv H1; inv H2; constructor; eauto.
       + inv H1; inv H2. constructor; eauto.
@@ -715,31 +610,31 @@ Qed.
     - apply Forall2_eq, map_inj in H2.
       apply Forall2_eq, map_inj in H3.
       congruence.
-      all: intros x y H; now inv H.
+      all: apply Universe.make_inj.
     - apply Forall2_eq, map_inj in H2.
       apply Forall2_eq, map_inj in H3.
       congruence.
-      all: intros x y H; now inv H.
+      all: apply Universe.make_inj.
     - apply Forall2_eq, map_inj in H3.
       apply Forall2_eq, map_inj in H4.
       congruence.
-      all: intros x y H; now inv H.
-    - revert brs'0 brs'1 H8 H11.
+      all: apply Universe.make_inj.
+    - revert brs'0 brs'1 X3 X6.
       induction a; simpl; intros args0 args'0 H1 H2.
       + inv H1; inv H2; constructor; eauto.
       + inv H1; inv H2. constructor; eauto.
-        destruct H5, H4, r. split; eauto. congruence.
-    - revert mfix'0 mfix'1 H2 H3.
+        destruct X3, X7, r. split; eauto. congruence.
+    - revert mfix'0 mfix'1 X X0.
       induction a; simpl; intros args0 args'0 H1 H2.
       + inv H1; inv H2; constructor; eauto.
       + inv H1; inv H2. constructor; eauto.
-        destruct H3 as [[? ?] ?], H1 as [[? ?] ?], r as [[? ?] ?].
+        destruct X as [[? ?] ?], X1 as [[? ?] ?], r as [[? ?] ?].
         repeat split; eauto. congruence.
-    - revert mfix'0 mfix'1 H2 H3.
+    - revert mfix'0 mfix'1 X X0.
       induction a; simpl; intros args0 args'0 H1 H2.
       + inv H1; inv H2; constructor; eauto.
       + inv H1; inv H2. constructor; eauto.
-        destruct H3 as [[? ?] ?], H1 as [[? ?] ?], r as [[? ?] ?].
+        destruct X as [[? ?] ?], X1 as [[? ?] ?], r as [[? ?] ?].
         repeat split; eauto. congruence.
   Qed.
 
@@ -833,22 +728,6 @@ Qed.
     eapply wf_local_alpha; tea.
     now eapply eq_context_upto_cat.
   Qed.
-
-
-  Lemma upto_names_nl t
-    : t ≡ nl t.
-  Proof.
-    eapply eq_term_upto_univ_tm_nl; exact _.
-  Qed.
-
-  Lemma upto_names_nlctx Γ
-    : Γ ≡Γ nlctx Γ.
-  Proof.
-    induction Γ as [|a Γ]; try constructor.
-    destruct a as [na [bo|] ty]; simpl; constructor; cbn; tas.
-    all: apply upto_names_nl.
-  Qed.
-
 
 End Alpha.
 

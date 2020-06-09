@@ -1,14 +1,11 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec.
+From Coq Require Import Bool List.
 From MetaCoq.Template Require Import config monad_utils utils.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICChecker PCUICConversion PCUICCumulativity.
-Require Import String.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICLiftSubst PCUICTyping PCUICChecker PCUICConversion PCUICCumulativity.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import monad_utils.MonadNotation.
-From Equations Require Import Equations.
-Require Import Equations.Prop.DepElim.
 
 (** * Retyping
 
@@ -20,7 +17,7 @@ Require Import Equations.Prop.DepElim.
   in particular. *)
 
 Axiom reduce_to_sort :
-  global_env -> context -> term -> typing_result universe.
+  global_env -> context -> term -> typing_result Universe.t.
 Axiom reduce_to_prod :
   global_env -> context -> term -> typing_result (term × term).
 
@@ -32,6 +29,7 @@ Section TypeOf.
   Context {cf : checker_flags}.
   Context `{F : Fuel}.
   Context (Σ : global_env_ext).
+  Context (wfΣ : wf Σ.1).
 
   Section SortOf.
     Context (type_of : context -> term -> typing_result term).
@@ -108,7 +106,7 @@ Section TypeOf.
       end
     end.
 
-  Definition sort_of (Γ : context) (t : term) : typing_result universe :=
+  Definition sort_of (Γ : context) (t : term) : typing_result Universe.t :=
     ty <- type_of Γ t;;
     type_of_as_sort type_of Γ ty.
 
@@ -229,8 +227,7 @@ Section TypeOf.
         admit.
     - go eq. split.
       + econstructor ; try eassumption ; try ih ; try cih.
-      + eapply congr_cumul_prod.
-        * eapply conv_alt_refl. reflexivity.
+      + eapply congr_cumul_prod; auto.
         * ih.
     - go eq. split.
       + econstructor ; try eassumption ; try ih ; try cih.

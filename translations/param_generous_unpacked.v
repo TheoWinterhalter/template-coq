@@ -28,13 +28,6 @@ Definition tsl_name n :=
 Definition mkApps t us := tApp t us. (* meanwhile *)
 Definition mkApp t u := mkApps t [u].
 
-Fixpoint subst_app (t : term) (us : list term) : term :=
-  match t, us with
-  | tLambda _ A t, u :: us => subst_app (t {0 := u}) us
-  | _, [] => t
-  | _, _ => mkApps t us
-  end.
-
 Definition default_term := tRel 0.    
 
 Definition up := lift 1 0.
@@ -121,15 +114,15 @@ with tsl_rec1 (E : tsl_table) (t : term) {struct t} : term :=
 
 
 
-Run TemplateProgram (tm <- tmQuote (forall A, A -> A) ;;
+MetaCoq Run (tm <- tmQuote (forall A, A -> A) ;;
                      let tm' := tsl_rec1 [] tm in
                      tmUnquote tm' >>= tmPrint).
 
-Run TemplateProgram (tm <- tmQuote (fun A (x : A) => x) ;;
+MetaCoq Run (tm <- tmQuote (fun A (x : A) => x) ;;
                      let tm' := tsl_rec0 [] tm in
                      tmUnquote tm' >>= tmPrint).
 
-Run TemplateProgram (tm <- tmQuote (fun A (x : A) => x) ;;
+MetaCoq Run (tm <- tmQuote (fun A (x : A) => x) ;;
                      let tm' := tsl_rec1 [] tm in
                      tmUnquote tm' >>= tmPrint).
 
@@ -139,9 +132,9 @@ Goal ((fun f : forall (A : Type) (Aᵗ : A -> Type) (H : A), Aᵗ H -> A =>
 reflexivity.
 Defined.
 
-Quote Definition tm := ((fun A (x:A) => x) (Type -> Type) (fun x => x)).
+MetaCoq Quote Definition tm := ((fun A (x:A) => x) (Type -> Type) (fun x => x)).
 
-Run TemplateProgram (let tm' := tsl_rec1 [] tm in
+MetaCoq Run (let tm' := tsl_rec1 [] tm in
                      print_nf tm' ;;
                      tmUnquote tm' >>= tmPrint).
 
@@ -220,7 +213,7 @@ Defined.
 
 Definition tTranslate (ΣE : tsl_context) (id : ident)
   : TemplateMonad (option tsl_context) :=
-  gr <- tmAbout id ;;
+  gr <- tmLocate id ;;
   id' <- tmEval all (tsl_ident id) ;;
   let E := snd ΣE in
   match gr with
@@ -265,17 +258,17 @@ Definition tTranslate (ΣE : tsl_context) (id : ident)
 
 Definition Ty := Type.
 Definition TyTy := Ty -> Type.
-Run TemplateProgram (ΣE <- tTranslate ([],[]) "Ty" ;;
+MetaCoq Run (ΣE <- tTranslate ([],[]) "Ty" ;;
                      let ΣE := option_get todo ΣE in
                         (* print_nf ΣE). *)
                      tTranslate ΣE "TyTy" >>= tmPrint).
 
-(* Run TemplateProgram (ΣE <- tTranslate ([],[]) "nat" ;; *)
+(* MetaCoq Run (ΣE <- tTranslate ([],[]) "nat" ;; *)
 (*                      let ΣE := option_get todo ΣE in *)
 (*                         (* print_nf ΣE). *) *)
 (*                      tTranslate ΣE "t" >>= tmPrint). *)
 
-Fail Run TemplateProgram (tTranslate ([],[]) "nat").
+Fail MetaCoq Run (tTranslate ([],[]) "nat").
 
 
 
@@ -608,4 +601,4 @@ elim/typing_ind: H => {Γ t T} Γ.
 
 
 Require Import Vector.
-(* Run TemplateProgram (ΣE <- tTranslate ([],[]) "nat" ;; *)
+(* MetaCoq Run (ΣE <- tTranslate ([],[]) "nat" ;; *)

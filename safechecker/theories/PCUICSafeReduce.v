@@ -1,15 +1,15 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia
+From Coq Require Import Bool String List Program
      Classes.RelationClasses.
 From MetaCoq.Template
-Require Import config Universes monad_utils utils BasicAst AstUtils UnivSubst.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICPosition
-     PCUICNormal PCUICInversion PCUICCumulativity PCUICSafeLemmata
-     PCUICGeneration PCUICValidity PCUICSR PCUICSN PCUICUtils PCUICReduction.
-From Equations Require Import Equations.
+Require Import config monad_utils utils.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils
+     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICPosition
+     PCUICNormal PCUICInversion PCUICSafeLemmata
+     PCUICSR PCUICSN PCUICUtils PCUICReduction.
 Require Import Equations.Prop.DepElim.
+From Equations Require Import Equations.
 
 Import MonadNotation.
 Open Scope type_scope.
@@ -135,7 +135,7 @@ Section Measure.
   Qed.
 
   Lemma Req_trans :
-    forall {Γ}, transitive (Req Γ).
+    forall {Γ}, Transitive (Req Γ).
   Proof.
     intros Γ u v w h1 h2.
     destruct h1.
@@ -264,7 +264,7 @@ Section Reduce.
   Ltac obTac :=
     (* program_simpl ; *)
     program_simplify ;
-    Tactics.equations_simpl ;
+    Equations.CoreTactics.equations_simpl ;
     try program_solve_wf ;
     try reflexivity.
 
@@ -274,7 +274,7 @@ Section Reduce.
     discr_construct (tConstruct ind n ui) := False ;
     discr_construct _ := True.
 
-  Inductive construct_view : term -> Set :=
+  Inductive construct_view : term -> Type :=
   | view_construct : forall ind n ui, construct_view (tConstruct ind n ui)
   | view_other : forall t, discr_construct t -> construct_view t.
 
@@ -294,7 +294,7 @@ Section Reduce.
     red_discr (tProj _ _) _ := False ;
     red_discr _ _ := True.
 
-  Inductive red_view : term -> stack -> Set :=
+  Inductive red_view : term -> stack -> Type :=
   | red_view_Rel c π : red_view (tRel c) π
   | red_view_LetIn A b B c π : red_view (tLetIn A b B c) π
   | red_view_Const c u π : red_view (tConst c u) π
@@ -321,7 +321,7 @@ Section Reduce.
     discr_construct_cofix (tCoFix mfix idx) := False ;
     discr_construct_cofix _ := True.
 
-  Inductive construct_cofix_view : term -> Set :=
+  Inductive construct_cofix_view : term -> Type :=
   | ccview_construct : forall ind n ui, construct_cofix_view (tConstruct ind n ui)
   | ccview_cofix : forall mfix idx, construct_cofix_view (tCoFix mfix idx)
   | ccview_other : forall t, discr_construct_cofix t -> construct_cofix_view t.
@@ -963,7 +963,13 @@ Section Reduce.
 
   Lemma wellformed_R_pres Γ :
     forall x y : term × stack, wellformed Σ Γ (zip x) -> R Σ Γ y x -> wellformed Σ Γ (zip y).
-  Proof. intros. todo "wellformed_R_pres proof"%string. Admitted.
+  Proof.
+    intros x y H HR.
+    depelim HR.
+    - eapply cored_wellformed; eauto.
+    - simpl in H1. revert H1; intros [= H2 _].
+      now rewrite <- H2.
+  Qed.
 
   Equations reduce_stack_full (Γ : context) (t : term) (π : stack)
            (h : wellformed Σ Γ (zip (t,π))) : { t' : term * stack | Req Σ Γ t' (t, π) /\ Pr t' π /\ Pr' t' } :=

@@ -1,21 +1,18 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia
-     Classes.CRelationClasses.
+From Coq Require Import Bool List.
 From MetaCoq.Template
-Require Import config Universes monad_utils utils BasicAst AstUtils UnivSubst
-     Universes.
-From MetaCoq.Checker Require Import uGraph.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICPosition
-     PCUICNormal PCUICInversion PCUICCumulativity PCUICSafeLemmata
-     PCUICGeneration PCUICValidity PCUICSR PCUICAlpha PCUICNameless
-     PCUICEquality PCUICConfluence.
-From Equations Require Import Equations.
-Require Import Equations.Prop.DepElim.
+Require Import config monad_utils utils.
+From MetaCoq.PCUIC Require Import PCUICAst
+     PCUICTyping
+     PCUICSafeLemmata
+     PCUICValidity PCUICNameless
+     PCUICEquality PCUICConfluence PCUICUnivSubstitution.
 
 Import MonadNotation.
 Open Scope type_scope.
+
+Require Import Equations.Prop.DepElim.
 
 (* We assume normalisation of the reduction.
     We state is as well-foundedness of the reduction.
@@ -36,6 +33,15 @@ Section Normalisation.
     Acc (cored Σ (Γ,, vass n t1)) t2 ->
     Acc (cored Σ Γ) (tProd n t1 t2).
   Proof.
+    (*intros a a'.
+    constructor.
+    intros y cored.
+    depind cored.
+    depelim cored.
+    depelim X. PCUICAstUtils.solve_discr.
+    constructor.
+    eapply invert_red1_prod in X.*)
+
   Admitted.
 
   Lemma Acc_cored_LetIn Γ n t1 t2 t3 :
@@ -324,7 +330,7 @@ Section Alpha.
     - intros ? ? ? []. auto.
     - intros ? ? ? r. apply Forall2_eq in r. apply map_inj in r.
       + subst. reflexivity.
-      + intros ? ? H. inversion H. reflexivity.
+      + apply Universe.make_inj.
   Qed.
 
   Lemma cored_cored' :

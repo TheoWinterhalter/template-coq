@@ -1,10 +1,7 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From MetaCoq.Template Require Import utils Ast AstUtils.
 From MetaCoq.Erasure Require Import EAst.
-Require Import List Program.
-Require Import BinPos.
-Require Import Coq.Arith.Compare_dec Bool.
+Require Import List.
 Set Asymmetric Patterns.
 
 (** * Deriving a compact induction principle for terms
@@ -26,7 +23,7 @@ Lemma term_forall_list_ind :
     (forall (n : name) (t : term),
         P t -> forall t0 : term, P t0 -> P (tLetIn n t t0)) ->
     (forall t u : term, P t -> P u -> P (tApp t u)) ->
-    (forall (s : String.string), P (tConst s)) ->
+    (forall s, P (tConst s)) ->
     (forall (i : inductive) (n : nat), P (tConstruct i n)) ->
     (forall (p : inductive * nat) (t : term),
         P t -> forall l : list (nat * term),

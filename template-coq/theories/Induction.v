@@ -1,9 +1,7 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From MetaCoq Require Import utils BasicAst Ast AstUtils.
-Require Import List Program.
-Require Import BinPos.
-Require Import Coq.Arith.Compare_dec Bool.
+From MetaCoq Require Import utils Ast AstUtils.
+Require Import List.
 Set Asymmetric Patterns.
 
 (** * Deriving a compact induction principle for terms
@@ -27,7 +25,7 @@ Lemma term_forall_list_ind :
     (forall (n : name) (t : term),
         P t -> forall t0 : term, P t0 -> forall t1 : term, P t1 -> P (tLetIn n t t0 t1)) ->
     (forall t : term, P t -> forall l : list term, Forall P l -> P (tApp t l)) ->
-    (forall (s : String.string) (u : list Level.t), P (tConst s u)) ->
+    (forall s (u : list Level.t), P (tConst s u)) ->
     (forall (i : inductive) (u : list Level.t), P (tInd i u)) ->
     (forall (i : inductive) (n : nat) (u : list Level.t), P (tConstruct i n u)) ->
     (forall (p : inductive * nat) (t : term),
@@ -84,7 +82,7 @@ Lemma term_wf_forall_list_ind :
         P t -> forall t0 : term, P t0 -> forall t1 : term, P t1 -> P (tLetIn n t t0 t1)) ->
     (forall t : term, isApp t = false -> wf t -> P t ->
                       forall l : list term, l <> nil -> Forall wf l -> Forall P l -> P (tApp t l)) ->
-    (forall (s : String.string) (u : list Level.t), P (tConst s u)) ->
+    (forall s (u : list Level.t), P (tConst s u)) ->
     (forall (i : inductive) (u : list Level.t), P (tInd i u)) ->
     (forall (i : inductive) (n : nat) (u : list Level.t), P (tConstruct i n u)) ->
     (forall (p : inductive * nat) (t : term),
@@ -104,42 +102,40 @@ Proof.
   apply H2. inv H17.
   auto using lift_to_wf_list.
 
-  inv H18; auto.
-  inv H18; auto.
-  inv H18; auto.
-  inv H19; auto.
-  inv H18; auto.
+  - inv H18; auto.
+  - inv H18; auto.
+  - inv H18; auto.
+  - inv H19; auto.
+  - inv H18; auto.
+    apply H8; auto.
+    auto using lift_to_wf_list.
 
-  apply H8; auto.
-  auto using lift_to_wf_list.
+  - inv H18; apply H12; auto.
+    red. red in X.
+    induction X.
+    + constructor.
+    + constructor. inv H21; auto. apply IHX. inv H21; auto.
 
-  inv H19; apply H12; auto.
-  red.
-  red in H18.
-  induction H18.
-  constructor.
-  inv H22; auto.
+  - inv H17; auto.
 
-  inv H17; auto.
+  - inv H16; auto.
+    apply H14. red. red in X.
+    induction X; constructor.
+    + split; inv H17; intuition.
+    + apply IHX. now inv H17.
+    + eapply Forall_impl; tea. clear; intros; cbn in *; intuition.
 
-  inv H17; auto.
-  apply H14. red.
-  red in H16.
-  induction H16. constructor.
-  inv H18; constructor; intuition auto.
-  clear H16; induction H18; constructor; intuition auto.
-
-  inv H17; auto.
-  apply H15. red.
-  red in H16.
-  induction H16. constructor.
-  inv H18; constructor; intuition auto.
+  - inv H16; auto.
+    apply H15. red. red in X.
+    induction X; constructor.
+    + split; inv H17; intuition.
+    + apply IHX. now inv H17.
 Qed.
 
 Definition tCaseBrsType {A} (P : A -> Type) (l : list (nat * A)) :=
   All (fun x => P (snd x)) l.
 
-Definition tFixType {A : Set} (P P' : A -> Type) (m : mfixpoint A) :=
+Definition tFixType {A} (P P' : A -> Type) (m : mfixpoint A) :=
   All (fun x : def A => P x.(dtype) * P' x.(dbody))%type m.
 
 Lemma term_forall_list_rect :
@@ -154,7 +150,7 @@ Lemma term_forall_list_rect :
     (forall (n : name) (t : term),
         P t -> forall t0 : term, P t0 -> forall t1 : term, P t1 -> P (tLetIn n t t0 t1)) ->
     (forall t : term, P t -> forall l : list term, All P l -> P (tApp t l)) ->
-    (forall (s : String.string) (u : list Level.t), P (tConst s u)) ->
+    (forall s (u : list Level.t), P (tConst s u)) ->
     (forall (i : inductive) (u : list Level.t), P (tInd i u)) ->
     (forall (i : inductive) (n : nat) (u : list Level.t), P (tConstruct i n u)) ->
     (forall (p : inductive * nat) (t : term),

@@ -1,19 +1,16 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia.
-From MetaCoq.Template Require Import config monad_utils utils BasicAst AstUtils
-     UnivSubst.
-From MetaCoq.Template Require Pretty.
-From MetaCoq.Checker Require Import uGraph.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
+From Coq Require Import Bool String List Program BinPos Arith.
+From MetaCoq.Template Require Import config monad_utils utils
+     uGraph.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils
      PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICNormal PCUICSR
      PCUICGeneration PCUICReflect PCUICEquality PCUICInversion PCUICValidity
      PCUICWeakening PCUICPosition PCUICCumulativity PCUICSafeLemmata PCUICSN
-     PCUICPretty.
+     PCUICPretty PCUICArities.
 From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeConversion.
 From Equations Require Import Equations.
 
-Require Import Equations.Prop.DepElim.
 
 Import MonadNotation.
 Open Scope type_scope.
@@ -63,10 +60,10 @@ Fixpoint monad_All2 {T E} {M : Monad T} {M' : MonadExc E T} wrong_sizes
          {A B R} (f : forall x y, T (R x y)) l1 l2
   : T (@All2 A B R l1 l2)
   := match l1, l2 with
-     | [], [] => ret (All2_nil R)
+     | [], [] => ret All2_nil
      | a :: l1, b :: l2 => X <- f a b ;;
                           Y <- monad_All2 wrong_sizes f l1 l2 ;;
-                          ret (All2_cons R a b l1 l2 X Y)
+                          ret (All2_cons X Y)
      | _, _ => raise wrong_sizes
      end.
 
@@ -118,7 +115,7 @@ Inductive type_error :=
 | UnboundRel (n : nat)
 | UnboundVar (id : string)
 | UnboundEvar (ev : nat)
-| UndeclaredConstant (c : string)
+| UndeclaredConstant (c : kername)
 | UndeclaredInductive (c : inductive)
 | UndeclaredConstructor (c : inductive) (i : nat)
 | NotCumulSmaller (G : universes_graph) (Γ : context) (t u t' u' : term) (e : ConversionError)
@@ -131,50 +128,8 @@ Inductive type_error :=
 | Msg (s : string).
 
 Local Open Scope string_scope.
-Definition string_of_list_aux {A} (f : A -> string) (l : list A) : string :=
-  let fix aux l :=
-      match l return string with
-      | nil => ""
-      | cons a nil => f a
-      | cons a l => f a ++ "," ++ aux l
-      end
-  in aux l.
 
-Definition string_of_list {A} (f : A -> string) (l : list A) : string :=
-  "[" ++ string_of_list_aux f l ++ "]".
-
-Definition string_of_level (l : Level.t) : string :=
-  match l with
-  | Level.lProp => "Prop"
-  | Level.lSet => "Set"
-  | Level.Level s => s
-  | Level.Var n => "Var " ++ string_of_nat n
-  end.
-
-Definition string_of_level_expr (l : Level.t * bool) : string :=
-  let '(l, b) := l in
-  string_of_level l ++ (if b then "+1" else "").
-
-Definition string_of_sort (u : universe) :=
-  string_of_list string_of_level_expr u.
-
-Definition string_of_name (na : name) :=
-  match na with
-  | nAnon => "_"
-  | nNamed n => n
-  end.
-
-Definition string_of_universe_instance u :=
-  string_of_list string_of_level u.
-
-Definition string_of_def {A : Set} (f : A -> string) (def : def A) :=
-  "(" ++ string_of_name (dname def) ++ "," ++ f (dtype def) ++ "," ++ f (dbody def) ++ ","
-      ++ string_of_nat (rarg def) ++ ")".
-
-Definition string_of_inductive (i : inductive) :=
-  (inductive_mind i) ++ "," ++ string_of_nat (inductive_ind i).
-
-Definition print_no_prop_level := string_of_level ∘ level_of_no_prop.
+Definition print_no_prop_level := string_of_level ∘ NoPropLevel.to_level.
 
 Definition print_edge '(l1, n, l2)
   := "(" ++ print_no_prop_level l1 ++ ", " ++ string_of_nat n ++ ", "
@@ -198,10 +153,10 @@ Definition print_term Σ Γ t :=
 Fixpoint string_of_conv_error Σ (e : ConversionError) : string :=
   match e with
   | NotFoundConstants c1 c2 =>
-      "Both constants " ++ c1 ++ " and " ++ c2 ++
+      "Both constants " ++ string_of_kername c1 ++ " and " ++ string_of_kername c2 ++
       " are not found in the environment."
   | NotFoundConstant c =>
-      "Constant " ++ c ++
+      "Constant " ++ string_of_kername c ++
       " common in both terms is not found in the environment."
   | LambdaNotConvertibleTypes Γ1 na A1 t1 Γ2 na' A2 t2 e =>
       "When comparing\n" ++ print_term Σ Γ1 (tLambda na A1 t1) ++
@@ -279,15 +234,14 @@ Fixpoint string_of_conv_error Σ (e : ConversionError) : string :=
       string_of_conv_pb leq
   end.
 
-
 Definition string_of_type_error Σ (e : type_error) : string :=
   match e with
   | UnboundRel n => "Unbound rel " ++ string_of_nat n
   | UnboundVar id => "Unbound var " ++ id
   | UnboundEvar ev => "Unbound evar " ++ string_of_nat ev
-  | UndeclaredConstant c => "Undeclared constant " ++ c
-  | UndeclaredInductive c => "Undeclared inductive " ++ (inductive_mind c)
-  | UndeclaredConstructor c i => "Undeclared inductive " ++ (inductive_mind c)
+  | UndeclaredConstant c => "Undeclared constant " ++ string_of_kername c
+  | UndeclaredInductive c => "Undeclared inductive " ++ string_of_kername (inductive_mind c)
+  | UndeclaredConstructor c i => "Undeclared inductive " ++ string_of_kername (inductive_mind c)
   | NotCumulSmaller G Γ t u t' u' e => "Terms are not <= for cumulativity:\n" ++
       print_term Σ Γ t ++ "\nand:\n" ++ print_term Σ Γ u ++
       "\nafter reduction:\n" ++
@@ -343,34 +297,6 @@ Proof.
   split; [assumption|]. split; [assumption| trivial].
   split; [assumption|]. split; [assumption| trivial].
 Defined.
-
-Definition strengthening_wf_local_rel `{cf : checker_flags} Σ Γ1 Γ2 Γ3 Γ4 :
-  wf Σ.1 -> wf_local_rel Σ Γ1 (Γ2 ,,, Γ3 ,,, lift_context #|Γ3| 0 Γ4)
-  -> wf_local_rel Σ Γ1 (Γ2 ,,, Γ4).
-Proof.
-  intros HΣ H.
-  eapply wf_local_rel_app in H; destruct H as [H1 H2].
-  eapply wf_local_rel_app in H1; destruct H1 as [H1 H1'].
-  eapply wf_local_rel_app_inv. assumption.
-  revert H2. clear -HΣ. induction Γ4. intros; constructor.
-  intro H. rewrite lift_context_snoc0 in H.
-  destruct a as [na [b|] ty].
-  - unfold lift_decl, map_decl in H; cbn in H.
-    destruct (wf_local_rel_inv H _ _ eq_refl) as [H1 [H2 H3]]; cbn in *.
-    rewrite Nat.add_0_r in *.
-    rewrite app_context_assoc in *.
-    econstructor.
-    + easy.
-    + cbn. exists H2.π1. eapply strengthening. assumption. exact H2.π2.
-    + cbn. eapply strengthening; eassumption.
-  - unfold lift_decl, map_decl in H; cbn in H.
-    destruct (wf_local_rel_inv H _ _ eq_refl) as [H1 [[u H2] _]]; cbn in *.
-    rewrite Nat.add_0_r in H2.
-    rewrite app_context_assoc in H2.
-    econstructor. easy.
-    exists u. eapply strengthening; eassumption.
-Qed.
-
 
 Definition wf_local_app_inv `{cf : checker_flags} {Σ Γ1 Γ2} :
   wf_local Σ Γ1 -> wf_local_rel Σ Γ1 Γ2
@@ -604,7 +530,7 @@ Section Typecheck.
   Defined.
 
 
-  Definition iscumul Γ := isconv_term RedFlags.default Σ HΣ Hφ G HG Γ Cumul.
+  Definition iscumul Γ := isconv_term Σ HΣ Hφ G HG Γ Cumul.
 
   Program Definition convert_leq Γ t u
           (ht : wellformed Σ Γ t) (hu : wellformed Σ Γ u)
@@ -633,7 +559,7 @@ Section Typecheck.
                  typing_result ({ A : term & ∥ Σ ;;; Γ |- t : A ∥ })).
 
     Program Definition infer_type Γ HΓ t
-      : typing_result ({u : universe & ∥ Σ ;;; Γ |- t : tSort u ∥}) :=
+      : typing_result ({u : Universe.t & ∥ Σ ;;; Γ |- t : tSort u ∥}) :=
       tx <- infer Γ HΓ t ;;
       u <- reduce_to_sort Γ tx.π1 _ ;;
       ret (u.π1; _).
@@ -686,9 +612,9 @@ Section Typecheck.
     now apply global_ext_uctx_consistent.
   Qed.
 
-  Lemma is_graph_of_uctx_levels l :
+  Lemma is_graph_of_uctx_levels (l : NoPropLevel.t) :
     wGraph.VSet.mem l (uGraph.wGraph.V G) ->
-    LevelSet.mem l (global_ext_levels Σ).
+    LevelSet.mem (NoPropLevel.to_level l) (global_ext_levels Σ).
   Proof.
     unfold is_graph_of_uctx in HG.
     case_eq (gc_of_uctx (global_ext_uctx Σ)); [intros [lvs cts] XX|intro XX];
@@ -700,7 +626,7 @@ Section Typecheck.
     apply LevelSetProp.FM.elements_2.
     unfold no_prop_levels in H.
     rewrite LevelSet.fold_spec in H.
-    cut (SetoidList.InA eq (level_of_no_prop l) (LevelSet.elements lvs)
+    cut (SetoidList.InA eq (NoPropLevel.to_level l) (LevelSet.elements lvs)
          \/ wGraph.VSet.In l wGraph.VSet.empty). {
       intros [|H0]; [trivial|].
       now apply wGraph.VSet.empty_spec in H0. }
@@ -719,10 +645,9 @@ Section Typecheck.
     := match uctx with
        | Monomorphic_ctx _ =>
          check_eq_nat #|u| 0 (Msg "monomorphic instance should be of length 0")
-       | Polymorphic_ctx (inst, cstrs)
-       | Cumulative_ctx ((inst, cstrs), _) =>
+       | Polymorphic_ctx (inst, cstrs) =>
          let '(inst, cstrs) := AUContext.repr (inst, cstrs) in
-         check_eq_true (forallb (fun l => match no_prop_of_level l with
+         check_eq_true (forallb (fun l => match NoPropLevel.of_level l with
                                        | Some l => wGraph.VSet.mem l (uGraph.wGraph.V G)
                                        | None => false
                                        end) u)
@@ -748,19 +673,6 @@ Section Typecheck.
     - now rewrite mapi_length in X.
     - eapply check_constraints_spec; eauto.
   Qed.
-  Next Obligation.
-    eapply forallb_All in H. eapply All_forallb'; tea.
-    clear. intros []; cbnr; trivial.
-  Qed.
-  Next Obligation.
-    repeat split.
-    - eapply forallb_All in H. eapply All_forallb'; tea.
-      intros []; simpl. discriminate.
-      all: apply is_graph_of_uctx_levels.
-    - now rewrite mapi_length in X.
-    - eapply check_constraints_spec; eauto.
-  Qed.
-
 
   Definition eqb_opt_term (t u : option term) :=
     match t, u with
@@ -784,7 +696,7 @@ Section Typecheck.
     : eqb_decl d d' -> eq_decl (global_ext_constraints Σ) d d'.
   Proof.
     unfold eqb_decl, eq_decl.
-    intro H. utils.toProp. apply eqb_opt_term_spec in H.
+    intro H. rtoProp. apply eqb_opt_term_spec in H.
     eapply eqb_term_spec in H0; tea. now split.
   Qed.
 
@@ -817,12 +729,12 @@ Section Typecheck.
     | tEvar ev args => raise (UnboundEvar ev)
 
     | tSort u =>
-          match u with
-          | NEL.sing (l, false) =>
+          match Universe.get_is_level u with
+          | Some l =>
             check_eq_true (LevelSet.mem l (global_ext_levels Σ))
                           (Msg ("undeclared level " ++ string_of_level l));;
             ret (tSort (Universe.super l); _)
-          | _ => raise (Msg (string_of_sort u ++ " is not a level"))
+          | None  => raise (Msg (string_of_sort u ++ " is not a level"))
           end
 
     | tProd na A B =>
@@ -887,7 +799,7 @@ Section Typecheck.
       | None => raise (Msg "the type of the return predicate of a Case is not an arity")
       | Some (pctx, ps) =>
         check_eq_true
-          (existsb (leb_sort_family (universe_family ps)) (ind_kelim body))
+          (leb_sort_family (universe_family ps) (ind_kelim body))
           (Msg "cannot eliminate over this sort") ;;
         let params := firstn par args in
         match build_case_predicate_type ind decl body params u ps with
@@ -906,13 +818,13 @@ Section Typecheck.
                   : typing_result
                     (All2 (fun br bty => br.1 = bty.1 /\ ∥ Σ ;;; Γ |- br.2 : bty.2 ∥) brs btys)
                           := match brs, btys with
-                             | [], [] => ret (All2_nil _)
+                             | [], [] => ret All2_nil
                              | (n, t) :: brs , (m, A) :: btys =>
                                W <- check_dec (Msg "not nat eq")
                                              (EqDecInstances.nat_eqdec n m) ;;
                                Z <- infer_cumul infer Γ HΓ t A _ ;;
                                X <- check_branches brs btys _ ;;
-                               ret (All2_cons _ _ _ _ _ (conj _ _) X)
+                               ret (All2_cons (conj _ _) X)
                              | [], _ :: _
                              | _ :: _, [] => raise (Msg "wrong number of branches")
                              end) brs btys _ ;;
@@ -945,26 +857,23 @@ Section Typecheck.
       match nth_error mfix n with
       | None => raise (IllFormedFix mfix n)
       | Some decl =>
-        XX <- (fix check_types (mfix : mfixpoint term) acc (Hacc : ∥ wf_local_rel Σ Γ acc ∥) {struct mfix}
-              : typing_result (∥ wf_local_rel Σ (Γ ,,, acc) (fix_context_i #|acc| mfix) ∥)
+        XX <- (fix check_types (mfix : mfixpoint term) {struct mfix}
+              : typing_result (∥ All (fun x => isType Σ Γ (dtype x)) mfix ∥)
               := match mfix with
-                 | [] => ret (sq wf_local_rel_nil)
+                 | [] => ret (sq All_nil)
                  | def :: mfix =>
        (* probably not tail recursive but needed so that next line terminates *)
                    W <- infer_type infer Γ HΓ (dtype def) ;;
-                   let W' := weakening_sq acc _ _ W.π2 in
-                   Z <- check_types mfix
-                     (acc ,, vass (dname def) ((lift0 #|acc|) (dtype def)))
-                     (wf_local_rel_abs_sq Hacc (W.π1; W')) ;;
-                   ret (wf_local_rel_app_inv_sq
-                          (wf_local_rel_abs_sq (sq wf_local_rel_nil) (W.π1; W')) Z)
+                   Z <- check_types mfix ;;
+                   ret _
                  end)
-           mfix [] (sq wf_local_rel_nil);;
+           mfix ;;
         YY <- (fix check_bodies (mfix' : mfixpoint term)
-                  (XX' : ∥ wf_local_rel Σ Γ (fix_context mfix') ∥) {struct mfix'}
- : typing_result (All (fun d =>
- ∥ Σ ;;; Γ ,,, fix_context mfix |- dbody d : (lift0 #|fix_context mfix|) (dtype d) ∥
-   /\ isLambda (dbody d) = true) mfix')
+              (XX : ∥ All (fun x => isType Σ Γ (dtype x)) mfix' ∥)
+            {struct mfix'}
+                : typing_result (All (fun d =>
+              ∥ Σ ;;; Γ ,,, fix_context mfix |- dbody d : (lift0 #|fix_context mfix|) (dtype d) ∥
+              /\ isLambda (dbody d) = true) mfix')
               := match mfix' with
                  | [] => ret All_nil
                  | def :: mfix' =>
@@ -976,34 +885,30 @@ Section Typecheck.
                    ret (All_cons (conj W1 W2) Z)
                  end) mfix _ ;;
         guarded <- check_eq_true (fix_guard mfix) (Msg "Unguarded fixpoint") ;;
+        wffix <- check_eq_true (wf_fixpoint Σ.1 mfix) (Msg "Ill-formed fixpoint: not defined on a mutually inductive family") ;;
         ret (dtype decl; _)
       end
 
     | tCoFix mfix n =>
-      (* to add when generalizing to all flags *)
-      allowcofix <- check_eq_true allow_cofix (Msg "cofix not allowed") ;;
       match nth_error mfix n with
       | None => raise (IllFormedFix mfix n)
       | Some decl =>
-        XX <- (fix check_types (mfix : mfixpoint term) acc (Hacc : ∥ wf_local_rel Σ Γ acc ∥) {struct mfix}
-              : typing_result (∥ wf_local_rel Σ (Γ ,,, acc) (fix_context_i #|acc| mfix) ∥)
-              := match mfix with
-                 | [] => ret (sq wf_local_rel_nil)
-                 | def :: mfix =>
-       (* probably not tail recursive but needed so that next line terminates *)
-                   W <- infer_type infer Γ HΓ (dtype def) ;;
-                   let W' := weakening_sq acc _ _ W.π2 in
-                   Z <- check_types mfix
-                     (acc ,, vass (dname def) ((lift0 #|acc|) (dtype def)))
-                     (wf_local_rel_abs_sq Hacc (W.π1; W')) ;;
-                   ret (wf_local_rel_app_inv_sq
-                          (wf_local_rel_abs_sq (sq wf_local_rel_nil) (W.π1; W')) Z)
-                 end)
-           mfix [] (sq wf_local_rel_nil);;
-        YY <- (fix check_bodies (mfix' : mfixpoint term) (XX' : ∥ wf_local_rel Σ Γ (fix_context mfix') ∥) {struct mfix'}
- : typing_result (All (fun d =>
- ∥ Σ ;;; Γ ,,, fix_context mfix |- dbody d : (lift0 #|fix_context mfix|) (dtype d) ∥
-   ) mfix')
+        XX <-  (fix check_types (mfix : mfixpoint term) {struct mfix}
+        : typing_result (∥ All (fun x => isType Σ Γ (dtype x)) mfix ∥)
+        := match mfix with
+           | [] => ret (sq All_nil)
+           | def :: mfix =>
+ (* probably not tail recursive but needed so that next line terminates *)
+             W <- infer_type infer Γ HΓ (dtype def) ;;
+             Z <- check_types mfix ;;
+             ret _
+           end)
+         mfix ;;
+        YY <- (fix check_bodies (mfix' : mfixpoint term)
+        (XX' : ∥ All (fun x => isType Σ Γ (dtype x)) mfix' ∥)
+        {struct mfix'}
+        : typing_result (All (fun d =>
+            ∥ Σ ;;; Γ ,,, fix_context mfix |- dbody d : (lift0 #|fix_context mfix|) (dtype d) ∥) mfix')
               := match mfix' with
                  | [] => ret All_nil
                  | def :: mfix' =>
@@ -1012,13 +917,21 @@ Section Typecheck.
                    Z <- check_bodies mfix' _ ;;
                    ret (All_cons W1 Z)
                  end) mfix _ ;;
+        guarded <- check_eq_true (cofix_guard mfix) (Msg "Unguarded cofixpoint") ;;
+        wfcofix <- check_eq_true (wf_cofixpoint Σ.1 mfix) (Msg "Ill-formed cofixpoint: not producing values in a mutually coinductive family") ;;         
         ret (dtype decl; _)
       end
     end.
 
+  (* tRel *)
   Next Obligation. intros; sq; now econstructor. Defined.
-  Next Obligation. intros; sq; econstructor; tas.
-                   now apply LevelSetFact.mem_2. Defined.
+  (* tSort *)
+  Next Obligation.
+    symmetry in Heq_anonymous.
+    apply get_is_level_correct in Heq_anonymous.
+    subst u. sq; econstructor; tas.
+    now apply LevelSetFact.mem_2.
+  Defined.
   (* tProd *)
   Next Obligation.
     (* intros Γ HΓ t na A B Heq_t [s ?];  *)
@@ -1103,32 +1016,20 @@ Section Typecheck.
     change (eqb ind I = true) in H0.
     destruct (eqb_spec ind I) as [e|e]; [destruct e|discriminate].
     change (eqb (ind_npars d) par = true) in H1.
-    destruct (eqb_spec (ind_npars d) par) as [e|e]; [|discriminate]; subst.
-    eapply WfArity_build_case_predicate_type; tea.
-    2: symmetry; eassumption.
-    simpl in *. apply validity_term in t0; tea.
-    eapply isWfArity_or_Type_red in t0; tea.
-    destruct t0; [|assumption].
-    destruct i as [ctx [s [HH1 _]]]. cbn in HH1.
-    rewrite destArity_mkApps_Ind in HH1; discriminate.
-  Qed.
-  Next Obligation.
-    inversion HH; sq; right; assumption.
-  Qed.
-  Next Obligation.
-    inversion HH; assumption.
-  Qed.
-  Next Obligation.
-    rename Heq_anonymous into HH3.
-    clear Heq_anonymous2. destruct HΣ, HΓ, X.
-    change (eqb ind ind' = true) in H0.
-    destruct (eqb_spec ind ind') as [e|e]; [destruct e|discriminate].
-    change (eqb (ind_npars decl) par = true) in H1.
-    destruct (eqb_spec (ind_npars decl) par) as [e|e]; [|discriminate].
-    symmetry in HH3.
-    eapply (type_Case_valid_btys Σ Γ) in HH3; tea.
+    destruct (eqb_spec (ind_npars d) par) as [e|e]; [|discriminate].
+    rename Heq_anonymous into HH. symmetry in HH.
+    todo "case predicacte is well-typed".
+    (*eapply (type_Case_valid_btys Σ Γ) in HH; tea.
     eapply All_Forall, All_impl; tea. clear.
-    intros x XX; constructor; exists ps; exact XX.
+    intros x X; constructor; now exists ps.
+    eapply type_Cumul. eapply X4.
+    right.
+    unshelve epose (validity _ _ _ _ _ _ X4). eauto using typing_wf_local.
+    destruct p0.
+    eapply isWfArity_or_Type_red in i. 3:eapply X8. all:eauto.
+    destruct i. red in i. destruct i as [ctx [s' [eq ?]]].
+    rewrite destArity_tInd in eq. discriminate. apply i.
+    eapply red_cumul. apply X8.*)
   Defined.
   Next Obligation.
     rename Heq_anonymous2 into XX2. destruct wildcard'.
@@ -1137,9 +1038,20 @@ Section Typecheck.
     destruct (eqb_spec ind ind') as [e|e]; [destruct e|discriminate H0].
     change (eqb (ind_npars decl) par = true) in H1.
     destruct (eqb_spec (ind_npars decl) par) as [e|e]; [|discriminate]; subst.
-    assert (∥ All2 (fun x y  => ((fst x = fst y) *
+    depelim HH.
+    sq. right; auto.
+  Defined.
+  Next Obligation.
+    now depelim HH.
+  Defined.
+  Next Obligation.
+    todo "valid btys".
+(*    assert (∥ All2 (fun x y  => ((fst x = fst y) *
                               (Σ;;; Γ |- snd x : snd y))%type) brs btys ∥). {
-      eapply All2_sq. eapply All2_impl. eassumption.
+      depelim HH.
+      eapply All2_sq. eapply All2_impl.
+      specialize (check_branches brs _ HH).
+      eassumption.
       cbn; intros ? ? []. now sq. }
     destruct H as [H], X9, XX2 as [XX2]. sq.
     eapply type_Case' with (pty0:=pty'); tea.
@@ -1155,9 +1067,10 @@ Section Typecheck.
       destruct i as [ctx [s [HH1 _]]]. cbn in HH1.
       rewrite destArity_mkApps_Ind in HH1; discriminate.
     - eapply type_reduction; tea.
-    - symmetry; eassumption.
+    - symmetry; eassumption.*)
   Defined.
-
+  Next Obligation. todo "type_Case". Qed.
+  
   (* tProj *)
   Next Obligation. simpl; eauto using validity_wf. Qed.
   Next Obligation.
@@ -1170,25 +1083,19 @@ Section Typecheck.
   Defined.
 
   (* tFix *)
-  Next Obligation. sq; now eapply All_local_env_app_inv. Defined.
-  Next Obligation. sq; now eapply All_local_env_app_inv. Defined.
+  Next Obligation. sq. constructor; auto. exists W; auto. Defined.
+  Next Obligation. sq. now eapply PCUICWeakening.All_mfix_wf in XX0. Defined.
   Next Obligation.
-    sq. cbn in *.
-    apply wf_local_rel_app, fst in XX'. rewrite lift0_p in XX'.
-    inversion XX'; subst. destruct X0 as [s HH].
+    sq. cbn in *. depelim XX.
+    destruct i as [s HH].
     right. exists s.
-    change (PCUICTerm.tSort s) with (lift0 #|fix_context mfix| (tSort s)).
+    change (tSort s) with (lift0 #|fix_context mfix| (tSort s)).
     apply weakening; try assumption.
-    apply wf_local_app_inv; assumption.
+    now apply All_mfix_wf.
   Defined.
   Next Obligation.
-    clear -XX' HΣ. sq.
-    change (wf_local_rel Σ Γ ([vass (dname def) ((lift0 0) (dtype def))] ,,, fix_context_i 1 mfix')) in XX'.
-    rewrite lift0_p in XX'.
-    pose proof (lift_fix_context mfix' 0 1 0) as e; cbn in e;
-      rewrite e in XX' by reflexivity; clear e.
-    pose proof (strengthening_wf_local_rel Σ Γ [] [vass (dname def) (dtype def)] (fix_context mfix')) as Y.
-    now rewrite !app_context_nil_l in Y.
+    clear -XX HΣ. sq.
+    now depelim XX.
   Qed.
   Next Obligation.
     assert (∥ All (fun d => ((Σ;;; Γ ,,, fix_context mfix |- dbody d : (lift0 #|fix_context mfix|) (dtype d)) * (isLambda (dbody d) = true))%type) mfix ∥). {
@@ -1196,35 +1103,30 @@ Section Typecheck.
       cbn; intros ? []. sq; now constructor. }
     sq; econstructor; try eassumption.
     symmetry; eassumption.
-    now eapply All_local_env_app_inv.
   Qed.
 
   (* tCoFix *)
-  Next Obligation. sq; now eapply All_local_env_app_inv. Defined.
-  Next Obligation. sq; now eapply All_local_env_app_inv. Defined.
+  Next Obligation. sq. constructor; auto. exists W; auto. Defined.
+  Next Obligation. sq. now eapply PCUICWeakening.All_mfix_wf in XX. Defined.
   Next Obligation.
-    sq. cbn in *.
-    apply wf_local_rel_app, fst in XX'. rewrite lift0_p in XX'.
-    inversion XX'; subst. destruct X0 as [s HH].
-    right. exists s. change (PCUICTerm.tSort s) with (lift0 #|fix_context mfix| (tSort s)).
+    sq. cbn in *. depelim XX'.
+    destruct i as [s HH].
+    right. exists s.
+    change (tSort s) with (lift0 #|fix_context mfix| (tSort s)).
     apply weakening; try assumption.
-    apply wf_local_app_inv; assumption.
+    now apply All_mfix_wf.
   Defined.
   Next Obligation.
     clear -XX' HΣ. sq.
-    change (wf_local_rel Σ Γ ([vass (dname def) ((lift0 0) (dtype def))] ,,, fix_context_i 1 mfix')) in XX'.
-    rewrite lift0_p in XX'.
-    pose proof (lift_fix_context mfix' 0 1 0) as e; cbn in e;
-      rewrite e in XX' by reflexivity; clear e.
-    pose proof (strengthening_wf_local_rel Σ Γ [] [vass (dname def) (dtype def)] (fix_context mfix')) as Y.
-    now rewrite !app_context_nil_l in Y.
-  Defined.
+    now depelim XX'.
+  Qed.
   Next Obligation.
-    apply All_sq in YY.
-    sq. econstructor; eauto.
-    now eapply All_local_env_app_inv.
-  Defined.
-
+    assert (∥ All (fun d => ((Σ;;; Γ ,,, fix_context mfix |- dbody d : (lift0 #|fix_context mfix|) (dtype d)))%type) mfix ∥). {
+      eapply All_sq, All_impl.  exact YY.
+      now cbn; intros ? []. }
+    sq; econstructor; try eassumption.
+    symmetry; eassumption.
+  Qed.
 
   Lemma sq_wfl_nil : ∥ wf_local Σ [] ∥.
   Proof.
@@ -1334,9 +1236,6 @@ Print Assumptions infer.
 (* Extraction infer. *)
 
 
-From MetaCoq.Checker Require kernel.Checker.
-From MetaCoq.Checker Require Import wGraph.
-
 Section CheckEnv.
   Context  {cf:checker_flags}.
 
@@ -1350,7 +1249,7 @@ Section CheckEnv.
   Global Arguments EnvError {A} Σ e.
   Global Arguments CorrectDecl {A} a.
 
-  Instance envcheck_monad : Monad EnvCheck :=
+  Global Instance envcheck_monad : Monad EnvCheck :=
     {| ret A a := CorrectDecl a ;
        bind A B m f :=
          match m with
@@ -1359,7 +1258,8 @@ Section CheckEnv.
          end
     |}.
 
-  Instance envcheck_monad_exc : MonadExc (global_env_ext * env_error) EnvCheck :=
+  Global Instance envcheck_monad_exc
+    : MonadExc (global_env_ext * env_error) EnvCheck :=
     { raise A '(g, e) := EnvError g e;
       catch A m f :=
         match m with
@@ -1374,13 +1274,13 @@ Section CheckEnv.
     | TypeError e => EnvError Σ (IllFormedDecl id e)
     end.
 
-  Definition check_wf_type id Σ HΣ HΣ' G HG t
+  Definition check_wf_type kn Σ HΣ HΣ' G HG t
     : EnvCheck (∑ u, ∥ Σ;;; [] |- t : tSort u ∥)
-    := wrap_error Σ id (@infer_type _ Σ HΣ (@infer _ Σ HΣ HΣ' G HG) [] sq_wfl_nil t).
+    := wrap_error Σ (string_of_kername  kn) (@infer_type _ Σ HΣ (@infer _ Σ HΣ HΣ' G HG) [] sq_wfl_nil t).
 
-  Definition check_wf_judgement id Σ HΣ HΣ' G HG t ty
+  Definition check_wf_judgement kn Σ HΣ HΣ' G HG t ty
     : EnvCheck (∥ Σ;;; [] |- t : ty ∥)
-    := wrap_error Σ id (@check _ Σ HΣ HΣ' G HG [] sq_wfl_nil t ty).
+    := wrap_error Σ (string_of_kername kn) (@check _ Σ HΣ HΣ' G HG [] sq_wfl_nil t ty).
 
   Definition infer_term Σ HΣ HΣ' G HG t :=
     wrap_error Σ "toplevel term" (@infer _ Σ HΣ HΣ' G HG [] sq_wfl_nil t).
@@ -1391,7 +1291,7 @@ Section CheckEnv.
     | g :: env =>
       p <- check_fresh id env;;
       match eq_constant id g.1 with
-      | true => EnvError (empty_ext env) (AlreadyDeclared id)
+      | true => EnvError (empty_ext env) (AlreadyDeclared (string_of_kername id))
       | false => ret _
       end
     end.
@@ -1402,14 +1302,22 @@ Section CheckEnv.
     easy.
   Defined.
 
+  (* todo move *)
+  Definition VariableLevel_get_noprop (l : NoPropLevel.t) : option VariableLevel.t
+    := match l with
+       | NoPropLevel.lSet => None
+       | NoPropLevel.Level s => Some (VariableLevel.Level s)
+       | NoPropLevel.Var n => Some (VariableLevel.Var n)
+       end.
+
   Definition add_uctx (uctx : wGraph.VSet.t × GoodConstraintSet.t)
              (G : universes_graph) : universes_graph
     := let levels := wGraph.VSet.union uctx.1 G.1.1 in
        let edges := wGraph.VSet.fold
                       (fun l E =>
-                         match l with
-                         | lSet => E
-                         | vtn ll => wGraph.EdgeSet.add (edge_of_level ll) E
+                         match VariableLevel_get_noprop l with
+                         | None => E
+                         | Some ll => wGraph.EdgeSet.add (edge_of_level ll) E
                          end)
                       uctx.1 G.1.2 in
        let edges := GoodConstraintSet.fold
@@ -1430,7 +1338,7 @@ Section CheckEnv.
   Program Fixpoint monad_Alli {T} {M : Monad T} {A} {P} (f : forall n x, T (∥ P n x ∥)) l n
     : T (∥ @Alli A P n l ∥)
     := match l with
-       | [] => ret (sq (Alli_nil _ _))
+       | [] => ret (sq Alli_nil)
        | a :: l => X <- f n a ;;
                     Y <- monad_Alli f l (S n) ;;
                     ret _
@@ -1466,16 +1374,17 @@ Section CheckEnv.
 
 
   Program Definition check_wf_decl (Σ : global_env_ext) HΣ HΣ' G HG
-             id (d : global_decl)
-    : EnvCheck (∥ on_global_decl (lift_typing typing) Σ id d ∥) :=
+             kn (d : global_decl)
+    : EnvCheck (∥ on_global_decl (lift_typing typing) Σ kn d ∥) :=
     match d with
     | ConstantDecl cst =>
       match cst.(cst_body) with
-      | Some term => check_wf_judgement id Σ HΣ HΣ' G HG term cst.(cst_type) ;; ret _
-      | None => check_wf_type id Σ HΣ HΣ' G HG cst.(cst_type) ;; ret _
+      | Some term => check_wf_judgement kn Σ HΣ HΣ' G HG term cst.(cst_type) ;; ret _
+      | None => check_wf_type kn Σ HΣ HΣ' G HG cst.(cst_type) ;; ret _
       end
     | InductiveDecl mdecl =>
-      X1 <- monad_Alli (check_one_ind_body Σ HΣ HΣ' G HG id mdecl) _ _ ;;
+      X1 <- monad_Alli (check_one_ind_body Σ HΣ HΣ' G HG kn mdecl) _ _ ;;
+      let id := string_of_kername kn in
       X2 <- wrap_error Σ id (check_context HΣ HΣ' G HG (ind_params mdecl)) ;;
       X3 <- wrap_error Σ id (check_eq_nat (context_assumptions (ind_params mdecl))
                                        (ind_npars mdecl)
@@ -1529,10 +1438,10 @@ Section CheckEnv.
     let global_levels := global_levels Σ in
     let all_levels := LevelSet.union levels global_levels in
     check_eq_true (LevelSet.for_all (fun l => negb (LevelSet.mem l global_levels)) levels) 
-       (empty_ext Σ, IllFormedDecl id (Msg ("non fresh level in " ++ Pretty.print_lset levels)));;
+       (empty_ext Σ, IllFormedDecl id (Msg ("non fresh level in " ++ print_lset levels)));;
     check_eq_true (ConstraintSet.for_all (fun '(l1, _, l2) => LevelSet.mem l1 all_levels && LevelSet.mem l2 all_levels) (constraints_of_udecl udecl))
-                                    (empty_ext Σ, IllFormedDecl id (Msg ("non declared level in " ++ Pretty.print_lset levels ++
-                                    " |= " ++ Pretty.print_constraint_set (constraints_of_udecl udecl))));;
+                                    (empty_ext Σ, IllFormedDecl id (Msg ("non declared level in " ++ print_lset levels ++
+                                    " |= " ++ print_constraint_set (constraints_of_udecl udecl))));;
     check_eq_true match udecl with
                   | Monomorphic_ctx ctx
                     => LevelSet.for_all (negb ∘ Level.is_var) ctx.1
@@ -1610,13 +1519,12 @@ Section CheckEnv.
         G <- check_wf_env Σ ;;
         check_fresh d.1 Σ ;;
         let udecl := universes_decl_of_decl d.2 in
-        uctx <- check_udecl d.1 Σ _ G.π1 (proj1 G.π2) udecl ;;
+        uctx <- check_udecl (string_of_kername d.1) Σ _ G.π1 (proj1 G.π2) udecl ;;
         let G' := add_uctx uctx.π1 G.π1 in
         check_wf_decl (Σ, udecl) _ _ G' _ d.1 d.2 ;;
         match udecl with
         | Monomorphic_ctx _ => ret (G'; _)
         | Polymorphic_ctx _ => ret (G.π1; _)
-        | Cumulative_ctx _ => ret (G.π1; _)
         end
     end.
   Next Obligation.
@@ -1678,20 +1586,6 @@ Section CheckEnv.
     rewrite eq1; clear eq1.
     assumption.
   Qed.
-  Next Obligation.
-    split; sq. 2: constructor; tas.
-    unfold global_uctx; simpl.
-    assert (eq1: monomorphic_levels_decl g = LevelSet.empty). {
-      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
-      destruct m, ind_universes; try discriminate; reflexivity. }
-    rewrite eq1; clear eq1.
-    assert (eq1: monomorphic_constraints_decl g = ConstraintSet.empty). {
-      destruct g. destruct c, cst_universes; try discriminate; reflexivity.
-      destruct m, ind_universes; try discriminate; reflexivity. }
-    rewrite eq1; clear eq1.
-    assumption.
-  Qed.
-
 
   Lemma wf_consistent Σ : wf Σ -> consistent (global_constraints Σ).
   Proof.
@@ -1705,17 +1599,17 @@ Section CheckEnv.
       apply ConstraintSet.union_spec; simpl.
       + left. destruct d.
         destruct c, cst_universes. assumption.
-        1-2: apply ConstraintSetFact.empty_iff in H; contradiction.
+        apply ConstraintSetFact.empty_iff in H; contradiction.
         destruct m, ind_universes. assumption.
-        1-2: apply ConstraintSetFact.empty_iff in H; contradiction.
+        apply ConstraintSetFact.empty_iff in H; contradiction.
       + apply ConstraintSet.union_spec; simpl.
         now right.
   Qed.
 
 
   Program Definition typecheck_program (p : program) φ Hφ
-    : EnvCheck (∑ A, ∥ (List.rev p.1, φ) ;;; [] |- p.2  : A ∥) :=
-    let Σ := List.rev (fst p) in
+    : EnvCheck (∑ A, ∥ (p.1, φ) ;;; [] |- p.2  : A ∥) :=
+    let Σ := fst p in
     G <- check_wf_env Σ ;;
     uctx <- check_udecl "toplevel term" Σ _ G.π1 (proj1 G.π2) φ ;;
     let G' := add_uctx uctx.π1 G.π1 in
@@ -1731,7 +1625,7 @@ Section CheckEnv.
     unfold global_ext_constraints; simpl.
     rewrite gc_of_constraints_union. rewrite Hctrs'.
     red in i. unfold gc_of_uctx in i; simpl in i.
-    case_eq (gc_of_constraints (global_constraints (List.rev p.1)));
+    case_eq (gc_of_constraints (global_constraints p.1));
       [|intro HH; rewrite HH in i; cbn in i; contradiction i].
     intros Σctrs HΣctrs; rewrite HΣctrs in *; simpl in *.
     subst G. unfold global_ext_levels; simpl. rewrite no_prop_levels_union.

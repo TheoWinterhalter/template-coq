@@ -1,9 +1,8 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Lia.
-From MetaCoq.Template Require Import config utils Ast AstUtils Induction LiftSubst.
-From MetaCoq.Checker Require Import LibHypsNaming Typing.
-Require Import Equations.Prop.DepElim.
+From Coq Require Import Bool List Program Lia.
+From MetaCoq.Template Require Import config utils Ast AstUtils
+     LibHypsNaming Typing.
 Require Import ssreflect.
 
 (** * Weakening lemmas w.r.t. the global environment *)
@@ -41,7 +40,7 @@ Lemma lookup_env_Some_fresh Σ c decl :
   lookup_env Σ c = Some decl -> ~ (fresh_global c Σ).
 Proof.
   induction Σ; cbn. congruence.
-  destruct (ident_eq_spec c a.1).
+  unfold eq_kername. destruct (kername_eq_dec c a.1).
   - subst c. intros [= <-]. intros H2. inv H2. contradiction.
   - intros H1 H2. apply IHΣ; tas.
     now inv H2.
@@ -56,7 +55,7 @@ Proof.
   inv wfΣ'. simpl in X0. apply X.
   intros HΣ. specialize (IHΣ'' HΣ).
   inv wfΣ'. simpl in *.
-  destruct (ident_eq_spec c kn); subst.
+  unfold eq_kername; destruct kername_eq_dec; subst.
   eapply lookup_env_Some_fresh in IHΣ''; eauto. contradiction.
   assumption.
 Qed.
@@ -186,7 +185,7 @@ Proof.
 Qed.
 
 Lemma weakening_env_declared_constant `{CF:checker_flags}:
-  forall (Σ : global_env) (cst : ident) (decl : constant_body),
+  forall (Σ : global_env) cst (decl : constant_body),
     declared_constant Σ cst decl ->
     forall Σ' : global_env, wf Σ' -> extends Σ Σ' -> declared_constant Σ' cst decl.
 Proof.
@@ -287,22 +286,34 @@ Proof.
   intros Σ Σ' φ ctrs u he.
   unfold consistent_instance_ext, consistent_instance.
   intros hc.
-  destruct ctrs. 1: assumption. 2: destruct ctx as [cst _].
-  all: destruct (AUContext.repr cst).
-  all: destruct hc as [? [h2 [? ?]]] ; repeat split ; tas.
-  1,3: eapply forallb_Forall in h2 ; eapply forallb_Forall, Forall_impl ; tea ;
-    intros ? ? ; now eapply weakening_env_global_ext_levels'.
-  all: eapply valid_subset; tea;
+  destruct ctrs=> //.
+  destruct cst as [nas cst]; simpl in *.
+  intuition auto.
+  eapply forallb_Forall in H1. eapply forallb_Forall, Forall_impl; tea.
+  intros ? ? ; now eapply weakening_env_global_ext_levels'.
+  eapply valid_subset; tea;
     now eapply weakening_env_global_ext_constraints.
 Qed.
 Hint Resolve weakening_env_consistent_instance : extends.
+
+Ltac typing_my_rename_hyp h th :=
+  match th with
+  | (wf ?E) => fresh "wf" E
+  | (typing _ _ ?t _) => fresh "type" t
+  | (@cumul _ _ _ ?t _) => fresh "cumul" t
+  | (conv _ _ ?t _) => fresh "conv" t
+  | (All_local_env (lift_typing (@typing _) _) ?G) => fresh "wf" G
+  | (All_local_env (lift_typing (@typing _) _) _) => fresh "wf"
+  | (All_local_env _ _ ?G) => fresh "H" G
+  | context [typing _ _ (_ ?t) _] => fresh "IH" t
+  end.
 
 Ltac my_rename_hyp h th :=
   match th with
   | (extends ?t _) => fresh "ext" t
   | (extends ?t.1 _) => fresh "ext" t
   | (extends _ _) => fresh "ext"
-  | _ => Typing.my_rename_hyp h th
+  | _ => typing_my_rename_hyp h th
   end.
 
 Ltac rename_hyp h ht ::= my_rename_hyp h ht.
@@ -322,16 +333,12 @@ Proof.
   - econstructor; eauto 2 with extends.
     close_Forall. intros; intuition eauto with extends.
   - econstructor; eauto with extends.
-    eapply All_local_env_impl. eapply X.
-    clear -wfΣ' extΣ. simpl; intros.
-    unfold lift_typing in *; destruct T; intuition eauto with extends.
-    destruct X as [u [tyu Hu]]. exists u. eauto.
+    eapply (All_impl X0); intuition eauto.
+    destruct X2 as [s Hs]; exists s; intuition eauto.
     eapply All_impl; eauto; simpl; intuition eauto with extends.
   - econstructor; eauto with extends. auto.
-    eapply All_local_env_impl. eapply X.
-    clear -wfΣ' extΣ. simpl; intros.
-    unfold lift_typing in *; destruct T; intuition eauto with extends.
-    destruct X as [u [tyu Hu]]. exists u. eauto.
+    eapply (All_impl X0); intuition eauto.
+    destruct X2 as [s Hs]; exists s; intuition eauto.
     eapply All_impl; eauto; simpl; intuition eauto with extends.
   - econstructor. eauto.
     destruct X2 as [isB|[u [Hu Ps]]].
@@ -363,13 +370,15 @@ Proof.
     destruct X. unshelve econstructor; eauto.
     -- unfold on_type in *; intuition eauto.
     -- unfold on_constructors in *. eapply All2_impl; eauto.
-      intros. unfold on_constructor, on_type in *; intuition eauto.
-      destruct b as [cs Hcs]. exists cs.
+      intros decl cs []. unshelve econstructor; eauto.
+      red in on_ctype |- *. eauto.
+      clear on_cindices cstr_eq cstr_args_length cstr_concl_head.
       induction (cshape_args cs); simpl in *; auto.
-      destruct a0 as [na [b|] ty]; simpl in *; intuition eauto.
-    -- intros Hprojs; destruct onProjections; try constructor; auto.
-      eapply Alli_impl; eauto. intros ip [id trm].
-      unfold on_projection, on_type; eauto.
+      destruct a as [na [b|] ty]; simpl in *; intuition eauto.
+      clear on_ctype on_cargs.
+      revert on_cindices.
+      generalize (List.rev (LiftSubst.lift_context #|cshape_args cs| 0 ind_indices)).
+      generalize (cshape_indices cs). induction 1; constructor; eauto.
     -- unfold check_ind_sorts in *. destruct universe_family; auto.
       --- split; [apply fst in ind_sorts|apply snd in ind_sorts].
           eapply Forall_impl; tea; cbn.
@@ -400,7 +409,7 @@ Proof.
   assert (HH: extends Σ Σ'). {
     destruct Hext as [Σ'' HΣ''].
     exists ((Σ'' ++ [(kn, d)])%list). now rewrite <- app_assoc. }
-  destruct (ident_eq_spec c kn); subst.
+  unfold eq_kername; destruct kername_eq_dec; subst.
   - intros [= ->].
     clear Hext; eapply weakening_on_global_decl; eauto.
   - now apply IHHΣ.
@@ -416,7 +425,7 @@ Proof.
   exists []; simpl; destruct Σ; eauto.
 Qed.
 
-Lemma declared_minductive_inv `{checker_flags} Σ P ind mdecl :
+Lemma declared_minductive_inv `{checker_flags} {Σ P ind mdecl} :
   weaken_env_prop (lift_typing P) ->
   wf Σ -> Forall_decls_typing P Σ ->
   declared_minductive Σ ind mdecl ->
@@ -426,7 +435,7 @@ Proof.
   eapply weaken_lookup_on_global_env in X1; eauto. apply X1.
 Qed.
 
-Lemma declared_inductive_inv `{checker_flags} Σ P ind mdecl idecl :
+Lemma declared_inductive_inv `{checker_flags} {Σ P ind mdecl idecl} :
   weaken_env_prop (lift_typing P) ->
   wf Σ -> Forall_decls_typing P Σ ->
   declared_inductive Σ mdecl ind idecl ->
@@ -440,39 +449,44 @@ Proof.
   apply Hidecl.
 Qed.
 
-Lemma declared_constructor_inv `{checker_flags} Σ P mdecl idecl ref cdecl
+Lemma declared_constructor_inv `{checker_flags} {Σ P mdecl idecl ref cdecl}
   (HP : weaken_env_prop (lift_typing P))
   (wfΣ : wf Σ)
   (HΣ : Forall_decls_typing P Σ)
   (Hdecl : declared_constructor Σ mdecl idecl ref cdecl) :
-  ∑ ind_ctor_sort,
-  nth_error (declared_inductive_inv Σ P ref.1 mdecl idecl HP
-                wfΣ HΣ (proj1 Hdecl)).(ind_ctors_sort) ref.2 = Some ind_ctor_sort
+  ∑ cs,
+  let onib := declared_inductive_inv HP wfΣ HΣ (proj1 Hdecl) in
+  nth_error onib.(ind_cshapes) ref.2 = Some cs
   × on_constructor (lift_typing P) (Σ, ind_universes mdecl) mdecl
-                   (inductive_ind ref.1) idecl cdecl ind_ctor_sort.
+                   (inductive_ind ref.1) idecl onib.(ind_indices) cdecl cs.
 Proof.
   intros.
   destruct Hdecl as [Hidecl Hcdecl].
-  set (declared_inductive_inv Σ P ref.1 mdecl idecl HP wfΣ HΣ
-                              (proj1 (conj Hidecl Hcdecl))) as HH.
+  set (declared_inductive_inv HP wfΣ HΣ (proj1 (conj Hidecl Hcdecl))) as HH.
   clearbody HH. pose proof HH.(onConstructors) as HH'.
   eapply All2_nth_error_Some in Hcdecl; tea.
 Qed.
 
-Lemma declared_projection_inv `{checker_flags} Σ P mdecl idecl ref pdecl :
-  weaken_env_prop (lift_typing P) ->
-  wf Σ -> Forall_decls_typing P Σ ->
-  declared_projection Σ mdecl idecl ref pdecl ->
-  on_projection (lift_typing P) (Σ, ind_universes mdecl) (inductive_mind (fst (fst ref))) mdecl
-                (inductive_ind (fst (fst ref))) idecl (snd ref) pdecl.
+Lemma declared_projection_inv `{checker_flags} {Σ P mdecl idecl ref pdecl} :
+  forall (HP : weaken_env_prop (lift_typing P))
+  (wfΣ : wf Σ)
+  (HΣ : Forall_decls_typing P Σ)
+  (Hdecl : declared_projection Σ mdecl idecl ref pdecl),
+  let oib := declared_inductive_inv HP wfΣ HΣ (proj1 Hdecl) in
+  match oib.(ind_cshapes) return Type with
+  | [cs] => on_projection mdecl (inductive_mind ref.1.1) (inductive_ind ref.1.1) cs (snd ref) pdecl
+  | _ => False
+  end.
 Proof.
   intros.
-  destruct H0 as [Hidecl [Hcdecl Hnpar]].
-  eapply declared_inductive_inv in Hidecl; eauto.
-  pose proof (onProjections Hidecl). apply on_projs in X2.
-  eapply nth_error_alli in X2; eauto.
-  eapply nth_error_Some_length in Hcdecl.
-  destruct (ind_projs idecl); simpl in *. lia. congruence.
+  destruct (declared_inductive_inv HP wfΣ HΣ (proj1 Hdecl)) in *.
+  destruct Hdecl as [Hidecl [Hcdecl Hnpar]]. simpl. clearbody oib.
+  forward onProjections.    
+  { eapply nth_error_Some_length in Hcdecl.
+    destruct (ind_projs idecl); simpl in *. lia. congruence. }
+  destruct ind_cshapes as [|? []]; try contradiction.
+  destruct onProjections.
+  eapply nth_error_alli in Hcdecl; eauto. eapply Hcdecl.
 Qed.
 
 Lemma wf_extends `{checker_flags} {Σ Σ'} : wf Σ' -> extends Σ Σ' -> wf Σ.
@@ -500,7 +514,7 @@ Lemma on_declared_minductive `{checker_flags} {Σ ref decl} :
   on_inductive (lift_typing typing) (Σ, ind_universes decl) ref decl.
 Proof.
   intros wfΣ Hdecl.
-  apply (declared_minductive_inv _ _ _ _ weaken_env_prop_typing wfΣ wfΣ Hdecl).
+  apply (declared_minductive_inv weaken_env_prop_typing wfΣ wfΣ Hdecl).
 Qed.
 
 Lemma on_declared_inductive `{checker_flags} {Σ ref mdecl idecl} :
@@ -511,7 +525,7 @@ Lemma on_declared_inductive `{checker_flags} {Σ ref mdecl idecl} :
 Proof.
   intros wfΣ Hdecl.
   split. destruct Hdecl as [Hmdecl _]. now apply on_declared_minductive in Hmdecl.
-  apply (declared_inductive_inv _ _ _ mdecl idecl weaken_env_prop_typing wfΣ wfΣ Hdecl).
+  apply (declared_inductive_inv weaken_env_prop_typing wfΣ wfΣ Hdecl).
 Qed.
 
 Lemma on_declared_constructor `{checker_flags} {Σ ref mdecl idecl cdecl}
@@ -522,29 +536,27 @@ Lemma on_declared_constructor `{checker_flags} {Σ ref mdecl idecl cdecl}
   on_ind_body (lift_typing typing) (Σ, ind_universes mdecl)
               (inductive_mind (fst ref)) mdecl (inductive_ind (fst ref)) idecl *
   ∑ ind_ctor_sort,
-     nth_error
-      (ind_ctors_sort
-         (declared_inductive_inv Σ typing ref.1 mdecl idecl weaken_env_prop_typing
-            wfΣ wfΣ (proj1 Hdecl))) ref.2 = Some ind_ctor_sort
+    let onib := declared_inductive_inv weaken_env_prop_typing wfΣ wfΣ (proj1 Hdecl) in
+     nth_error (ind_cshapes onib) ref.2 = Some ind_ctor_sort
     ×  on_constructor (lift_typing typing) (Σ, ind_universes mdecl)
                  mdecl (inductive_ind (fst ref))
-                 idecl cdecl ind_ctor_sort.
+                 idecl onib.(ind_indices) cdecl ind_ctor_sort.
 Proof.
   split. destruct Hdecl as [Hidecl Hcdecl].
   now apply on_declared_inductive in Hidecl.
-  apply (declared_constructor_inv _ _ mdecl idecl ref cdecl
-                                  weaken_env_prop_typing wfΣ wfΣ Hdecl).
+  apply (declared_constructor_inv weaken_env_prop_typing wfΣ wfΣ Hdecl).
 Qed.
 
 Lemma on_declared_projection `{checker_flags} {Σ ref mdecl idecl pdecl} :
-  wf Σ ->
-  declared_projection Σ mdecl idecl ref pdecl ->
+  forall (wfΣ : wf Σ) (Hdecl : declared_projection Σ mdecl idecl ref pdecl),
   on_inductive (lift_typing typing) (Σ, ind_universes mdecl) (inductive_mind (fst (fst ref))) mdecl *
-  on_ind_body (lift_typing typing) (Σ, ind_universes mdecl) (inductive_mind (fst (fst ref))) mdecl (inductive_ind (fst (fst ref))) idecl *
-  on_projection (lift_typing typing) (Σ, ind_universes mdecl) (inductive_mind (fst (fst ref))) mdecl
-                (inductive_ind (fst (fst ref))) idecl (snd ref) pdecl.
+  let oib := declared_inductive_inv weaken_env_prop_typing wfΣ wfΣ (proj1 Hdecl) in
+  match oib.(ind_cshapes) return Type with
+  | [cs] => on_projection mdecl (inductive_mind ref.1.1) (inductive_ind ref.1.1) cs (snd ref) pdecl
+  | _ => False
+  end.
 Proof.
   intros wfΣ Hdecl.
   split. destruct Hdecl as [Hidecl Hcdecl]. now apply on_declared_inductive in Hidecl.
-  apply (declared_projection_inv _ _ mdecl idecl ref pdecl weaken_env_prop_typing wfΣ wfΣ Hdecl).
+  apply (declared_projection_inv weaken_env_prop_typing wfΣ wfΣ Hdecl).
 Qed.

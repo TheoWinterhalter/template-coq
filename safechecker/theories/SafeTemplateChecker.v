@@ -1,30 +1,18 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia.
-From MetaCoq.Template Require Import config monad_utils utils BasicAst AstUtils
-     UnivSubst.
-From MetaCoq.Checker Require Import uGraph Typing.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICNormal PCUICSR
-     PCUICGeneration PCUICReflect PCUICEquality PCUICInversion PCUICValidity
-     PCUICWeakening PCUICPosition PCUICCumulativity PCUICSafeLemmata PCUICSN TemplateToPCUIC.
-From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeConversion PCUICSafeChecker.
+From Coq Require Import Bool String List Program.
+From MetaCoq.Template Require Import config monad_utils utils.
+From MetaCoq.Template Require AstUtils Typing.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICTyping TemplateToPCUIC.
+From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeChecker.
 
 Import MonadNotation.
 
-Existing Instance envcheck_monad.
 
 Program Definition infer_template_program {cf : checker_flags} (p : Ast.program) φ Hφ
-  : EnvCheck (∑ A, ∥ (trans_global_decls (List.rev p.1), φ) ;;; [] |- trans p.2 : A ∥) :=
+  : EnvCheck (∑ A, ∥ (trans_global_decls p.1, φ) ;;; [] |- trans p.2 : A ∥) :=
   p <- typecheck_program (cf:=cf) (trans_global_decls p.1, trans p.2) φ Hφ ;;
   ret (p.π1 ; _).
-
-Next Obligation.
-  unfold trans_global.
-  simpl. unfold empty_ext in X.
-  unfold trans_global_decls in X.
-  rewrite <-map_rev in X. eapply X.
-Qed.
 
 Local Open Scope string_scope.
 
@@ -49,7 +37,8 @@ Definition update_mib_universes univs mib :=
      Ast.ind_universes := match mib.(Ast.ind_universes) with
                           | Monomorphic_ctx _ => Monomorphic_ctx univs
                           | x => x
-                          end |}.
+                          end;
+     Ast.ind_variance := mib.(Ast.ind_variance) |}.
 
 Definition update_universes (univs : ContextSet.t) (cb : Ast.global_decl)  :=
   match cb with
@@ -106,7 +95,7 @@ Definition fix_global_env_universes (Σ : Ast.global_env) : Ast.global_env :=
     let dangling := dangling_universes declared declcstrs in
     ((kn, update_universes (LevelSet.union declu dangling, declcstrs) decl), LevelSet.union declared dangling)
   in
-  fst (fold_map_left fix_decl Σ LevelSet.empty).
+  fst (fold_map_right fix_decl Σ LevelSet.empty).
 
 Definition fix_program_universes (p : Ast.program) : Ast.program :=
   let '(Σ, t) := p in

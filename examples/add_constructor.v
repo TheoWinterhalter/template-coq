@@ -36,6 +36,7 @@ Polymorphic Definition add_ctor (mind : mutual_inductive_body) (ind0 : inductive
      {| ind_finite := mind.(ind_finite);
         ind_npars := mind.(ind_npars) ;
         ind_universes := mind.(ind_universes) ;
+        ind_variance := mind.(ind_variance);
         ind_params := mind.(ind_params);
         ind_bodies := mapi (fun (i : nat) (ind : one_inductive_body) =>
                          {| ind_name := tsl_ident ind.(ind_name) ;
@@ -69,13 +70,13 @@ Polymorphic Definition add_constructor (tm : Ast.term)
 (** * Examples *)
 Local Open Scope string.
 (** Here we add a silly constructor to bool. *)
-Run TemplateProgram (
+MetaCoq Run (
     add_constructor <% bool %> "foo" <% (fun x : Type => nat -> x -> bool -> x) %>).
 (* Inductive bool' : Set := *)
 (*     true' : bool' *)
 (*   | false' : bool' *)
 (*   | foo : nat -> bool' -> bool -> bool' *)
-
+Definition test := bool'.
 
 (** Here is a useful usecase: add a case to a syntax. *)
 Inductive tm :=
@@ -83,9 +84,9 @@ Inductive tm :=
 | lam : tm -> tm
 | app : tm -> tm -> tm.
 
-Run TemplateProgram (add_constructor <%tm%> "letin" <% (fun tm' => tm' -> tm' -> tm') %>).
+MetaCoq Run (add_constructor <%tm%> "letin" <% (fun tm' => tm' -> tm' -> tm') %>).
 
-Print tm'.
+Definition test2 := letin.
 (* Inductive tm' : Type := *)
 (*     var' : nat -> tm' *)
 (*   | lam' : tm' -> tm' *)
@@ -93,14 +94,14 @@ Print tm'.
 (*   | letin : tm' -> tm' -> tm' *)
 
 
-Run TemplateProgram (add_constructor <%@eq%> "foo'"
+MetaCoq Run (add_constructor <%@eq%> "foo'"
                     <% (fun (eq':forall A, A -> A -> Type) => forall A x y, nat -> eq' A x x -> bool -> eq' A x y) %>).
-
+Definition test3 := foo'.
 Require Import Even.
-Run TemplateProgram (add_constructor <%@odd%> "foo''"
+MetaCoq Run (add_constructor <%@odd%> "foo''"
                     <%(fun (even' odd':nat -> Prop) => odd' 0)%>).
-
+Definition test4 := foo''.
 Module A.
-Run TemplateProgram (add_constructor <%even%> "foo'"
+MetaCoq Run (add_constructor <%even%> "foo'"
                     <%(fun (even' odd':nat -> Prop) => even' 0)%>).
 End A.

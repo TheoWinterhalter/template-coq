@@ -1,3 +1,4 @@
-Require Import MetaCoq.Template.All.
+Require Import MetaCoq.Template.All String.
 
-Run TemplateProgram (tmBind (tmEval (unfold "negb") negb) tmPrint).
+MetaCoq Test Quote negb.
+MetaCoq Run (tmBind (tmEval (unfold (MPfile ["Datatypes"; "Init"; "Coq"]%list, "negb")) negb) tmPrint).

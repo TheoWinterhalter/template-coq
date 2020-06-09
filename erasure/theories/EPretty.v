@@ -1,9 +1,8 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import List Program.
-From MetaCoq.Template Require Import utils AstUtils BasicAst Pretty.
-From MetaCoq.Erasure Require Import EAst EAstUtils ETyping ELiftSubst.
-From Coq Require Import String.
+From Coq Require Import List Program String.
+From MetaCoq.Template Require Import utils.
+From MetaCoq.Erasure Require Import EAst EAstUtils ETyping.
 
 (** Pretty printing *)
 
@@ -19,16 +18,6 @@ Section print_term.
   Definition print_defs (print_term : context -> bool -> bool -> term -> string) Γ (defs : mfixpoint term) :=
     let ctx' := List.map (fun d => {| decl_name := dname d; decl_body := None |}) defs in
     print_list (print_def (print_term (ctx' ++ Γ)%list true false)) (nl ++ " with ") defs.
-
-  Section Map2.
-    Context {A B C} (f : A -> B -> C).
-    Fixpoint map2  (l : list A) (l' : list B)  : list C :=
-      match l, l' with
-      | nil, nil => nil
-      | cons a l, cons a' l' => cons (f a a') (map2 l l')
-      | _, _ => nil
-      end.
-  End Map2.
 
   Definition lookup_ind_decl ind i :=
     match lookup_env Σ ind with
@@ -114,7 +103,7 @@ Section print_term.
                       print_term (vdef na' def :: Γ) true false body)
   | tApp f l =>
     parens (top || inapp) (print_term Γ false true f ++ " " ++ print_term Γ false false l)
-  | tConst c => c
+  | tConst c => string_of_kername c
   | tConstruct (mkInd i k as ind) l =>
     match lookup_ind_decl i k with
     | Some oib =>

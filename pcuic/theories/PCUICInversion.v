@@ -1,19 +1,12 @@
 (* Distributed under the terms of the MIT license.   *)
-From Equations Require Import Equations.
-From Coq Require Import Bool String List Program BinPos Compare_dec.
+From Coq Require Import Bool List.
 From MetaCoq.Template Require Import config utils.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICWeakeningEnv PCUICWeakening
-     PCUICSubstitution PCUICClosed PCUICCumulativity PCUICConversion PCUICGeneration.
-Require Import ssreflect ssrbool.
-Require Import String.
-From MetaCoq Require Import LibHypsNaming.
-Local Open Scope string_scope.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICLiftSubst PCUICUnivSubst
+     PCUICTyping PCUICCumulativity PCUICConversion.
 Set Asymmetric Patterns.
-From Equations Require Import Equations.
-Require Import Equations.Prop.DepElim.
+Import ListNotations.
 
-Set Equations With UIP.
+Require Import Equations.Prop.DepElim.
 
 Section Inversion.
 
@@ -189,7 +182,8 @@ Section Inversion.
         let params := firstn npar args in
         build_case_predicate_type ind mdecl idecl params u ps = Some pty ×
         Σ ;;; Γ |- p : pty ×
-        existsb (leb_sort_family (universe_family ps)) (ind_kelim idecl) ×
+        leb_sort_family (universe_family ps) (ind_kelim idecl) ×
+        isCoFinite (ind_finite mdecl) = false ×
         Σ;;; Γ |- c : mkApps (tInd ind u) args ×
         map_option_out (build_branches_type ind mdecl idecl params u p)
                      = Some btys ×
@@ -221,11 +215,12 @@ Section Inversion.
         let types := fix_context mfix in
         fix_guard mfix ×
         nth_error mfix n = Some decl ×
-        wf_local Σ (Γ ,,, types) ×
+        All (fun d => isType Σ Γ (dtype d)) mfix ×
         All (fun d =>
           Σ ;;; Γ ,,, types |- dbody d : (lift0 #|types|) (dtype d) ×
           isLambda (dbody d) = true
         ) mfix ×
+        wf_fixpoint Σ mfix ×
         Σ ;;; Γ |- dtype decl <= T.
   Proof.
     intros Γ mfix n T h. invtac h.
@@ -235,13 +230,14 @@ Section Inversion.
     forall {Γ mfix idx T},
       Σ ;;; Γ |- tCoFix mfix idx : T ->
       ∑ decl,
-        allow_cofix ×
+        cofix_guard mfix ×
         let types := fix_context mfix in
         nth_error mfix idx = Some decl ×
-        wf_local Σ (Γ ,,, types) ×
+        All (fun d => isType Σ Γ (dtype d)) mfix ×
         All (fun d =>
           Σ ;;; Γ ,,, types |- d.(dbody) : lift0 #|types| d.(dtype)
         ) mfix ×
+        wf_cofixpoint Σ mfix ×
         Σ ;;; Γ |- decl.(dtype) <= T.
   Proof.
     intros Γ mfix idx T h. invtac h.
@@ -256,14 +252,14 @@ Section Inversion.
   Proof.
     intros Γ Δ t T h.
     induction Δ as [| [na [b|] A] Δ ih ] in Γ, t, h |- *.
-    - eexists. split ; eauto.
+    - eexists. split ; eauto. reflexivity.
     - simpl. apply ih in h. cbn in h.
       destruct h as [B [h c]].
       apply inversion_LetIn in h as hh.
       destruct hh as [s1 [A' [? [? [? ?]]]]].
       exists A'. split ; eauto.
       cbn. eapply cumul_trans ; try eassumption.
-      eapply cumul_it_mkProd_or_LetIn.
+      eapply cumul_it_mkProd_or_LetIn_codom.
       assumption.
     - simpl. apply ih in h. cbn in h.
       destruct h as [B [h c]].
@@ -271,16 +267,8 @@ Section Inversion.
       pose proof hh as [s1 [B' [? [? ?]]]].
       exists B'. split ; eauto.
       cbn. eapply cumul_trans ; try eassumption.
-      eapply cumul_it_mkProd_or_LetIn.
+      eapply cumul_it_mkProd_or_LetIn_codom.
       assumption.
   Qed.
 
 End Inversion.
-
-Lemma destArity_it_mkProd_or_LetIn ctx ctx' t :
-  destArity ctx (it_mkProd_or_LetIn ctx' t) =
-  destArity (ctx ,,, ctx') t.
-Proof.
-  induction ctx' in ctx, t |- *; simpl; auto.
-  rewrite IHctx'. destruct a as [na [b|] ty]; reflexivity.
-Qed.

@@ -1,8 +1,6 @@
 (* Distributed under the terms of the MIT license.   *)
-Require Import ssreflect ssrbool.
-From MetaCoq Require Import LibHypsNaming.
-From Equations Require Import Equations.
-From Coq Require Import Bool String List Program BinPos Compare_dec Utf8 String
+Require Import ssreflect.
+From Coq Require Import Bool List Utf8
   ZArith Lia.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
@@ -13,6 +11,7 @@ Require Import Equations.Prop.DepElim.
 (* Type-valued relations. *)
 Require Import CRelationClasses.
 Require Import Equations.Type.Relation Equations.Type.Relation_Properties.
+From Equations Require Import Equations.
 
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
@@ -40,7 +39,7 @@ Definition atom t :=
 
 Lemma red1_red (Σ : global_env) Γ t u : red1 Σ Γ t u -> red Σ Γ t u.
 Proof. econstructor; eauto. constructor. Qed.
-Hint Resolve red1_red refl_red.
+Hint Resolve red1_red refl_red : core pcuic.
 
 Lemma red_step Σ Γ t u v : red1 Σ Γ t u -> red Σ Γ u v -> red Σ Γ t v.
 Proof.
@@ -75,7 +74,7 @@ Instance red_Reflexive Σ Γ : Reflexive (red Σ Γ)
 Section ReductionCongruence.
   Context {Σ : global_env}.
 
-  Inductive term_context : Set :=
+  Inductive term_context :=
   | tCtxHole : term_context
   | tCtxEvar      : nat -> list_context -> term_context
   | tCtxProd_l      : name -> term_context (* the type *) -> term -> term_context
@@ -100,19 +99,19 @@ Section ReductionCongruence.
   (* | tCtxFix       : mfixpoint_context -> nat -> term_context harder because types of fixpoints are necessary *)
   (* | tCtxCoFix     : mfixpoint_context -> nat -> term_context *)
 
-  with list_context : Set :=
+  with list_context :=
    | tCtxHead : term_context -> list term -> list_context
    | tCtxTail : term -> list_context -> list_context
 
-  with list_nat_context : Set :=
+  with list_nat_context :=
    | tCtxHead_nat : (nat * term_context) -> list (nat * term) -> list_nat_context
    | tCtxTail_nat : (nat * term) -> list_nat_context -> list_nat_context.
 
-  (* with mfixpoint_context : Set := *)
+  (* with mfixpoint_context := *)
   (*  | tCtxHead_mfix : def_context -> list (def term) -> mfixpoint_context *)
   (*  | tCtxTail_mfix : def term -> mfixpoint_context -> mfixpoint_context *)
 
-  (* with def_context : Set := *)
+  (* with def_context := *)
   (*  | tCtxType : name -> term_context -> term -> nat -> def_context *)
   (*  | tCtxDef : name -> term -> term_context -> nat -> def_context. *)
 
@@ -237,18 +236,6 @@ Section ReductionCongruence.
     - apply red_contextual_closure.
     - apply contextual_closure_red.
   Qed.
-
-  (* Lemma contextual_closure_trans (R : context -> term -> term -> Type) Γ : *)
-  (*   Transitive (R Γ) -> *)
-  (*   forall t u v, *)
-  (*   contextual_closure R Γ t u -> contextual_closure R Γ u v -> *)
-  (*   contextual_closure R Γ t v. *)
-  (* Proof. *)
-  (*   intros Htr t u v. *)
-  (*   induction 1. destruct 1. constructor; auto. *)
-  (*   constructor. auto. *)
-  (*   intros H. depelim H. constructor; auto. *)
-  (* Admitted. *)
 
   Lemma red_ctx {Γ} {M M'} ctx : red Σ (hole_context ctx Γ) M M' ->
                                red Σ Γ (fill_context M ctx) (fill_context M' ctx).
@@ -623,6 +610,20 @@ Section ReductionCongruence.
       - simpl. eapply ih. cbn. constructor. assumption.
     Qed.
 
+    Lemma red1_it_mkProd_or_LetIn :
+      forall Δ u v,
+        red1 Σ (Γ ,,, Δ) u v ->
+        red1 Σ Γ (it_mkProd_or_LetIn Δ u)
+             (it_mkProd_or_LetIn Δ v).
+    Proof.
+      intros Δ u v h.
+      revert u v h.
+      induction Δ as [| [na [b|] A] Δ ih ] ; intros u v h.
+      - cbn. assumption.
+      - simpl. eapply ih. cbn. constructor. assumption.
+      - simpl. eapply ih. cbn. constructor. assumption.
+    Qed.
+
     Lemma red_it_mkLambda_or_LetIn :
       forall Δ u v,
         red Σ (Γ ,,, Δ) u v ->
@@ -635,6 +636,20 @@ Section ReductionCongruence.
       - econstructor.
         + eassumption.
         + eapply red1_it_mkLambda_or_LetIn. assumption.
+    Qed.
+
+    Lemma red_it_mkProd_or_LetIn :
+      forall Δ u v,
+        red Σ (Γ ,,, Δ) u v ->
+        red Σ Γ (it_mkProd_or_LetIn Δ u)
+            (it_mkProd_or_LetIn Δ v).
+    Proof.
+      intros Δ u v h.
+      induction h.
+      - constructor.
+      - econstructor.
+        + eassumption.
+        + eapply red1_it_mkProd_or_LetIn. assumption.
     Qed.
 
     Lemma red_proj_c :
@@ -1079,7 +1094,7 @@ Section ReductionCongruence.
           intros y z e. cbn in e. inversion e. eauto.
         } subst.
         constructor.
-      - set (f := fun x : term => (x, ())) in *.
+      - set (f := fun x : term => (x, tt)) in *.
         set (g := (fun '(x, _) => x) : term × unit -> term).
         assert (el :  forall l, l = map f (map g l)).
         { clear. intros l. induction l.
@@ -1137,10 +1152,10 @@ Proof.
       * apply red1_red.
         rewrite simpl_lift; cbn; try lia.
         assert (n = i) by lia; subst. now constructor.
-      * cutrewrite (nth_error (nil term) n0 = None);
+      * enough (nth_error (nil term) n0 = None) as ->;
           [cbn|now destruct n0].
-        cutrewrite (i <=? n - 1 = true); try (apply Nat.leb_le; lia).
-        cutrewrite (S (n - 1) = n); try lia. auto.
+        enough (i <=? n - 1 = true) as ->; try (apply Nat.leb_le; lia).
+        enough (S (n - 1) = n) as ->; try lia. auto.
     + cbn. rewrite H0. auto.
   - eapply red_evar. repeat eapply All2_map_right.
     eapply All_All2; tea. intro; cbn; eauto.
@@ -1150,12 +1165,12 @@ Proof.
     eapply All_All2; tea. intros; cbn in *; rdest; eauto.
     rewrite map_length. eapply r0.
     rewrite nth_error_app_context_ge; rewrite fix_context_length; try lia.
-    cutrewrite (#|m| + i - #|m| = i); tas; lia.
+    enough (#|m| + i - #|m| = i) as ->; tas; lia.
   - eapply red_cofix_congr. repeat eapply All2_map_right.
     eapply All_All2; tea. intros; cbn in *; rdest; eauto.
     rewrite map_length. eapply r0.
     rewrite nth_error_app_context_ge; rewrite fix_context_length; try lia.
-    cutrewrite (#|m| + i - #|m| = i); tas; lia.
+    enough (#|m| + i - #|m| = i) as ->; tas; lia.
 Qed.
 
 

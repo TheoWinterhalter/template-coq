@@ -5,10 +5,11 @@ type ident   = Names.Id.t (* Template.BasicAst.ident *)
 type qualid  = Libnames.qualid (* Template.BasicAst.qualid *)
 type kername = Names.KerName.t (* Template.BasicAst.kername *)
 type reduction_strategy = Redexpr.red_expr (* Template.TemplateMonad.Common.reductionStrategy *)
-type global_reference = Globnames.global_reference (* Template.Ast.global_reference *)
+type global_reference = Names.GlobRef.t (* Template.Ast.global_reference *)
 type term = Constr.t  (* Template.Ast.term *)
 type mutual_inductive_body = Declarations.mutual_inductive_body (* Template.Ast.mutual_inductive_body *)
-type constant_entry = Declarations.constant_body (* Template.Ast.constant_entry *)
+type constant_body = Opaqueproof.opaque Declarations.constant_body
+type constant_entry = Entries.constant_entry (* Template.Ast.constant_entry *)
 type mutual_inductive_entry = Entries.mutual_inductive_entry (* Template.Ast.mutual_inductive_entry *)
 
 let default_flags = Redops.make_red_flag Genredexpr.[FBeta;FMatch;FFix;FCofix;FZeta;FDeltaBut []]
@@ -34,7 +35,8 @@ let run (c : 'a tm) env evm (k : Environ.env -> Evd.evar_map -> 'a -> unit) : un
   c env evm k (fun x -> CErrors.user_err x)
 
 let run_vernac (c : 'a tm) : unit =
-  let (evm,env) = Pfedit.get_current_context () in
+  let env = Global.env () in 
+  let evm = Evd.from_env env in
   run c env evm (fun _ _ _ -> ())
 
 let with_env_evm (c : Environ.env -> Evd.evar_map -> 'a tm) : 'a tm =
@@ -63,48 +65,55 @@ let tmFail (s : Pp.t) : 'a tm =
 let tmFailString (s : string) : 'a tm =
   tmFail Pp.(str s)
 
+
+let reduce env evm red trm =
+  let red, _ = Redexpr.reduction_of_red_expr env red in
+  let evm, red = red env evm (EConstr.of_constr trm) in
+  (evm, EConstr.to_constr evm red)
+
 let tmEval (rd : reduction_strategy) (t : term) : term tm =
   fun env evd k _fail ->
-    let evd,t' = Quoter.reduce env evd rd t in
+    let evd,t' = reduce env evd rd t in
     k env evd t'
 
 let tmDefinition (nm : ident) ?poly:(poly=false) ?opaque:(opaque=false) (typ : term option) (body : term) : kername tm =
   fun env evm success _fail ->
-    let univs =
-      if poly
-      then Entries.Polymorphic_const_entry (Evd.to_universe_context evm)
-      else Entries.Monomorphic_const_entry (Evd.universe_context_set evm) in
+    let evm, def = DeclareDef.prepare_definition ~allow_evars:true ~opaque 
+        ~poly ~types:(Option.map EConstr.of_constr typ) evm 
+        UState.default_univ_decl ~body:(EConstr.of_constr body) in
     let n =
-      Declare.declare_definition ~opaque:opaque ~kind:Decl_kinds.Definition nm ?types:typ
-        (body, univs)
-    in success (Global.env ()) evm (Names.Constant.canonical n)
+      DeclareDef.declare_definition ~kind:(Decls.(IsDefinition Definition)) 
+        ~name:nm ~scope:(DeclareDef.Global Declare.ImportDefaultBehavior)
+        Names.Id.Map.empty def []
+    in success (Global.env ()) evm (Names.Constant.canonical (Globnames.destConstRef n))
 
 let tmAxiom (nm : ident) ?poly:(poly=false) (typ : term) : kername tm =
   fun env evm success _fail ->
     let param =
-      let entry =
-        if poly
-        then Entries.Polymorphic_const_entry (Evd.to_universe_context evm)
-        else Entries.Monomorphic_const_entry (Evd.universe_context_set evm)
-      in Entries.ParameterEntry (None, (typ, entry), None)
+      let entry = Evd.univ_entry ~poly evm
+       in Declare.ParameterEntry (None, (typ, entry), None)
     in
     let n =
-      Declare.declare_constant nm
-        (param, Decl_kinds.IsDefinition Decl_kinds.Definition)
+      Declare.declare_constant ~name:nm
+        ~kind:(Decls.IsDefinition Decls.Definition)
+        param
     in
     success (Global.env ()) evm (Names.Constant.canonical n)
 
 (* this generates a lemma leaving a hole *)
 let tmLemma (nm : ident) ?poly:(poly=false)(ty : term) : kername tm =
   fun env evm success _fail ->
-    let kind = (Decl_kinds.Global, poly, Decl_kinds.Definition) in
-    let hole = CAst.make (Constrexpr.CHole (None, Misctypes.IntroAnonymous, None)) in
-    let evm, (c, _) = Constrintern.interp_casted_constr_evars_impls env evm hole (EConstr.of_constr ty) in
+    let kind = Decls.Definition in
+    let hole = CAst.make (Constrexpr.CHole (Some Evar_kinds.(QuestionMark default_question_mark), Namegen.IntroAnonymous, None)) in
+    Feedback.msg_debug (Pp.str "interp_casted called");
+    let evm, (c, _) =
+      try Constrintern.interp_casted_constr_evars_impls ~program_mode:true env evm hole (EConstr.of_constr ty)
+      with e -> Feedback.msg_debug (Pp.str "interp_casted raised"); raise e in
     Obligations.check_evars env evm;
-    let obls, _, c, cty = Obligations.eterm_obligations env nm evm 0 (EConstr.to_constr evm c) ty in
+    let obls, _, c, cty = Obligations.eterm_obligations env nm evm 0 c (EConstr.of_constr ty) in
     (* let evm = Evd.minimize_universes evm in *)
     let ctx = Evd.evar_universe_context evm in
-    let hook = Lemmas.mk_hook (fun _ gr _ ->
+    let hook = DeclareDef.Hook.make (fun { DeclareDef.Hook.S.dref = gr } ->
         let env = Global.env () in
         let evm = Evd.from_env env in
         let evm, t = Evd.fresh_global env evm gr in
@@ -112,7 +121,7 @@ let tmLemma (nm : ident) ?poly:(poly=false)(ty : term) : kername tm =
         | Constr.Const (tm, _) ->
           success env evm (Names.Constant.canonical tm)
         | _ -> failwith "Evd.fresh_global did not return a Const") in
-    ignore (Obligations.add_definition nm ~term:c cty ctx ~kind ~hook obls)
+    ignore (Obligations.add_definition ~name:nm ~term:c cty ctx ~poly ~kind ~hook obls)
 
 let tmFreshName (nm : ident) : ident tm =
   fun env evd success _fail ->
@@ -120,19 +129,14 @@ let tmFreshName (nm : ident) : ident tm =
       Namegen.next_ident_away_from nm (fun id -> Nametab.exists_cci (Lib.make_path id))
     in success env evd name'
 
-let tmAbout (qualid : qualid) : global_reference option tm =
+let tmLocate (qualid : qualid) : global_reference list tm =
   fun env evd success _fail ->
-    try
-      let gr = Smartlocate.locate_global_with_alias qualid in
-      success env evd (Some gr)
-    with
-      Not_found -> success env evd None
+  let grs = Nametab.locate_all qualid in success env evd grs
 
-let tmAboutString (s : string) : global_reference option tm =
-  fun env evd success fail ->
-    let (dp, nm) = Quoted.split_name s in
-    let q = Libnames.make_qualid dp nm in
-    tmAbout q env evd success fail
+
+let tmLocateString (s : string) : global_reference list tm =
+  let id = Libnames.qualid_of_string s in
+  tmLocate id
 
 let tmCurrentModPath : Names.ModPath.t tm =
   fun env evd success _fail ->
@@ -151,8 +155,48 @@ let tmQuoteUniverses : UGraph.t tm =
   fun env evm success _fail ->
     success env evm (Environ.universes env)
 
+(*let universes_entry_of_decl ?withctx d =
+  let open Declarations in
+  let open Entries in
+  match d with
+  | Monomorphic ctx -> 
+    (match withctx with
+    | Some ctx' -> Monomorphic_entry (Univ.ContextSet.union ctx ctx')
+    | None -> Monomorphic_entry ctx)
+  | Polymorphic ctx -> 
+    assert(Option.is_empty withctx);
+    Polymorphic_entry (Univ.AUContext.names ctx, Univ.AUContext.repr ctx)*)
+(*
+let _constant_entry_of_cb (cb : Declarations.constant_body) =
+  let open Declarations in
+  let open Entries in
+  let secctx = match cb.const_hyps with [] -> None | l -> Some l in
+  let with_body_opaque b ?withctx opaque =
+    Entries.{ const_entry_secctx = secctx;
+    const_entry_feedback = None;
+    const_entry_type = Some cb.const_type;
+    const_entry_body = Future.from_val ((b, Univ.ContextSet.empty), Safe_typing.empty_private_constants);
+    const_entry_universes = universes_entry_of_decl ?withctx cb.const_universes;
+    const_entry_opaque = opaque;
+    const_entry_inline_code = cb.const_inline_code }
+  in
+  let parameter inline =
+    (secctx, (cb.const_type, universes_entry_of_decl cb.const_universes), inline)
+  in
+  match cb.const_body with
+  | Def b -> DefinitionEntry (with_body_opaque (Mod_subst.force_constr b) false)
+  | Undef inline -> ParameterEntry (parameter inline)
+  | OpaqueDef pr -> 
+    let opaquetab = Global.opaque_tables () in
+    let proof = Opaqueproof.force_proof opaquetab pr in
+    let ctx = Opaqueproof.force_constraints opaquetab pr in
+    DefinitionEntry (with_body_opaque proof ~withctx:ctx true)
+  | Primitive _ -> failwith "Primitives not supported by TemplateCoq"
+
+*)
+
 (* get the definition associated to a kername *)
-let tmQuoteConstant (kn : kername) (bypass : bool) : constant_entry tm =
+let tmQuoteConstant (kn : kername) (bypass : bool) : Opaqueproof.opaque Declarations.constant_body tm =
   fun env evd success fail ->
     (* todo(gmm): there is a bug here *)
     try
@@ -163,14 +207,13 @@ let tmQuoteConstant (kn : kername) (bypass : bool) : constant_entry tm =
 
 let tmInductive (mi : mutual_inductive_entry) : unit tm =
   fun env evd success _fail ->
-    ignore (ComInductive.declare_mutual_inductive_with_eliminations mi Names.Id.Map.empty []) ;
+    ignore (DeclareInd.declare_mutual_inductive_with_eliminations mi Names.Id.Map.empty []) ;
     success (Global.env ()) evd ()
 
-let tmExistingInstance (kn : kername) : unit tm =
+let tmExistingInstance (gr : Names.GlobRef.t) : unit tm =
   fun env evd success _fail ->
-    (* note(gmm): this seems wrong. *)
-    let ident = Names.Id.of_string (Names.KerName.to_string kn) in
-    Classes.existing_instance true (Libnames.qualid_of_ident ident) None;
+    let q = Libnames.qualid_of_path (Nametab.path_of_global gr) in
+    Classes.existing_instance true q None;
     success env evd ()
 
 let tmInferInstance (typ : term) : term option tm =

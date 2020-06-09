@@ -1,15 +1,13 @@
 
-From Coq Require Import Bool String List Program BinPos Compare_dec ZArith.
-From MetaCoq.Template Require Import config utils monad_utils BasicAst AstUtils.
+From Coq Require Import Bool String List Program.
+From MetaCoq.Template Require Import config utils monad_utils.
 From Equations Require Import Equations.
-From MetaCoq.Checker Require Import uGraph.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICTyping PCUICMetaTheory PCUICWcbvEval PCUICLiftSubst PCUICInversion
-     PCUICConfluence PCUICCumulativity PCUICSR PCUICNormal PCUICSafeLemmata
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils
+     PCUICTyping PCUICInversion
+     PCUICConfluence PCUICConversion 
+     PCUICCumulativity PCUICSR PCUICSafeLemmata
      PCUICValidity PCUICPrincipality PCUICElimination PCUICSN.
 From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeChecker PCUICSafeRetyping.
-From MetaCoq.Erasure Require EAst ELiftSubst ETyping EWcbvEval Extract ErasureCorrectness.
-Require Import String.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import MonadNotation.
@@ -182,7 +180,7 @@ Next Obligation.
 
      eapply conv_context_refl; eauto. econstructor.
 
-     eapply PCUICConversion.conv_sym, red_conv; eauto.
+     eapply conv_sym, red_conv; eauto.
   ++ sq. etransitivity. eassumption.
 
      eapply context_conversion_red; eauto. econstructor.
@@ -191,7 +189,7 @@ Next Obligation.
 
      econstructor.
 
-     eapply PCUICConversion.conv_sym, red_conv; eauto.
+     eapply conv_sym, red_conv; eauto.
 Qed.
 
 Next Obligation.
@@ -201,7 +199,7 @@ End fix_sigma.
 Transparent wf_reduction.
 Local Existing Instance extraction_checker_flags.
 Definition wf_ext_wf Σ : wf_ext Σ -> wf Σ := fst.
-Hint Resolve wf_ext_wf.
+Hint Resolve wf_ext_wf : core.
 
 (* Top.sq should be used but the behavior is a bit different *)
 Local Ltac sq :=
@@ -217,7 +215,7 @@ Program Definition is_erasable (Sigma : PCUICAst.global_env_ext) (HΣ : ∥wf_ex
     ret (left _)
   else mlet (K; _) <- @type_of extraction_checker_flags Sigma _ _ Gamma T _ ;;
        mlet (u;_) <- @reduce_to_sort _ Sigma _ Gamma K _ ;;
-      match is_prop_sort u with true => ret (left _) | false => ret (right _) end
+      match Universe.is_prop u with true => ret (left _) | false => ret (right _) end
 .
 Next Obligation. sq; eauto. Qed.
 Next Obligation.
@@ -230,13 +228,12 @@ Next Obligation.
   sq. eauto using typing_wf_local.
 Qed.
 Next Obligation.
-  sq. eapply validity in X. destruct X. destruct i. right. sq. apply i. left.  destruct i. econstructor. apply t0.
-  apply X1. eauto using typing_wf_local.
+  apply wat_wellformed. sq; auto.
+  sq; auto. now apply validity in X.
 Qed.
 Next Obligation.
   destruct H as [T' [redT' isar]].
   sq. econstructor. split. eapply type_reduction; eauto.
-  eauto using typing_wf_local.
   eauto.
 Qed.
 Next Obligation.
@@ -246,9 +243,9 @@ Next Obligation.
   sq. apply X1.
 Qed.
 Next Obligation.
-  sq. eapply validity in X as [validΣ [|]]. (* contradiction *)
+  sq. eapply validity in X as [validΣ|]; auto. (* contradiction *)
   todo "~ Is_conv_to_Arity pat -> isWfArity pat -> False".
-  destruct i as [s Hs]. econstructor; eauto. eapply X1. eauto using typing_wf_local.
+  destruct i as [s Hs]. econstructor; eauto.
 Qed.
 Next Obligation.
   sq. apply X2.
@@ -286,9 +283,13 @@ Next Obligation.
     eapply invert_red_sort in r.
     eapply invert_red_sort in r1. subst. inv r1.
 
-    eapply leq_universe_prop in l0 as []; cbn; eauto.
-    eapply leq_universe_prop in l as []; cbn; eauto.
-    eauto using typing_wf_local.
+    eapply leq_universe_prop in l0; auto.
+    eapply leq_universe_prop_no_prop_sub_type in l; auto.
+    intuition eauto.
+
+    2:reflexivity. now right; exists x0.
+    now apply PCUICValidity.validity in X1.
+    now apply PCUICValidity.validity in t2.
 Qed.
 
 (* Program Definition is_erasable (Sigma : PCUICAst.global_env_ext) (HΣ : ∥wf_ext Sigma∥) (Gamma : context) (HΓ : ∥wf_local Sigma Gamma∥) (t : PCUICAst.term) : *)
@@ -299,7 +300,7 @@ Qed.
 (*     ret (left _) *)
 (*   else mlet (K; _) <-  @make_graph_and_infer _ _ HΣ Gamma HΓ T ;; *)
 (*        mlet (u;_) <- @reduce_to_sort _ Sigma _ Gamma K _ ;; *)
-(*       match is_prop_sort u with true => ret (left _) | false => ret (right _) end *)
+(*       match Universe.is_prop u with true => ret (left _) | false => ret (right _) end *)
 (* . *)
 (* Next Obligation. sq; eauto. Qed. *)
 (* Next Obligation. *)
@@ -480,34 +481,36 @@ Section Erase.
 
 End Erase.
 
+Local Arguments bind _ _ _ _ ! _.
 From MetaCoq Require Import ErasureCorrectness.
 
 Opaque wf_reduction.
 Arguments iswelltyped {cf Σ Γ t A}.
+Hint Constructors typing erases : core.
+
 Lemma erases_erase (Σ : global_env_ext) Γ t T (wfΣ : ∥wf_ext Σ∥) t' :
   Σ ;;; Γ |- t : T ->
                  forall (wt : welltyped Σ Γ t),
   erase Σ wfΣ Γ t wt = Checked t' ->
   erases Σ Γ t t'.
 Proof.
-  Hint Constructors typing erases.
   intros. sq.
   (* pose proof (typing_wf_local X0). *)
 
 
   pose (wfΣ' := sq w).
-  pose (wfΓ := typing_wf_local X).
   change (erase Σ wfΣ' Γ t wt = Checked t') in H.
 
 
   revert H.
-  clearbody wfΣ' wfΓ.
+  clearbody wfΣ'.
 
-  revert Γ wfΓ t T X wt t' wfΣ'.
+  revert Γ t T X wt t' wfΣ'.
   eapply(typing_ind_env (fun Σ Γ t T =>
        forall (wt : welltyped Σ Γ t) (t' : E.term) (wfΣ' : ∥ wf_ext Σ ∥),
   erase Σ wfΣ' Γ t wt = Checked t' -> Σ;;; Γ |- t ⇝ℇ t'
-         )); intros.
+         )
+         (fun Σ Γ wfΓ => wf_local Σ Γ)); intros; auto.
 
   all:eauto.
 

@@ -1,8 +1,6 @@
 From Coq Require Import Bool String List Lia PeanoNat Peano_dec.
 From MetaCoq.Template Require Import All.
-From MetaCoq.Checker Require Import Typing.
 From Equations Require Import Equations.
-Require Import Equations.Prop.DepElim.
 Set Keyed Unification.
 Import ListNotations.
 Import MonadNotation.
@@ -473,15 +471,15 @@ revert s; induction n; simpl; intros.
 Qed.
 
 
-Quote Definition MProp := Prop.
+MetaCoq Quote Definition MProp := Prop.
 
-Quote Definition MFalse := False.
+MetaCoq Quote Definition MFalse := False.
 
-Quote Definition MTrue := True.
+MetaCoq Quote Definition MTrue := True.
 
-Quote Definition Mand := and.
+MetaCoq Quote Definition Mand := and.
 
-Quote Definition Mor := or.
+MetaCoq Quote Definition Mor := or.
 
 Definition tImpl (A B : term) :=
   tProd nAnon A (lift0 1 B).
@@ -644,17 +642,17 @@ Proof.
     + reflexivity.
     + simpl. eauto.
   - rewrite IHt1, IHt2. f_equal. f_equal.
-    induction H.
+    induction X.
     + reflexivity.
     + simpl. eauto.
   - generalize (#|m| + k). intro p.
-    induction H.
+    induction X.
     + reflexivity.
     + simpl. unfold map_def. unfold def_size.
       simpl.
       intuition eauto.
   - generalize (#|m| + k). intro p.
-    induction H.
+    induction X.
     + reflexivity.
     + simpl. unfold map_def. unfold def_size.
       simpl.
@@ -721,31 +719,25 @@ Proof.
     + clear - H3. destruct l. contradiction.
       discriminate.
   - f_equal. rewrite IHt1, IHt2 by assumption. f_equal.
-    clear - H H6. induction H.
+    clear - X H5. induction X.
     * reflexivity.
-    * inversion H6. subst. simpl. intuition eauto.
+    * inversion H5. subst. simpl. intuition eauto.
   - f_equal.
     generalize (#|m| + k). intro p.
-    clear - H H1. induction H.
+    clear - X H0. induction X.
     + reflexivity.
-    + inversion H1. subst.
+    + inversion H0. subst.
       unfold mfixpoint_size.
       unfold map_def. unfold def_size.
-      simpl. intuition eauto.
-      rewrite H2, H3 by assumption.
-      f_equal. f_equal. unfold mfixpoint_size in H6. rewrite <- H6.
-      reflexivity.
+      simpl. f_equal. intuition eauto.
   - f_equal.
     generalize (#|m| + k). intro p.
-    clear - H H1. induction H.
+    clear - X H0. induction X.
     + reflexivity.
-    + inversion H1. subst.
+    + inversion H0. subst.
       unfold mfixpoint_size.
       unfold map_def. unfold def_size.
-      simpl. intuition eauto.
-      rewrite H2, H3 by assumption.
-      f_equal. f_equal. unfold mfixpoint_size in H4. rewrite <- H4.
-      reflexivity.
+      simpl. f_equal. intuition eauto.
 Qed.
 
 Local Ltac inst :=
@@ -787,38 +779,52 @@ Proof.
                 (map (on_snd (subst [tRel 0] k)) l)
       <= list_size (fun x : nat × term => tsize x.2) l
     ).
-    { clear - H. induction H.
+    { clear - X. induction X.
     - reflexivity.
     - simpl. inst. lia.
   }
   lia.
   - eapply le_n_S.
     generalize (#|m| + k). intro p.
-    clear - H. induction H.
+    clear - X. induction X.
     + reflexivity.
     + unfold mfixpoint_size.
       unfold map_def. unfold def_size.
       simpl.
       intuition eauto.
-      unfold mfixpoint_size in IHForall.
-      unfold map_def in IHForall.
-      unfold def_size in IHForall.
+      unfold mfixpoint_size in IHX.
+      unfold map_def in IHX.
+      unfold def_size in IHX.
       repeat inst. lia.
   - eapply le_n_S.
     generalize (#|m| + k). intro p.
-    clear - H. induction H.
+    clear - X. induction X.
     + reflexivity.
     + unfold mfixpoint_size.
       unfold map_def. unfold def_size.
       simpl.
       intuition eauto.
-      unfold mfixpoint_size in IHForall.
-      unfold map_def in IHForall.
-      unfold def_size in IHForall.
+      unfold mfixpoint_size in IHX.
+      unfold map_def in IHX.
+      unfold def_size in IHX.
       repeat inst. lia.
 Qed.
 
 Definition inspect {A} (x : A) : { y : A | y = x } := exist _ x eq_refl.
+
+Definition tmLocateInd (q : qualid) : TemplateMonad kername :=
+  l <- tmLocate q ;;
+  match l with
+  | [] => tmFail ("Inductive [" ++ q ++ "] not found")
+  | (IndRef ind) :: _ => tmReturn ind.(inductive_mind)
+  | _ :: _ => tmFail ("[" ++ q ++ "] not an inductive")
+  end.
+
+
+MetaCoq Run (tmLocateInd "Logic.and" >>= tmDefinition "q_and").
+MetaCoq Run (tmLocateInd "Logic.or" >>= tmDefinition "q_or").
+MetaCoq Run (tmLocateInd "Logic.True" >>= tmDefinition "q_True").
+MetaCoq Run (tmLocateInd "Logic.False" >>= tmDefinition "q_False").
 
 Equations reify (Σ : global_env_ext) (Γ : context) (P : term) : option form
   by wf (tsize P) lt :=
@@ -829,7 +835,7 @@ Equations reify (Σ : global_env_ext) (Γ : context) (P : term) : option form
       | None => None
       } ;
     | tInd ind []
-      with string_dec ind.(inductive_mind) "Coq.Init.Logic.and" := {
+      with kername_eq_dec ind.(inductive_mind) q_and := {
       | left e2 with args := {
         | [ A ; B ] =>
           af <- reify Σ Γ A ;;
@@ -838,7 +844,7 @@ Equations reify (Σ : global_env_ext) (Γ : context) (P : term) : option form
         | _ => None
         } ;
       | right _
-        with string_dec ind.(inductive_mind) "Coq.Init.Logic.or" := {
+        with kername_eq_dec ind.(inductive_mind) q_or := {
         | left e2 with args := {
           | [ A ; B ] =>
             af <- reify Σ Γ A ;;
@@ -847,13 +853,13 @@ Equations reify (Σ : global_env_ext) (Γ : context) (P : term) : option form
           | _ => None
           } ;
         | right _
-          with string_dec ind.(inductive_mind) "Coq.Init.Logic.False" := {
+          with kername_eq_dec ind.(inductive_mind) q_False := {
           | left e2 with args := {
             | [] => ret Fa ;
             | _ => None
             } ;
       | right _
-          with string_dec ind.(inductive_mind) "Coq.Init.Logic.True" := {
+          with kername_eq_dec ind.(inductive_mind) q_True := {
           | left e2 with args := {
             | [] => ret Tr ;
             | _ => None

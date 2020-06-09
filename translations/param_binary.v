@@ -28,13 +28,6 @@ Fixpoint tsl_rec0 (n : nat) (o : nat) (t : term) {struct t} : term :=
   | _ => t
   end.
 
-Fixpoint subst_app (t : term) (us : list term) : term :=
-  match t, us with
-  | tLambda _ _ t, u :: us => subst_app (t {0 := u}) us
-  | _, [] => t
-  | _, _  => tApp t us
-  end.
-
 
 Definition suffix (n : name) s : name :=
   match n with
@@ -101,19 +94,19 @@ Fixpoint tsl_rec1_app (app : list term) (E : tsl_table) (t : term) : term :=
   | tConst s univs =>
     match lookup_tsl_table E (ConstRef s) with
     | Some t => t
-    | None => debug "tConst" s
+    | None => debug "tConst" (string_of_kername s)
     end
 
   | tInd i univs =>
     match lookup_tsl_table E (IndRef i) with
     | Some t => t
-    | None => debug "tInd" (match i with mkInd s _ => s end)
+    | None => debug "tInd" (match i with mkInd s _ => string_of_kername s end)
     end
 
   | tConstruct i n univs =>
     match lookup_tsl_table E (ConstructRef i n) with
     | Some t => t
-    | None => debug "tConstruct" (match i with mkInd s _ => s end)
+    | None => debug "tConstruct" (match i with mkInd s _ => string_of_kername s end)
     end
 
   | tCase ik t u brs as case =>
@@ -126,7 +119,7 @@ Fixpoint tsl_rec1_app (app : list term) (E : tsl_table) (t : term) : term :=
             (tsl_rec1_app [tsl_rec0 0 2 case1; tsl_rec0 0 1 case2] E t)
             (tsl_rec1 E u)
             (map (on_snd (tsl_rec1 E)) brs)
-    | _ => debug "tCase" (match (fst ik) with mkInd s _ => s end)
+    | _ => debug "tCase" (match (fst ik) with mkInd s _ => string_of_kername s end)
     end
 
   | tLetIn na t A u =>
@@ -140,9 +133,9 @@ Fixpoint tsl_rec1_app (app : list term) (E : tsl_table) (t : term) : term :=
         tLetIn (tsl_name tsl_ident na) (lift0 2 t1)
           (subst_app (lift0 2 A1) [tRel 1; tRel 0]) u1))
 
-  | tProj _ _ => todo
-  | tFix _ _ | tCoFix _ _ => todo
-  | tVar _ | tEvar _ _ => todo
+  | tProj _ _ => todo "tsl"
+  | tFix _ _ | tCoFix _ _ => todo "tsl"
+  | tVar _ | tEvar _ _ => todo "tsl"
   | tLambda _ _ _ => tVar "impossible"
   end
   in apply app t1
@@ -150,13 +143,14 @@ Fixpoint tsl_rec1_app (app : list term) (E : tsl_table) (t : term) : term :=
 
 Definition tsl_rec1 := tsl_rec1_app [].
 
-Definition tsl_mind_body (E : tsl_table) (mp : string) (kn : kername)
+Definition tsl_mind_body (E : tsl_table) (mp : modpath) (kn : kername)
            (mind : mutual_inductive_body) : tsl_table * list mutual_inductive_body.
   refine (_, [{| ind_npars := 3 * mind.(ind_npars);
                  ind_params := _;
                  ind_bodies := _;
-                 ind_universes := mind.(ind_universes)|}]).  (* FIXME always ok? *)
-  - refine (let kn' := tsl_kn tsl_ident kn mp in
+                 ind_universes := mind.(ind_universes);
+                 ind_variance := mind.(ind_variance)|}]).  (* FIXME always ok? *)
+  - refine (let kn' : kername := (mp, tsl_ident kn.2) in
             fold_left_i (fun E i ind => _ :: _ ++ E)%list mind.(ind_bodies) []).
     + (* ind *)
       exact (IndRef (mkInd kn i), tInd (mkInd kn' i) []).
@@ -198,39 +192,39 @@ Instance param : Translation :=
 
 (* EXAMPLES *)
 
-Run TemplateProgram (
+MetaCoq Run (
   typ <- tmQuote (forall A, A -> A) ;;
   typ' <- tmEval all (tsl_rec1 [] typ) ;;
   tm <- tmQuote (fun A (x : A) => x) ;;
   tm' <- tmEval all (tsl_rec1 [] tm) ;;
-  tmUnquote (tApp typ' [tm; tm]) >>= print_nf ;;
-  tmUnquote tm' >>= print_nf
+  tmUnquote (tApp typ' [tm; tm]) >>= tmDebug ;;
+  tmUnquote tm' >>= tmDebug
 ).
 
-Run TemplateProgram (
+MetaCoq Run (
   typ <- tmQuote (forall A B, B -> (A -> B -> B) -> B) ;;
   typ' <- tmEval all (tsl_rec1 [] typ) ;;
   t   <- tmQuote (fun {A B} (x:B) (f : A -> B -> B) => x) ;;
   t'  <- tmEval all (tsl_rec1 [] t) ;;
-  tmUnquote (tApp typ' [t; t]) >>= print_nf
+  tmUnquote (tApp typ' [t; t]) >>= tmDebug
 ).
 
-Run TemplateProgram (TC <- Translate emptyTC "nat" ;;
+MetaCoq Run (TC <- Translate emptyTC "nat" ;;
                      tmDefinition "nat_TC" TC).
 
-Run TemplateProgram (TC <- Translate nat_TC "bool" ;;
+MetaCoq Run (TC <- Translate nat_TC "bool" ;;
                      tmDefinition "bool_TC" TC).
 
-Run TemplateProgram (TC <- Translate bool_TC "list" ;;
+MetaCoq Run (TC <- Translate bool_TC "list" ;;
                      tmDefinition "list_TC" TC).
 
 Module FreeTheorems.
 
   Definition HD := forall X, list X -> X.
-  Run TemplateProgram (Translate list_TC "HD").
+  MetaCoq Run (Translate list_TC "HD").
 
   Definition MAP := forall X, list X -> list X.
-  Run TemplateProgram (Translate list_TC "MAP").
+  MetaCoq Run (Translate list_TC "MAP").
 
   (* taken from coq-community/paramcoq *)
   Definition graph {A B} (f : A -> B) := fun x y => f x = y.

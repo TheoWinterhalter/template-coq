@@ -5,10 +5,11 @@ type ident   = Names.Id.t (* Template.BasicAst.ident *)
 type qualid  = Libnames.qualid (* Template.BasicAst.ident *)
 type kername = Names.KerName.t (* Template.BasicAst.kername *)
 type reduction_strategy = Redexpr.red_expr (* Template.TemplateMonad.Common.reductionStrategy *)
-type global_reference = Globnames.global_reference (* Template.Ast.global_reference *)
+type global_reference = Names.GlobRef.t (* Template.Ast.global_reference *)
 type term = Constr.t  (* Template.Ast.term *)
 type mutual_inductive_body = Declarations.mutual_inductive_body (* Template.Ast.mutual_inductive_body *)
-type constant_entry = Declarations.constant_body (* Template.Ast.constant_entry *)
+type constant_body = Opaqueproof.opaque Declarations.constant_body
+type constant_entry = Entries.constant_entry (* Template.Ast.constant_entry *)
 type mutual_inductive_entry = Entries.mutual_inductive_entry (* Template.Ast.mutual_inductive_entry *)
 
 val rs_cbv : reduction_strategy
@@ -35,6 +36,7 @@ val tmMsg  : string -> unit tm
 
 val tmFail : Pp.t -> 'a tm
 val tmFailString : string -> 'a tm
+val reduce : Environ.env -> Evd.evar_map -> reduction_strategy -> term -> Evd.evar_map * term
 val tmEval : reduction_strategy -> term -> term tm
 
 val tmDefinition : ident -> ?poly:bool -> ?opaque:bool -> term option -> term -> kername tm
@@ -43,15 +45,15 @@ val tmLemma : ident -> ?poly:bool -> term -> kername tm
 
 val tmFreshName : ident -> ident tm
 
-val tmAbout : qualid -> global_reference option tm
-val tmAboutString : string -> global_reference option tm
+val tmLocate : qualid -> global_reference list tm
+val tmLocateString : string -> global_reference list tm
 val tmCurrentModPath : Names.ModPath.t tm
 
 val tmQuoteInductive : kername -> (Names.MutInd.t * mutual_inductive_body) option tm
 val tmQuoteUniverses : UGraph.t tm
-val tmQuoteConstant : kername -> bool -> constant_entry tm
+val tmQuoteConstant : kername -> bool -> constant_body tm
 
 val tmInductive : mutual_inductive_entry -> unit tm
 
-val tmExistingInstance : kername -> unit tm
+val tmExistingInstance : global_reference -> unit tm
 val tmInferInstance : term -> term option tm

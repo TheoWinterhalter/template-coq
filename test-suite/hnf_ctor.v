@@ -4,5 +4,4 @@ Require Import MetaCoq.Template.Loader.
 Inductive U : Type :=
 | TT : id U.
 
-Quote Recursively Definition qU := U.
-Print qU.
+MetaCoq Quote Recursively Definition qU := U.

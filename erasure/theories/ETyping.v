@@ -1,9 +1,8 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec.
-From MetaCoq.Template Require Import config utils AstUtils.
-From MetaCoq.Erasure Require Import EAst EAstUtils EInduction ELiftSubst.
-Require Import String.
+From Coq Require Import Bool String List Program.
+From MetaCoq.Template Require Import config utils.
+From MetaCoq.Erasure Require Import EAst EAstUtils ELiftSubst.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 
@@ -17,15 +16,15 @@ Set Asymmetric Patterns.
  *)
 (** ** Environment lookup *)
 
-Fixpoint lookup_env (Σ : global_declarations) (id : ident) : option global_decl :=
+Fixpoint lookup_env (Σ : global_declarations) id : option global_decl :=
   match Σ with
   | nil => None
   | hd :: tl =>
-    if ident_eq id hd.1 then Some hd.2
+    if kername_eq_dec id hd.1 then Some hd.2
     else lookup_env tl id
   end.
 
-Definition declared_constant (Σ : global_declarations) (id : ident) decl : Prop :=
+Definition declared_constant (Σ : global_declarations) id decl : Prop :=
   lookup_env Σ id = Some (ConstantDecl decl).
 
 Definition declared_minductive Σ mind decl :=

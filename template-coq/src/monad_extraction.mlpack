@@ -19,6 +19,7 @@ Extractable
 List0
 Logic0
 MSetWeakList
+MSetList
 MSetProperties
 MSetFacts
 Nat0
@@ -37,8 +38,8 @@ Tm_util
 Quoter
 Constr_quoter
 Template_monad
-Denote
 Denoter
+Denoterr
 Plugin_core
 Ast_quoter
 Ast_denoter

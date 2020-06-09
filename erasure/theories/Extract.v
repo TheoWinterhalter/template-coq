@@ -1,32 +1,24 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec.
-From MetaCoq.Template Require Import config utils monad_utils BasicAst AstUtils.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICTyping PCUICChecker PCUICRetyping PCUICMetaTheory PCUICWcbvEval PCUICElimination.
-From MetaCoq.Erasure Require EAst ELiftSubst ETyping.
-Require Import String.
+From Coq Require Import Bool List Program.
+From MetaCoq.Template Require Import config utils monad_utils.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICTyping PCUICElimination.
+From MetaCoq.Erasure Require EAst.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import MonadNotation.
 
 Local Existing Instance extraction_checker_flags.
 
-Definition isErasable Σ Γ t := ∑ T, Σ ;;; Γ |- t : T × (isArity T + (∑ u, (Σ ;;; Γ |- T : tSort u) * is_prop_sort u))%type.
+Definition isErasable Σ Γ t := ∑ T, Σ ;;; Γ |- t : T × (isArity T + (∑ u, (Σ ;;; Γ |- T : tSort u) * Universe.is_prop u))%type.
 
 Module E := EAst.
-Local Notation Ret t := t.
 
 
 Fixpoint mkAppBox c n :=
   match n with
   | 0 => c
   | S n => mkAppBox (E.tApp c E.tBox) n
-  end.
-
-Definition opt_def {A} (a : option A) (e : A) : A :=
-  match a with
-  | Some x => Ret x
-  | None => e
   end.
 
 Reserved Notation "Σ ;;; Γ |- s ⇝ℇ t" (at level 50, Γ, s, t at next level).
@@ -47,9 +39,9 @@ Inductive erases (Σ : global_env_ext) (Γ : context) : term -> E.term -> Prop :
   | erases_tApp : forall (f u : term) (f' u' : E.term),
                   Σ;;; Γ |- f ⇝ℇ f' ->
                   Σ;;; Γ |- u ⇝ℇ u' -> Σ;;; Γ |- tApp f u ⇝ℇ E.tApp f' u'
-  | erases_tConst : forall (kn : kername) (u : universe_instance),
+  | erases_tConst : forall (kn : kername) (u : Instance.t),
                     Σ;;; Γ |- tConst kn u ⇝ℇ E.tConst kn
-  | erases_tConstruct : forall (kn : inductive) (k : nat) (n : universe_instance),
+  | erases_tConstruct : forall (kn : inductive) (k : nat) (n : Instance.t),
                         Σ;;; Γ |- tConstruct kn k n ⇝ℇ E.tConstruct kn k
   | erases_tCase1 : forall (ind : inductive) (npar : nat) (T c : term)
                       (brs : list (nat × term)) (c' : E.term)
@@ -90,7 +82,7 @@ Definition erases_constant_body (Σ : global_env_ext) (cb : constant_body) (cb' 
   end.
 
 Definition erases_one_inductive_body (Σ : global_env_ext) (npars : nat) (arities : context) (oib : one_inductive_body) (oib' : E.one_inductive_body) :=
-  let decty := opt_def (decompose_prod_n_assum [] npars oib.(ind_type)) ([], tRel 0) in
+  let decty := option_get ([], tRel 0) (decompose_prod_n_assum [] npars oib.(ind_type)) in
   let '(params, arity) := decty in
   let projctx := arities ,,, params ,, vass nAnon oib.(ind_type) in
   Forall2 (fun '((i,t), n) '((i',t'), n') => erases Σ arities t t' /\ n = n' /\ i = i') oib.(ind_ctors) oib'.(E.ind_ctors) /\

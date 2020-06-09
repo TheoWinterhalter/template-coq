@@ -2,12 +2,10 @@
 
 Set Warnings "-notation-overridden".
 
-From Coq Require Import Bool String List Program BinPos Compare_dec.
-From MetaCoq.Template Require Import config utils AstUtils BasicAst Ast.
-From MetaCoq.Checker Require Import WfInv Typing Weakening TypingWf.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction PCUICLiftSubst
-     PCUICUnivSubst PCUICTyping PCUICGeneration.
-Require Import String.
+From Coq Require Import Bool List.
+From MetaCoq.Template Require Import config utils AstUtils.
+From MetaCoq.PCUIC Require Import PCUICAst.
+
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 
@@ -61,7 +59,8 @@ Definition trans_minductive_body md :=
      ind_npars := md.(Ast.ind_npars);
      ind_params := trans_local md.(Ast.ind_params);
      ind_bodies := map trans_one_ind_body md.(Ast.ind_bodies);
-     ind_universes := md.(Ast.ind_universes) |}.
+     ind_universes := md.(Ast.ind_universes);
+     ind_variance := md.(Ast.ind_variance) |}.
 
 Definition trans_global_decl (d : Ast.global_decl) :=
   match d with

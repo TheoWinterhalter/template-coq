@@ -1,9 +1,10 @@
-val ptmTestQuote : Names.global_reference Lazy.t
-val ptmQuoteDefinition : Names.global_reference Lazy.t
-val ptmQuoteDefinitionRed : Names.global_reference Lazy.t
-val ptmQuoteRecDefinition : Names.global_reference Lazy.t
-val ptmMkDefinition : Names.global_reference Lazy.t
-val ptmMkInductive : Names.global_reference Lazy.t
+val ptmTestQuote : Names.GlobRef.t Lazy.t
+val ptmTestUnquote : Names.GlobRef.t Lazy.t
+val ptmQuoteDefinition : Names.GlobRef.t Lazy.t
+val ptmQuoteDefinitionRed : Names.GlobRef.t Lazy.t
+val ptmQuoteRecDefinition : Names.GlobRef.t Lazy.t
+val ptmMkDefinition : Names.GlobRef.t Lazy.t
+val ptmMkInductive : Names.GlobRef.t Lazy.t
 
 
 type template_monad =
@@ -28,10 +29,11 @@ type template_monad =
   | TmAxiom of Constr.t * Constr.t * Constr.t
   | TmAxiomTerm of Constr.t * Constr.t
   | TmMkInductive of Constr.t
+  | TmVariable of Constr.t * Constr.t
 
   | TmFreshName of Constr.t
 
-  | TmAbout of Constr.t
+  | TmLocate of Constr.t
   | TmCurrentModPath
 
     (* quoting *)

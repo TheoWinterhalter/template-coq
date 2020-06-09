@@ -1,7 +1,6 @@
 (* Distributed under the terms of the MIT license.   *)
 
-Require Import Coq.Strings.String.
-Require Import Coq.PArith.BinPos.
+
 Require Import List. Import ListNotations.
 From MetaCoq.Template Require Import utils Environment.
 From MetaCoq.Template Require Export Universes.
@@ -36,19 +35,19 @@ From MetaCoq.Template Require Export Universes.
 
 From MetaCoq.Template Require Export BasicAst.
 
-Inductive term : Set :=
+Inductive term : Type :=
 | tRel (n : nat)
 | tVar (id : ident) (* For free variables (e.g. in a goal) *)
 | tEvar (ev : nat) (args : list term)
-| tSort (s : universe)
+| tSort (s : Universe.t)
 | tCast (t : term) (kind : cast_kind) (v : term)
 | tProd (na : name) (ty : term) (body : term)
 | tLambda (na : name) (ty : term) (body : term)
 | tLetIn (na : name) (def : term) (def_ty : term) (body : term)
 | tApp (f : term) (args : list term)
-| tConst (c : kername) (u : universe_instance)
-| tInd (ind : inductive) (u : universe_instance)
-| tConstruct (ind : inductive) (idx : nat) (u : universe_instance)
+| tConst (c : kername) (u : Instance.t)
+| tInd (ind : inductive) (u : Instance.t)
+| tConstruct (ind : inductive) (idx : nat) (u : Instance.t)
 | tCase (ind_and_nbparams: inductive*nat) (type_info:term)
         (discr:term) (branches : list (nat * term))
 | tProj (proj : projection) (t : term)
@@ -63,6 +62,30 @@ Definition mkApps t us :=
         | _ => tApp t us
         end
   end.
+
+
+Module TemplateTerm <: Term.
+
+Definition term := term.
+
+Definition tRel := tRel.
+Definition tSort := tSort.
+Definition tProd := tProd.
+Definition tLambda := tLambda.
+Definition tLetIn := tLetIn.
+Definition tInd := tInd.
+Definition tProj := tProj.
+Definition mkApps := mkApps.
+
+End TemplateTerm.
+
+Ltac unf_term := unfold TemplateTerm.term in *; unfold TemplateTerm.tRel in *;
+                 unfold TemplateTerm.tSort in *; unfold TemplateTerm.tProd in *;
+                 unfold TemplateTerm.tLambda in *; unfold TemplateTerm.tLetIn in *;
+                 unfold TemplateTerm.tInd in *; unfold TemplateTerm.tProj in *.
+
+Module TemplateEnvironment := Environment TemplateTerm.
+Include TemplateEnvironment.
 
 Definition mkApp t u := Eval cbn in mkApps t [u].
 
@@ -93,7 +116,7 @@ Inductive wf : term -> Prop :=
 | wf_tConst k u : wf (tConst k u)
 | wf_tInd i u : wf (tInd i u)
 | wf_tConstruct i k u : wf (tConstruct i k u)
-| wf_tCase ci p c brs : wf p -> wf c -> Forall (Program.Basics.compose wf snd) brs -> wf (tCase ci p c brs)
+| wf_tCase ci p c brs : wf p -> wf c -> Forall (wf ∘ snd) brs -> wf (tCase ci p c brs)
 | wf_tProj p t : wf t -> wf (tProj p t)
 | wf_tFix mfix k : Forall (fun def => wf def.(dtype) /\ wf def.(dbody) /\ isLambda def.(dbody) = true) mfix ->
                    wf (tFix mfix k)
@@ -109,12 +132,12 @@ Inductive wf : term -> Prop :=
 
 Record parameter_entry := {
   parameter_entry_type      : term;
-  parameter_entry_universes : universes_decl }.
+  parameter_entry_universes : universes_entry }.
 
 Record definition_entry := {
-  definition_entry_type      : term;
+  definition_entry_type      : option term;
   definition_entry_body      : term;
-  definition_entry_universes : universes_decl;
+  definition_entry_universes : universes_entry;
   definition_entry_opaque    : bool }.
 
 
@@ -142,11 +165,7 @@ Inductive constant_entry :=
   [x1:X1;...;xn:Xn].
 *)
 
-Inductive local_entry : Set :=
-| LocalDef : term -> local_entry (* local let binding *)
-| LocalAssum : term -> local_entry.
-
-Record one_inductive_entry : Set := {
+Record one_inductive_entry := {
   mind_entry_typename : ident;
   mind_entry_arity : term;
   mind_entry_template : bool; (* template polymorphism *)
@@ -159,30 +178,10 @@ Record mutual_inductive_entry := {
      If so, is it primitive, using binder name [ident]
      for the record in primitive projections ? *)
   mind_entry_finite    : recursivity_kind;
-  mind_entry_params    : list (ident * local_entry);
+  mind_entry_params    : context;
   mind_entry_inds      : list one_inductive_entry;
-  mind_entry_universes : universes_decl;
+  mind_entry_universes : universes_entry;
+  mind_entry_variance  : option (list Universes.Variance.t);
   mind_entry_private   : option bool
   (* Private flag for sealing an inductive definition in an enclosing
      module. Not handled by Template Coq yet. *) }.
-
-
-Module TemplateTerm <: Term.
-
-  Definition term := term.
-
-  Definition tRel := tRel.
-  Definition tSort := tSort.
-  Definition tProd := tProd.
-  Definition tLetIn := tLetIn.
-  Definition tSymb (k : kername) (n : nat) (ui : universe_instance) := tRel 0.
-  Definition tInd := tInd.
-  Definition tCase := tCase.
-  Definition tProj := tProj.
-
-  Definition mkApps := mkApps.
-
-End TemplateTerm.
-
-Module TemplateEnvironment := Environment TemplateTerm.
-Include TemplateEnvironment.

@@ -1,15 +1,11 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec.
-From MetaCoq.Template Require Import config monad_utils utils Ast Induction LiftSubst UnivSubst.
-From MetaCoq.Template Require AstUtils.
-From MetaCoq.Checker Require Import Typing Checker.
-Require Import String.
+From Coq Require Import Bool List Program.
+From MetaCoq.Template Require Import config monad_utils utils Ast LiftSubst.
+From MetaCoq.Checker Require Import Checker.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import monad_utils.MonadNotation.
-Require Import Equations.Prop.DepElim.
-Require Import ssreflect.
 
 Existing Instance default_checker_flags.
 
@@ -109,7 +105,7 @@ Section TypeOf.
       end
     end.
 
-  Definition sort_of (Γ : context) (t : term) : typing_result universe :=
+  Definition sort_of (Γ : context) (t : term) : typing_result Universe.t :=
     ty <- type_of Γ t;;
     type_of_as_sort type_of Γ ty.
 

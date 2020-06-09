@@ -1,7 +1,7 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import List Program BinPos Arith.Compare_dec Bool Lia.
-From MetaCoq.Template Require Import Ast AstUtils utils.
+From Coq Require Import List Program Lia.
+From MetaCoq.Template Require Import utils.
 From MetaCoq.Erasure Require Import EAst EInduction.
 
 
@@ -211,7 +211,7 @@ Qed.
 Hint Resolve map_def_id_spec : all.
 
 Lemma compose_map_def (f g : term -> term) :
-  compose (map_def f) (map_def g) = map_def (compose f g).
+  (map_def f) ∘ (map_def g) = map_def (f ∘ g).
 Proof. reflexivity. Qed.
 
 Hint Extern 10 (_ < _)%nat => lia : all.
@@ -240,8 +240,8 @@ Ltac nth_leb_simpl :=
   | |- context [nth_error ?l ?n] => elim (nth_error_spec l n); rewrite -> ?app_length, ?map_length;
                                     try lia; intros; simpl
   | H : context[nth_error (?l ++ ?l') ?n] |- _ =>
-    (rewrite -> (AstUtils.nth_error_app_ge l l' n) in H by lia) ||
-    (rewrite -> (AstUtils.nth_error_app_lt l l' n) in H by lia)
+    (rewrite -> (nth_error_app_ge l l' n) in H by lia) ||
+    (rewrite -> (nth_error_app_lt l l' n) in H by lia)
   | H : nth_error ?l ?n = Some _, H' : nth_error ?l ?n' = Some _ |- _ =>
     replace n' with n in H' by lia; rewrite -> H in H'; injection H'; intros; subst
   | _ => lia || congruence || solve [repeat (f_equal; try lia)]
@@ -328,8 +328,8 @@ Proof. destruct bod; simpl; try congruence. Qed.
 
 Hint Resolve lift_isApp map_non_nil isLambda_lift : all.
 
-Hint Unfold compose.
-Hint Transparent compose.
+Hint Unfold compose : core.
+Hint Transparent compose : core.
 
 Lemma simpl_subst_rec :
   forall M N n p k,
@@ -463,7 +463,7 @@ Proof.
   elim t using term_forall_list_ind; intros; try easy;
     rewrite -> ?map_map_compose, ?compose_on_snd, ?compose_map_def, ?map_length;
     unfold test_def in *;
-    simpl closed in *; try solve [simpl lift; simpl closed; f_equal; auto; toProp; solve_all]; try easy.
+    simpl closed in *; try solve [simpl lift; simpl closed; f_equal; auto; rtoProp; solve_all]; try easy.
   - rewrite lift_rel_lt; auto.
     revert H. elim (Nat.ltb_spec n0 k); intros; try easy.
 Qed.
@@ -474,7 +474,7 @@ Proof.
   elim t using term_forall_list_ind; intros; try lia;
     rewrite -> ?map_map_compose, ?compose_on_snd, ?compose_map_def, ?map_length;
     simpl closed in *; unfold test_snd, test_def in *;
-      try solve [(try f_equal; simpl; repeat (toProp; solve_all); eauto)].
+      try solve [(try f_equal; simpl; repeat (rtoProp; solve_all); eauto)].
 
   - elim (ltb_spec n k'); auto. intros.
     apply ltb_lt in H. lia.

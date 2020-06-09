@@ -1,16 +1,19 @@
 (* Distributed under the terms of the MIT license.   *)
-From Equations Require Import Equations.
-From Coq Require Import Bool String List Program BinPos Compare_dec.
-From MetaCoq.Template Require Import config utils.
-From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICWeakeningEnv PCUICWeakening
-     PCUICSubstitution PCUICClosed.
-Require Import ssreflect ssrbool.
-Require Import String.
-From MetaCoq Require Import LibHypsNaming.
-Local Open Scope string_scope.
+
+From Coq Require Import Bool List.
+From MetaCoq.Template Require Import utils.
+From MetaCoq.PCUIC Require Import PCUICAst PCUICLiftSubst PCUICTyping.
 Set Asymmetric Patterns.
+
+Import ListNotations.
+
 Require Import Equations.Prop.DepElim.
+From Equations Require Import Equations.
+
+Derive NoConfusion NoConfusionHom for term.
+Derive NoConfusion NoConfusionHom for context_decl.
+Derive NoConfusion NoConfusionHom for list.
+Derive NoConfusion NoConfusionHom for option.
 
 Section Generation.
   Context `{cf : config.checker_flags}.
@@ -46,11 +49,6 @@ Section Generation.
     eapply type_Cumul; eauto. eauto.
   Qed.
 
-  Derive NoConfusion NoConfusionHom for term.
-  Derive NoConfusion NoConfusionHom for context_decl.
-  Derive NoConfusion NoConfusionHom for list.
-  Derive NoConfusion NoConfusionHom for option.
-
   Lemma type_it_mkLambda_or_LetIn :
     forall Σ Γ Δ t A,
       Σ ;;; Γ ,,, Δ |- t : A ->
@@ -61,14 +59,12 @@ Section Generation.
     - assumption.
     - simpl. cbn. eapply ih.
       simpl in h. pose proof (typing_wf_local h) as hc.
-      dependent induction hc. all: inversion H. subst.
-      cbn in t1, t0. destruct t0.
-      econstructor ; eassumption.
+      dependent induction hc; inversion H; subst.
+      econstructor; try eassumption. exact t0.π2.
     - simpl. cbn. eapply ih.
       pose proof (typing_wf_local h) as hc. cbn in hc.
-      dependent induction hc. all: inversion H. subst.
-      cbn in t0. destruct t0.
-      econstructor ; eassumption.
+      dependent induction hc; inversion H; subst.
+      econstructor; try eassumption. exact t0.π2.
   Qed.
 
 End Generation.

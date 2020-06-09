@@ -1,15 +1,14 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec ZArith.
-From MetaCoq.Template Require Import config utils monad_utils BasicAst AstUtils.
-From MetaCoq.Erasure Require Import EAst EAstUtils ELiftSubst Extract EArities.
-From MetaCoq.PCUIC Require Import PCUICTyping PCUICAst PCUICAstUtils PCUICInduction
-     PCUICWeakening PCUICSubstitution PCUICRetyping PCUICMetaTheory
-     PCUICWcbvEval PCUICSR  PCUICClosed PCUICInversion PCUICGeneration
-     PCUICEquality PCUICContextConversion PCUICConversion PCUICElimination.
+From Coq Require Import Bool List Program ZArith.
+From MetaCoq.Template Require Import config utils monad_utils.
+From MetaCoq.Erasure Require Import EAstUtils Extract EArities EWcbvEval.
+From MetaCoq.PCUIC Require Import PCUICTyping PCUICAst PCUICAstUtils
+     PCUICSubstitution PCUICLiftSubst PCUICClosed
+     PCUICWcbvEval PCUICSR  PCUICInversion PCUICGeneration
+     PCUICContextConversion.
 From MetaCoq.SafeChecker Require Import PCUICSafeReduce PCUICSafeChecker.
-From Coq Require Import ssreflect ssrbool.
-Require Import String.
+From Coq Require Import ssreflect.
 Local Open Scope string_scope.
 Set Asymmetric Patterns.
 Import MonadNotation.
@@ -115,19 +114,32 @@ Proof.
     + cbn in H17. eauto.
 Qed.
 
-Theorem subject_reduction_eval : forall (Σ : PCUICAst.global_env_ext) Γ t u T,
-  wf Σ -> Σ ;;; Γ |- t : T -> PCUICWcbvEval.eval Σ Γ t u -> Σ ;;; Γ |- u : T.
+Lemma typing_spine_closed args Σ x2 x3 :  wf Σ.1 ->
+  PCUICGeneration.typing_spine Σ [] x2 args x3 ->
+  All (closedn 0) args.
 Proof.
-  intros * wfΣ Hty Hred % wcbeval_red. eapply subject_reduction; eauto.
+  intros wfΣ sp.
+  dependent induction sp; constructor; auto.
+  now eapply subject_closed in t.
+Qed.
+
+Theorem subject_reduction_eval : forall (Σ : PCUICAst.global_env_ext) t u T,
+  wf Σ -> Σ ;;; [] |- t : T -> PCUICWcbvEval.eval Σ t u -> Σ ;;; [] |- u : T.
+Proof.
+  intros * wfΣ Hty Hred%wcbeval_red; auto. eapply subject_reduction; eauto.
+  eapply PCUICClosed.typecheck_closed in Hty as [_ Hty]; auto.
+  apply andP in Hty. now destruct Hty.
 Qed.
 
 Lemma typing_spine_eval:
-  forall (Σ : global_env_ext) Γ (args args' : list PCUICAst.term) (X : All2 (PCUICWcbvEval.eval Σ Γ) args args') (bla : wf Σ)
-    (T x x0 : PCUICAst.term) (t0 : typing_spine Σ Γ x args x0) (c : Σ;;; Γ |- x0 <= T) (x1 : PCUICAst.term)
-    (c0 : Σ;;; Γ |- x1 <= x), isWfArity_or_Type Σ Γ T -> typing_spine Σ Γ x1 args' T.
+  forall (Σ : global_env_ext) (args args' : list PCUICAst.term) (X : All2 (PCUICWcbvEval.eval Σ) args args') (bla : wf Σ)
+    (T x x0 : PCUICAst.term) (t0 : typing_spine Σ [] x args x0) (c : Σ;;; [] |- x0 <= T) (x1 : PCUICAst.term)
+    (c0 : Σ;;; [] |- x1 <= x), isWfArity_or_Type Σ [] T -> typing_spine Σ [] x1 args' T.
 Proof.
   intros. eapply typing_spine_red; eauto.
-  eapply All2_impl. eassumption. intros. eapply wcbeval_red. eauto.
+  eapply typing_spine_closed in t0; auto.
+  eapply All2_All_mix_left in X; eauto. simpl in X.
+  eapply All2_impl. eassumption. simpl. intros t u [ct et]. eapply wcbeval_red; eauto.
 Qed.
 
 (** ** on mkApps *)
@@ -145,7 +157,7 @@ Proof.
 Qed.
 
 Lemma mkAppBox_repeat n a :
-  mkAppBox a n = EAst.mkApps a (repeat tBox n).
+  mkAppBox a n = EAst.mkApps a (repeat EAst.tBox n).
 Proof.
   revert a; induction n; cbn; firstorder congruence.
 Qed.
@@ -246,7 +258,7 @@ Proof.
 Qed.
 
 Lemma value_app_inv L :
-  Ee.value (EAst.mkApps tBox L) ->
+  Ee.value (EAst.mkApps EAst.tBox L) ->
   L = nil.
 Proof.
   intros. depelim H.
@@ -259,7 +271,7 @@ Proof.
     eapply Ee.atom_mkApps in H' as [H1 _].
     destruct n, L; discriminate.
   - unfold Ee.isStuckFix in H0. destruct f; try now inversion H0.
-    assert (EAstUtils.decompose_app (EAst.mkApps (EAst.tFix m n) args) = EAstUtils.decompose_app (EAst.mkApps tBox L)) by congruence.
+    assert (EAstUtils.decompose_app (EAst.mkApps (EAst.tFix m n) args) = EAstUtils.decompose_app (EAst.mkApps EAst.tBox L)) by congruence.
     rewrite !EAstUtils.decompose_app_mkApps in H1; eauto. inv H1.
 Qed.
 
@@ -314,10 +326,10 @@ Proof.
     + eapply IHmfix0. destruct H as [L]. exists (x :: L). subst. now rewrite <- app_assoc.
     + rewrite <- plus_n_O.
       rewrite PCUICLiftSubst.simpl_subst_k. clear. induction l; cbn; try congruence.
-      eapply inversion_Fix in X as (? & ? & ? & ? & ?) ; auto.
+      eapply inversion_Fix in X as (? & ? & ? & ? & ? & ? & ?) ; auto.
       econstructor; eauto. destruct H. subst.
       rewrite <- app_assoc. rewrite nth_error_app_ge. lia.
-      rewrite minus_diag. cbn. reflexivity. eapply p.
+      rewrite minus_diag. cbn. reflexivity.
 Qed.
 
 (** ** Prelim on typing *)
@@ -344,8 +356,6 @@ Proof.
   - cbn; eauto.
   - destruct a. destruct decl_body.
     + cbn. econstructor. inv X0. eauto. econstructor.
-      depelim X0.
-      eapply PCUICCumulativity.conv_alt_refl; reflexivity.
-    + cbn. econstructor. inv X0. eauto. econstructor.
-      eapply PCUICCumulativity.conv_alt_refl; reflexivity.
+      depelim X0. reflexivity.
+    + cbn. econstructor. inv X0. eauto. now econstructor.
 Qed.

@@ -7,15 +7,19 @@ Set Primitive Projections.
 Set Printing Universes.
 
 (** Reduction strategy to apply, beware [cbv], [cbn] and [lazy] are _strong_. *)
-
-Variant reductionStrategy : Set :=
-  cbv | cbn | hnf | all | lazy | unfold (i : ident).
+ 
+Monomorphic Variant reductionStrategy : Set :=
+  cbv | cbn | hnf | all | lazy | unfold (i : kername).
 
 Record typed_term : Type := existT_typed_term
 { my_projT1 : Type
 ; my_projT2 : my_projT1
 }.
 
+Monomorphic Inductive option_instance (A : Type) : Type := my_Some : A -> option_instance A | my_None : option_instance A.
+
+Arguments Some {A} a.
+Arguments None {A}.
 
 Record TMInstance@{t u r} :=
 { TemplateMonad : Type@{t} -> Type@{r}
@@ -29,24 +33,24 @@ Record TMInstance@{t u r} :=
 (* Guaranteed to not cause "... already declared" error *)
 ; tmFreshName : ident -> TemplateMonad ident
 
-; tmAbout : ident -> TemplateMonad (option global_reference)
-; tmCurrentModPath : unit -> TemplateMonad string
+; tmLocate : qualid -> TemplateMonad (list global_reference)
+; tmCurrentModPath : unit -> TemplateMonad modpath
 
 (* Quote the body of a definition or inductive. Its name need not be fully quaified *)
 ; tmQuoteInductive : kername -> TemplateMonad mutual_inductive_body
-; tmQuoteUniverses : TemplateMonad constraints
-; tmQuoteConstant : kername -> bool (* bypass opacity? *) -> TemplateMonad constant_entry
+; tmQuoteUniverses : TemplateMonad ConstraintSet.t
+; tmQuoteConstant : kername -> bool (* bypass opacity? *) -> TemplateMonad constant_body
 (* unquote before making the definition *)
 (* FIXME take an optional universe context as well *)
 ; tmMkInductive : mutual_inductive_entry -> TemplateMonad unit
 (* Typeclass registration and querying for an instance *)
-; tmExistingInstance : ident -> TemplateMonad unit
+; tmExistingInstance : global_reference -> TemplateMonad unit
 }.
 
-Variant import_status : Set :=
+Monomorphic Variant import_status : Set :=
 | ImportDefaultBehavior
 | ImportNeedQualified.
 
-Variant locality :=
+Monomorphic Variant locality :=
 | Discharge
 | Global (_ : import_status).

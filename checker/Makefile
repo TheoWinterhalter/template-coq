@@ -1,4 +1,4 @@
-all: coq plugin
+all: coq # plugin
 
 coq: Makefile.coq
 	$(MAKE) -f Makefile.coq
@@ -20,9 +20,9 @@ Makefile.plugin: _PluginProject
 plugin: Makefile.plugin coq
 	$(MAKE) -f Makefile.plugin
 
-install: coq plugin
+install: coq # plugin
 	$(MAKE) -f Makefile.coq install
-	$(MAKE) -f Makefile.plugin install
+	# $(MAKE) -f Makefile.plugin install
 
 .PHONY: plugin
 

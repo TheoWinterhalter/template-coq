@@ -1,7 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 From MetaCoq.Template Require Import
-     Ast Loader.
+     BasicAst Ast Loader utils.
 From MetaCoq.Template.TemplateMonad Require Import
      Common Extractable.
 
@@ -10,43 +10,43 @@ Local Open Scope string_scope.
 Notation "<% x %>" := (ltac:(let p y := exact y in quote_term x p))
    (only parsing).
 
-Run TemplateProgram
-    (tmBind (tmReturn 1) (fun x => tmMsg (utils.string_of_nat x))).
+MetaCoq Run
+    (tmBind (tmReturn 1) (fun x => tmMsg (string_of_nat x))).
 
-Run TemplateProgram
+MetaCoq Run
     (tmPrint <% 1 + 1 : nat %>).
 
-Fail Run TemplateProgram (tmFail "success").
+Fail MetaCoq Run (tmFail "success").
 
-Run TemplateProgram
+MetaCoq Run
     (tmBind (tmEval cbv <% 1 + 1 %>)
             (fun t => tmPrint t)).
 
-Run TemplateProgram
+MetaCoq Run
     (tmBind (tmDefinition "two" None <% 1 + 1 %>)
             (fun kn => tmPrint (Ast.tConst kn nil))).
 
-Run TemplateProgram
+MetaCoq Run
     (tmBind (tmAxiom "assume" <% nat %>)
             (fun kn => tmPrint (Ast.tConst kn nil))).
 
 
-Run TemplateProgram
+MetaCoq Run
     (tmBind (tmFreshName "blah")
             (fun i => tmBind (tmMsg i)
                           (fun _ => tmAxiom i <% bool %>))).
 Print blah.
 Fail Print blah0.
-Run TemplateProgram
+MetaCoq Run
     (tmBind (tmFreshName "blah0")
             (fun i => tmBind (tmMsg i)
                           (fun _ => tmAxiom i <% bool %>))).
 Print blah0.
 
-
-Run TemplateProgram
-    (tmBind (tmQuoteInductive "Coq.Init.Datatypes.nat")
-            (fun mi => tmMsg (utils.string_of_nat (length mi.(ind_bodies))))).
+MetaCoq Test Quote nat.
+MetaCoq Run
+    (tmBind (tmQuoteInductive (MPfile ["Datatypes"; "Init"; "Coq"], "nat"))
+            (fun mi => tmMsg (string_of_nat (length mi.(ind_bodies))))).
 
 Definition empty_constraints : ConstraintSet.t_.
   econstructor.
@@ -55,7 +55,7 @@ Definition empty_constraints : ConstraintSet.t_.
   constructor.
 Defined.
 
-Run TemplateProgram
+MetaCoq Run
     (tmInductive {| mind_entry_record := None
                   ; mind_entry_finite := Finite
                   ; mind_entry_params := nil
@@ -67,17 +67,16 @@ Run TemplateProgram
                        ; mind_entry_lc := tProd nAnon <% bool %> (tRel 1) ::
                                           tProd nAnon <% string %> (tRel 1) :: nil
                        |} :: nil
-                  ; mind_entry_universes := Monomorphic_ctx (LevelSet.empty, empty_constraints)
+                  ; mind_entry_universes := Monomorphic_entry (LevelSet.empty, empty_constraints)
+                  ; mind_entry_variance := None
                   ; mind_entry_private := None |}).
 Print thing.
 
-Run TemplateProgram
+MetaCoq Run
     (tmBind tmCurrentModPath
-            tmMsg).
+            (fun s => tmMsg (string_of_modpath s))).
 
+MetaCoq Test Quote plus.
+MetaCoq Run (tmQuoteInductive (MPfile ["Datatypes"; "Init"; "Coq"], "nat")).
 
-Fail Run TemplateProgram (tmQuoteInductive "nat").
-Run TemplateProgram (tmQuoteInductive "Coq.Init.Datatypes.nat").
-
-Fail Run TemplateProgram (tmQuoteConstant "plus" true).
-Run TemplateProgram (tmQuoteConstant "Coq.Init.Nat.add" true).
+MetaCoq Run (tmQuoteConstant (MPfile ["Nat"; "Init"; "Coq"], "add") true).

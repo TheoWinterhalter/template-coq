@@ -22,6 +22,7 @@ From MetaCoq.Erasure Require Import EAst EAstUtils EInduction ELiftSubst ETyping
 Extract Inductive Equations.Init.sigma => "(*)" ["(,)"].
 
 Extract Constant PCUICTyping.fix_guard => "(fun x -> true)".
+Extract Constant PCUICTyping.cofix_guard => "(fun x -> true)".
 Extract Constant PCUICTyping.ind_guard => "(fun x -> true)".
 Extract Constant PCUICSafeChecker.check_one_ind_body => "(fun _ _ _ _ _ _ _ -> ret envcheck_monad __)".
 (* Extract Constant erase_mfix_obligation_1 => "(fun _ _ _ _ => ret typing_monad __)". *)
@@ -30,6 +31,6 @@ Cd "src".
 
 Separate Extraction ErasureFunction.erase SafeTemplateErasure
          (* The following directives ensure separate extraction does not produce name clashes *)
-         String utils UnivSubst ELiftSubst ETyping.
+         String utils Template.UnivSubst ELiftSubst ETyping.
 
 Cd "..".

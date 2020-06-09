@@ -27,13 +27,6 @@ Fixpoint tsl_rec0 (n : nat) (t : term) {struct t} : term :=
   | _ => t
   end.
 
-Fixpoint subst_app (t : term) (us : list term) : term :=
-  match t, us with
-  | tLambda _ A t, u :: us => subst_app (t {0 := u}) us
-  | _, [] => t
-  | _, _ => mkApps t us
-  end.
-
 Fixpoint tsl_rec1_app (app : option term) (E : tsl_table) (t : term) : term :=
   let tsl_rec1 := tsl_rec1_app None in
   let debug case symbol :=
@@ -85,17 +78,17 @@ Fixpoint tsl_rec1_app (app : option term) (E : tsl_table) (t : term) : term :=
   | tConst s univs =>
     match lookup_tsl_table E (ConstRef s) with
     | Some t => t
-    | None => debug "tConst" s
+    | None => debug "tConst" (string_of_kername s)
     end
   | tInd i univs =>
     match lookup_tsl_table E (IndRef i) with
     | Some t => t
-    | None => debug "tInd" (match i with mkInd s _ => s end)
+    | None => debug "tInd" (match i with mkInd s _ => string_of_kername s end)
     end
   | tConstruct i n univs =>
     match lookup_tsl_table E (ConstructRef i n) with
     | Some t => t
-    | None => debug "tConstruct" (match i with mkInd s _ => s end)
+    | None => debug "tConstruct" (match i with mkInd s _ => string_of_kername s end)
     end
   | tCase ik t u brs as case =>
     let brs' := List.map (on_snd (lift0 1)) brs in
@@ -106,11 +99,11 @@ Fixpoint tsl_rec1_app (app : option term) (E : tsl_table) (t : term) : term :=
             (tsl_rec1_app (Some (tsl_rec0 0 case1)) E t)
             (tsl_rec1 E u)
             (map (on_snd (tsl_rec1 E)) brs)
-    | _ => debug "tCase" (match (fst ik) with mkInd s _ => s end)
+    | _ => debug "tCase" (match (fst ik) with mkInd s _ => string_of_kername s end)
     end
-  | tProj _ _ => todo
-  | tFix _ _ | tCoFix _ _ => todo
-  | tVar _ | tEvar _ _ => todo
+  | tProj _ _ => todo "tsl"
+  | tFix _ _ | tCoFix _ _ => todo "tsl"
+  | tVar _ | tEvar _ _ => todo "tsl"
   | tLambda _ _ _ => tVar "impossible"
   end in
   match app with Some t' => mkApp t1 (t' {3 := tRel 1} {2 := tRel 0})
@@ -118,13 +111,14 @@ Fixpoint tsl_rec1_app (app : option term) (E : tsl_table) (t : term) : term :=
   end.
 Definition tsl_rec1 := tsl_rec1_app None.
 
-Definition tsl_mind_body (E : tsl_table) (mp : string) (kn : kername)
+Definition tsl_mind_body (E : tsl_table) (mp : modpath) (kn : kername)
            (mind : mutual_inductive_body) : tsl_table * list mutual_inductive_body.
   refine (_, [{| ind_npars := 2 * mind.(ind_npars);
                  ind_params := _;
                  ind_bodies := _;
-                 ind_universes := mind.(ind_universes)|}]).  (* FIXME always ok? *)
-  - refine (let kn' := tsl_kn tsl_ident kn mp in
+                 ind_universes := mind.(ind_universes);
+                 ind_variance := mind.(ind_variance)|}]).  (* FIXME always ok? *)
+  - refine (let kn' : kername := (mp, tsl_ident kn.2) in
             fold_left_i (fun E i ind => _ :: _ ++ E)%list mind.(ind_bodies) []).
     + (* ind *)
       exact (IndRef (mkInd kn i), tInd (mkInd kn' i) []).
@@ -157,11 +151,11 @@ Definition tsl_mind_body (E : tsl_table) (mp : string) (kn : kername)
 Defined.
 
 
-Run TemplateProgram (typ <- tmQuote (forall A, A -> A) ;;
+MetaCoq Run (typ <- tmQuote (forall A, A -> A) ;;
                      typ' <- tmEval all (tsl_rec1 [] typ) ;;
                      tm <- tmQuote (fun A (x : A) => x) ;;
                      tm' <- tmEval all (tsl_rec1 [] tm) ;;
-                     tmUnquote (tApp typ' [tm]) >>= print_nf).
+                     tmUnquote (tApp typ' [tm]) >>= tmDebug).
 
 
 
@@ -170,7 +164,8 @@ Instance param : Translation :=
      tsl_tm := fun ΣE t => ret (tsl_rec1 (snd ΣE) t) ;
      (* Implement and Implement Existing cannot be used with this translation *)
      tsl_ty := None ;
-     tsl_ind := fun ΣE mp kn mind => ret (tsl_mind_body (snd ΣE) mp kn mind) |}.
+     tsl_ind := fun ΣE mp kn mind => 
+     ret (tsl_mind_body (snd ΣE) mp kn mind) |}.
 
 
 
@@ -178,25 +173,25 @@ Instance param : Translation :=
 
 
 Definition T := forall A, A -> A.
-Run TemplateProgram (Translate emptyTC "T").
+MetaCoq Run (Translate emptyTC "T").
 
 
 Definition tm := ((fun A (x:A) => x) (Type -> Type) (fun x => x)).
-Run TemplateProgram (Translate emptyTC "tm").
+MetaCoq Run (Translate emptyTC "tm").
 
-Run TemplateProgram (TC <- Translate emptyTC "nat" ;;
+MetaCoq Run (TC <- Translate emptyTC "nat" ;;
                      tmDefinition "nat_TC" TC ).
 
-Run TemplateProgram (TC <- Translate nat_TC "bool" ;;
+MetaCoq Run (TC <- Translate nat_TC "bool" ;;
                      tmDefinition "bool_TC" TC ).
-
-Run TemplateProgram (Translate bool_TC "pred").
+Import Nat.
+MetaCoq Run (Translate bool_TC "pred").
 
 
 Module Id1.
   Definition ID := forall A, A -> A.
 
-  Run TemplateProgram (Translate emptyTC "ID").
+  MetaCoq Run (Translate emptyTC "ID").
 
   Lemma param_ID_identity (f : ID)
     : IDᵗ f -> forall A x, f A x = x.
@@ -206,24 +201,23 @@ Module Id1.
   Qed.
 
   Definition toto := fun n : nat => (fun y => 0) (fun _ : Type =>  n).
-  Run TemplateProgram (Translate nat_TC "toto").
+  MetaCoq Run (Translate nat_TC "toto").
 
 
   Definition my_id : ID :=
     let n := 12 in (fun (_ : nat) y => y) 4 (fun A x => (fun _ : nat => x) n).
 
-  Run TemplateProgram (Translate nat_TC "my_id").
+  MetaCoq Run (Translate nat_TC "my_id").
 
 
   Definition free_thm_my_id : forall A x, my_id A x = x
     := param_ID_identity my_id my_idᵗ.
 End Id1.
 
-
 Module Id2.
   Definition ID := forall A x y (p : x = y :> A), x = y.
 
-  Run TemplateProgram (TC <- TranslateRec emptyTC ID ;;
+  MetaCoq Run (TC <- TranslateRec emptyTC ID ;;
                        tmDefinition "TC" TC).
 
 
@@ -240,7 +234,7 @@ Module Id2.
   Definition myf : ID
     := fun A x y p => eq_trans (eq_trans p (eq_sym p)) p.
 
-  Run TemplateProgram (TranslateRec TC myf).
+  MetaCoq Run (TranslateRec TC myf).
 
   Definition free_thm_myf : forall A x y p, myf A x y p = p
     := param_ID_identity myf myfᵗ.
@@ -249,17 +243,16 @@ End Id2.
 
 
 
-
 Module Vectors.
   Import Vector.
-  Run TemplateProgram (Translate nat_TC "t").
+  MetaCoq Run (Translate nat_TC "t").
 End Vectors.
 
 Require Import Even.
-Run TemplateProgram (Translate nat_TC "even").
+MetaCoq Run (Translate nat_TC "even").
 
 Definition rev_type := forall A, list A -> list A.
-Run TemplateProgram (TC <- Translate emptyTC "list" ;;
+MetaCoq Run (TC <- Translate emptyTC "list" ;;
                      TC <- Translate TC "rev_type" ;;
                      tmDefinition "list_TC" TC ).
 
@@ -270,10 +263,7 @@ Module Axioms.
 
   Definition UIP := forall A (x y : A) (p q : x = y), p = q.
 
-
-  Run TemplateProgram (tmQuoteRec UIP >>= tmPrint).
-
-  Run TemplateProgram (TC <- TranslateRec emptyTC UIP ;;
+  MetaCoq Run (TC <- TranslateRec emptyTC UIP ;;
                        tmDefinition "eqTC" TC).
 
   Definition eqᵗ_eq {A Aᵗ x xᵗ y yᵗ p}
@@ -312,7 +302,7 @@ Module Axioms.
     := forall A (B : A -> Type) (f g : forall x, B x), (forall x, f x = g x) -> f = g.
 
 
-  Run TemplateProgram (Translate eqTC "wFunext").
+  MetaCoq Run (Translate eqTC "wFunext").
 
   Theorem wFunext_provably_parametric : forall h : wFunext, wFunextᵗ h.
   Proof.
@@ -333,7 +323,7 @@ Module Axioms.
   (* Definition Funext *)
   (*   := forall A B (f g : forall x : A, B x), IsEquiv (@apD10 A B f g). *)
 
-  (* Run TemplateProgram (TC <- TranslateRec eqTC Funext ;; *)
+  (* MetaCoq Run (TC <- TranslateRec eqTC Funext ;; *)
   (*                  tmDefinition "eqTC'" TC). *)
 
 
@@ -356,7 +346,7 @@ Module Axioms.
 
   Definition wUnivalence := forall A B, A <~> B -> A = B.
 
-  Run TemplateProgram (TC <- TranslateRec eqTC wUnivalence ;;
+  MetaCoq Run (TC <- TranslateRec eqTC wUnivalence ;;
                           tmDefinition "eqTC1" TC).
 
   Theorem wUnivalence_provably_parametric : forall h, wUnivalenceᵗ h.
@@ -376,7 +366,7 @@ Module Axioms.
 
   Definition Univalence' := forall A B (p : A = B), IsEquiv (coe p).
 
-  Run TemplateProgram (TC <- TranslateRec eqTC1 Univalence' ;;
+  MetaCoq Run (TC <- TranslateRec eqTC1 Univalence' ;;
                           tmDefinition "eqTC'" TC).
 
 
@@ -384,7 +374,7 @@ Module Axioms.
     intros H A B []; exact (H A A 1).
   Defined.
 
-  Run TemplateProgram (TC <- TranslateRec eqTC' UU' ;;
+  MetaCoq Run (TC <- TranslateRec eqTC' UU' ;;
                           tmDefinition "eqTC''" TC).
 
   (* Goal (Univalence -> Univalence') * (Univalence' -> Univalence). *)

@@ -12,35 +12,33 @@ Definition test (p : Ast.program) : string :=
   | inr s => s
   end.
 
-Quote Recursively Definition zero := 0.
-Eval lazy in test zero.
+MetaCoq Quote Recursively Definition zero := 0.
+Definition zerocst := Eval lazy in test zero.
 
-Quote Recursively Definition exproof := I.
-Eval lazy in test exproof.
+MetaCoq Quote Recursively Definition exproof := I.
+Definition exprooftest := Eval lazy in test exproof.
 
-Quote Recursively Definition exintro := (@exist _ _ 0 (@eq_refl _ 0) : {x : nat | x = 0}).
-Eval lazy in test exintro.
+MetaCoq Quote Recursively Definition exintro := (@exist _ _ 0 (@eq_refl _ 0) : {x : nat | x = 0}).
+Definition exintrotest := Eval lazy in test exintro.
 
-Quote Recursively Definition idnat := ((fun (X : Set) (x : X) => x) nat).
-Eval lazy in test idnat.
+MetaCoq Quote Recursively Definition idnat := ((fun (X : Set) (x : X) => x) nat).
+Definition test_idnat := Eval lazy in test idnat.
 
 (** Check that optimization of singleton pattern-matchings work *)
-Quote Recursively Definition singlelim := ((fun (X : Set) (x : X) (e : x = x) =>
+MetaCoq Quote Recursively Definition singlelim := ((fun (X : Set) (x : X) (e : x = x) =>
                   match e in eq _ x' return bool with
                   | eq_refl => true
                   end)).
 
-Time Eval lazy in test singlelim.
+Time Definition singelim_test := Eval lazy in test singlelim.
 
-Quote Recursively Definition plusr := (plus 0 1).
+MetaCoq Quote Recursively Definition plusr := (plus 0 1).
 
-Eval lazy in test plusr.
+Time Definition plusrtest := Eval lazy in test plusr.
 
 
 (** vector addition **)
 Require Coq.Vectors.Vector.
-Print Fin.t.
-Print Vector.t.
 
 Definition vplus {n:nat} :
   Vector.t nat n -> Vector.t nat n -> Vector.t nat n := (Vector.map2 plus).
@@ -49,15 +47,15 @@ Definition v01 : Vector.t nat 2 :=
 Definition v23 : Vector.t nat 2 :=
   (Vector.cons nat 2 1 (Vector.cons nat 3 0 (Vector.nil nat))).
 Definition vplus0123 := (vplus v01 v23).
-Quote Recursively Definition cbv_vplus0123 := (* [program] of Coq's answer *)
+MetaCoq Quote Recursively Definition cbv_vplus0123 := (* [program] of Coq's answer *)
   ltac:(let t:=(eval cbv in (vplus0123)) in exact t).
-Print cbv_vplus0123.
+
 (* [Term] of Coq's answer *)
 Definition ans_vplus0123 := Eval lazy in test cbv_vplus0123.
 
 (* [program] of the program *)
-Quote Recursively Definition p_vplus0123 := vplus0123.
-Time Eval lazy in test p_vplus0123. (* 5s *)
+MetaCoq Quote Recursively Definition p_vplus0123 := vplus0123.
+Time Definition test_p_vplus0123 := Eval lazy in test p_vplus0123. (* 5s *)
 (*
   Time Eval vm_compute in test p_vplus0123. (* 3.54s *)
 Time Eval native_compute in test p_vplus0123. (* 23.54s on first run *)
@@ -77,15 +75,15 @@ Fixpoint ack (n m:nat) {struct n} : nat :=
              in ackn m
   end.
 Definition ack35 := (ack 3 5).
-Quote Recursively Definition cbv_ack35 :=
+MetaCoq Quote Recursively Definition cbv_ack35 :=
   ltac:(let t:=(eval cbv in ack35) in exact t).
-Print cbv_ack35.
-Eval lazy in test cbv_ack35.
+
+Time Definition testack35 := Eval lazy in test cbv_ack35.
 
 (* [program] of the program *)
-Quote Recursively Definition p_ack35 := ack35.
-Print p_ack35.
-Time Eval lazy in test p_ack35. (* 0.041 *)
+MetaCoq Quote Recursively Definition p_ack35 := ack35.
+
+Time Definition testack352 := Eval lazy in test p_ack35. (* 0.041 *)
 
 (** mutual recursion **)
 Inductive tree (A:Set) : Set :=
@@ -97,8 +95,8 @@ Arguments leaf {A}.
 Arguments fcons {A}.
 Arguments node {A}.
 Definition sf: forest bool := (fcons (node true (leaf false)) (leaf true)).
-Quote Recursively Definition p_sf := sf.
-Eval cbv in test p_sf.
+MetaCoq Quote Recursively Definition p_sf := sf.
+Time Definition testp_sf := Eval cbv in test p_sf.
 
 Fixpoint tree_size (t:tree bool) : nat :=
   match t with
@@ -114,17 +112,17 @@ Definition arden: forest bool :=
   fcons (node true (fcons (node true (leaf false)) (leaf true)))
         (fcons (node true (fcons (node true (leaf false)) (leaf true)))
                (leaf false)).
-Quote Recursively Definition p_arden := arden.
+MetaCoq Quote Recursively Definition p_arden := arden.
 Definition arden_size := (forest_size arden).
-Quote Recursively Definition cbv_arden_size :=
+MetaCoq Quote Recursively Definition cbv_arden_size :=
   ltac:(let t:=(eval cbv in arden_size) in exact t).
 Definition ans_arden_size :=
-  Eval cbv in test cbv_arden_size.
+ Eval cbv in test cbv_arden_size.
 (* [program] of the program *)
-Quote Recursively Definition p_arden_size := arden_size.
-Print p_arden_size.
+MetaCoq Quote Recursively Definition p_arden_size := arden_size.
+
 Definition P_arden_size := Eval cbv in test p_arden_size.
-Print P_arden_size.
+
 
 (** SASL tautology function: variable arity **)
 Require Import Bool.
@@ -140,17 +138,17 @@ Fixpoint taut (n:nat) : tautArg n -> bool :=
   end.
 (* Pierce *)
 Definition pierce := taut 2 (fun x y => implb (implb (implb x y) x) x).
-Quote Recursively Definition cbv_pierce :=
+MetaCoq Quote Recursively Definition cbv_pierce :=
   ltac:(let t:=(eval cbv in pierce) in exact t).
-Print cbv_pierce.
+
 Definition ans_pierce :=
   Eval cbv in (test cbv_pierce).
-Print ans_pierce.
+
 (* [program] of the program *)
-Quote Recursively Definition p_pierce := pierce.
-Print p_pierce.
+MetaCoq Quote Recursively Definition p_pierce := pierce.
+
 Definition P_pierce := Eval cbv in test p_pierce.
-Print P_pierce.
+
 (* Goal
   let env := (env P_pierce) in
   let main := (main P_pierce) in
@@ -161,17 +159,17 @@ Qed.
 Definition Scomb := taut 3
          (fun x y z => implb (implb x (implb y z))
                              (implb (implb x y) (implb x z))).
-Quote Recursively Definition cbv_Scomb :=
+MetaCoq Quote Recursively Definition cbv_Scomb :=
   ltac:(let t:=(eval cbv in Scomb) in exact t).
-Print cbv_Scomb.
+
 Definition ans_Scomb :=
   Eval cbv in (test cbv_Scomb).
-Print ans_Scomb.
+
 (* [program] of the program *)
-Quote Recursively Definition p_Scomb := Scomb.
-Print p_Scomb.
+MetaCoq Quote Recursively Definition p_Scomb := Scomb.
+
 Definition P_Scomb := Eval cbv in (test p_Scomb).
-Print P_Scomb.
+
 (* Goal
   let env := (env P_Scomb) in
   let main := (main P_Scomb) in
@@ -189,12 +187,12 @@ Fixpoint slowFib (n:nat) : nat :=
              end
   end.
 Definition slowFib3 := (slowFib 3).
-Quote Recursively Definition cbv_slowFib3 :=
+MetaCoq Quote Recursively Definition cbv_slowFib3 :=
   ltac:(let t:=(eval cbv in slowFib3) in exact t).
 Definition ans_slowFib3 :=
-  Eval cbv in (test cbv_slowFib3).
+ Eval cbv in (test cbv_slowFib3).
 (* [program] of the program *)
-Quote Recursively Definition p_slowFib3 := slowFib3.
+MetaCoq Quote Recursively Definition p_slowFib3 := slowFib3.
 Definition P_slowFib3 := Eval cbv in (test p_slowFib3).
 (* Goal
   let env := (env P_slowFib3) in
@@ -211,12 +209,12 @@ Fixpoint fibrec (n:nat) (fs:nat * nat) {struct n} : nat :=
   end.
 Definition fib : nat -> nat := fun n => fibrec n (pair 0 1).
 Definition fib9 := fib 9.
-Quote Recursively Definition cbv_fib9 :=
+MetaCoq Quote Recursively Definition cbv_fib9 :=
   ltac:(let t:=(eval cbv in fib9) in exact t).
-Definition ans_fib9 :=
+Time Definition ans_fib9 :=
   Eval cbv in (test cbv_fib9).
 (* [program] of the program *)
-Quote Recursively Definition p_fib9 := fib9.
+MetaCoq Quote Recursively Definition p_fib9 := fib9.
 Definition P_fib9 := Eval cbv in (test p_fib9).
 (* 
 Goal
@@ -248,7 +246,7 @@ Fixpoint PListToList {A:Set} (l:PList A) {struct l} : list A :=
     | succ l' => unzip (PListToList l')
   end.
 
-Eval compute in PListToList myPList.
+Time Definition test_myPList := Eval compute in PListToList myPList.
 
 Fixpoint gen_sumPList {A:Set} (l:PList A) {struct l} : (A->nat)->nat :=
   match l in PList A return (A->nat)->nat with
@@ -258,12 +256,12 @@ Fixpoint gen_sumPList {A:Set} (l:PList A) {struct l} : (A->nat)->nat :=
   end.
 Definition sumPList l := gen_sumPList l (fun x => x).
 Definition sumPL_myPL := (sumPList myPList).
-Quote Recursively Definition cbv_sumPL_myPL :=
+MetaCoq Quote Recursively Definition cbv_sumPL_myPL :=
   ltac:(let t:=(eval cbv in sumPL_myPL) in exact t).
 Definition ans_sumPL_myPL :=
   Eval cbv in (test cbv_sumPL_myPL).
 (* [program] of the program *)
-Quote Recursively Definition p_sumPL_myPL := sumPL_myPL.
+MetaCoq Quote Recursively Definition p_sumPL_myPL := sumPL_myPL.
 Definition P_sumPL_myPL := Eval cbv in (test p_sumPL_myPL).
 (* Goal
   let env := (env P_sumPL_myPL) in
@@ -292,14 +290,14 @@ Fixpoint size (t : Tree) : nat :=
   Definition myTree :=
   (T (cons (T (unit (T nil))) (cons (T (unit (T nil))) nil))).
 
-Eval cbv in size myTree.
+
 Definition size_myTree := size myTree.
-Quote Recursively Definition cbv_size_myTree :=
+MetaCoq Quote Recursively Definition cbv_size_myTree :=
   ltac:(let t:=(eval cbv in size_myTree) in exact t).
 Definition ans_size_myTree :=
   Eval cbv in (test cbv_size_myTree).
 (* [program] of the program *)
-Quote Recursively Definition p_size_myTree := size_myTree.
+MetaCoq Quote Recursively Definition p_size_myTree := size_myTree.
 Definition P_size_myTree := Eval cbv in (test p_size_myTree).
 (* Goal
   let env := (env P_size_myTree) in
@@ -318,16 +316,16 @@ Program Fixpoint provedCopy (n:nat) {wf lt n} : nat :=
   match n with 0 => 0 | S k => S (provedCopy k) end.
   Next Obligation.  apply lt_wf. Defined.
 Print Assumptions provedCopy.
-Quote Recursively Definition pCopy := provedCopy. (* program *)
+MetaCoq Quote Recursively Definition pCopy := provedCopy. (* program *)
 
 Definition x := 3.
 Definition provedCopyx := provedCopy x.
-Compute provedCopyx.  (** evals correctly in Coq **)
-Quote Recursively Definition cbv_provedCopyx :=
+(* Compute provedCopyx.  * evals correctly in Coq * *)
+MetaCoq Quote Recursively Definition cbv_provedCopyx :=
   ltac:(let t:=(eval cbv in provedCopyx) in exact t).
 Definition ans_provedCopyx :=
   Eval cbv in (test cbv_provedCopyx).
-Quote Recursively Definition p_provedCopyx := provedCopyx. (* program *)
+MetaCoq Quote Recursively Definition p_provedCopyx := provedCopyx. (* program *)
 (* We don't run those every time as they are really expensive *)
 (* Time Definition P_provedCopyx := Eval lazy in (test p_provedCopyx).
  *)(* 2 min purely inside Coq *)
