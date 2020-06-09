@@ -622,7 +622,7 @@ Proof.
     cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
     apply some_inj in hm. subst.
     inversion h2. subst.
-    specialize IHh1 with (1 := e) (2 := H0).
+    specialize IHh1 with (1 := e) (2 := X).
     destruct IHh1 as [σ' [e1 h]].
     cbn. rewrite e1.
     eexists. intuition eauto.
@@ -632,13 +632,13 @@ Proof.
     apply some_inj in hm. subst.
     inversion h2.
     + subst.
-      specialize IHh1 with (1 := e) (2 := H2).
+      specialize IHh1 with (1 := e) (2 := X).
       destruct IHh1 as [σ' [e1 h]].
       cbn. rewrite e1.
       eexists. intuition eauto.
       constructor. assumption.
     + subst.
-      specialize IHh1 with (1 := e) (2 := H2).
+      specialize IHh1 with (1 := e) (2 := X).
       destruct IHh1 as [σ' [e1 h]].
       cbn. rewrite e1.
       eexists. intuition eauto.
@@ -693,13 +693,14 @@ Proof.
     unfold subs_init, subs_add.
     rewrite nth_error_subs_empty. 2: auto.
     cbn in hm. rewrite lin_set_eq in hm.
+    unfold linear_mask_init in hm.
     rewrite -> nth_error_list_init in hm by auto.
     apply some_inj in hm. subst.
     eexists. intuition eauto.
     + apply masks_app.
       * apply masks_firstn. apply masks_linear_mask_init.
       * constructor. apply masks_skipn. apply masks_linear_mask_init.
-    + rewrite firstn_list_init. rewrite skipn_list_init.
+    + unfold subs_empty. rewrite firstn_list_init. rewrite skipn_list_init.
       replace (min n #|σ|) with n by lia.
       apply subs_complete_spec. split.
       * rewrite app_length. cbn.

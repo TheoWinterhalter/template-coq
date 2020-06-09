@@ -111,7 +111,7 @@ Lemma rename_context_snoc0 :
     rename_context f Γ ,, rename_decl (shiftn #|Γ| f) d.
 Proof.
   intros f Γ d.
-  unfold rename_context. now rewrite fold_context_snoc0. 
+  unfold rename_context. now rewrite fold_context_snoc0.
 Qed.
 Hint Rewrite rename_context_snoc0 : sigma.
 
@@ -340,7 +340,7 @@ Proof.
 Qed.
 
 Lemma up_ext_closed k' k s s' :
-  (forall i, i < k' -> s i = s' i) -> 
+  (forall i, i < k' -> s i = s' i) ->
   forall i, i < k + k' ->
   up k s i = up k s' i.
 Proof.
@@ -348,9 +348,9 @@ Proof.
   intros. f_equal. apply Hs. lia.
 Qed.
 
-Lemma inst_ext_closed s s' k t : 
-  closedn k t -> 
-  (forall x, x < k -> s x = s' x) -> 
+Lemma inst_ext_closed s s' k t :
+  closedn k t ->
+  (forall x, x < k -> s x = s' x) ->
   inst s t = inst s' t.
 Proof.
   clear.
@@ -358,7 +358,7 @@ Proof.
   elim t using PCUICInduction.term_forall_list_ind; simpl in |- *; intros; try easy ;
     try (try rewrite H; try rewrite H0 ; try rewrite H1 ; easy);
     try solve [f_equal; solve_all].
-  - apply Hs. now eapply Nat.ltb_lt. 
+  - apply Hs. now eapply Nat.ltb_lt.
   - move/andP: clt => []. intros. f_equal; eauto.
     eapply H0; eauto. intros. eapply up_ext_closed; eauto.
   - move/andP: clt => []. intros. f_equal; eauto. now eapply H0, up_ext_closed.
@@ -378,19 +378,19 @@ Proof.
     eapply b0; eauto. now apply up_ext_closed.
 Qed.
 
-Lemma subst_consn_eq s0 s1 s2 s3 x : 
+Lemma subst_consn_eq s0 s1 s2 s3 x :
   x < #|s0| -> #|s0| = #|s2| ->
   subst_fn s0 x = subst_fn s2 x ->
   (s0 ⋅n s1) x = (s2 ⋅n s3) x.
 Proof.
   unfold subst_fn; intros Hx Heq Heqx.
-  unfold subst_consn. 
+  unfold subst_consn.
   destruct (nth_error s0 x) eqn:Heq';
   destruct (nth_error s2 x) eqn:Heq''; auto;
   (apply nth_error_None in Heq''|| apply nth_error_None in Heq'); lia.
 Qed.
 
-Lemma subst_id s Γ t : 
+Lemma subst_id s Γ t :
   closedn #|s| t ->
   assumption_context Γ ->
   s = List.rev (to_extended_list Γ) ->
@@ -411,7 +411,7 @@ Proof.
   clear -ass e. revert e.
   rewrite -{2}(Nat.add_0_r x).
   generalize 0.
-  induction Γ in x, ass, x0 |- * => n. 
+  induction Γ in x, ass, x0 |- * => n.
   - simpl in *. rewrite nth_error_nil => //.
   - depelim ass; simpl.
     destruct x; simpl in *; try congruence.
@@ -1613,14 +1613,14 @@ Lemma typing_rename_prop : env_prop
     forall Δ f,
     renaming Σ Δ Γ f ->
     Σ ;;; Δ |- rename f t : rename f A)
-   (fun Σ Γ _ => 
-    forall Δ f, 
+   (fun Σ Γ _ =>
+    forall Δ f,
     renaming Σ Δ Γ f ->
     wf_local Σ Δ).
 Proof.
   apply typing_ind_env.
   - now intros Σ wfΣ Γ wfΓ HΓ Δ f [hΔ hf].
-  
+
   - intros Σ wfΣ Γ wfΓ n decl isdecl ihΓ Δ f [hΔ hf].
     simpl. eapply hf in isdecl as h.
     destruct h as [decl' [isdecl' [h1 h2]]].
@@ -1682,7 +1682,7 @@ Proof.
       eapply declared_inductive_closed_type. all: eauto.
   - intros Σ wfΣ Γ wfΓ ind i u mdecl idecl cdecl isdecl X X0 hconst Δ f hf.
     simpl. eapply meta_conv.
-    + econstructor. all: eauto. 
+    + econstructor. all: eauto.
     + rewrite rename_closed. 2: reflexivity.
       eapply declared_constructor_closed_type. all: eauto.
   - intros Σ wfΣ Γ wfΓ ind u npar p c brs args mdecl idecl isdecl X X0 e
@@ -1817,7 +1817,7 @@ Proof.
       * right. eexists. eapply ihB. assumption.
     + eapply cumul_rename. all: try eassumption.
       apply hf.
-      
+
 Admitted.
 
 Lemma typing_rename :
@@ -1957,7 +1957,7 @@ Proof.
     red in X.
     eapply All_map_eq. eapply (All_impl X).
     intros x [IH IH'].
-    apply map_def_eq_spec. 
+    apply map_def_eq_spec.
     * apply IH.
     * specialize (IH' (#|m| + k)).
       autorewrite with sigma.
@@ -1967,7 +1967,7 @@ Proof.
     red in X.
     eapply All_map_eq. eapply (All_impl X).
     intros x [IH IH'].
-    apply map_def_eq_spec. 
+    apply map_def_eq_spec.
     * apply IH.
     * specialize (IH' (#|m| + k)).
       autorewrite with sigma.
@@ -2163,8 +2163,8 @@ Lemma nat_recursion_ext {A} (x : A) f g n :
   Nat.recursion x f n = Nat.recursion x g n.
 Proof.
   intros.
-  generalize (le_refl n). 
-  induction n at 1 3 4; simpl; auto. 
+  generalize (le_refl n).
+  induction n at 1 3 4; simpl; auto.
   intros. simpl. rewrite IHn0; try lia. now rewrite H0.
 Qed.
 
@@ -2220,7 +2220,7 @@ Proof.
   ) (fun Σ Γ wfΓ => forall Δ σ, wf_local Σ Δ ->    Σ ;;; Δ ⊢ σ : Γ ->
       wf_local Σ Δ)).
   - intros Σ wfΣ Γ wfΓ. auto.
-    
+
   - intros Σ wfΣ Γ wfΓ n decl e X Δ σ hΔ hσ. simpl.
     eapply hσ. assumption.
   - intros Σ wfΣ Γ wfΓ l X H0 Δ σ hΔ hσ. simpl.
@@ -2257,7 +2257,7 @@ Proof.
       * eapply well_subst_Up'; try assumption.
         constructor; auto.
         ** exists s1. apply ihB; auto.
-        ** apply ihb; auto.  
+        ** apply ihb; auto.
   - intros Σ wfΣ Γ wfΓ t na A B u X ht iht hu ihu Δ σ hΔ hσ.
     autorewrite with sigma.
     econstructor.
@@ -2265,6 +2265,7 @@ Proof.
       simpl in iht. eapply meta_conv; [eapply iht|].
       now rewrite up_Up.
     * eapply ihu; auto.
+  - todo "rewrite rules"%string.
   - intros Σ wfΣ Γ wfΓ cst u decl X X0 isdecl hconst Δ σ hΔ hσ.
     autorewrite with sigma. simpl.
     eapply meta_conv; [econstructor; eauto|].
@@ -2296,7 +2297,7 @@ Proof.
       eapply ihc.
     + admit.
     + admit.
-    + admit. 
+    + admit.
   - intros Σ wfΣ Γ wfΓ p c u mdecl idecl pdecl isdecl args X X0 hc ihc e ty
            Δ σ hΔ hσ.
     simpl.

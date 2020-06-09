@@ -72,9 +72,11 @@ Definition tRel := tRel.
 Definition tSort := tSort.
 Definition tProd := tProd.
 Definition tLambda := tLambda.
+Definition tSymb (k : kername) (n : nat) (ui : Instance.t) := tRel 0.
 Definition tLetIn := tLetIn.
 Definition tInd := tInd.
 Definition tProj := tProj.
+Definition tCase := tCase.
 Definition mkApps := mkApps.
 
 End TemplateTerm.

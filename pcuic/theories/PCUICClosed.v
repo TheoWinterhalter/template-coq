@@ -6,6 +6,7 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICInduction
 Require Import ssreflect ssrbool.
 
 From Equations Require Import Equations.
+Require Import Equations.Prop.DepElim.
 
 (** * Lemmas about the [closedn] predicate *)
 
@@ -38,19 +39,19 @@ Proof.
   simpl.
   rewrite /mapi mapi_rec_app forallb_app List.rev_length /= /snoc Nat.add_0_r.
   move/andb_and => /= [Hctx /andb_and [Ha _]].
-  f_equal. rewrite lift_decl_closed. apply: closed_decl_upwards; eauto. lia. 
+  f_equal. rewrite lift_decl_closed. apply: closed_decl_upwards; eauto. lia.
   reflexivity.
-  rewrite IHctx // lift_decl_closed //. 
+  rewrite IHctx // lift_decl_closed //.
 Qed.
 
-Lemma map_decl_ext' f g k d : closed_decl k d -> 
-  (forall x, closedn k x -> f x = g x) -> 
+Lemma map_decl_ext' f g k d : closed_decl k d ->
+  (forall x, closedn k x -> f x = g x) ->
   map_decl f d = map_decl g d.
 Proof.
   destruct d as [? [?|] ?] => /= cl Hfg;
   unfold map_decl; simpl; f_equal.
   rewrite Hfg => //. unfold closed_decl in cl.
-  simpl in cl. now move/andP: cl => []. 
+  simpl in cl. now move/andP: cl => [].
   move/andP: cl => [cl cl']. now rewrite Hfg.
   now rewrite Hfg.
 Qed.
@@ -252,8 +253,8 @@ Proof.
     do 3 (f_equal; intuition eauto).
 Qed.
 
-Lemma closed_map_subst_instance n u l : 
-  forallb (closedn n) (map (subst_instance_constr u) l) = 
+Lemma closed_map_subst_instance n u l :
+  forallb (closedn n) (map (subst_instance_constr u) l) =
   forallb (closedn n) l.
 Proof.
   induction l; simpl; auto.
@@ -373,7 +374,7 @@ Proof.
       now rewrite app_length // plus_n_Sm.
 Qed.
 
-Lemma type_local_ctx_All_local_env {cf:checker_flags} P Σ Γ Δ s : 
+Lemma type_local_ctx_All_local_env {cf:checker_flags} P Σ Γ Δ s :
   All_local_env (lift_typing P Σ) Γ ->
   type_local_ctx (lift_typing P) Σ Γ Δ s ->
   All_local_env (lift_typing P Σ) (Γ ,,, Δ).
@@ -392,7 +393,7 @@ Lemma type_local_ctx_Pclosed Σ Γ Δ s :
   type_local_ctx (lift_typing Pclosed) Σ Γ Δ s ->
   Alli (fun i d => closed_decl (#|Γ| + i) d) 0 (List.rev Δ).
 Proof.
-  induction Δ; simpl; auto; try constructor.  
+  induction Δ; simpl; auto; try constructor.
   destruct a as [? [] ?]; intuition auto.
   - apply Alli_app_inv; auto. constructor. simpl.
     rewrite List.rev_length. 2:constructor.
@@ -409,7 +410,7 @@ Lemma All_local_env_Pclosed Σ Γ :
   All_local_env ( lift_typing Pclosed Σ) Γ ->
   Alli (fun i d => closed_decl i d) 0 (List.rev Γ).
 Proof.
-  induction Γ; simpl; auto; try constructor.  
+  induction Γ; simpl; auto; try constructor.
   intros all; depelim all; intuition auto.
   - apply Alli_app_inv; auto. constructor. simpl.
     rewrite List.rev_length. 2:constructor.
@@ -423,7 +424,7 @@ Qed.
 
 Lemma closed_subst_context n (Δ Δ' : context) t :
   closedn (n + #|Δ|) t ->
-  Alli (fun i d => closed_decl (n + S #|Δ| + i) d) 0 (List.rev Δ') -> 
+  Alli (fun i d => closed_decl (n + S #|Δ| + i) d) 0 (List.rev Δ') ->
   Alli (fun i d => closed_decl (n + #|Δ| + i) d) 0 (List.rev (subst_context [t] 0 Δ')).
 Proof.
   induction Δ' in Δ |- *.
@@ -432,7 +433,7 @@ Proof.
   - intros. eapply Alli_app in X as [X X'].
     rewrite subst_context_snoc. simpl. eapply Alli_app_inv.
     eapply IHΔ'; eauto. constructor; [|constructor].
-    simpl. 
+    simpl.
     rewrite /closed_decl /map_decl /= Nat.add_0_r List.rev_length subst_context_length.
     inv X'. unfold closed_decl in H0. simpl in H0.
     rewrite List.rev_length Nat.add_0_r in H0.
@@ -441,7 +442,7 @@ Proof.
   - intros. eapply Alli_app in X as [X X'].
     rewrite subst_context_snoc. simpl. eapply Alli_app_inv.
     eapply IHΔ'; eauto. constructor; [|constructor].
-    simpl. 
+    simpl.
     rewrite /closed_decl /map_decl /= Nat.add_0_r List.rev_length subst_context_length.
     inv X'. unfold closed_decl in H0. simpl in H0.
     rewrite List.rev_length Nat.add_0_r in H0.
@@ -449,8 +450,8 @@ Proof.
 Qed.
 
 Lemma closed_smash_context_gen n (Δ Δ' : context) :
-  Alli (fun i d => closed_decl (n + i) d) 0 (List.rev Δ) -> 
-  Alli (fun i d => closed_decl (n + #|Δ| + i) d) 0 (List.rev Δ') -> 
+  Alli (fun i d => closed_decl (n + i) d) 0 (List.rev Δ) ->
+  Alli (fun i d => closed_decl (n + #|Δ| + i) d) 0 (List.rev Δ') ->
   Alli (fun i d => closed_decl (n + i) d) 0 (List.rev (smash_context Δ' Δ)).
 Proof.
   induction Δ in Δ' |- *.
@@ -476,7 +477,7 @@ Proof.
 Qed.
 
 Lemma closed_smash_context_unfold n (Δ : context) :
-  Alli (fun i d => closed_decl (n + i) d) 0 (List.rev Δ) -> 
+  Alli (fun i d => closed_decl (n + i) d) 0 (List.rev Δ) ->
   Alli (fun i d => closed_decl (n + i) d) 0 (List.rev (smash_context [] Δ)).
 Proof.
   intros; apply (closed_smash_context_gen n _ []); auto. constructor.
@@ -507,18 +508,18 @@ Proof.
   now apply (Alli_shiftn_inv 0 _ n) in H.
 Qed.
 
-Lemma context_assumptions_app Γ Δ : context_assumptions (Γ ++ Δ) = 
+Lemma context_assumptions_app Γ Δ : context_assumptions (Γ ++ Δ) =
   context_assumptions Γ + context_assumptions Δ.
 Proof.
   induction Γ as [|[? [] ?] ?]; simpl; auto.
 Qed.
 
-Lemma weaken_env_prop_closed {cf:checker_flags} : 
+Lemma weaken_env_prop_closed {cf:checker_flags} :
   weaken_env_prop (lift_typing (fun (_ : global_env_ext) (Γ : context) (t T : term) =>
   closedn #|Γ| t && closedn #|Γ| T)).
 Proof. repeat red. intros. destruct t; red in X0; eauto. Qed.
 
-Lemma declared_projection_closed_ind {cf:checker_flags} {Σ : global_env_ext} {mdecl idecl p pdecl} : 
+Lemma declared_projection_closed_ind {cf:checker_flags} {Σ : global_env_ext} {mdecl idecl p pdecl} :
   wf Σ.1 ->
   declared_projection Σ.1 mdecl idecl p pdecl ->
   Forall_decls_typing
@@ -536,8 +537,8 @@ Proof.
   destruct onp as [_ onp].
   red in onp.
   destruct (nth_error (smash_context [] _) _) eqn:Heq'; try contradiction.
-  destruct onp as [onna onp]. rewrite {}onp. 
-  pose proof (onConstructors oib) as onc. 
+  destruct onp as [onna onp]. rewrite {}onp.
+  pose proof (onConstructors oib) as onc.
   red in onc. rewrite Heq in onc. inv onc. clear X1.
   eapply on_cargs in X.
   simpl.
@@ -558,7 +559,7 @@ Proof.
   red in onpars.
   eapply All_local_env_Pclosed in onpars.
   eapply (Alli_impl (Q:=fun i d => closed_decl (#|ind_params mdecl| + i + #|arities_context (ind_bodies mdecl)|) d)) in args.
-  2:{ intros n x. rewrite app_context_length. 
+  2:{ intros n x. rewrite app_context_length.
       intros H; eapply closed_decl_upwards; eauto. lia. }
   eapply (Alli_shiftn (P:=fun i d => closed_decl (i + #|arities_context (ind_bodies mdecl)|) d)) in args.
   rewrite Nat.add_0_r in args.
@@ -606,7 +607,7 @@ Proof.
     now move/andP: ca => [_ cty].
     now rewrite /closed_decl /= in ca.
     simpl.
-    rewrite -Nat.add_1_r. 
+    rewrite -Nat.add_1_r.
     rewrite -(simpl_lift _ (S n) 0 1 0); try lia.
     apply closedn_lift. apply IHΓ; auto.
     rewrite closedn_ctx_cons in H0.
@@ -630,11 +631,11 @@ Proof.
         -- eapply IHm.
     + simpl.
       rewrite closedn_subst_instance_constr.
-      eapply lookup_on_global_env in H ; eauto.
-      destruct H as [Σ' [HΣ' IH]].
+      eapply lookup_on_global_env in H0 ; eauto.
+      destruct H0 as [Σ' [HΣ' IH]].
       repeat red in IH. destruct IH as [hctx hr].
       unfold on_context in hctx.
-      rename H0 into e.
+      rename H1 into e.
       rewrite symbols_subst_length.
       clear - e hctx.
       set (l := symbols decl) in *. clearbody l.
@@ -645,7 +646,7 @@ Proof.
            dependent destruction hctx. 2: discriminate.
            hnf in H. noconf H. cbn in *.
            destruct l0 as [s h].
-           apply utils.andP in h as [h _].
+           apply MCProd.andP in h as [h _].
            rewrite map_length in h.
            eapply closed_upwards. 1: eassumption. lia.
         -- simpl in *. specialize IHl with (1 := e).
@@ -726,7 +727,7 @@ Proof.
     eapply nth_error_all in X0; eauto.
     destruct X0 as [s [Hs cl]].
     now rewrite andb_true_r in cl.
-    
+
   - destruct X1; intuition eauto.
     + destruct i as [[u [ctx [Heq Hi]]] Hwfi]. simpl in Hwfi.
       generalize (destArity_spec [] B). rewrite Heq.
@@ -836,7 +837,7 @@ Proof.
       apply typecheck_closed in h. all: eauto.
       rewrite map_length in h.
       replace (#|l| - 0) with #|l| by lia.
-      destruct h as [_ h]. apply utils.andP in h.
+      destruct h as [_ h]. apply MCProd.andP in h.
       apply h.
     + simpl in *.
       dependent destruction hctx. 2: discriminate.
@@ -844,6 +845,221 @@ Proof.
       cbn in *.
       eapply IHl in e. 2: assumption.
       assumption.
+Qed.
+
+Lemma closed_declared_symbol `{checker_flags} :
+  forall Σ k n u decl ty,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (symbols decl) n = Some ty ->
+    closed ((subst0 (symbols_subst k (S n) u #|symbols decl|)) (subst_instance_constr u ty)).
+Proof.
+  intros Σ k n u decl ty hΣ h e.
+  rewrite closedn_subst0.
+  - eapply forallb_Forall. clear.
+    unfold symbols_subst.
+    generalize (#|symbols decl| - (S n)). intro m.
+    generalize (S n). clear. intro n.
+    induction m in n |- *.
+    + simpl. constructor.
+    + simpl. constructor.
+      * simpl. reflexivity.
+      * eapply IHm.
+  - rewrite closedn_subst_instance_constr.
+    rewrite symbols_subst_length. simpl.
+    eapply closed_declared_symbol_nth_error. all: eauto.
+  - reflexivity.
+Qed.
+
+Lemma wf_local_closed_ctx `{cf : checker_flags} :
+  forall Σ Γ,
+    wf Σ.1 ->
+    wf_local Σ Γ ->
+    closed_ctx Γ.
+Proof.
+  intros Σ Γ hΣ h.
+  induction h.
+  - constructor.
+  - cbn. rewrite mapi_rec_app. cbn.
+    rewrite forallb_app. cbn.
+    unfold closed_ctx in IHh.
+    rewrite IHh. cbn.
+    destruct t0 as [s ht].
+    eapply typecheck_closed in ht. 2: auto.
+    destruct ht as [? e].
+    rewrite List.rev_length. replace (#|Γ| + 0) with #|Γ| by lia.
+    apply MCProd.andP in e as [e ?].
+    rewrite e. cbn. reflexivity.
+  - cbn. rewrite mapi_rec_app. cbn.
+    rewrite forallb_app. cbn.
+    unfold closed_ctx in IHh.
+    rewrite IHh. cbn.
+    rewrite List.rev_length. replace (#|Γ| + 0) with #|Γ| by lia.
+    unfold closed_decl. cbn.
+    cbn in t1.
+    eapply typecheck_closed in t1. 2: auto.
+    destruct t1 as [? e]. rewrite e.
+    reflexivity.
+Qed.
+
+Lemma closed_declared_symbol_pat_context `{checker_flags} :
+  forall Σ k n decl r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    closedn_ctx #|decl.(symbols)| r.(pat_context).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hr. 2: eassumption.
+  destruct hr as [T hl hr hh he]. clear - wfΣ' hl.
+  eapply typing_wf_local in hl.
+  apply wf_local_closed_ctx in hl. 2: auto.
+  rewrite closedn_ctx_app in hl.
+  apply MCProd.andP in hl as [? h]. cbn in h.
+  rewrite map_length in h. assumption.
+Qed.
+
+Lemma closed_declared_symbol_par_pat_context `{checker_flags} :
+  forall Σ k n decl r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closedn_ctx #|decl.(symbols)| r.(pat_context).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hpr. 2: eassumption.
+  destruct hpr as [T hl hpr hh he]. clear - wfΣ' hl.
+  eapply typing_wf_local in hl.
+  apply wf_local_closed_ctx in hl. 2: auto.
+  rewrite closedn_ctx_app in hl.
+  apply MCProd.andP in hl as [? h]. cbn in h.
+  rewrite map_length in h. assumption.
+Qed.
+
+Lemma closed_declared_symbol_par_context `{checker_flags} :
+  forall Σ k n decl r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closed_ctx (map (vass nAnon) (symbols decl) ,,, pat_context r).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hpr. 2: eassumption.
+  destruct hpr as [T hl hpr hh he]. clear - wfΣ' hl.
+  eapply typing_wf_local in hl.
+  apply wf_local_closed_ctx in hl. 2: auto.
+  assumption.
+Qed.
+
+Lemma closed_rule_lhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (lhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr hpr]].
+  eapply nth_error_all in hn. 2: eassumption.
+  destruct hn as [T h _ _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  destruct h as [_ h].
+  apply MCProd.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
+Qed.
+
+Lemma closed_rule_rhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (rhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr hpr]].
+  eapply nth_error_all in hn. 2: eassumption.
+  destruct hn as [T _ h _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  destruct h as [_ h].
+  apply MCProd.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
+Qed.
+
+Lemma closed_prule_lhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (lhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply nth_error_all in hn. 2: exact hpr.
+  destruct hn as [T h _ _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  destruct h as [_ h].
+  apply MCProd.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
+Qed.
+
+Lemma closed_prule_rhs `{checker_flags} :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(prules) n = Some r ->
+    closedn (#|r.(pat_context)| + #|decl.(symbols)|) (rhs r).
+Proof.
+  intros Σ k decl n r hΣ isdecl hn.
+  unfold declared_symbol in isdecl.
+  eapply lookup_on_global_env in isdecl. 2: eauto.
+  destruct isdecl as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply nth_error_all in hn. 2: exact hpr.
+  destruct hn as [T _ h _ _]. simpl in *.
+  eapply typecheck_closed in h.
+  2: assumption.
+  destruct h as [_ h].
+  apply MCProd.andP in h. destruct h as [h _].
+  rewrite app_context_length in h.
+  rewrite map_length in h.
+  assumption.
 Qed.
 
 Lemma declared_decl_closed `{checker_flags} {Σ : global_env} {cst decl} :
@@ -862,7 +1078,7 @@ Qed.
 
 Lemma closedn_mapi_rec_ext (f g : nat -> context_decl -> context_decl) (l : context) n k' :
   closedn_ctx k' l ->
-  (forall k x, n <= k -> k < length l + n -> 
+  (forall k x, n <= k -> k < length l + n ->
     closed_decl (k' + #|l|) x ->
     f k x = g k x) ->
   mapi_rec f l n = mapi_rec g l n.
@@ -886,17 +1102,17 @@ Qed.
 
 Definition closed_inductive_body mdecl idecl :=
   closedn 0 idecl.(ind_type) &&
-  forallb (fun cdecl => 
+  forallb (fun cdecl =>
     closedn (#|arities_context mdecl.(ind_bodies)|) (cdecl_type cdecl)) idecl.(ind_ctors) &&
   forallb (fun x => closedn (S (ind_npars mdecl)) x.2) idecl.(ind_projs).
 
 Definition closed_inductive_decl mdecl :=
   closed_ctx (ind_params mdecl) &&
-  forallb (closed_inductive_body mdecl) (ind_bodies mdecl). 
-  
+  forallb (closed_inductive_body mdecl) (ind_bodies mdecl).
+
 
 Lemma closedn_All_local_env (ctx : list context_decl) :
-  All_local_env 
+  All_local_env
     (fun (Γ : context) (b : term) (t : option term) =>
       closedn #|Γ| b && option_default (closedn #|Γ|) t true) ctx ->
     closedn_ctx 0 ctx.
@@ -911,7 +1127,7 @@ Qed.
 Lemma skipn_0 {A} (l : list A) : skipn 0 l = l.
 Proof. reflexivity. Qed.
 
-Lemma declared_projection_closed {cf:checker_flags} {Σ : global_env_ext} {mdecl idecl p pdecl} : 
+Lemma declared_projection_closed {cf:checker_flags} {Σ : global_env_ext} {mdecl idecl p pdecl} :
   wf Σ.1 ->
   declared_projection Σ.1 mdecl idecl p pdecl ->
   closedn (S (ind_npars mdecl)) pdecl.2.
@@ -920,7 +1136,7 @@ Proof.
   eapply typecheck_closed; eauto. eapply type_Prop.
 Qed.
 
-Lemma declared_inductive_closed {cf:checker_flags} {Σ : global_env_ext} {mdecl mind} : 
+Lemma declared_inductive_closed {cf:checker_flags} {Σ : global_env_ext} {mdecl mind} :
   wf Σ.1 ->
   declared_minductive Σ.1 mind mdecl ->
   closed_inductive_decl mdecl.
@@ -933,8 +1149,8 @@ Proof.
   now apply closedn_All_local_env in decl'; auto.
   apply onInductives in decl'.
   eapply All_forallb.
-  
-  assert (Alli (fun i =>  declared_inductive Σ.1 mdecl {| inductive_mind := mind; inductive_ind := i |}) 
+
+  assert (Alli (fun i =>  declared_inductive Σ.1 mdecl {| inductive_mind := mind; inductive_ind := i |})
     0 (ind_bodies mdecl)).
   { eapply forall_nth_error_Alli. intros.
     split; auto. }
@@ -957,7 +1173,7 @@ Proof.
     specialize (X eq). clear eq.
     destruct (ind_cshapes oib) as [|? []]; try contradiction.
     apply on_projs in X.
-    assert (Alli (fun i pdecl => declared_projection Σ.1 mdecl x 
+    assert (Alli (fun i pdecl => declared_projection Σ.1 mdecl x
      (({| inductive_mind := mind; inductive_ind := n |}, mdecl.(ind_npars)), i) pdecl)
       0 (ind_projs x)).
     { eapply forall_nth_error_Alli.
@@ -983,7 +1199,7 @@ Proof.
   all: now rewrite !closedn_subst_instance_constr.
 Qed.
 
-Lemma subject_closed `{checker_flags} {Σ Γ t T} : 
+Lemma subject_closed `{checker_flags} {Σ Γ t T} :
   wf Σ.1 ->
   Σ ;;; Γ |- t : T ->
   closedn #|Γ| t.
@@ -994,7 +1210,7 @@ Proof.
   now move: c => [_ /andP [ct _]].
 Qed.
 
-Lemma type_closed `{checker_flags} {Σ Γ t T} : 
+Lemma type_closed `{checker_flags} {Σ Γ t T} :
   wf Σ.1 ->
   Σ ;;; Γ |- t : T ->
   closedn #|Γ| T.
@@ -1041,7 +1257,7 @@ Proof.
   simpl in clΓ. eapply closed_decl_upwards; eauto. lia.
 Qed.
 
-Lemma ctx_inst_closed {cf:checker_flags} (Σ : global_env_ext) Γ i Δ : 
+Lemma ctx_inst_closed {cf:checker_flags} (Σ : global_env_ext) Γ i Δ :
   wf Σ.1 -> ctx_inst (lift_typing typing) Σ Γ i Δ -> All (closedn #|Γ|) i.
 Proof.
   intros wfΣ; induction 1; auto; constructor; auto.
@@ -1063,7 +1279,7 @@ Proof.
   autorewrite with len. now rewrite -Nat.add_assoc Nat.add_comm.
 Qed.
 
-Lemma closedn_ctx_subst k k' s Γ : 
+Lemma closedn_ctx_subst k k' s Γ :
   closedn_ctx (k + k' + #|s|) Γ ->
   forallb (closedn k) s ->
   closedn_ctx (k + k') (subst_context s k' Γ).
@@ -1116,7 +1332,7 @@ Proof.
   red in decl'. destruct decl' as [h ? ? ?].
   eapply Alli_nth_error in h. 2: eassumption.
   simpl in h. destruct h as [? ? ? [? h] ? ? ?].
-  eapply typecheck_closed in h as [? e]. 2: auto. 
+  eapply typecheck_closed in h as [? e]. 2: auto.
   move/andP in e. destruct e. assumption.
 Qed.
 
@@ -1135,7 +1351,7 @@ Proof.
   erewrite hidecl in clbodies. simpl in clbodies.
   unfold closed_inductive_body in clbodies.
   move/andP: clbodies => [/andP [_ cl] _].
-  eapply forallb_All in cl. apply (All_impl cl). 
+  eapply forallb_All in cl. apply (All_impl cl).
   intros [[? ?] ?]; simpl; firstorder.
 Qed.
 

@@ -6,7 +6,7 @@ From MetaCoq.Template Require Import config utils monad_utils
   EnvironmentTyping.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils
   PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICUtils
-  PCUICPosition.
+  PCUICPosition PCUICPattern.
 
 From MetaCoq Require Export LibHypsNaming.
 Require Import ssreflect.
@@ -120,9 +120,9 @@ Qed.
 Lemma fix_context_length mfix : #|fix_context mfix| = #|mfix|.
 Proof. unfold fix_context. now rewrite List.rev_length mapi_length. Qed.
 
-Hint Rewrite subst_context_length subst_instance_context_length 
-  app_context_length map_context_length fix_context_length fix_subst_length cofix_subst_length 
-  map_length app_length lift_context_length 
+Hint Rewrite subst_context_length subst_instance_context_length
+  app_context_length map_context_length fix_context_length fix_subst_length cofix_subst_length
+  map_length app_length lift_context_length
   @mapi_length @mapi_rec_length List.rev_length Nat.add_0_r : len.
 
 Definition tDummy := tVar String.EmptyString.
@@ -789,7 +789,7 @@ Definition build_case_predicate_type ind mdecl idecl params u ps : option term :
          decl_body := None;
          decl_type := mkApps (tInd ind u) (map (lift0 #|X.1|) params ++ to_extended_list X.1) |} in
   ret (it_mkProd_or_LetIn (X.1 ,, inddecl) (tSort ps)).
-  
+
 Definition destInd (t : term) :=
   match t with
   | tInd ind u => Some (ind, u)
@@ -950,9 +950,9 @@ Inductive typing `{checker_flags} (Σ : global_env_ext) (Γ : context) : term ->
     All (fun d => {s & Σ ;;; Γ |- d.(dtype) :  tSort s}) mfix ->
     All (fun d => (Σ ;;; Γ ,,, fix_context mfix |- d.(dbody) : lift0 #|fix_context mfix| d.(dtype))
       * (isLambda d.(dbody) = true)%type) mfix ->
-    wf_fixpoint Σ.1 mfix -> 
+    wf_fixpoint Σ.1 mfix ->
     Σ ;;; Γ |- tFix mfix n : decl.(dtype)
-  
+
 | type_CoFix mfix n decl :
     cofix_guard mfix ->
     nth_error mfix n = Some decl ->
@@ -961,7 +961,7 @@ Inductive typing `{checker_flags} (Σ : global_env_ext) (Γ : context) : term ->
     All (fun d => Σ ;;; Γ ,,, fix_context mfix |- d.(dbody) : lift0 #|fix_context mfix| d.(dtype)) mfix ->
     wf_cofixpoint Σ.1 mfix ->
     Σ ;;; Γ |- tCoFix mfix n : decl.(dtype)
-  
+
 | type_Cumul t A B :
     Σ ;;; Γ |- t : A ->
     (isWfArity typing Σ Γ B + {s & Σ ;;; Γ |- B : tSort s})%type ->
@@ -997,7 +997,7 @@ Definition unlift_opt_pred (P : global_env_ext -> context -> option term -> term
   We assume the ss subst is already done in the elimination list.
 *)
 
-Definition option_assert (b : bool) : option () :=
+Definition option_assert (b : bool) : option unit :=
   if b then ret tt else None.
 
 (* Why do I need it again? *)
@@ -1072,7 +1072,7 @@ Definition option_on_snd {A B C : Type}
   c <- f p.2 ;;
   ret (p.1, c).
 
-Fixpoint strengthen n k t : option term :=
+(* Fixpoint strengthen n k t : option term :=
   match t with
   | tRel i =>
       if k + n <=? i then ret (tRel (i - n))
@@ -1123,9 +1123,9 @@ Fixpoint strengthen n k t : option term :=
       ret (tCoFix mfix' idx)
 
   | x => ret x
-  end.
+  end. *)
 
-Lemma strengthen_lift :
+(* Lemma strengthen_lift :
   forall n k t,
     strengthen n k (lift n k t) = Some t.
 Proof.
@@ -1176,7 +1176,7 @@ Proof.
       rewrite h1. rewrite h2. rewrite IHX. destruct x. reflexivity.
     }
     rewrite e. reflexivity.
-Qed.
+Qed. *)
 
 Lemma option_monad_map_length :
   forall A B f l l',
@@ -1192,7 +1192,7 @@ Proof.
     eapply IHl. reflexivity.
 Qed.
 
-Lemma strengthen_inv :
+(* Lemma strengthen_inv :
   forall n k t u,
     strengthen n k t = Some u ->
     t = lift n k u.
@@ -1318,7 +1318,7 @@ Proof.
       end.
       unfold map_def. cbn. f_equal.
       eapply IHX. assumption.
-Qed.
+Qed. *)
 
 Require PCUICSize.
 
@@ -1452,7 +1452,6 @@ Proof.
   - cbn in e. subst. exists u, []. intuition auto.
   - rewrite <- mkApps_nested in e. cbn in e.
     destruct u. all: cbn in e. all: try discriminate.
-    1:{ destruct (k <=? n0). all: discriminate. }
     inversion e. subst.
     eapply IHl in H0 as [t' [l' ?]].
     intuition eauto. subst.
@@ -1775,9 +1774,8 @@ Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
   Definition smash_context := smash_context.
   Definition lift_context := lift_context.
   Definition subst_telescope := subst_telescope.
-  Definition subst := subst.
   Definition lift := lift.
-  Definition inds := inds.  
+  Definition inds := inds.
   Definition elim_pattern := elim_pattern.
   Definition linear := @linear.
 
@@ -1812,6 +1810,7 @@ Proof.
     end.
   - exact (S (wf_local_size _ typing_size _ a)).
   - exact (S (wf_local_size _ typing_size _ a)).
+  - exact (S (S (wf_local_size _ typing_size _ a))).
   - exact (S (S (wf_local_size _ typing_size _ a))).
   - exact (S (S (wf_local_size _ typing_size _ a))).
   - exact (S (S (wf_local_size _ typing_size _ a))).
@@ -1876,7 +1875,7 @@ Hint Resolve typing_wf_local : wf.
 
 Definition env_prop `{checker_flags} (P : forall Σ Γ t T, Type) (PΓ : forall Σ Γ, wf_local Σ Γ ->  Type) :=
   forall Σ (wfΣ : wf Σ.1) Γ t T (ty : Σ ;;; Γ |- t : T),
-    Forall_decls_typing P Σ.1 * 
+    Forall_decls_typing P Σ.1 *
     PΓ Σ Γ (typing_wf_local ty) *
     P Σ Γ t T.
 
@@ -1886,7 +1885,7 @@ Lemma env_prop_typing `{checker_flags} P PΓ : env_prop P PΓ ->
 Proof. intros. now apply X. Qed.
 
 Lemma type_Prop_wf `{checker_flags} Σ Γ : wf_local Σ Γ -> Σ ;;; Γ |- tSort Universe.type0m : tSort Universe.type1.
-Proof. 
+Proof.
   repeat constructor; auto.
   apply prop_global_ext_levels.
 Defined.
@@ -1933,7 +1932,7 @@ Lemma typing_wf_local_size `{checker_flags} {Σ} {Γ t T}
       (d :Σ ;;; Γ |- t : T) :
   wf_local_size Σ (@typing_size _) _ (typing_wf_local d) < typing_size d.
 Proof.
-  induction d; simpl; 
+  induction d; simpl;
   change (fun (x : global_env_ext) (x0 : context) (x1 x2 : term)
   (x3 : x;;; x0 |- x1 : x2) => typing_size x3) with (@typing_size H); try lia.
   - destruct indnpar as [ind' npar']; cbn in *; subst ind npar. lia.
@@ -1992,7 +1991,7 @@ Lemma typing_ind_env `{cf : checker_flags} :
          (Pdecl := fun Σ Γ wfΓ t T tyT => P Σ Γ t T)
          (PΓ : forall Σ Γ, wf_local Σ Γ -> Type),
 
-    (forall Σ (wfΣ : wf Σ.1)  (Γ : context) (wfΓ : wf_local Σ Γ), 
+    (forall Σ (wfΣ : wf Σ.1)  (Γ : context) (wfΓ : wf_local Σ Γ),
          All_local_env_over typing Pdecl Σ Γ wfΓ -> PΓ Σ Γ wfΓ) ->
 
     (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (n : nat) decl,
@@ -2034,9 +2033,9 @@ Lemma typing_ind_env `{cf : checker_flags} :
         Σ ;;; Γ |- u : A -> P Σ Γ u A ->
         P Σ Γ (tApp t u) (B{0 := u})) ->
 
-    (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (k : ident) (n : nat) u decl ty,
+    (forall Σ (wfΣ : wf Σ.1) (Γ : context) (wfΓ : wf_local Σ Γ) (k : kername) (n : nat) u decl ty,
         Forall_decls_typing P Σ.1 ->
-        All_local_env_over typing Pdecl Σ Γ wfΓ ->
+        PΓ Σ Γ wfΓ ->
         declared_symbol Σ.1 k decl ->
         nth_error decl.(symbols) n = Some ty ->
         consistent_instance_ext Σ decl.(rew_universes) u ->
@@ -2125,11 +2124,11 @@ Lemma typing_ind_env `{cf : checker_flags} :
 
        env_prop P PΓ.
 Proof.
-  intros P Pdecl PΓ; unfold env_prop.
-  intros X X0 X1 X2 X3 X4 XSymb X5 X6 X7 X8 X9 X10 X11 X12 Σ wfΣ Γ t T H.
+  intros P Pdecl PΓ. unfold env_prop.
+  intros XΓ X X0 X1 X2 X3 X4 XSymb X5 X6 X7 X8 X9 X10 X11 X12 Σ wfΣ Γ t T H.
   (* NOTE (Danil): while porting to 8.9, I had to split original "pose" into 2 pieces,
    otherwise it takes forever to execure the "pose", for some reason *)
-  pose (@Fix_F ({ Σ : _ & { wfΣ : wf Σ.1 & { Γ : context & 
+  pose (@Fix_F ({ Σ : _ & { wfΣ : wf Σ.1 & { Γ : context &
                           { t : term & { T : term & Σ ;;; Γ |- t : T }}}}})) as p0.
   specialize (p0 (dlexprod (precompose lt (fun Σ => globenv_size (fst Σ)))
                             (fun Σ => precompose lt (fun x => typing_size (projT2 (projT2 (projT2 (projT2 x)))))))) as p.
@@ -2180,7 +2179,7 @@ Proof.
       refine {| ind_indices := Xg.(ind_indices);
                 ind_arity_eq := Xg.(ind_arity_eq);
                 ind_cshapes := Xg.(ind_cshapes) |}.
-                
+
       ++ apply onArity in Xg. destruct Xg as [s Hs]. exists s; auto.
          specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ [] (existT _ _ (existT _ _ Hs)))))).
          simpl in IH. simpl. apply IH; constructor 1; simpl; lia.
@@ -2206,7 +2205,7 @@ Proof.
          red in p0 |- *.
          specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ _ (existT _ _ p0)))))).
          apply IH. simpl. constructor 1. simpl. auto with arith.
-      ++ intros Hprojs; pose proof (onProjections Xg Hprojs); auto. 
+      ++ intros Hprojs; pose proof (onProjections Xg Hprojs); auto.
       ++ destruct Xg. simpl. unfold check_ind_sorts in *.
          destruct universe_family; auto.
          +++ split. apply ind_sorts0. destruct indices_matter; auto.
@@ -2239,11 +2238,10 @@ Proof.
       split. 2: split. 3: split.
       * eapply All_local_env_impl. 1: eassumption.
         intros Δ u T h. destruct T. all: simpl in h. all: simpl.
-        -- specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ := (Σ, udecl)) h) (existT _ _ (existT _ _ h))))))).
-          simpl in IH. apply IH. constructor 1. simpl. lia.
+        -- specialize (IH ((Σ, udecl) ; X13 ; _ ; _ ; _ ; h)).
+           simpl in IH. apply IH. constructor 1. simpl. lia.
         -- destruct h as [s h].
-           specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ:=(Σ, udecl)) h)
-            (existT _ _ (existT _ _ h))))))).
+           specialize (IH ((Σ, udecl) ; X13 ; _ ; _ ; _ ; h)).
            simpl in IH. simpl. exists s. apply IH.
            constructor 1. simpl. lia.
       * eapply All_impl. 1: eassumption.
@@ -2254,9 +2252,8 @@ Proof.
              unshelve epose (y := _ : T)
            end.
            ++ exists (Σ, udecl). exists X13.
-              unshelve eexists _, _, _, _.
-              5: exact onlhs.
-              eapply typing_wf_local. eassumption.
+              unshelve eexists _, _, _.
+              4: exact onlhs.
            ++ specialize (IH y). subst y. simpl in IH.
               apply IH. constructor 1. simpl. lia.
         -- match type of IH with
@@ -2264,9 +2261,8 @@ Proof.
              unshelve epose (y := _ : T)
            end.
            ++ exists (Σ, udecl). exists X13.
-              unshelve eexists _, _, _, _.
-              5: exact onrhs.
-              eapply typing_wf_local. eassumption.
+              unshelve eexists _, _, _.
+              4: exact onrhs.
            ++ specialize (IH y). subst y. simpl in IH.
               apply IH. constructor 1. simpl. lia.
         -- assumption.
@@ -2281,9 +2277,8 @@ Proof.
             unshelve epose (y := _ : T)
           end.
           ++ exists (Σ, udecl). exists X13.
-             unshelve eexists _, _, _, _.
-             5: exact onlhs.
-             eapply typing_wf_local. eassumption.
+             unshelve eexists _, _, _.
+             4: exact onlhs.
           ++ specialize (IH y). subst y. simpl in IH.
              apply IH. constructor 1. simpl. lia.
         -- match type of IH with
@@ -2291,9 +2286,8 @@ Proof.
             unshelve epose (y := _ : T)
           end.
           ++ exists (Σ, udecl). exists X13.
-             unshelve eexists _, _, _, _.
-             5: exact onrhs.
-             eapply typing_wf_local. eassumption.
+             unshelve eexists _, _, _.
+             4: exact onrhs.
           ++ specialize (IH y). subst y. simpl in IH.
              apply IH. constructor 1. simpl. lia.
         -- assumption.
@@ -2331,17 +2325,20 @@ Proof.
   - assert (forall Γ t T (Hty : Σ ;;; Γ |- t : T),
                typing_size Hty < typing_size H ->
                Forall_decls_typing P Σ.1 * P Σ Γ t T).
-    intros.
-    specialize (IH (existT _ Σ (existT _ wfΣ (existT _ _ (existT _ _ (existT _ _ Hty)))))).
-    simpl in IH.
-    forward IH.
-    constructor 2. simpl. apply H0.
-    split; apply IH. clear IH.
+    { intros.
+      specialize (IH (existT _ Σ (existT _ wfΣ (existT _ _ (existT _ _ (existT _ _ Hty)))))).
+      simpl in IH.
+      forward IH.
+      constructor 2. simpl. apply H0.
+      split; apply IH.
+    }
+    clear IH.
     rename X13 into X14.
 
     assert (Hdecls: typing_size H > 1 -> Forall_decls_typing P Σ.1).
     { specialize (X14 _ _ _  (type_Prop _)).
-      simpl in X14. intros Hle. apply X14. lia. }
+      simpl in X14. intros Hle. apply X14. lia.
+    }
 
     assert (All_local_env_over typing Pdecl Σ Γ (typing_wf_local H)).
     { clear -Pdecl wfΣ X14.
@@ -2354,8 +2351,9 @@ Proof.
       - red. eapply (X14 _ _ _ Hu). lia.
       - simpl in *. apply IHfoo. lia.
       - red. apply (X14 _ _ _ t3). lia.
-      - red. apply (X14 _ _ _ Hu). lia. }
-    apply XΓ in X13. all:auto.
+      - red. apply (X14 _ _ _ Hu). lia.
+    }
+    apply XΓ in X13. 2: auto.
 
     destruct H;
       try solve [  match reverse goal with
@@ -2368,6 +2366,9 @@ Proof.
        end; eauto;
          unshelve eapply X14; simpl; eauto with arith wf.
 
+    -- unshelve eapply XSymb. all: eauto.
+       eapply X14 with (Hty := type_Prop _). simpl. lia.
+
     -- match reverse goal with
          H : _ |- _ => eapply H
        end; eauto.
@@ -2375,10 +2376,6 @@ Proof.
 
     -- eapply X6; eauto.
       apply Hdecls; simpl; lia.
-
-    -- eapply XSymb. all: eauto.
-      specialize (X14 [] localenv_nil _ _ (type_Prop _)).
-      simpl in X14. forward X14; auto. lia. apply X14.
 
     -- eapply X7; eauto. apply Hdecls; simpl; lia.
 
@@ -2435,12 +2432,12 @@ Proof.
          clear X14 X13.
          clear e decl i a0 Hdecls i0.
          remember (fix_context mfix) as mfixcontext. clear Heqmfixcontext.
- 
+
          induction a1; econstructor; eauto.
-         ++ split; auto. 
+         ++ split; auto.
            eapply (X _ (typing_wf_local (fst p)) _ _ (fst p)). simpl. lia.
          ++ eapply IHa1. intros.
-           eapply (X _ X0 _ _ Hty). simpl; lia.       
+           eapply (X _ X0 _ _ Hty). simpl; lia.
 
     -- clear X X0 X1 X2 X3 X4 X5 X6 X7 X8 X9 X10 X12.
        eapply X11; eauto; clear X11. simpl in *.
@@ -2475,7 +2472,7 @@ Proof.
         remember (fix_context mfix) as mfixcontext. clear Heqmfixcontext.
 
         induction a1; econstructor; eauto.
-        ++ split; auto. 
+        ++ split; auto.
           eapply (X _ (typing_wf_local p) _ _ p). simpl. lia.
         ++ eapply IHa1. intros.
           eapply (X _ X0 _ _ Hty). simpl; lia.

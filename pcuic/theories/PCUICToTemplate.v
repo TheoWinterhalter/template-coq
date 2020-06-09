@@ -33,6 +33,7 @@ Fixpoint trans (t : PCUICAst.term) : Ast.term :=
   | PCUICAst.tCoFix mfix idx =>
     let mfix' := List.map (map_def trans trans) mfix in
     tCoFix mfix' idx
+  | PCUICAst.tSymb k n s => todo "rewrite rules"%string
   end.
 
 Definition trans_decl (d : PCUICAst.context_decl) :=
@@ -43,7 +44,7 @@ Definition trans_decl (d : PCUICAst.context_decl) :=
 
 Definition trans_local Γ := List.map trans_decl Γ.
 
-Definition trans_ctor : (ident × PCUICAst.term) × nat -> (ident × term) × nat 
+Definition trans_ctor : (ident × PCUICAst.term) × nat -> (ident × term) × nat
   := fun '(x, y, z) => (x, trans y, z).
 
 Definition trans_one_ind_body (d : PCUICAst.one_inductive_body) :=
@@ -71,6 +72,7 @@ Definition trans_global_decl (d : PCUICAst.global_decl) :=
   match d with
   | PCUICAst.ConstantDecl bd => ConstantDecl (trans_constant_body bd)
   | PCUICAst.InductiveDecl bd => InductiveDecl (trans_minductive_body bd)
+  | PCUICAst.RewriteDecl bd => todo "rewrite rules"%string
   end.
 
 Definition trans_global_decls (d : PCUICAst.global_env) : global_env :=

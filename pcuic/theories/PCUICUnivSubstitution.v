@@ -490,7 +490,7 @@ Proof.
     destruct Hl as [Hl|Hl]; subst; reflexivity.
   - subst univs. intros l Hl. simpl in Hl; apply LS.union_spec in Hl.
     destruct Hl as [Hl|Hl]; auto. clear - Hu Hl.
-    destruct d as [[? ? [φ|?|?]] | [? ? ? ? [φ|?|?]] | [? ? ? [φ|?|?]]]; cbn in *;
+    destruct d as [[? ? [φ|?]] | [? ? ? ? [φ|?]] | [? ? ? [φ|?]]]; cbn in *;
       unfold monomorphic_levels_decl in *; cbn in *;
       try now apply LS.empty_spec in Hl.
     all: destruct Hu as [_ [_ [Hu _]]];
@@ -523,7 +523,7 @@ Proof.
   - subst univs. intro Hc. simpl in *; apply CS.union_spec in Hc.
     destruct Hc as [Hc|Hc]; auto.
     + clear -Hu Hc.
-      destruct d as [[? ? [φ|?]]|[? ? ? ? [φ|?]]]; cbn in *;
+      destruct d as [[? ? [φ|?]] | [? ? ? ? [φ|?]] | [? ? ? [φ|?]]]; cbn in *;
         unfold monomorphic_levels_decl, monomorphic_constraints_decl in *; cbn in *;
           try now apply CS.empty_spec in Hc.
       all: destruct Hu as [_ [Hu [_ _]]].
@@ -926,7 +926,7 @@ Proof.
   unfold isConstruct_app.
   assert (HH: (decompose_app (subst_instance_constr u t)).1
               = subst_instance_constr u (decompose_app t).1). {
-    unfold decompose_app. generalize (nil term) at 1. generalize (nil term).
+    unfold decompose_app. generalize (@nil term) at 1. generalize (@nil term).
     induction t; cbn; try reflexivity.
     intros l l'. erewrite IHt1; reflexivity. }
   rewrite HH. destruct (decompose_app t).1; reflexivity.
@@ -1205,7 +1205,7 @@ Lemma subst_instance_instantiate_params u0 params pars ty :
                        (subst_instance_constr u0 ty).
 Proof.
   unfold instantiate_params.
-  change (nil term) with (map (subst_instance_constr u0) []) at 2.
+  change (@nil term) with (map (subst_instance_constr u0) []) at 2.
   rewrite rev_subst_instance_context.
   rewrite <- subst_instance_instantiate_params_subst.
   destruct ?; cbnr. destruct p; cbn.
@@ -1250,7 +1250,7 @@ Lemma subst_instance_to_extended_list u l
 Proof.
   - unfold to_extended_list, to_extended_list_k.
     change [] with (map (subst_instance_constr u) []) at 2.
-    unf_term. generalize (nil term), 0. induction l as [|[aa [ab|] ac] bb].
+    unf_term. generalize (@nil term), 0. induction l as [|[aa [ab|] ac] bb].
     + reflexivity.
     + intros l n; cbn. now rewrite IHbb.
     + intros l n; cbn. now rewrite IHbb.
@@ -1288,20 +1288,21 @@ Proof.
     apply subst_instance_to_extended_list.
 Qed.
 
-Lemma subst_instance_subst_context u s k Γ : 
+Lemma subst_instance_subst_context u s k Γ :
   subst_instance_context u (subst_context s k Γ) =
   subst_context (map (subst_instance_constr u) s) k (subst_instance_context u Γ).
 Proof.
   unfold subst_instance_context, map_context.
   rewrite !subst_context_alt.
   rewrite map_mapi, mapi_map. apply mapi_rec_ext.
-  intros. unfold subst_decl; rewrite !PCUICAstUtils.compose_map_decl.
-  apply PCUICAstUtils.map_decl_ext; intros decl.
+  intros. unfold PCUICLiftSubst.subst_decl.
+  rewrite !PCUICAstUtils.compose_map_decl.
+  apply PCUICAstUtils.map_decl_ext. intros decl.
   rewrite map_length. now rewrite subst_subst_instance_constr.
 Qed.
 
-Lemma subst_instance_context_smash u Γ Δ : 
-  subst_instance_context u (smash_context Δ Γ) = 
+Lemma subst_instance_context_smash u Γ Δ :
+  subst_instance_context u (smash_context Δ Γ) =
   smash_context (subst_instance_context u Δ) (subst_instance_context u Γ).
 Proof.
   induction Γ as [|[? [] ?] ?] in Δ |- *; simpl; auto.
@@ -1310,7 +1311,7 @@ Proof.
   - rewrite IHΓ, subst_instance_context_app; trivial.
 Qed.
 
-Lemma destInd_subst_instance u t : 
+Lemma destInd_subst_instance u t :
   destInd (subst_instance u t) = option_map (fun '(i, u') => (i, subst_instance u u')) (destInd t).
 Proof.
   destruct t; simpl; try congruence.
@@ -1387,7 +1388,7 @@ Axiom cofix_guard_subst_instance :
   cofix_guard (map (map_def (subst_instance_constr u) (subst_instance_constr u))
                   mfix).
 
-                 
+
 Lemma All_local_env_over_subst_instance Σ Γ (wfΓ : wf_local Σ Γ) :
   All_local_env_over typing
                      (fun Σ0 Γ0 (_ : wf_local Σ0 Γ0) t T (_ : Σ0;;; Γ0 |- t : T) =>
@@ -1442,7 +1443,7 @@ Proof.
       exists (subst_instance_univ u tu.π1). eapply p; auto.
     + simpl. constructor; auto.
       ++ exists (subst_instance_univ u tu.π1). eapply p0; auto.
-      ++ apply p; auto. 
+      ++ apply p; auto.
 
   - intros n decl eq X u univs wfΣ' H Hsub. rewrite <- lift_subst_instance_constr.
     rewrite map_decl_type. econstructor; aa.
@@ -1551,7 +1552,7 @@ Proof.
     erewrite map_dtype. econstructor.
     + now apply fix_guard_subst_instance.
     + rewrite nth_error_map, H0. reflexivity.
-    + eapply H1; eauto. 
+    + eapply H1; eauto.
     + apply All_map, (All_impl X); simpl; intuition auto.
       destruct X1 as [s Hs]. exists (subst_instance_univ u s).
       now apply Hs.
@@ -1592,7 +1593,7 @@ Proof.
       unfold wf_cofixpoint.
       rewrite map_map_compose.
       now rewrite subst_instance_check_one_cofix.
-      
+
   - intros t0 A B X X0 X1 X2 X3 u univs wfΣ' HSub H.
     econstructor.
     + eapply X1; aa.
@@ -1705,7 +1706,7 @@ Proof.
   - destruct t0 as [s Hs]. hnf.
     eapply typing_subst_instance'' in Hs; eauto; apply X.
   - destruct t0 as [s Hs]. hnf.
-    eapply typing_subst_instance'' in Hs; eauto; apply X. 
+    eapply typing_subst_instance'' in Hs; eauto; apply X.
   - hnf in t1 |- *.
     eapply typing_subst_instance'' in t1; eauto; apply X.
 Qed.

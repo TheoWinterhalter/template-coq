@@ -104,7 +104,7 @@ Section print_term.
                       print_term (vdef na' def dom :: Γ) true false body)
   | tApp f l =>
     parens (top || inapp) (print_term Γ false true f ++ " " ++ print_term Γ false false l)
-  | tSymb k n u => k ++ "(" ++ string_of_nat n ++ ")" ++ print_universe_instance u
+  | tSymb k n u => string_of_kername k ++ "(" ++ string_of_nat n ++ ")" ++ print_universe_instance u
   | tConst c u => string_of_kername c ++ print_universe_instance u
   | tInd (mkInd i k) u =>
     match lookup_ind_decl Σ i k with

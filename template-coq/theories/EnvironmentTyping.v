@@ -22,7 +22,7 @@ Module Lookup (T : Term) (E : EnvironmentSig T).
       else lookup_env tl kn
     end.
 
-  Definition declared_symbol (Σ : global_env) (k : ident) decl : Prop :=
+  Definition declared_symbol (Σ : global_env) (k : kername) decl : Prop :=
     lookup_env Σ k = Some (RewriteDecl decl).
 
   Definition declared_constant (Σ : global_env) (id : kername) decl : Prop :=
@@ -237,27 +237,22 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
 
   Import T E ET.
 
-  Parameter (subst : list term -> nat -> term -> term).
+  Parameter Inline subst_context : list term -> nat -> context -> context.
 
-  Parameter (subst_context : list term -> nat -> context -> context).
+  Parameter Inline symbols_subst :
+    kername -> nat -> Instance.t -> nat -> list term.
 
-  Parameter (symbols_subst :
-    kername -> nat -> universe_instance -> nat -> list term
-  ).
+  Parameter Inline context_env_clos :
+    (context -> term -> term -> Type) -> context -> term -> term -> Type.
 
-  Parameter (context_env_clos :
-    (context -> term -> term -> Type) -> context -> term -> term -> Type
-  ).
+  Parameter Inline untyped_subslet : context -> list term -> context -> Type.
 
-  Parameter (untyped_subslet : context -> list term -> context -> Set).
+  Parameter Inline ind_guard : mutual_inductive_body -> bool.
 
-  Parameter (ind_guard : mutual_inductive_body -> bool).
+  Parameter Inline red : global_env -> context -> term -> term -> Type.
 
-  Parameter (red : global_env -> context -> term -> term -> Type).
-
-  Parameter (typing :
-    forall `{checker_flags}, global_env_ext -> context -> term -> term -> Type
-  ).
+  Parameter Inline typing :
+    forall `{checker_flags}, global_env_ext -> context -> term -> term -> Type.
 
   Notation " Σ ;;; Γ |- t : T " :=
     (typing Σ Γ t T) (at level 50, Γ, t, T at next level) : type_scope.
@@ -267,12 +262,13 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
   Parameter Inline subst_telescope : list term -> nat -> context -> context.
   Parameter Inline lift : nat -> nat -> term -> term.
   Parameter Inline subst : list term -> nat -> term -> term.
-  Parameter Inline inds : kername -> Instance.t -> list one_inductive_body -> list term. 
+  Parameter Inline inds :
+    kername -> Instance.t -> list one_inductive_body -> list term.
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
 
-  Parameter (elim_pattern : nat -> elimination -> Type).
+  Parameter Inline elim_pattern : nat -> elimination -> Type.
 
-  Parameter (linear : nat -> list elimination -> bool).
+  Parameter Inline linear : nat -> list elimination -> bool.
 
 End Typing.
 
@@ -303,12 +299,12 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       | [] => True
       | {| decl_body := None; decl_type := t |} :: Δ => (type_local_ctx Σ Γ Δ u * (P Σ (Γ ,,, Δ) t (Some (tSort u))))
       | {| decl_body := Some b; decl_type := t |} :: Δ => (type_local_ctx Σ Γ Δ u * (P Σ (Γ ,,, Δ) t None * P Σ (Γ ,,, Δ) b (Some t)))
-      end.    
+      end.
 
     (* Delta telescope *)
     Inductive ctx_inst Σ (Γ : context) : list term -> context -> Type :=
     | ctx_inst_nil : ctx_inst Σ Γ [] []
-    | ctx_inst_ass na t i inst Δ : 
+    | ctx_inst_ass na t i inst Δ :
       P Σ Γ i (Some t) ->
       ctx_inst Σ Γ inst (subst_telescope [i] 0 Δ) ->
       ctx_inst Σ Γ (i :: inst) (vass na t :: Δ)
@@ -341,7 +337,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Record on_constructor Σ mdecl i idecl ind_indices cdecl (cshape : constructor_shape) := {
       (* cdecl.1 fresh ?? *)
       cstr_args_length : context_assumptions (cshape_args cshape) = cdecl_args cdecl;
-      
+
       (* Real (non-let) arguments bound by the constructor *)
       cstr_concl_head := tRel (#|mdecl.(ind_bodies)|
       - S i
@@ -363,7 +359,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       on_cargs : (* FIXME: there is some redundancy with the type_local_ctx *)
         type_local_ctx Σ (arities_context mdecl.(ind_bodies) ,,, mdecl.(ind_params))
                       cshape.(cshape_args) cshape.(cshape_sort);
-      on_cindices : 
+      on_cindices :
         ctx_inst Σ (arities_context mdecl.(ind_bodies) ,,, mdecl.(ind_params) ,,, cshape.(cshape_args))
                       cshape.(cshape_indices)
                       (List.rev (lift_context #|cshape.(cshape_args)| 0 ind_indices))
@@ -378,18 +374,18 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Definition on_constructors Σ mdecl i idecl ind_indices :=
       All2 (on_constructor Σ mdecl i idecl ind_indices).
 
-    (** Each projection type corresponds to a non-let argument of the 
-        corresponding constructor. It is parameterized over the 
+    (** Each projection type corresponds to a non-let argument of the
+        corresponding constructor. It is parameterized over the
         parameters of the inductive type and all the preceding arguments
         of the constructor. When computing the type of a projection for argument
         [n] at a given instance of the parameters and a given term [t] in the inductive
         type, we instantiate the argument context by corresponsping projections
         [t.π1 ... t.πn-1]. This is essential for subject reduction to hold: each
         projections type can only refer to the record object through projections.
-    
+
       Projection types have their parameter and argument contexts smashed to avoid
       costly computations during type-checking and reduction: we can just substitute
-      the instances of parameters and the inductive value without considering the 
+      the instances of parameters and the inductive value without considering the
       presence of let bindings. *)
 
     Fixpoint projs ind npars k :=
@@ -405,7 +401,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       let Γ := smash_context [] (cshape.(cshape_args) ++ mdecl.(ind_params)) in
       match nth_error Γ (context_assumptions cshape.(cshape_args) - S k) with
       | None => False
-      | Some decl => 
+      | Some decl =>
         let u := abstract_instance mdecl.(ind_universes) in
         let ind := {| inductive_mind := mind; inductive_ind := i |} in
         (** The stored projection type already has the references to the inductive
@@ -414,7 +410,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
           *)
         (decl_name decl = nNamed (fst p)) /\
         (snd p = subst (inds mind u mdecl.(ind_bodies)) (S (ind_npars mdecl))
-              (subst (projs ind mdecl.(ind_npars) k) 0 
+              (subst (projs ind mdecl.(ind_npars) k) 0
                 (lift 1 k (decl_type decl))))
       end.
 
@@ -555,8 +551,8 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
         nth_error rules n = Some r ->
         let ss := symbols_subst k 0 ui #|symbols| in
         untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
-        let lhs := subst s 0 (subst ss #|s| r.(lhs)) in
-        let rhs := subst s 0 (subst ss #|s| r.(rhs)) in
+        let lhs := subst s 0 (subst ss #|s| (lhs r)) in
+        let rhs := subst s 0 (subst ss #|s| (rhs r)) in
         red1_rules k symbols rules Γ lhs rhs.
 
     Definition red_rules k symbols rules :=
@@ -579,7 +575,7 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
       clos_trans (or_rel (red Σ Γ) (red_rules k symbols rules Γ)).
 
     Definition prule_red Σ Δ kn symbols rules (r : rewrite_rule) :=
-      red' Σ (Δ ,,, r.(pat_context)) kn symbols rules r.(lhs) r.(rhs).
+      red' Σ (Δ ,,, r.(pat_context)) kn symbols rules (lhs r) (rhs r).
 
     Definition on_rewrite_decl Σ kn d :=
       let Δ := map (vass nAnon) d.(symbols) in

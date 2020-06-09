@@ -14,7 +14,7 @@ Set Asymmetric Patterns.
   Inductive relations for reduction, conversion and typing of CIC terms.
 
  *)
- 
+
 Definition isSort T :=
   match T with
   | tSort u => True
@@ -891,6 +891,18 @@ Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTypi
   Definition lift_context := lift_context.
   Definition subst_telescope := subst_telescope.
   Definition inds := inds.
+  Definition subst_context := @subst_context.
+  Definition symbols_subst (k : kername) (n : nat) (ui : Instance.t)
+    (m : nat) :=
+    @nil term.
+  Definition context_env_clos :
+    (context -> term -> term -> Type) -> context -> term -> term -> Type :=
+    fun R Γ x y => False.
+  Definition untyped_subslet : context -> list term -> context -> Set :=
+    fun Γ l Δ => unit.
+  Definition red := @red.
+  Definition elim_pattern (npat : nat) (e : elimination) := unit.
+  Definition linear (npat : nat) (el : list elimination) := false.
 End TemplateTyping.
 
 Module TemplateDeclarationTyping :=
@@ -1320,6 +1332,7 @@ Proof.
         specialize (IH (existT _ (Σ, udecl) (existT _ X13 (existT _ _ (existT _ (typing_wf_local (Σ:=(Σ, udecl)) Hu)
                                                                         (existT _ _ (existT _ _ Hu))))))).
         simpl in IH. simpl. exists u. apply IH. constructor 1. simpl. lia.
+    + todo "rewrite rules"%string.
 
   - assert (forall Γ (wfΓ : wf_local Σ Γ) t T (Hty : Σ ;;; Γ |- t : T),
                typing_size Hty < typing_size H ->
@@ -1458,7 +1471,7 @@ Proof.
         remember (fix_context mfix) as mfixcontext. clear Heqmfixcontext.
 
         induction a1; econstructor; eauto.
-        ++ split; auto. 
+        ++ split; auto.
           eapply (X _ (typing_wf_local (fst p)) _ _ (fst p)). simpl. lia.
         ++ eapply IHa1. intros.
           eapply (X _ X0 _ _ Hty). simpl; lia.
@@ -1494,9 +1507,9 @@ Proof.
            clear X14 X13.
            clear e decl a0.
            remember (fix_context mfix) as mfixcontext. clear Heqmfixcontext.
-   
+
            induction a1; econstructor; eauto.
-           ++ split; auto. 
+           ++ split; auto.
              eapply (X _ (typing_wf_local p) _ _ p). simpl. lia.
            ++ eapply IHa1. intros.
              eapply (X _ X0 _ _ Hty). simpl; lia.

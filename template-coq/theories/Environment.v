@@ -14,8 +14,10 @@ Module Type Term.
   Parameter Inline tProd : name -> term -> term -> term.
   Parameter Inline tLambda : name -> term -> term -> term.
   Parameter Inline tLetIn : name -> term -> term -> term -> term.
-  Parameter Inline tSymb : kername -> nat -> universe_instance -> term.
+  Parameter Inline tSymb : kername -> nat -> Instance.t -> term.
   Parameter Inline tInd : inductive -> Instance.t -> term.
+  Parameter Inline tCase :
+    inductive × nat -> term -> term -> list (nat × term) -> term.
   Parameter Inline tProj : projection -> term -> term.
   Parameter Inline mkApps : term -> list term -> term.
 
@@ -79,7 +81,7 @@ Module Environment (T : Term).
 
   Definition map_context f c :=
     List.map (map_decl f) c.
-    
+
   Lemma map_context_length f l : #|map_context f l| = #|l|.
   Proof. now unfold map_context; rewrite map_length. Qed.
 
@@ -267,7 +269,7 @@ Module Environment (T : Term).
   Lemma it_mkProd_or_LetIn_app l l' t :
     it_mkProd_or_LetIn (l ++ l') t = it_mkProd_or_LetIn l' (it_mkProd_or_LetIn l t).
   Proof. induction l in l', t |- *; simpl; auto. Qed.
-  
+
   Fixpoint reln (l : list term) (p : nat) (Γ0 : list context_decl) {struct Γ0} : list term :=
     match Γ0 with
     | [] => l

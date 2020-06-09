@@ -23,7 +23,7 @@ Inductive term :=
 | tLambda (na : name) (A t : term)
 | tLetIn (na : name) (b B t : term) (* let na := b : B in t *)
 | tApp (u v : term)
-| tSymb (k : kername) (n : nat) (ui : universe_instance)
+| tSymb (k : kername) (n : nat) (ui : Instance.t)
 | tConst (k : kername) (ui : Instance.t)
 | tInd (ind : inductive) (ui : Instance.t)
 | tConstruct (ind : inductive) (n : nat) (ui : Instance.t)
@@ -126,21 +126,21 @@ Module PCUICTerm <: Term.
   Definition tRel := tRel.
   Definition tSort := tSort.
   Definition tProd := tProd.
-    Definition tLambda := tLambda.
+  Definition tLambda := tLambda.
+  Definition tLetIn := tLetIn.
   Definition tSymb := tSymb.
   Definition tInd := tInd.
   Definition tCase := tCase.
   Definition tProj := tProj.
 
   Definition mkApps := mkApps.
-    Definition mkApps := mkApps.
 
 End PCUICTerm.
 
-  Ltac unf_term := unfold PCUICTerm.term in *; unfold PCUICTerm.tRel in *;
-                   unfold PCUICTerm.tSort in *; unfold PCUICTerm.tProd in *;
-                   unfold PCUICTerm.tLambda in *; unfold PCUICTerm.tLetIn in *;
-                   unfold PCUICTerm.tInd in *; unfold PCUICTerm.tProj in *.
+Ltac unf_term := unfold PCUICTerm.term in *; unfold PCUICTerm.tRel in *;
+                  unfold PCUICTerm.tSort in *; unfold PCUICTerm.tProd in *;
+                  unfold PCUICTerm.tLambda in *; unfold PCUICTerm.tLetIn in *;
+                  unfold PCUICTerm.tInd in *; unfold PCUICTerm.tProj in *.
 
-  Module PCUICEnvironment := Environment PCUICTerm.
-  Include PCUICEnvironment.
+Module PCUICEnvironment := Environment PCUICTerm.
+Include PCUICEnvironment.

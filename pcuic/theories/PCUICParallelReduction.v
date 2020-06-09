@@ -1,9 +1,10 @@
 (* Distributed under the terms of the MIT license.   *)
 Require Import ssreflect.
 From Coq Require Import Bool List Lia.
-From MetaCoq.Template Require Import config utils.
-From MetaCoq.PCUIC Require Import PCUICUtils PCUICAst PCUICSize
-     PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICWeakening PCUICSubstitution.
+From MetaCoq.Template Require Import config utils monad_utils.
+From MetaCoq.PCUIC Require Import PCUICUtils PCUICAst PCUICAstUtils PCUICSize
+  PCUICLiftSubst PCUICUnivSubst PCUICTyping PCUICWeakening PCUICSubstitution
+  PCUICPattern PCUICReflect.
 
 Import MonadNotation.
 
@@ -12,6 +13,7 @@ Require Import CRelationClasses.
 Local Set Keyed Unification.
 Set Asymmetric Patterns.
 
+Require Import Equations.Prop.DepElim.
 From Equations Require Import Equations.
 
 Set Default Goal Selector "!".
@@ -25,7 +27,6 @@ Proof.
   revert n k t.
   fix size_list 3.
   destruct t; simpl; rewrite ?list_size_map_hom; try lia.
-  - elim leb_spec_Set; simpl; auto.
   - intros. auto.
   - now rewrite !size_list.
   - now rewrite !size_list.
@@ -88,7 +89,7 @@ Lemma term_forall_ctx_list_ind :
     (forall Γ (n : name) (t : term),
         P Γ t -> forall t0 : term, P Γ t0 -> forall t1 : term, P (vdef n t t0 :: Γ) t1 -> P Γ (tLetIn n t t0 t1)) ->
     (forall Γ (t u : term), P Γ t -> P Γ u -> P Γ (tApp t u)) ->
-    (forall Γ (s : String.string) (n : nat) (u : list Level.t), P Γ (tSymb s n u)) ->
+    (forall Γ (s : kername) (n : nat) (u : list Level.t), P Γ (tSymb s n u)) ->
     (forall Γ s (u : list Level.t), P Γ (tConst s u)) ->
     (forall Γ (i : inductive) (u : list Level.t), P Γ (tInd i u)) ->
     (forall Γ (i : inductive) (n : nat) (u : list Level.t), P Γ (tConstruct i n u)) ->
@@ -889,7 +890,7 @@ Section ParallelReduction.
           unfold_cofix mfix1 idx = Some (narg, fn) ->
           All2 (P' Γ Γ') args0 args1 ->
           P Γ Γ' (tProj p (mkApps (tCoFix mfix0 idx) args0)) (tProj p (mkApps fn args1))) ->
-      (forall (Γ Γ' : context) (c : ident) (n : nat) (u : universe_instance),
+      (forall (Γ Γ' : context) (c : kername) (n : nat) (u : Instance.t),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           P Γ Γ' (tSymb c n u) (tSymb c n u)) ->
@@ -917,7 +918,7 @@ Section ParallelReduction.
           let rhs := subst0 s' (subst ss #|s| (rhs r)) in
           P Γ Γ' lhs rhs
       ) ->
-      (forall (Γ Γ' : context) (c : ident) (decl : constant_body) (body : term),
+      (forall (Γ Γ' : context) (c : kername) (decl : constant_body) (body : term),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           declared_constant Σ c decl ->
@@ -1399,18 +1400,18 @@ Section ParallelWeakening.
         pose proof (nth_error_Some_length Heq).
         rewrite !app_context_length in H1.
         assert (#|Γ'0| = #|Δ'|).
-        { pcuic. eapply All2_local_env_app in X0 as [? ?].
-          - eapply All2_local_env_length in a0.
-            now rewrite !lift_context_length in a0.
-          - rewrite !app_context_length; eauto.
+        { pcuic. eapply All2_local_env_app in predΓ' as [? ?].
+          - now eapply All2_local_env_length in a0.
+          - auto.
         }
         rewrite simpl_lift; try lia.
         rewrite - {2}H0.
         assert (#|Γ''| + S i = S (#|Γ''| + i)) as -> by lia.
         econstructor; auto.
-        rewrite H0. rewrite <- weaken_nth_error_ge; auto. 2: lia.
-        rewrite Heq.
-        simpl in H. simpl. f_equal. auto.
+        rewrite H0. rewrite <- weaken_nth_error_ge; auto.
+        * rewrite Heq.
+          simpl in H. simpl. f_equal. auto.
+        * lia.
 
       + (* Local variable *)
         pose proof (All2_local_env_length predΓ').
@@ -1421,14 +1422,15 @@ Section ParallelWeakening.
         now rewrite option_map_decl_body_map_decl heq_option_map.
 
     - (* Rel refl *)
-      pose proof (All2_local_env_length X0).
+      pose proof (All2_local_env_length predΓ').
       assert(#|Γ''| = #|Δ''|).
       { red in X1. pcuic. }
-      rewrite !app_context_length !lift_context_length in H.
-      assert (#|Γ'0| = #|Δ'|) by lia.
-      rewrite H1.
+      rewrite !app_context_length in H.
+      assert (#|Γ'0| = #|Δ'|) by lia. rewrite H1.
       elim (leb_spec_Set); intros Hn.
-      + rewrite H0. now econstructor.
+      + rewrite H0. econstructor.
+        rewrite -{1}H0.
+        eapply X0; eauto.
       + now constructor.
 
     - assert(#|Γ''| = #|Δ''|).
@@ -1463,8 +1465,6 @@ Section ParallelWeakening.
               !app_context_assoc in forall_Γ0.
         now rewrite !lift_fix_context.
       + unfold unfold_fix. rewrite nth_error_map. rewrite Hnth. simpl.
-        destruct (isLambda (dbody d)) eqn:isl; noconf heq_unfold_fix.
-        rewrite isLambda_lift //.
         f_equal. f_equal.
         rewrite distr_lift_subst. rewrite fix_subst_length. f_equal.
         now rewrite (map_fix_subst (fun k => lift #|Δ''| (k + #|Δ'|))).
@@ -1483,12 +1483,12 @@ Section ParallelWeakening.
       + apply All2_map. clear X2. red in X3.
         unfold on_Trel, id in *.
         solve_all. rename_all_hyps.
-        specialize (forall_Γ1 Γ0 (Γ'0 ,,, fix_context mfix0)
+        specialize (forall_Γ0 Γ0 (Γ'0 ,,, fix_context mfix0)
                             ltac:(now rewrite app_context_assoc)).
-        specialize (forall_Γ1 Δ (Δ' ,,, fix_context mfix1)
+        specialize (forall_Γ0 Δ (Δ' ,,, fix_context mfix1)
                             ltac:(now rewrite app_context_assoc) heq_length _ _ ltac:(eauto)).
         rewrite !lift_context_app !Nat.add_0_r !app_context_length !fix_context_length
-              !app_context_assoc in forall_Γ1.
+              !app_context_assoc in forall_Γ0.
         now rewrite !lift_fix_context.
       + unfold unfold_cofix. rewrite nth_error_map. rewrite Hnth. simpl.
         f_equal. f_equal.
@@ -1536,16 +1536,16 @@ Section ParallelWeakening.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_lhs.
           all: eauto.
           subst ss. rewrite symbols_subst_length.
-          eapply untyped_subslet_length in H1.
-          rewrite subst_context_length in H1.
+          eapply untyped_subslet_length in X2.
+          rewrite subst_context_length in X2.
           lia.
       }
       rewrite lift_closed.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_rhs.
           all: eauto.
           subst ss. rewrite symbols_subst_length.
-          eapply untyped_subslet_length in H1.
-          rewrite subst_context_length in H1.
+          eapply untyped_subslet_length in X2.
+          rewrite subst_context_length in X2.
           lia.
       }
       replace #|s| with #|map (lift #|Γ''| #|Γ'0|) s|
@@ -1554,7 +1554,7 @@ Section ParallelWeakening.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros ? ? [? ih].
         apply ih. all: auto.
-      + eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
+      + eapply untyped_subslet_lift with (Γ2 := Γ'') in X2 as h.
         eapply PCUICClosed.closed_declared_symbol_pat_context in H as hcl.
         2-3: eassumption.
         rewrite -> (closed_ctx_lift _ #|Γ'0|) in h.
@@ -1584,16 +1584,16 @@ Section ParallelWeakening.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_lhs.
           all: eauto.
           subst ss. rewrite symbols_subst_length.
-          eapply untyped_subslet_length in H1.
-          rewrite subst_context_length in H1.
+          eapply untyped_subslet_length in X2.
+          rewrite subst_context_length in X2.
           lia.
       }
       rewrite lift_closed.
       1:{ eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_rhs.
           all: eauto.
           subst ss. rewrite symbols_subst_length.
-          eapply untyped_subslet_length in H1.
-          rewrite subst_context_length in H1.
+          eapply untyped_subslet_length in X2.
+          rewrite subst_context_length in X2.
           lia.
       }
       replace #|s| with #|map (lift #|Γ''| #|Γ'0|) s|
@@ -1602,7 +1602,7 @@ Section ParallelWeakening.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros ? ? [? ih].
         apply ih. all: auto.
-      + eapply untyped_subslet_lift with (Γ2 := Γ'') in H1 as h.
+      + eapply untyped_subslet_lift with (Γ2 := Γ'') in X2 as h.
         eapply PCUICClosed.closed_declared_symbol_par_pat_context in H as hcl.
         2-3: eassumption.
         rewrite -> (closed_ctx_lift _ #|Γ'0|) in h.
@@ -2090,7 +2090,6 @@ Section ParallelSubstitution.
     - autorewrite with subst. simpl.
       unfold unfold_fix in heq_unfold_fix.
       destruct (nth_error mfix1 idx) eqn:Hnth; noconf heq_unfold_fix.
-      destruct (isLambda (dbody d)) eqn:isl; noconf heq_unfold_fix.
       econstructor; auto with pcuic.
       + eapply X0; eauto with pcuic.
       + rewrite !subst_fix_context.
@@ -2111,7 +2110,6 @@ Section ParallelSubstitution.
         now rewrite !fix_context_length !subst_context_app
           !Nat.add_0_r !app_context_assoc in forall_Γ0.
       + unfold unfold_fix. rewrite nth_error_map. rewrite Hnth. simpl.
-        rewrite isLambda_subst //.
         f_equal. f_equal.
         rewrite (map_fix_subst (fun k => subst s' (k + #|Γ'1|))).
         * intros. reflexivity.
@@ -2121,25 +2119,25 @@ Section ParallelSubstitution.
 
     - autorewrite with subst. simpl.
       unfold unfold_cofix in heq_unfold_cofix.
-      destruct (nth_error mfix1 idx) eqn:Hnth; noconf heq_unfold_cofix. simpl.
-      econstructor; pcuic.
+      destruct (nth_error mfix1 idx) eqn:Hnth; noconf heq_unfold_cofix.
+      econstructor; eauto.
       + rewrite !subst_fix_context.
         erewrite subst_fix_context.
         eapply All2_local_env_subst_ctx; pcuic.
       + apply All2_map. clear X2. red in X3.
         unfold on_Trel, id in *.
         solve_all. rename_all_hyps.
-        specialize (forall_Γ1 _ _ (Γ'0 ,,, fix_context mfix0)
+        specialize (forall_Γ0 _ _ (Γ'0 ,,, fix_context mfix0)
                             ltac:(now rewrite app_context_assoc)).
-        specialize (forall_Γ1 _ _ (Γ'1 ,,, fix_context mfix1) _ _ Hs
+        specialize (forall_Γ0 _ _ (Γ'1 ,,, fix_context mfix1) _ _ Hs
                             ltac:(now rewrite app_context_assoc) heq_length).
-        rewrite !app_context_length in forall_Γ1.
+        rewrite !app_context_length in forall_Γ0.
         pose proof (All2_local_env_length X1).
-        forward forall_Γ1 by lia.
-        specialize (forall_Γ1 HΔ).
+        forward forall_Γ0 by lia.
+        specialize (forall_Γ0 HΔ).
         rewrite !subst_fix_context.
         now rewrite !fix_context_length !subst_context_app
-          !Nat.add_0_r !app_context_assoc in forall_Γ1.
+          !Nat.add_0_r !app_context_assoc in forall_Γ0.
       + unfold unfold_cofix. rewrite nth_error_map. rewrite Hnth. simpl.
         f_equal. f_equal.
         rewrite (map_cofix_subst (fun k => subst s' (k + #|Γ'1|))).
@@ -2201,8 +2199,8 @@ Section ParallelSubstitution.
         eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_lhs.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
-        apply untyped_subslet_length in H1.
-        rewrite subst_context_length in H1.
+        apply untyped_subslet_length in X2.
+        rewrite subst_context_length in X2.
         lia.
       }
       rewrite (PCUICClosed.subst_closedn _ _ (rhs r)).
@@ -2210,8 +2208,8 @@ Section ParallelSubstitution.
         eapply closed_upwards. 1: eapply PCUICClosed.closed_rule_rhs.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
-        apply untyped_subslet_length in H1.
-        rewrite subst_context_length in H1.
+        apply untyped_subslet_length in X2.
+        rewrite subst_context_length in X2.
         lia.
       }
       assert (e : forall s n, map (subst s n) ss = ss).
@@ -2226,7 +2224,7 @@ Section ParallelSubstitution.
       + eapply X0. all: eauto.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros x y [? ih]. eapply ih. all: eauto.
-      + eapply untyped_subslet_subst with (s' := s0) in H1 as h.
+      + eapply untyped_subslet_subst with (s' := s0) in X2 as h.
         2:{ eapply psubst_untyped_subslet. eassumption. }
         eapply PCUICClosed.closed_declared_symbol_pat_context in H as hcl.
         2-3: eassumption.
@@ -2255,8 +2253,8 @@ Section ParallelSubstitution.
         eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_lhs.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
-        apply untyped_subslet_length in H1.
-        rewrite subst_context_length in H1.
+        apply untyped_subslet_length in X2.
+        rewrite subst_context_length in X2.
         lia.
       }
       rewrite (PCUICClosed.subst_closedn _ _ (rhs r)).
@@ -2264,8 +2262,8 @@ Section ParallelSubstitution.
         eapply closed_upwards. 1: eapply PCUICClosed.closed_prule_rhs.
         all: eauto.
         subst ss. rewrite symbols_subst_length.
-        apply untyped_subslet_length in H1.
-        rewrite subst_context_length in H1.
+        apply untyped_subslet_length in X2.
+        rewrite subst_context_length in X2.
         lia.
       }
       assert (e : forall s n, map (subst s n) ss = ss).
@@ -2280,7 +2278,7 @@ Section ParallelSubstitution.
       + eapply X0. all: eauto.
       + apply All2_map. eapply All2_impl. 1: eassumption.
         cbn. intros x y [? ih]. eapply ih. all: eauto.
-      + eapply untyped_subslet_subst with (s' := s0) in H1 as h.
+      + eapply untyped_subslet_subst with (s' := s0) in X2 as h.
         2:{ eapply psubst_untyped_subslet. eassumption. }
         eapply PCUICClosed.closed_declared_symbol_par_pat_context in H as hcl.
         2-3: eassumption.
@@ -3568,7 +3566,10 @@ Section ParallelSubstitution.
     all: try solve [
       destruct p ; try discriminate ;
       try (
-        inversion hp ; rewrite <- H in e ;
+        inversion hp ;
+        lazymatch goal with
+        | h : _ = _ |- _ => rewrite <- h in e
+        end ;
         rewrite subst_mkApps in e ; cbn in e ;
         apply (f_equal isAppConstruct) in e ;
         rewrite 2!isAppConstruct_mkApps in e ;
@@ -3576,8 +3577,11 @@ Section ParallelSubstitution.
       ) ;
       cbn in hm ;
       inversion hp ; [|
-        apply (f_equal isAppRel) in H ; cbn in H ;
-        rewrite isAppRel_mkApps in H ; cbn in H ; discriminate
+        lazymatch goal with
+        | h : _ = _ |- _ =>
+          apply (f_equal isAppRel) in h ; cbn in h ;
+          rewrite isAppRel_mkApps in h ; cbn in h ; discriminate
+        end
       ] ; subst ;
       cbn ; cbn in e ;
       let e1 := fresh "e1" in
@@ -3624,14 +3628,14 @@ Section ParallelSubstitution.
         cbn in e. inversion e. subst.
         destruct p1. all: try discriminate.
         inversion hp.
-        apply (f_equal isAppRel) in H. cbn in H.
-        rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+        apply (f_equal isAppRel) in H1. cbn in H1.
+        rewrite isAppRel_mkApps in H1. cbn in H1. discriminate.
       }
       clear IHh1 IHh2 IHh3.
       inversion hp.
       2:{
-        apply (f_equal isAppRel) in H. cbn in H.
-        rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+        apply (f_equal isAppRel) in H0. cbn in H0.
+        rewrite isAppRel_mkApps in H0. cbn in H0. discriminate.
       } subst.
       cbn. cbn in e.
       destruct nth_error eqn:e1. 2: discriminate.
@@ -3756,8 +3760,8 @@ Section ParallelSubstitution.
       + cbn in hm. cbn. cbn in e.
         inversion hp.
         2:{
-          apply (f_equal isAppRel) in H. cbn in H.
-          rewrite isAppRel_mkApps in H. cbn in H. discriminate.
+          apply (f_equal isAppRel) in H0. cbn in H0.
+          rewrite isAppRel_mkApps in H0. cbn in H0. discriminate.
         } subst.
         destruct nth_error eqn:e1. 2: discriminate.
         rewrite lift0_id in e. subst.
@@ -3787,8 +3791,8 @@ Section ParallelSubstitution.
       + cbn in e. inversion e. subst. clear e.
         inversion hp.
         destruct args as [| p args _] using list_rect_rev. 1: discriminate.
-        rewrite <- mkApps_nested in H. cbn in H. inversion H. subst.
-        apply All_app in H0 as [ha hp2]. inversion hp2. subst.
+        rewrite <- mkApps_nested in H0. cbn in H0. inversion H0. subst.
+        apply All_app in X as [ha hp2]. inversion hp2. subst.
         cbn in hm.
         destruct pattern_mask eqn:e1. 2: discriminate.
         destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
@@ -3920,9 +3924,9 @@ Section ParallelSubstitution.
         ) brs0 brs'
       ).
       { apply All2_map_inv_left in a.
-        induction a in H3 |- *. 1: constructor.
+        induction a in X0 |- *. 1: constructor.
         destruct x as [n1 u1], y as [n2 u2]. cbn in *.
-        inversion H3. subst. cbn in *.
+        inversion X0. subst. cbn in *.
         destruct r0 as [hu ?]. subst.
         forward IHa by auto.
         constructor.
@@ -4105,7 +4109,7 @@ Section ParallelSubstitution.
       constructor. auto.
     - rewrite subst_mkApps. cbn. constructor.
       apply All_map. eapply All_impl. 1: eassumption.
-      intros p hp. unfold compose.
+      intros p hp.
       assumption.
   Qed.
 
@@ -4121,7 +4125,7 @@ Section ParallelSubstitution.
     - cbn. constructor.
       + apply pattern_subst. all: auto.
       + apply All_map. eapply All_impl. 1: eauto.
-        cbn. unfold compose. intros [m u] hu. cbn in *.
+        cbn. intros [m u] hu. cbn in *.
         apply pattern_subst. all: auto.
     - cbn. constructor.
   Qed.
@@ -4335,7 +4339,7 @@ Section ParallelSubstitution.
     2:{
       apply is_rewrite_rule_pattern in hr. 2: auto.
       apply All_map. eapply All_impl. 1: eauto.
-      intros e he. unfold compose.
+      intros e he.
       eapply elim_pattern_subst in he. 1: eauto.
       apply untyped_subslet_length in hσ.
       rewrite subst_context_length in hσ.
@@ -5009,7 +5013,7 @@ Section ParallelSubstitution.
 
   Fixpoint at_most_one_true l :=
     match l with
-    | true :: l => forallb (fun x => ~~ x) l
+    | true :: l => forallb (fun x => negb x) l
     | false :: l => at_most_one_true l
     | [] => true
     end.

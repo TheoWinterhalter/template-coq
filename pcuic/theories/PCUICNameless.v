@@ -854,7 +854,7 @@ Lemma nl_decompose_app :
 Proof.
   intro t.
   unfold decompose_app.
-  change [] with (map nl []) at 1. generalize (nil term).
+  change [] with (map nl []) at 1. generalize (@nil term).
   induction t. all: try reflexivity.
   intro l. cbn. change (nl t2 :: map nl l) with (map nl (t2 :: l)).
   apply IHt1.
@@ -1022,7 +1022,7 @@ Proof.
   { replace (List.rev (nlctx params)) with (nlctx (List.rev params))
       by (unfold nlctx ; rewrite map_rev ; reflexivity).
     change [] with (map nl []) at 2.
-    generalize (List.rev params), (nil term). clear.
+    generalize (List.rev params), (@nil term). clear.
     intros params l.
     induction params in ty, args, l |- *.
     - destruct args. all: reflexivity.
@@ -1081,7 +1081,7 @@ Lemma nl_to_extended_list:
 Proof.
   intros indctx. unfold to_extended_list, to_extended_list_k.
   change [] with (map nl []) at 2.
-  unf_term. generalize (nil term), 0.
+  unf_term. generalize (@nil term), 0.
   induction indctx.
   - reflexivity.
   - simpl. intros l n.
@@ -1090,13 +1090,13 @@ Proof.
     all: apply IHindctx.
 Qed.
 
-Lemma nl_wf_fixpoint Σ mfix : 
+Lemma nl_wf_fixpoint Σ mfix :
   wf_fixpoint Σ.1 mfix = wf_fixpoint (nlg Σ).1 (map (map_def_anon nl nl) mfix).
 Proof.
   unfold wf_fixpoint.
 Admitted.
 
-Lemma nl_wf_cofixpoint Σ mfix : 
+Lemma nl_wf_cofixpoint Σ mfix :
   wf_cofixpoint Σ.1 mfix = wf_cofixpoint (nlg Σ).1 (map (map_def_anon nl nl) mfix).
 Proof.
   unfold wf_fixpoint.

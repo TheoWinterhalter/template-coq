@@ -49,16 +49,18 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma trans_lift (t:P.term) n k:
-  trans(PL.lift n k t) = TL.lift n k (trans t).
+Lemma trans_lift (t : P.term) n k :
+  trans (PL.lift n k t) = TL.lift n k (trans t).
 Proof.
-  revert k. induction t using PCUICInduction.term_forall_list_ind; simpl; intros; try congruence.
+  revert k.
+  induction t using PCUICInduction.term_forall_list_ind; simpl; intros; try congruence.
   - f_equal. rewrite !map_map_compose. solve_all.
   - rewrite IHt1, IHt2.
     rewrite mkAppMkApps.
     rewrite <- mapOne.
     rewrite <- TL.lift_mkApps.
     f_equal.
+  - exact (todo "rewrite rules").
   - f_equal; auto. red in X. solve_list.
   - f_equal; auto; red in X; solve_list.
   - f_equal; auto; red in X; solve_list.
@@ -76,8 +78,8 @@ Proof.
   - exact rarg.
 Defined.
 
-Lemma trans_global_ext_levels Σ:
-PT.global_ext_levels Σ = TT.global_ext_levels (trans_global Σ).
+Lemma trans_global_ext_levels Σ :
+  PT.global_ext_levels Σ = TT.global_ext_levels (trans_global Σ).
 Proof.
   unfold TT.global_ext_levels, PT.global_ext_levels.
   destruct Σ.
@@ -100,6 +102,7 @@ Proof.
     + cbn.
       destruct m.
       reflexivity.
+    + cbn. exact (todo "rewrite rules").
 Qed.
 
 
@@ -208,7 +211,7 @@ trans (PCUICAst.mkApps t args) =
 mkApps (trans t) (map trans args).
 Proof.
   induction args in t |- *.
-  - reflexivity. 
+  - reflexivity.
   - cbn [map].
     rewrite <- LiftSubst.mkApps_mkApp.
     cbn.
@@ -225,7 +228,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma All_forall {X Y} (f:X->Y->Prop) xs: 
+Lemma All_forall {X Y} (f:X->Y->Prop) xs:
   All (fun a => forall b, f a b) xs ->
   (forall b, All (fun a => f a b) xs).
 Proof.
@@ -262,6 +265,7 @@ Proof.
     rewrite map_app.
     cbn.
     reflexivity.
+  - todo "rewrite rules".
   - f_equal;trivial.
     do 2 rewrite map_map.
     apply All_map_eq.
@@ -282,7 +286,7 @@ Proof.
       destruct x.
       unfold map_def.
       cbn in *.
-      now rewrite e, e0.  
+      now rewrite e, e0.
     + apply IHX.
   - f_equal.
     rewrite map_length.
@@ -294,7 +298,7 @@ Proof.
       destruct x.
       unfold map_def.
       cbn in *.
-      now rewrite e, e0.  
+      now rewrite e, e0.
     + apply IHX.
 Qed.
 
@@ -313,7 +317,7 @@ trans (PCUICUnivSubst.subst_instance_constr u t) =
 Template.UnivSubst.subst_instance_constr u (trans t).
 Proof.
   induction t using PCUICInduction.term_forall_list_ind;cbn;auto;try congruence.
-  - do 2 rewrite map_map. 
+  - do 2 rewrite map_map.
     f_equal.
     apply All_map_eq.
     apply X.
@@ -322,9 +326,10 @@ Proof.
     rewrite subst_instance_constr_mkApps.
     cbn.
     reflexivity.
+  - todo "rewrite rules".
   - f_equal.
     + apply IHt1.
-    + apply IHt2. 
+    + apply IHt2.
     + do 2 rewrite map_map.
       unfold tCaseBrsProp in X.
       apply All_map_eq.
@@ -373,8 +378,8 @@ Qed.
 
 Lemma trans_type_of_constructor mdecl cdecl ind i u:
 trans (PT.type_of_constructor mdecl cdecl (ind, i) u) =
-TT.type_of_constructor 
-  (trans_minductive_body mdecl) 
+TT.type_of_constructor
+  (trans_minductive_body mdecl)
   (trans_ctor cdecl)
   (ind,i)
   u.
@@ -454,9 +459,9 @@ Qed.
 
 
 Lemma trans_instantiate_params params pars ty:
-  option_map trans 
-  (PT.instantiate_params 
-    params pars ty) = 
+  option_map trans
+  (PT.instantiate_params
+    params pars ty) =
     TT.instantiate_params (trans_local params) (map trans pars) (trans ty).
 Proof.
   rewrite TT.instantiate_params_, PT.instantiate_params_.
@@ -470,16 +475,18 @@ Proof.
   induction params using rev_ind;intros pars xs ty.
   - cbn. destruct pars;trivial.
     cbn. now rewrite trans_subst.
-  - unfold trans_local. 
+  - unfold trans_local.
     rewrite map_app. cbn.
     do 2 rewrite rev_unit. cbn.
     destruct x as [? [] ?];cbn.
     + destruct ty;cbn;trivial.
       2: destruct (trans ty1);cbn;trivial.
+      2: todo "rewrite rules".
       cbn. rewrite IHparams.
       cbn. now rewrite trans_subst.
     + destruct ty;cbn;trivial.
       2: destruct (trans ty1);cbn;trivial.
+      2: todo "rewrite rules".
       cbn. destruct pars;trivial.
       cbn. now rewrite IHparams.
 Qed.
@@ -510,7 +517,7 @@ Proof.
     unfold PCUICAst.map_context.
     rewrite map_map.
     destruct mdecl.
-    cbn. 
+    cbn.
     clear H.
     induction ind_params;cbn in *;trivial.
     f_equal.
@@ -529,7 +536,7 @@ Proof.
 Qed.
 
 Lemma trans_destr_arity x:
-TT.destArity [] (trans x) 
+TT.destArity [] (trans x)
 = option_map (fun '(xs,u) => (map trans_decl xs,u)) (PT.destArity [] x).
 Proof.
   remember (@nil PCUICAst.context_decl) as xs.
@@ -541,6 +548,7 @@ Proof.
   - rewrite <- IHx3.
     reflexivity.
   - destruct (trans x1);cbn;trivial.
+  - todo "rewrite rules".
 Qed.
 
 Lemma trans_mkProd_or_LetIn a t:
@@ -564,7 +572,7 @@ Qed.
 Lemma trans_build_case_predicate_type ind mdecl idecl npar args u ps pty:
 PT.build_case_predicate_type ind mdecl idecl (firstn npar args) u ps = Some pty ->
 TT.build_case_predicate_type ind (trans_minductive_body mdecl)
-  (trans_one_ind_body idecl) (firstn npar (map trans args)) 
+  (trans_one_ind_body idecl) (firstn npar (map trans args))
   u ps = Some (trans pty).
 Proof.
   intros H.
@@ -573,7 +581,7 @@ Proof.
   simpl in *.
   apply trans_instantiate_params' in H as ->.
   simpl.
-  rewrite trans_destr_arity, H0. 
+  rewrite trans_destr_arity, H0.
   simpl. f_equal.
   rewrite <- H2.
   rewrite trans_it_mkProd_or_LetIn,
@@ -738,7 +746,7 @@ All
 All
   (fun d : def term =>
    TT.typing (trans_global Σ)
-   (trans_local Γ ,,, TT.fix_context (map (map_def trans trans) xfix)) 
+   (trans_local Γ ,,, TT.fix_context (map (map_def trans trans) xfix))
    (dbody d) (TL.lift0 #|TT.fix_context (map (map_def trans trans) xfix)| (dtype d))
    × isLambda (dbody d) = true) (map (map_def trans trans) mfix).
 Proof.
@@ -879,13 +887,13 @@ Proof.
   apply (PT.typing_ind_env (fun Σ Γ t T =>
     TT.typing (trans_global Σ) (trans_local Γ) (trans t) (trans T)
   )%type
-    (fun Σ Γ wfΓ => 
+    (fun Σ Γ wfΓ =>
     TT.All_local_env (TT.lift_typing TT.typing (trans_global Σ)) (trans_local Γ))
   );intros.
   - now eapply trans_wf_local_env, All_over_All.
 (*
 typing_ind_env is like induction but with
-additional assumptions for the nested typing 
+additional assumptions for the nested typing
 in All (for wf_local assumptions)
 *)
   - rewrite trans_lift.
@@ -909,11 +917,12 @@ in All (for wf_local assumptions)
         cbn. constructor.
         apply leq_term_refl.
       }
-      admit. 
-      (* 
+      admit.
+      (*
       tProd na (trans A) (trans B) has a type
       obtain with inversion from IHX0_1
       *)
+  - todo "rewrite rules".
   - rewrite trans_subst_instance_constr.
     rewrite trans_cst_type.
     eapply TT.type_Const; eauto.
@@ -926,10 +935,10 @@ in All (for wf_local assumptions)
     + now apply trans_consistent_instance_ext.
   - rewrite trans_type_of_constructor.
     eapply TT.type_Construct; auto.
-    + destruct isdecl. 
+    + destruct isdecl.
       constructor.
-      * now apply trans_declared_inductive. 
-      * now apply map_nth_error. 
+      * now apply trans_declared_inductive.
+      * now apply map_nth_error.
     + now apply trans_consistent_instance_ext.
   - replace (trans (PCUICAst.mkApps p (skipn npar args ++ [c])))
     with (mkApps (trans p) (skipn npar (map trans args) ++ [trans c])).
@@ -969,7 +978,7 @@ in All (for wf_local assumptions)
   - rewrite trans_dtype. simpl.
     eapply TT.type_Fix; auto.
     + admit. (* fix guard *)
-    + erewrite map_nth_error. 
+    + erewrite map_nth_error.
       2: apply H0.
       destruct decl.
       unfold map_def.
@@ -981,7 +990,7 @@ in All (for wf_local assumptions)
       eapply trans_mfix_All2;eassumption.
   - rewrite trans_dtype.
     eapply TT.type_CoFix; auto.
-    + erewrite map_nth_error. 
+    + erewrite map_nth_error.
       2: eassumption.
       destruct decl.
       unfold map_def.

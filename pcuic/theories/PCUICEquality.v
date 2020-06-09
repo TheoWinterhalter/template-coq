@@ -623,10 +623,10 @@ Proof.
     eapply All2_impl'; tea.
     eapply All_impl; tea. eauto.
   - constructor; eauto.
-  - intro. toProp. constructor; eauto.
-  - intro. toProp. constructor; eauto.
-  - intro. toProp. constructor; eauto.
-  - intro. toProp. constructor; eauto.
+  - intro. rtoProp. constructor; eauto.
+  - intro. rtoProp. constructor; eauto.
+  - intro. rtoProp. constructor; eauto.
+  - intro. rtoProp. constructor; eauto.
   - unfold kername in *.
     eqspec. 2: discriminate.
     eqspec. 2: discriminate.
@@ -1253,10 +1253,10 @@ Proof.
 Qed.
 
 Lemma eq_context_upto_smash_context ctx ctx' x y :
-  eq_context_upto eq ctx ctx' -> eq_context_upto eq x y -> 
+  eq_context_upto eq ctx ctx' -> eq_context_upto eq x y ->
   eq_context_upto eq (smash_context ctx x) (smash_context ctx' y).
 Proof.
-  induction x in ctx, ctx', y |- *; intros eqctx eqt; inv eqt; simpl; 
+  induction x in ctx, ctx', y |- *; intros eqctx eqt; inv eqt; simpl;
     try split; auto; try constructor; auto.
   - apply IHx; auto. apply eq_context_upto_cat; auto.
     constructor; auto. constructor.
@@ -1265,12 +1265,12 @@ Proof.
 Qed.
 
 Lemma eq_context_upto_nth_error Re ctx ctx' n :
-  eq_context_upto Re ctx ctx' -> 
+  eq_context_upto Re ctx ctx' ->
   rel_option (eq_decl_upto Re) (nth_error ctx n) (nth_error ctx' n).
 Proof.
   induction 1 in n |- *.
   - rewrite nth_error_nil. constructor.
-  - destruct n; simpl; auto. 
+  - destruct n; simpl; auto.
     constructor. split; auto. constructor.
   - destruct n; simpl; auto.
     constructor. constructor; simpl; auto.

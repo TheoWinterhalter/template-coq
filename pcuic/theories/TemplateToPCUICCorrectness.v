@@ -1,7 +1,7 @@
 (* Distributed under the terms of the MIT license.   *)
 Set Warnings "-notation-overridden".
 
-From Coq Require Import Bool List Compare_dec PeanoNat.
+From Coq Require Import Bool List Compare_dec PeanoNat String.
 From MetaCoq.Template Require Import config utils Ast TypingWf WfInv.
 
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICCumulativity

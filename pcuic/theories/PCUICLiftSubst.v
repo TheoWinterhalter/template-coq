@@ -122,7 +122,7 @@ Definition subst_decl s k (d : context_decl) := map_decl (subst s k) d.
 Definition subst_context s k (Γ : context) : context :=
   fold_context (fun k' => subst s (k' + k)) Γ.
 
-(** Assumptions contexts do not contain let-ins. *)  
+(** Assumptions contexts do not contain let-ins. *)
 
 Inductive assumption_context : context -> Prop :=
 | assumption_context_nil : assumption_context []
@@ -597,7 +597,7 @@ Qed.
 Definition fix_context (m : mfixpoint term) : context :=
   List.rev (mapi (fun i d => vass d.(dname) (lift0 i d.(dtype))) m).
 
-Definition fix_context_gen k mfix := 
+Definition fix_context_gen k mfix :=
   List.rev (mapi_rec (fun (i : nat) (d : def term) => vass (dname d) (lift0 i (dtype d))) mfix k).
 
 Lemma lift_decl0 k d : map_decl (lift 0 k) d = d.
@@ -652,9 +652,9 @@ Qed.
 
 Lemma simpl_subst' :
   forall N M n p k, k = List.length N -> p <= n -> subst N p (lift0 (k + n) M) = lift0 n M.
-Proof. 
+Proof.
   intros. subst k. rewrite simpl_subst_rec; auto.
-  + now rewrite Nat.add_0_r. 
+  + now rewrite Nat.add_0_r.
   + lia.
 Qed.
 
@@ -662,7 +662,7 @@ Lemma map_subst_lift_id s l : map (subst0 s ∘ lift0 #|s|) l = l.
 Proof.
   induction l; simpl; auto.
   rewrite -{1}(Nat.add_0_r #|s|) simpl_subst'; auto.
-  now rewrite lift0_id IHl.  
+  now rewrite lift0_id IHl.
 Qed.
 
 Lemma map_subst_lift_id_eq s l k : k = #|s| -> map (subst0 s ∘ lift0 k) l = l.
@@ -781,7 +781,7 @@ Proof.
   rewrite distr_lift_subst_rec; f_equal. f_equal. lia.
 Qed.
 
-Lemma skipn_subst_context n s k Γ : skipn n (subst_context s k Γ) = 
+Lemma skipn_subst_context n s k Γ : skipn n (subst_context s k Γ) =
   subst_context s k (skipn n Γ).
 Proof.
   rewrite !subst_context_alt.
@@ -1744,7 +1744,7 @@ Lemma term_forall_ctx_list_ind :
     (forall Γ (n : name) (t : term),
         P Γ t -> forall t0 : term, P Γ t0 -> forall t1 : term, P (vdef n t t0 :: Γ) t1 -> P Γ (tLetIn n t t0 t1)) ->
     (forall Γ (t u : term), P Γ t -> P Γ u -> P Γ (tApp t u)) ->
-    (forall Γ (s : String.string) (n : nat) (u : list Level.t), P Γ (tSymb s n u)) ->
+    (forall Γ (s : kername) (n : nat) (u : list Level.t), P Γ (tSymb s n u)) ->
     (forall Γ s (u : list Level.t), P Γ (tConst s u)) ->
     (forall Γ (i : inductive) (u : list Level.t), P Γ (tInd i u)) ->
     (forall Γ (i : inductive) (n : nat) (u : list Level.t), P Γ (tConstruct i n u)) ->
