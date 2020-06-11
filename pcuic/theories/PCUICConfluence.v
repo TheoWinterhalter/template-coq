@@ -1698,9 +1698,36 @@ Section PredRed.
         eapply All2_local_env_app_inv; auto.
   Qed.
 
-  Lemma pred1_red_r_gen Γ Γ' Δ Δ' : forall M N, pred1 Σ (Γ ,,, Δ) (Γ' ,,, Δ') M N ->
-    pred1_ctx Σ (Γ' ,,, Δ) (Γ' ,,, Δ') ->
-    pred1 Σ (Γ' ,,, Δ) (Γ' ,,, Δ') M N.
+  Lemma untyped_subslet_pred1_ctx :
+    forall Γ Γ' Δ s,
+      pred1_ctx Σ Γ Γ' ->
+      untyped_subslet Γ s Δ ->
+      untyped_subslet Γ' s Δ.
+  Proof.
+    intros Γ Γ' Δ s r h.
+    induction h in Γ', r |- *.
+    - constructor.
+    - constructor. eapply IHh. assumption.
+    - constructor. eapply IHh. assumption.
+  Qed.
+
+  Lemma untyped_subslet_pred1_ctx_rev :
+    forall Γ Γ' Δ s,
+      pred1_ctx Σ Γ Γ' ->
+      untyped_subslet Γ' s Δ ->
+      untyped_subslet Γ s Δ.
+  Proof.
+    intros Γ Γ' Δ s r h.
+    induction h in Γ, r |- *.
+    - constructor.
+    - constructor. eapply IHh. assumption.
+    - constructor. eapply IHh. assumption.
+  Qed.
+
+  Lemma pred1_red_r_gen Γ Γ' Δ Δ' :
+    forall M N, pred1 Σ (Γ ,,, Δ) (Γ' ,,, Δ') M N ->
+      pred1_ctx Σ (Γ' ,,, Δ) (Γ' ,,, Δ') ->
+      pred1 Σ (Γ' ,,, Δ) (Γ' ,,, Δ') M N.
   Proof.
     intros M N.
     generalize_eq Γ0 (Γ ,,, Δ); intro e.
@@ -1780,9 +1807,21 @@ Section PredRed.
           eapply pred1_red_r_gen_fix_context; eauto.
       + solve_all.
 
-    - todo "rewrite rules"%string.
+    - econstructor. all: eauto.
+      + eapply All2_impl. 1: eassumption.
+        cbn. intros x y [? ih]. eapply ih. all: eauto.
+      + eapply untyped_subslet_pred1_ctx_rev.
+        2: eapply untyped_subslet_pred1_ctx.
+        3: eauto.
+        all: eauto.
 
-    - todo "rewrite rules"%string.
+    - eapply pred_par_rewrite_rule. all: eauto.
+      + eapply All2_impl. 1: eassumption.
+        cbn. intros x y [? ih]. eapply ih. all: eauto.
+      + eapply untyped_subslet_pred1_ctx_rev.
+        2: eapply untyped_subslet_pred1_ctx.
+        3: eauto.
+        all: eauto.
 
     - econstructor; eauto.
       solve_all.
