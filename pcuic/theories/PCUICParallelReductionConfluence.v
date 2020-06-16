@@ -871,6 +871,39 @@ Section Rho.
       end
     end.
 
+  Lemma first_match_sound :
+    forall k l t ui σ r,
+      first_match k l t = Some (ui, σ, r) ->
+      All (elim_pattern #|r.(pat_context)|) r.(elims) ->
+      t = subst0 σ (mkElims (tSymb k r.(head) ui) r.(elims)).
+  Proof.
+    intros k l t ui σ r h hr.
+    induction l in ui, σ, r, h, hr |- *.
+    - cbn in h. discriminate.
+    - cbn - [ match_lhs ] in h.
+      lazymatch type of h with
+      | context [ match ?t with _ => _ end ] =>
+        destruct t as [[ui' σ']|] eqn:e
+      end.
+      + noconf h. apply match_lhs_sound in e. all: auto.
+      + apply IHl. all: auto.
+  Qed.
+
+  Lemma first_match_rd_sound :
+    forall k rd t ui σ r,
+      let l := all_rewrite_rules rd in
+      first_match k l t = Some (ui, σ, r) ->
+      t = subst0 σ (subst (symbols_subst k 0 ui #|symbols rd|) #|σ| (lhs r)).
+  Proof.
+    intros k rd t ui σ r l h.
+    apply first_match_sound in h.
+    2:{
+      admit.
+    }
+    subst. f_equal. unfold lhs.
+    rewrite mkElims_subst.
+  Abort.
+
   (* Get kername corresponding to term *)
   Fixpoint elim_kn t :=
     match t with
