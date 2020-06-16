@@ -4,8 +4,9 @@ Require Import ssreflect ssrbool.
 From Coq Require Import Bool List Utf8 ZArith Lia Morphisms String.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICSize
-     PCUICLiftSubst PCUICSigmaCalculus PCUICUnivSubst PCUICTyping PCUICReduction PCUICSubstitution
-     PCUICReflect PCUICClosed PCUICParallelReduction.
+  PCUICLiftSubst PCUICSigmaCalculus PCUICUnivSubst PCUICTyping PCUICReduction
+  PCUICSubstitution PCUICReflect PCUICClosed PCUICParallelReduction
+  PCUICPattern.
 
 Require Import monad_utils.
 Import MonadNotation.
@@ -803,7 +804,7 @@ Section Rho.
 
   Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
 
-  (* First a view to decompose eliminations *)
+  (* First a view to decompose eliminations (maybe useless?) *)
   Equations elim_discr (t : term) : Prop :=
     elim_discr (tApp u v) := False ;
     elim_discr (tCase indn p c brs) := False ;
@@ -829,7 +830,78 @@ Section Rho.
     all: reflexivity.
   Qed.
 
-  (* Next we try to recognise a lhs in Σ  (TODO Also include ext, maybe rename
+  (* Potential extra rules, might be redundant *)
+  Context (extra : option (kername × rewrite_decl)).
+
+  (* All the rewrite rules of a rewrite_decl *)
+  Definition all_rewrite_rules (rd : rewrite_decl) :=
+    rd.(prules) ++ rd.(rules).
+
+  (* Getting the rewrite decl corresponding to a kername *)
+  Definition lookup_rd (k : kername) : option rewrite_decl :=
+    match lookup_env Σ k with
+    | Some (RewriteDecl rd) => Some rd
+    | _ => None
+    end.
+
+  Definition lookup_rewrite_decl (k : kername) : option rewrite_decl :=
+    match extra with
+    | Some (kn, rd) =>
+        if eq_kername k kn
+        then Some rd
+        else lookup_rd k
+    | None => lookup_rd k
+    end.
+
+  (* Getting the list of rewrite rules corresponding to a symbol *)
+  (* Definition all_rewrite_rules (k : kername) :=
+    match lookup_rewrite_decl k with
+    | Some rd => Some (all_rd_rule rd)
+    | None => None
+    end. *)
+
+  (* First lhs matching in a list of rules *)
+  Fixpoint first_match k (l : list rewrite_rule) (t : term) :=
+    match l with
+    | [] => None
+    | r :: l =>
+      match match_lhs #|r.(pat_context)| k r.(head) r.(elims) t with
+      | Some (ui, σ) => Some (ui, σ, r)
+      | None => first_match k l t
+      end
+    end.
+
+  (* Get kername corresponding to term *)
+  Fixpoint elim_kn t :=
+    match t with
+    | tApp u v => elim_kn u
+    | tCase ind p c brs => elim_kn c
+    | tProj p t => elim_kn t
+    | tSymb k n ui => Some k
+    | _ => None
+    end.
+
+  Inductive lhs_view : term -> Type :=
+  | is_lhs k rd r ui σ :
+      lookup_rewrite_decl k = Some rd ->
+      let l := all_rewrite_rules rd in
+      let ss := symbols_subst k 0 ui #|rd.(symbols)| in
+      let t := subst0 σ (lhs r) in
+      first_match k l t = Some (ui, σ, r) ->
+      lhs_view t
+
+  | is_not_lhs t :
+      (
+        (∑ k rd x,
+          lookup_rewrite_decl k = Some rd ×
+          let l := all_rewrite_rules rd in
+          first_match k l t = Some x
+        ) ->
+        False
+      ) ->
+      lhs_view t.
+
+  (* Next we try to recognise a lhs in Σ (TODO Also include ext, maybe rename
     lhs_viewc so that lhs_viewc is the one called in rho) *)
   (* Inductive lhs_view : term -> Type :=
   | is_lhs r : lhs_view (lhs r)
@@ -837,8 +909,11 @@ Section Rho.
   Equations? lhs_viewc (t : term) : ? :=
     lhs_viewc t with decompose_elim_viewc t := {
     | is_elims u l h with u := {
-      | tSymb k n := ? ;
-      | t :=
+      | tSymb k n with lookup_env Σ k := {
+        | Some (RewriteDecl rd) with inspect (match_lhs ) ;
+        | _ := ?
+        } ;
+      | t := ?
       }
     } *)
 
