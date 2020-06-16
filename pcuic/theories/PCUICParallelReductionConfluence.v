@@ -886,7 +886,7 @@ Section Rho.
       lookup_rewrite_decl k = Some rd ->
       let l := all_rewrite_rules rd in
       let ss := symbols_subst k 0 ui #|rd.(symbols)| in
-      let t := subst0 σ (lhs r) in
+      let t := subst0 σ (subst ss #|σ| (lhs r)) in
       first_match k l t = Some (ui, σ, r) ->
       lhs_view t
 
@@ -901,21 +901,24 @@ Section Rho.
       ) ->
       lhs_view t.
 
-  (* Next we try to recognise a lhs in Σ (TODO Also include ext, maybe rename
-    lhs_viewc so that lhs_viewc is the one called in rho) *)
-  (* Inductive lhs_view : term -> Type :=
-  | is_lhs r : lhs_view (lhs r)
-
-  Equations? lhs_viewc (t : term) : ? :=
-    lhs_viewc t with decompose_elim_viewc t := {
-    | is_elims u l h with u := {
-      | tSymb k n with lookup_env Σ k := {
-        | Some (RewriteDecl rd) with inspect (match_lhs ) ;
-        | _ := ?
+  Equations? lhs_viewc (t : term) : lhs_view t :=
+    lhs_viewc t with inspect (elim_kn t) := {
+    | @exist (Some k) e1 with inspect (lookup_rewrite_decl k) := {
+      | @exist (Some rd) e2 with inspect (first_match k (all_rewrite_rules rd) t) := {
+        | @exist (Some (ui, σ, r)) e3 := _ # is_lhs k rd r ui σ _ _ ;
+        | @exist None e3 := is_not_lhs t _
         } ;
-      | t := ?
-      }
-    } *)
+      | @exist None e2 := is_not_lhs t _
+      } ;
+    | @exist None e1 := is_not_lhs t _
+    }.
+  Proof.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+    - admit.
+  Abort.
 
   Equations? rho (Γ : context) (t : term) : term by wf (size t) :=
   rho Γ (tApp t u) with view_lambda_fix_app t u :=
