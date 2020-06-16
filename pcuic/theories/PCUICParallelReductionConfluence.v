@@ -803,6 +803,45 @@ Section Rho.
 
   Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
 
+  (* First a view to decompose eliminations *)
+  Equations elim_discr (t : term) : Prop :=
+    elim_discr (tApp u v) := False ;
+    elim_discr (tCase indn p c brs) := False ;
+    elim_discr (tProj t p) := False ;
+    elim_discr _ := True.
+
+  Inductive decompose_elim_view : term -> Type :=
+  | is_elims t l : elim_discr t -> decompose_elim_view (mkElims t l).
+
+  Equations? decompose_elim_viewc (t : term) : decompose_elim_view t :=
+    decompose_elim_viewc (tApp u v) with decompose_elim_viewc u := {
+    | is_elims w l h := _ # is_elims w (l ++ [ eApp v ]) _
+    } ;
+    decompose_elim_viewc (tCase indn p c brs) with decompose_elim_viewc c := {
+    | is_elims w l h := _ # is_elims w (l ++ [ eCase indn p brs ]) _
+    } ;
+    decompose_elim_viewc (tProj p t) with decompose_elim_viewc t := {
+    | is_elims w l h := _ # is_elims w (l ++ [ eProj p ]) _
+    } ;
+    decompose_elim_viewc t := is_elims t [] I.
+  Proof.
+    all: rewrite mkElims_app.
+    all: reflexivity.
+  Qed.
+
+  (* Next we try to recognise a lhs in Σ  (TODO Also include ext, maybe rename
+    lhs_viewc so that lhs_viewc is the one called in rho) *)
+  (* Inductive lhs_view : term -> Type :=
+  | is_lhs r : lhs_view (lhs r)
+
+  Equations? lhs_viewc (t : term) : ? :=
+    lhs_viewc t with decompose_elim_viewc t := {
+    | is_elims u l h with u := {
+      | tSymb k n := ? ;
+      | t :=
+      }
+    } *)
+
   Equations? rho (Γ : context) (t : term) : term by wf (size t) :=
   rho Γ (tApp t u) with view_lambda_fix_app t u :=
     { | fix_lambda_app_lambda na T b [] u' :=
