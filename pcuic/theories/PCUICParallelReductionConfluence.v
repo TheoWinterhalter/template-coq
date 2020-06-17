@@ -830,12 +830,40 @@ Section Rho.
     all: reflexivity.
   Qed.
 
+  (* TODO MOVE *)
+  Definition on_option {A} (P : A -> Type) : option A -> Type :=
+    fun o =>
+      match o with
+      | Some a => P a
+      | None => True
+      end.
+
+  Definition onrr r :=
+    All (elim_pattern #|r.(pat_context)|) r.(elims).
+
+  Definition onrd rd :=
+    (* let Δ := map (vass nAnon) rd.(symbols) in *)
+    All onrr rd.(rules) ×
+    All onrr rd.(prules).
+
   (* Potential extra rules, might be redundant *)
   Context (extra : option (kername × rewrite_decl)).
+  Context (on_extra : on_option (fun '(k,rd) => onrd rd) extra).
 
   (* All the rewrite rules of a rewrite_decl *)
   Definition all_rewrite_rules (rd : rewrite_decl) :=
     rd.(prules) ++ rd.(rules).
+
+  Lemma all_rewrite_rules_on_rd :
+    forall rd,
+      onrd rd ->
+      All onrr (all_rewrite_rules rd).
+  Proof.
+    intros rd h.
+    unfold onrd in h. unfold all_rewrite_rules.
+    destruct h.
+    apply All_app_inv. all: auto.
+  Qed.
 
   (* Getting the rewrite decl corresponding to a kername *)
   Definition lookup_rd (k : kername) : option rewrite_decl :=
@@ -889,19 +917,61 @@ Section Rho.
       + apply IHl. all: auto.
   Qed.
 
+  Lemma first_match_rule_list :
+    forall k l t ui σ r,
+      first_match k l t = Some (ui, σ, r) ->
+      ∑ n, nth_error l n = Some r.
+  Proof.
+    intros k l t ui σ r h.
+    induction l in ui, σ, r, h |- *.
+    - cbn in h. discriminate.
+    - cbn - [ match_lhs ] in h.
+      lazymatch type of h with
+      | context [ match ?t with _ => _ end ] =>
+        destruct t as [[ui' σ']|] eqn:e
+      end.
+      + noconf h. exists 0. reflexivity.
+      + apply IHl in h as [n h]. exists (S n). auto.
+  Qed.
+
+  Lemma first_match_subst_length :
+    forall k l t ui σ r,
+      first_match k l t = Some (ui, σ, r) ->
+      #|σ| = #|r.(pat_context)|.
+  Proof.
+    intros k l t ui σ r h.
+    induction l in ui, σ, r, h |- *.
+    - cbn in h. discriminate.
+    - cbn - [ match_lhs ] in h.
+      lazymatch type of h with
+      | context [ match ?t with _ => _ end ] =>
+        destruct t as [[ui' σ']|] eqn:e
+      end.
+      + noconf h. admit.
+      + eapply IHl. eauto.
+  Admitted.
+
   Lemma first_match_rd_sound :
     forall k rd t ui σ r,
+      onrd rd ->
       let l := all_rewrite_rules rd in
       first_match k l t = Some (ui, σ, r) ->
       t = subst0 σ (subst (symbols_subst k 0 ui #|symbols rd|) #|σ| (lhs r)).
   Proof.
-    intros k rd t ui σ r l h.
-    apply first_match_sound in h.
-    2:{
-      admit.
-    }
+    intros k rd t ui σ r hrd l h.
+    apply all_rewrite_rules_on_rd in hrd.
+    apply first_match_rule_list in h as hr. destruct hr as [m hr].
+    eapply nth_error_all in hr. 2: eauto.
+    unfold onrr in hr.
+    apply first_match_subst_length in h as hl.
+    apply first_match_sound in h. 2: auto.
     subst. f_equal. unfold lhs.
-    rewrite mkElims_subst.
+    rewrite mkElims_subst. f_equal.
+    - unfold symbols_subst. cbn.
+      destruct (Nat.leb_spec #|σ| (#|r.(pat_context)| + r.(head))). 2: lia.
+      replace (#|rd.(symbols)| - 0) with #|rd.(symbols)| by lia.
+      replace (#|r.(pat_context)| + r.(head) - #|σ|) with r.(head) by lia.
+      (* rewrite list_make_nth_error. *)
   Abort.
 
   (* Get kername corresponding to term *)
