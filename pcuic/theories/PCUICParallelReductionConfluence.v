@@ -874,6 +874,29 @@ Section Rho.
     | _ => None
     end.
 
+  Lemma lookup_rd_onrd :
+    forall k rd,
+      lookup_rd k = Some rd ->
+      onrd rd.
+  Proof.
+    intros k rd h.
+    unfold lookup_rd in h.
+    destruct lookup_env as [[]|] eqn:e. all: try discriminate.
+    noconf h.
+    eapply lookup_on_global_env in wfΣ. 2: eassumption.
+    destruct wfΣ as [Σ' [? hd]].
+    destruct hd as [? [hr [hpr ?]]].
+    unfold onrd. split.
+    - eapply All_impl. 1: exact hr.
+      intros r [? ? ? hh ? he ?]. unfold onrr. split.
+      + rewrite map_length in hh. assumption.
+      + assumption.
+    - eapply All_impl. 1: exact hpr.
+      intros r [? ? ? hh ? he ?]. unfold onrr. split.
+      + rewrite map_length in hh. assumption.
+      + assumption.
+  Qed.
+
   Definition lookup_rewrite_decl (k : kername) : option rewrite_decl :=
     match extra with
     | Some (kn, rd) =>
@@ -882,6 +905,20 @@ Section Rho.
         else lookup_rd k
     | None => lookup_rd k
     end.
+
+  Lemma lookup_rewrite_decl_onrd :
+    forall k rd,
+      lookup_rewrite_decl k = Some rd ->
+      onrd rd.
+  Proof.
+    intros k rd h.
+    unfold lookup_rewrite_decl in h.
+    destruct extra as [[kn rd']|].
+    - destruct eq_kername.
+      + noconf h. cbn in on_extra. assumption.
+      + eapply lookup_rd_onrd. eassumption.
+    - eapply lookup_rd_onrd. eassumption.
+  Qed.
 
   (* Getting the list of rewrite rules corresponding to a symbol *)
   (* Definition all_rewrite_rules (k : kername) :=
