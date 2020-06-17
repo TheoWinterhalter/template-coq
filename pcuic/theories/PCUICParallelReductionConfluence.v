@@ -6,7 +6,7 @@ From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICSize
   PCUICLiftSubst PCUICSigmaCalculus PCUICUnivSubst PCUICTyping PCUICReduction
   PCUICSubstitution PCUICReflect PCUICClosed PCUICParallelReduction
-  PCUICPattern.
+  PCUICPattern PCUICInduction.
 
 Require Import monad_utils.
 Import MonadNotation.
@@ -838,13 +838,15 @@ Section Rho.
       | None => True
       end.
 
-  Definition onrr r :=
+  Definition onrr nsymb r :=
+    r.(head) < nsymb ×
     All (elim_pattern #|r.(pat_context)|) r.(elims).
 
   Definition onrd rd :=
     (* let Δ := map (vass nAnon) rd.(symbols) in *)
-    All onrr rd.(rules) ×
-    All onrr rd.(prules).
+    let nsymb := #|rd.(symbols)| in
+    All (onrr nsymb) rd.(rules) ×
+    All (onrr nsymb) rd.(prules).
 
   (* Potential extra rules, might be redundant *)
   Context (extra : option (kername × rewrite_decl)).
@@ -857,7 +859,7 @@ Section Rho.
   Lemma all_rewrite_rules_on_rd :
     forall rd,
       onrd rd ->
-      All onrr (all_rewrite_rules rd).
+      All (onrr #|rd.(symbols)|) (all_rewrite_rules rd).
   Proof.
     intros rd h.
     unfold onrd in h. unfold all_rewrite_rules.
@@ -951,6 +953,52 @@ Section Rho.
       + eapply IHl. eauto.
   Admitted.
 
+  Lemma symbols_subst_pattern :
+    forall p k ui nsymb npat,
+      pattern npat p ->
+      subst (symbols_subst k 0 ui nsymb) npat p = p.
+  Proof.
+    intros p k ui nsymb npat hp.
+    induction hp
+    as [n hn | ind n ui' args ha ih]
+    using pattern_all_rect.
+    - cbn. destruct (Nat.leb_spec npat n). 1: lia.
+      reflexivity.
+    - rewrite subst_mkApps. cbn. f_equal.
+      induction ih. 1: constructor.
+      cbn. f_equal.
+      + auto.
+      + apply IHih. inversion ha. assumption.
+  Qed.
+
+  Lemma subst_elim_symbols_subst :
+    forall e npat nsymb k ui,
+      elim_pattern npat e ->
+      subst_elim (symbols_subst k 0 ui nsymb) npat e = e.
+  Proof.
+    intros e npat nsymb k ui he.
+    destruct he as [| indn p brs hp ha|].
+    - cbn. f_equal. apply symbols_subst_pattern. auto.
+    - cbn. f_equal.
+      + apply symbols_subst_pattern. auto.
+      + induction ha as [| [? ?]]. 1: constructor.
+        cbn. f_equal.
+        * unfold on_snd. cbn. f_equal. apply symbols_subst_pattern. auto.
+        * auto.
+    - cbn. reflexivity.
+  Qed.
+
+  Lemma subst_elims_symbols_subst :
+    forall l npat nsymb k ui,
+      All (elim_pattern npat) l ->
+      map (subst_elim (symbols_subst k 0 ui nsymb) npat) l = l.
+  Proof.
+    intros l npat nsymb k ui h.
+    induction h. 1: constructor.
+    cbn. f_equal. 2: auto.
+    apply subst_elim_symbols_subst. assumption.
+  Qed.
+
   Lemma first_match_rd_sound :
     forall k rd t ui σ r,
       onrd rd ->
@@ -962,7 +1010,7 @@ Section Rho.
     apply all_rewrite_rules_on_rd in hrd.
     apply first_match_rule_list in h as hr. destruct hr as [m hr].
     eapply nth_error_all in hr. 2: eauto.
-    unfold onrr in hr.
+    unfold onrr in hr. destruct hr as [hh he].
     apply first_match_subst_length in h as hl.
     apply first_match_sound in h. 2: auto.
     subst. f_equal. unfold lhs.
@@ -971,8 +1019,15 @@ Section Rho.
       destruct (Nat.leb_spec #|σ| (#|r.(pat_context)| + r.(head))). 2: lia.
       replace (#|rd.(symbols)| - 0) with #|rd.(symbols)| by lia.
       replace (#|r.(pat_context)| + r.(head) - #|σ|) with r.(head) by lia.
-      (* rewrite list_make_nth_error. *)
-  Abort.
+      destruct nth_error eqn:e.
+      2:{
+        apply nth_error_None in e. rewrite list_make_length in e. lia.
+      }
+      apply list_make_nth_error in e. subst.
+      cbn. f_equal. lia.
+    - rewrite subst_elims_symbols_subst. 2: reflexivity.
+      rewrite hl. assumption.
+  Qed.
 
   (* Get kername corresponding to term *)
   Fixpoint elim_kn t :=
