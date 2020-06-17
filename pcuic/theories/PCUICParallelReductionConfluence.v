@@ -1076,6 +1076,17 @@ Section Rho.
     | _ => None
     end.
 
+  Lemma elim_kn_mkElims :
+    forall t l,
+      elim_kn (mkElims t l) = elim_kn t.
+  Proof.
+    intros t l.
+    induction l as [| [] l ih] in t |- *.
+    1: reflexivity.
+    all: rewrite ih.
+    all: reflexivity.
+  Qed.
+
   Inductive lhs_view : term -> Type :=
   | is_lhs k rd r ui σ :
       lookup_rewrite_decl k = Some rd ->
@@ -1108,12 +1119,77 @@ Section Rho.
     | @exist None e1 := is_not_lhs t _
     }.
   Proof.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-    - admit.
-  Abort.
+    - symmetry in e2. apply lookup_rewrite_decl_onrd in e2 as hrd.
+      symmetry in e3. apply first_match_rd_sound in e3. 2: assumption.
+      auto.
+    - symmetry in e2. apply lookup_rewrite_decl_onrd in e2 as hrd.
+      symmetry in e3. apply first_match_rd_sound in e3 as ?. 2: assumption.
+      subst. auto.
+    - apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+      rewrite e in e2. noconf e2.
+      rewrite e0 in e3.
+      discriminate.
+    - apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+      rewrite e in e2. noconf e2.
+    - apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+  Qed.
 
   Equations? rho (Γ : context) (t : term) : term by wf (size t) :=
   rho Γ (tApp t u) with view_lambda_fix_app t u :=
