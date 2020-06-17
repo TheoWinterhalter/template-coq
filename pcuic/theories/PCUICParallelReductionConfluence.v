@@ -1090,11 +1090,13 @@ Section Rho.
   Inductive lhs_view : term -> Type :=
   | is_lhs k rd r ui σ :
       lookup_rewrite_decl k = Some rd ->
-      let l := all_rewrite_rules rd in
+      (* let l := all_rewrite_rules rd in
       let ss := symbols_subst k 0 ui #|rd.(symbols)| in
       let t := subst0 σ (subst ss #|σ| (lhs r)) in
       first_match k l t = Some (ui, σ, r) ->
-      lhs_view t
+      lhs_view t *)
+      first_match k (all_rewrite_rules rd) (subst0 σ (subst (symbols_subst k 0 ui #|rd.(symbols)|) #|σ| (lhs r))) = Some (ui, σ, r) ->
+      lhs_view (subst0 σ (subst (symbols_subst k 0 ui #|rd.(symbols)|) #|σ| (lhs r)))
 
   | is_not_lhs t :
       (
@@ -1192,93 +1194,118 @@ Section Rho.
   Qed.
 
   Equations? rho (Γ : context) (t : term) : term by wf (size t) :=
-  rho Γ (tApp t u) with view_lambda_fix_app t u :=
-    { | fix_lambda_app_lambda na T b [] u' :=
-        (rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ u'};
-      | fix_lambda_app_lambda na T b (a :: l) u' :=
-        mkApps ((rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ a})
-          (map_terms rho Γ (l ++ [u']) _);
-      | fix_lambda_app_fix mfix idx l a :=
+    rho Γ t with lhs_viewc t := {
+    | is_lhs k rd r ui σ hrd e := todo "rewrite rules"%string ;
+
+    | is_not_lhs t notlhs with t := {
+      | tApp t u with view_lambda_fix_app t u := {
+        | fix_lambda_app_lambda na T b [] u' :=
+          (rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ u'};
+        | fix_lambda_app_lambda na T b (a :: l) u' :=
+          mkApps ((rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ a})
+            (map_terms rho Γ (l ++ [u']) _);
+        | fix_lambda_app_fix mfix idx l a :=
+          let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
+          let mfix' := map_fix_rho (t:=tFix mfix idx) (fun Γ x Hx => rho Γ x) Γ mfixctx mfix _ in
+          let args := map_terms rho Γ (l ++ [a]) _ in
+          match unfold_fix mfix' idx with
+          | Some (rarg, fn) =>
+            if is_constructor rarg (l ++ [a]) then
+              mkApps fn args
+            else mkApps (tFix mfix' idx) args
+          | None => mkApps (tFix mfix' idx) args
+          end ;
+        | fix_lambda_app_other t' u' nisfixlam := tApp (rho Γ t') (rho Γ u')
+        } ;
+
+      | tLetIn na d t b := (subst10 (rho Γ d) (rho (vdef na (rho Γ d) (rho Γ t) :: Γ) b)) ;
+
+      | tRel i with option_map decl_body (nth_error Γ i) := {
+        | Some (Some body) => (lift0 (S i) body);
+        | Some None => tRel i;
+        | None => tRel i
+        } ;
+
+      | tCase (ind, pars) p x brs with inspect (decompose_app x) := {
+        | exist (f, args) eqx with view_construct_cofix f := {
+          | construct_cofix_construct ind' c u with eq_inductive ind ind' := {
+            | true =>
+              let p' := rho Γ p in
+              let args' := map_terms rho Γ args _ in
+              let brs' := map_brs rho Γ brs _ in
+              iota_red pars c args' brs';
+            | false =>
+              let p' := rho Γ p in
+              let x' := rho Γ x in
+              let brs' := map_brs rho Γ brs _ in
+              tCase (ind, pars) p' x' brs'
+            } ;
+          | construct_cofix_cofix mfix idx :=
+            let p' := rho Γ p in
+            let args' := map_terms rho Γ args _ in
+            let brs' := map_brs rho Γ brs _ in
+            let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
+            let mfix' := map_fix_rho (t:=tCase (ind, pars) p x brs) rho Γ mfixctx mfix _ in
+            match nth_error mfix' idx with
+            | Some d =>
+              tCase (ind, pars) p' (mkApps (subst0 (cofix_subst mfix') (dbody d)) args') brs'
+            | None => tCase (ind, pars) p' (rho Γ x) brs'
+            end ;
+          | construct_cofix_other t nconscof =>
+            let p' := rho Γ p in
+            let x' := rho Γ x in
+            let brs' := map_brs rho Γ brs _ in
+            tCase (ind, pars) p' x' brs'
+          }
+        } ;
+
+      | tProj (i, pars, narg) x with inspect (decompose_app x) := {
+        | exist (f, args) eqx with view_construct_cofix f :=
+        | construct_cofix_construct ind c u with inspect (nth_error (map_terms rho Γ args _) (pars + narg)) := {
+          | exist (Some arg1) eq =>
+            if eq_inductive i ind then arg1
+            else tProj (i, pars, narg) (rho Γ x);
+          | exist None neq => tProj (i, pars, narg) (rho Γ x) };
+        | construct_cofix_cofix mfix idx :=
+          let args' := map_terms rho Γ args _ in
+          let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
+          let mfix' := map_fix_rho (t:=tProj (i, pars, narg) x) rho Γ mfixctx mfix _ in
+          match nth_error mfix' idx with
+          | Some d => tProj (i, pars, narg) (mkApps (subst0 (cofix_subst mfix') (dbody d)) args')
+          | None =>  tProj (i, pars, narg) (rho Γ x)
+          end;
+        | construct_cofix_other t nconscof => tProj (i, pars, narg) (rho Γ x)
+        } ;
+
+      | tConst c u with lookup_env Σ c := {
+        | Some (ConstantDecl decl) with decl.(cst_body) := {
+          | Some body => subst_instance_constr u body;
+          | None => tConst c u
+          } ;
+        | _ => tConst c u
+        } ;
+
+      | tLambda na t u := tLambda na (rho Γ t) (rho (vass na (rho Γ t) :: Γ) u) ;
+
+      | tProd na t u := tProd na (rho Γ t) (rho (vass na (rho Γ t) :: Γ) u) ;
+
+      | tVar i := tVar i ;
+
+      | tEvar n l := tEvar n (map_terms rho Γ l _) ;
+
+      | tSort s := tSort s ;
+
+      | tFix mfix idx :=
         let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
-        let mfix' := map_fix_rho (t:=tFix mfix idx) (fun Γ x Hx => rho Γ x) Γ mfixctx mfix _ in
-        let args := map_terms rho Γ (l ++ [a]) _ in
-        match unfold_fix mfix' idx with
-        | Some (rarg, fn) =>
-          if is_constructor rarg (l ++ [a]) then
-            mkApps fn args
-          else mkApps (tFix mfix' idx) args
-        | None => mkApps (tFix mfix' idx) args
-        end ;
-      | fix_lambda_app_other t' u' nisfixlam := tApp (rho Γ t') (rho Γ u') } ;
-  rho Γ (tLetIn na d t b) => (subst10 (rho Γ d) (rho (vdef na (rho Γ d) (rho Γ t) :: Γ) b));
-  rho Γ (tRel i) with option_map decl_body (nth_error Γ i) := {
-    | Some (Some body) => (lift0 (S i) body);
-    | Some None => tRel i;
-    | None => tRel i };
+        tFix (map_fix_rho (t:=tFix mfix idx) (fun Γ x Hx => rho Γ x) Γ mfixctx mfix _) idx ;
 
-  rho Γ (tCase (ind, pars) p x brs) with inspect (decompose_app x) :=
-  { | exist (f, args) eqx with view_construct_cofix f :=
-  { | construct_cofix_construct ind' c u with eq_inductive ind ind' :=
-    { | true =>
-        let p' := rho Γ p in
-        let args' := map_terms rho Γ args _ in
-        let brs' := map_brs rho Γ brs _ in
-        iota_red pars c args' brs';
-      | false =>
-        let p' := rho Γ p in
-        let x' := rho Γ x in
-        let brs' := map_brs rho Γ brs _ in
-        tCase (ind, pars) p' x' brs' };
-    | construct_cofix_cofix mfix idx :=
-      let p' := rho Γ p in
-      let args' := map_terms rho Γ args _ in
-      let brs' := map_brs rho Γ brs _ in
-      let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
-      let mfix' := map_fix_rho (t:=tCase (ind, pars) p x brs) rho Γ mfixctx mfix _ in
-        match nth_error mfix' idx with
-        | Some d =>
-          tCase (ind, pars) p' (mkApps (subst0 (cofix_subst mfix') (dbody d)) args') brs'
-        | None => tCase (ind, pars) p' (rho Γ x) brs'
-        end;
-    | construct_cofix_other t nconscof =>
-      let p' := rho Γ p in
-      let x' := rho Γ x in
-      let brs' := map_brs rho Γ brs _ in
-        tCase (ind, pars) p' x' brs' } };
+      | tCoFix mfix idx :=
+        let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
+        tCoFix (map_fix_rho (t:=tCoFix mfix idx) rho Γ mfixctx mfix _) idx ;
 
-  rho Γ (tProj (i, pars, narg) x) with inspect (decompose_app x) := {
-    | exist (f, args) eqx with view_construct_cofix f :=
-    | construct_cofix_construct ind c u with inspect (nth_error (map_terms rho Γ args _) (pars + narg)) := {
-      | exist (Some arg1) eq =>
-        if eq_inductive i ind then arg1
-        else tProj (i, pars, narg) (rho Γ x);
-      | exist None neq => tProj (i, pars, narg) (rho Γ x) };
-    | construct_cofix_cofix mfix idx :=
-      let args' := map_terms rho Γ args _ in
-      let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
-      let mfix' := map_fix_rho (t:=tProj (i, pars, narg) x) rho Γ mfixctx mfix _ in
-      match nth_error mfix' idx with
-      | Some d => tProj (i, pars, narg) (mkApps (subst0 (cofix_subst mfix') (dbody d)) args')
-      | None =>  tProj (i, pars, narg) (rho Γ x)
-      end;
-    | construct_cofix_other t nconscof => tProj (i, pars, narg) (rho Γ x) } ;
-  rho Γ (tConst c u) with lookup_env Σ c := {
-    | Some (ConstantDecl decl) with decl.(cst_body) := {
-      | Some body => subst_instance_constr u body;
-      | None => tConst c u };
-    | _ => tConst c u };
-  rho Γ (tLambda na t u) => tLambda na (rho Γ t) (rho (vass na (rho Γ t) :: Γ) u);
-  rho Γ (tProd na t u) => tProd na (rho Γ t) (rho (vass na (rho Γ t) :: Γ) u);
-  rho Γ (tVar i) => tVar i;
-  rho Γ (tEvar n l) => tEvar n (map_terms rho Γ l _);
-  rho Γ (tSort s) => tSort s;
-  rho Γ (tFix mfix idx) =>
-    let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
-    tFix (map_fix_rho (t:=tFix mfix idx) (fun Γ x Hx => rho Γ x) Γ mfixctx mfix _) idx;
-  rho Γ (tCoFix mfix idx) =>
-    let mfixctx := fold_fix_context_wf mfix (fun Γ x Hx => rho Γ x) Γ [] in
-    tCoFix (map_fix_rho (t:=tCoFix mfix idx) rho Γ mfixctx mfix _) idx;
-  rho Γ x => x.
+      | x := x
+      }
+    }.
   Proof.
     all:try abstract lia.
     - abstract (rewrite size_mkApps ?list_size_app /=; lia).
