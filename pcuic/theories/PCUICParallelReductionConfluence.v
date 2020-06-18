@@ -2193,14 +2193,25 @@ Section Rho.
   Qed.
 
   (* TODO MOVE *)
-  Ltac fold_rho :=
+  (* Ltac fold_rho :=
     lazymatch goal with
     | |- context [ rho_unfold_clause_1 ?t (lhs_viewc_clause_1 ?t (inspect (elim_kn ?t))) ?Γ ] =>
       replace (rho_unfold_clause_1 t (lhs_viewc_clause_1 t (inspect (elim_kn t))) Γ)
       with (rho Γ t)
       by (simp rho lhs_viewc ; reflexivity)
-    end.
-    (* TODO Faster with a lemma *)
+    end. *)
+
+  Lemma fold_rho :
+    forall Γ t,
+      rho Γ t =
+      rho_unfold_clause_1 t (lhs_viewc_clause_1 t (inspect (elim_kn t))) Γ.
+  Proof.
+    intros Γ t.
+    simp rho lhs_viewc. reflexivity.
+  Qed.
+
+  Ltac fold_rho :=
+    rewrite <- fold_rho.
 
   Lemma rho_rename Γ Δ r t :
     renaming Γ Δ r ->
