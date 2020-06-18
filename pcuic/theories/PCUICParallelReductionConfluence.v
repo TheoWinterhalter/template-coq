@@ -2192,6 +2192,16 @@ Section Rho.
     destruct t; simpl; try congruence.
   Qed.
 
+  (* TODO MOVE *)
+  Ltac fold_rho :=
+    lazymatch goal with
+    | |- context [ rho_unfold_clause_1 ?t (lhs_viewc_clause_1 ?t (inspect (elim_kn ?t))) ?Γ ] =>
+      replace (rho_unfold_clause_1 t (lhs_viewc_clause_1 t (inspect (elim_kn t))) Γ)
+      with (rho Γ t)
+      by (simp rho lhs_viewc ; reflexivity)
+    end.
+    (* TODO Faster with a lemma *)
+
   Lemma rho_rename Γ Δ r t :
     renaming Γ Δ r ->
     rename r (rho Γ t) = rho Δ (rename r t).
@@ -2218,21 +2228,23 @@ Section Rho.
     - simpl; simp rho lhs_viewc. simpl.
       f_equal; rewrite !map_map_compose. solve_all.
 
-    - simpl; simp rho; simpl. erewrite H; eauto.
+    - simpl. simp rho lhs_viewc. repeat fold_rho. simpl. erewrite H; eauto.
       erewrite H0; eauto.
       simpl. eapply (shift_renaming _ _ [_] [_]).
       + repeat constructor.
       + auto.
 
-    - simpl; simp rho; simpl. erewrite H; eauto.
+    - simpl. simp rho lhs_viewc. repeat fold_rho. simpl. erewrite H; eauto.
       erewrite H0; eauto.
       simpl. eapply (shift_renaming _ _ [_] [_]).
       + repeat constructor.
       + auto.
 
-    - simpl; simp rho; simpl. rewrite /subst1 subst_inst.
+    - simpl. simp rho lhs_viewc. repeat fold_rho.
+      simpl. rewrite /subst1 subst_inst.
       specialize (H _ _ _ H2). specialize (H0 _ _ _ H2).
-      autorewrite with sigma in H, H0, H1. erewrite <- (H1 ((vdef n (rho Γ t) (rho Γ t0) :: Γ))).
+      autorewrite with sigma in H, H0, H1.
+      erewrite <- (H1 ((vdef n (rho Γ t) (rho Γ t0) :: Γ))).
       2:{
         eapply (shift_renaming _ _ [_] [_]). 2: auto.
         repeat constructor. simpl.
