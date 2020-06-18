@@ -13,6 +13,7 @@ Import MonadNotation.
 
 (* Type-valued relations. *)
 Require Import CRelationClasses.
+Require Import Equations.Prop.DepElim.
 From Equations Require Import Equations.
 
 Set Default Goal Selector "!".
@@ -2213,6 +2214,8 @@ Section Rho.
   Ltac fold_rho :=
     rewrite <- fold_rho.
 
+  Derive Signature for lhs_view.
+
   Lemma rho_rename Γ Δ r t :
     renaming Γ Δ r ->
     rename r (rho Γ t) = rho Δ (rename r t).
@@ -2264,7 +2267,19 @@ Section Rho.
       sigma. apply inst_ext. rewrite H.
       rewrite -ren_shiftn. sigma. unfold Up. now sigma.
 
-    - rewrite rho_equation_8.
+    - simpl. simp rho.
+      generalize (lhs_viewc (tApp t u)). intro l.
+      dependent destruction l.
+
+      (* Rewrite rule *)
+      + fold_rho.
+
+
+      (* Not a rewrite rule *)
+      +
+
+
+      simp rho lhs_viewc. repeat fold_rho. rewrite rho_equation_8.
       destruct (view_lambda_fix_app t u).
 
       + (* Fixpoint application *)
