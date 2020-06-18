@@ -2216,49 +2216,53 @@ Section Rho.
 
   Derive Signature for lhs_view.
 
+  Lemma All_size :
+    forall A P l f,
+      (forall x, f x < list_size f l -> P x) ->
+      @All A P l.
+  Proof.
+    intros A P l f h.
+    induction l in h |- *. 1: constructor.
+    constructor.
+    - apply h. cbn. lia.
+    - apply IHl. intros x hx. apply h. cbn. lia.
+  Qed.
+
   Lemma rho_rename Γ Δ r t :
     renaming Γ Δ r ->
     rename r (rho Γ t) = rho Δ (rename r t).
   Proof.
-    revert t Γ Δ r.
-    refine (term_ind_size_app _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
-      intros; try subst Γ; try rename Γ0 into Γ(* ; rename_all_hyps *).
-    all:auto 2.
+    intro h.
+    funelim (rho Γ t). all: rewrite ?map_terms_map.
+    all: auto 2.
 
-    - red in H. simpl.
-      specialize (H n).
-      destruct (nth_error Γ n) as [c|] eqn:Heq.
-      + simp rho lhs_viewc. rewrite Heq /=.
-        destruct decl_body eqn:Heq''.
-        * rewrite lift0_inst.
-          destruct H as [b' [-> Hb']] => /=.
-          rewrite lift0_inst.
-          sigma. autorewrite with sigma in *. now rewrite <- Hb'.
-        * simpl.
-          rewrite H. simpl. reflexivity.
+    - rewrite !rename_subst0.
+      (* autorewrite with sigma. *)
+      admit.
 
-      + simp rho lhs_viewc. rewrite Heq H //.
+    - cbn. simp rho lhs_viewc. f_equal.
+      rewrite !map_map_compose. solve_all.
+      eapply All_size with (f := size).
+      intros t ht. eapply H. all: eauto.
+      cbn. lia.
 
-    - simpl; simp rho lhs_viewc. simpl.
-      f_equal; rewrite !map_map_compose. solve_all.
+    - simpl. simp rho lhs_viewc. repeat fold_rho.
+      erewrite H. 2: eauto.
+      erewrite H0. 1: eauto.
+      eapply (shift_renaming _ _ [_] [_]). 2: auto.
+      repeat constructor.
 
-    - simpl. simp rho lhs_viewc. repeat fold_rho. simpl. erewrite H; eauto.
-      erewrite H0; eauto.
-      simpl. eapply (shift_renaming _ _ [_] [_]).
-      + repeat constructor.
-      + auto.
-
-    - simpl. simp rho lhs_viewc. repeat fold_rho. simpl. erewrite H; eauto.
+    - simpl. simp rho lhs_viewc. repeat fold_rho. erewrite H; eauto.
       erewrite H0; eauto.
       simpl. eapply (shift_renaming _ _ [_] [_]).
       + repeat constructor.
       + auto.
 
     - simpl. simp rho lhs_viewc. repeat fold_rho.
-      simpl. rewrite /subst1 subst_inst.
-      specialize (H _ _ _ H2). specialize (H0 _ _ _ H2).
-      autorewrite with sigma in H, H0, H1.
-      erewrite <- (H1 ((vdef n (rho Γ t) (rho Γ t0) :: Γ))).
+      rewrite /subst1 subst_inst.
+      specialize (H _ _ h). specialize (H0 _ _ h).
+      autorewrite with sigma in H, H0.
+      erewrite <- H1.
       2:{
         eapply (shift_renaming _ _ [_] [_]). 2: auto.
         repeat constructor. simpl.
@@ -2267,7 +2271,13 @@ Section Rho.
       sigma. apply inst_ext. rewrite H.
       rewrite -ren_shiftn. sigma. unfold Up. now sigma.
 
-    - simpl. simp rho.
+    - cbn. simp rho. rewrite Heq. cbn. reflexivity.
+
+    - (* TODO Update after this *)
+
+
+
+    simpl. simp rho.
       generalize (lhs_viewc (tApp t u)). intro l.
       dependent destruction l.
 
