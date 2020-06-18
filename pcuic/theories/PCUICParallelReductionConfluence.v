@@ -1193,9 +1193,25 @@ Section Rho.
       cbn in e1. noconf e1.
   Qed.
 
+  Lemma first_match_subst_size :
+    forall k l t ui σ r,
+      first_match k l t = Some (ui, σ, r) ->
+      list_size size σ < size t.
+  Proof.
+    intros k l t ui σ r h.
+    induction l in ui, σ, r, h |- *. 1: discriminate.
+    cbn - [ match_lhs ] in h.
+    destruct match_lhs eqn:e.
+    - (* TODO Need to prove this on match_lhs, should hold even without assuming linearity *)
+      admit.
+    - eapply IHl. eassumption.
+  Admitted.
+
   Equations? rho (Γ : context) (t : term) : term by wf (size t) :=
     rho Γ t with lhs_viewc t := {
-    | is_lhs k rd r ui σ hrd e := todo "rewrite rules"%string ;
+    | is_lhs k rd r ui σ hrd e :=
+      let ss := symbols_subst k 0 ui #|rd.(symbols)| in
+      subst0 (map_terms rho Γ σ _) (subst ss #|σ| (rhs r)) ;
 
     | is_not_lhs t notlhs with t := {
       | tApp t u with view_lambda_fix_app t u := {
@@ -1308,6 +1324,7 @@ Section Rho.
     }.
   Proof.
     all:try abstract lia.
+    - eapply first_match_subst_size. eassumption.
     - abstract (rewrite size_mkApps ?list_size_app /=; lia).
     - simpl in Hx. abstract (rewrite size_mkApps /=; lia).
     - clear; abstract (rewrite list_size_app size_mkApps /=; lia).
