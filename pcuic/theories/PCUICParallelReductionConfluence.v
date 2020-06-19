@@ -1692,21 +1692,34 @@ Section Rho.
       destruct nth_error as [d|] eqn:eqfix => //.
       rewrite /is_constructor nth_error_nil //.
     - simpl. rewrite map_app /=.
+      destruct lhs_viewc.
+      1:{
+        eapply first_match_lookup_sound in e0 as et. 2: auto.
+        apply (f_equal elim_kn) in et.
+        apply first_match_subst_length in e0 as σl.
+        rewrite σl in et.
+        eapply first_match_rule_list in e0 as hr. destruct hr as [n ?].
+        erewrite elim_kn_lhs in et. 2-3: eauto.
+        cbn in et. rewrite elim_kn_mkApps in et.
+        discriminate.
+      }
+      simpl.
       destruct nth_error as [d|] eqn:eqfix => //.
       + destruct (is_constructor (rarg d) (args ++ [x])) eqn:isc; simp rho.
-        * rewrite -mkApps_nested /=.
+        * revert f. rewrite -mkApps_nested /=. intro f.
           autorewrite with rho.
-          simpl. simp rho. rewrite /unfold_fix.
-          (* rewrite /map_fix nth_error_map eqfix /= isc map_fix_subst ?map_app //.
-          intros n; simp rho. simpl. f_equal; now simp rho.
-        * rewrite -mkApps_nested /=.
-          simp rho. simpl. simp rho.
+          simpl. simp rho. repeat fold_rho. rewrite /unfold_fix.
+          rewrite /map_fix nth_error_map eqfix /= isc map_fix_subst ?map_app //.
+          intros n; simp rho lhs_viewc. simpl. f_equal; now simp rho.
+        * revert f. rewrite -mkApps_nested /=. intro f.
+          simp rho lhs_viewc. simpl. simp rho lhs_viewc.
+          repeat fold_rho.
           now rewrite /unfold_fix /map_fix nth_error_map eqfix /= isc map_app.
-      + rewrite -mkApps_nested /=. simp rho.
-        simpl. simp rho.
-        now  rewrite /unfold_fix /map_fix nth_error_map eqfix /= map_app.
-  Qed. *)
-  Admitted.
+      + revert f. rewrite -mkApps_nested /=. intro f. simp rho lhs_viewc.
+        simpl. simp rho lhs_viewc.
+        repeat fold_rho.
+        now rewrite /unfold_fix /map_fix nth_error_map eqfix /= map_app.
+  Qed.
 
   (* Helps factors proofs: only two cases to consider: the fixpoint unfolds or is stuck. *)
   Inductive rho_fix_spec Γ mfix i l : term -> Type :=
