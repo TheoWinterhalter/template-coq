@@ -2228,6 +2228,28 @@ Section Rho.
     - apply IHl. intros x hx. apply h. cbn. lia.
   Qed.
 
+  Lemma elim_kn_rename :
+    forall r t,
+      elim_kn (rename r t) = elim_kn t.
+  Proof.
+    intros r t.
+    induction t.
+    all: simpl. all: try reflexivity.
+    all: auto.
+  Qed.
+
+  (* Lemma is_not_lhs_rename :
+    forall r t h,
+      lhs_viewc t = is_not_lhs t h ->
+      ∑ h', lhs_viewc (rename r t) = is_not_lhs (rename r t) h'.
+  Proof.
+    intros r t h e.
+    funelim (lhs_viewc t).
+    - cbn in H. inversion H. simp lhs_viewc. rewrite elim_kn_rename.
+    -
+    -
+    - *)
+
   Lemma rho_rename Γ Δ r t :
     renaming Γ Δ r ->
     rename r (rho Γ t) = rho Δ (rename r t).
@@ -2236,28 +2258,33 @@ Section Rho.
     funelim (rho Γ t). all: rewrite ?map_terms_map.
     all: auto 2.
 
+    (* lhs *)
     - rewrite !rename_subst0.
       (* autorewrite with sigma. *)
       admit.
 
+    (* Evar *)
     - cbn. simp rho lhs_viewc. f_equal.
       rewrite !map_map_compose. solve_all.
       eapply All_size with (f := size).
       intros t ht. eapply H. all: eauto.
       cbn. lia.
 
+    (* Prod *)
     - simpl. simp rho lhs_viewc. repeat fold_rho.
       erewrite H. 2: eauto.
       erewrite H0. 1: eauto.
       eapply (shift_renaming _ _ [_] [_]). 2: auto.
       repeat constructor.
 
+    (* Lambda *)
     - simpl. simp rho lhs_viewc. repeat fold_rho. erewrite H; eauto.
       erewrite H0; eauto.
       simpl. eapply (shift_renaming _ _ [_] [_]).
       + repeat constructor.
       + auto.
 
+    (* Let *)
     - simpl. simp rho lhs_viewc. repeat fold_rho.
       rewrite /subst1 subst_inst.
       specialize (H _ _ h). specialize (H0 _ _ h).
@@ -2271,111 +2298,175 @@ Section Rho.
       sigma. apply inst_ext. rewrite H.
       rewrite -ren_shiftn. sigma. unfold Up. now sigma.
 
+    (* Symbol (not lhs) *)
     - cbn. simp rho. rewrite Heq. cbn. reflexivity.
 
-    - (* TODO Update after this *)
+    (* Fix *)
+    - simpl. simp rho lhs_viewc. simpl. simp rho.
+      apply (f_equal (fun m => tFix m idx)).
+      rewrite /map_fix !map_length !map_map_compose.
+      solve_all.
+      eapply All_size with (f := def_size size).
+      intros d sd.
+      rewrite !map_def_map_def.
+      eapply map_def_eq_spec.
+      1:{
+        eapply H. all: eauto.
+        destruct d. cbn in sd. cbn. unfold mfixpoint_size.
+        lia.
+      }
+      eapply H. 3: eauto.
+      1:{
+        destruct d. cbn in sd. cbn. unfold mfixpoint_size.
+        lia.
+      }
+      assert (em : #|mfix| = #|fold_fix_context rho Γ [] mfix|).
+      { rewrite fold_fix_context_length /= //. }
+      rewrite {2}em.
+      eapply shift_renaming; auto.
+      clear. generalize #|mfix|. induction mfix using rev_ind.
+      + simpl. constructor.
+      + intros. rewrite map_app !fold_fix_context_app. simpl. constructor.
+        * simpl. reflexivity.
+        * apply IHmfix.
 
+    (* CoFix *)
+    - simpl. simp rho lhs_viewc. simpl. simp rho.
+      apply (f_equal (fun m => tCoFix m idx0)).
+      rewrite /map_fix !map_length !map_map_compose.
+      solve_all.
+      eapply All_size with (f := def_size size).
+      intros [dna dty dtm dr] sd. cbn in sd.
+      rewrite !map_def_map_def.
+      eapply map_def_eq_spec.
+      1:{ eapply H. all: eauto. cbn. unfold mfixpoint_size. lia. }
+      eapply H. 3: eauto.
+      1:{ cbn. unfold mfixpoint_size. lia. }
+      assert (em : #|mfix0| = #|fold_fix_context rho Γ [] mfix0|).
+      { rewrite fold_fix_context_length /= //. }
+      rewrite {2}em.
+      eapply shift_renaming; auto.
+      clear. generalize #|mfix0|. induction mfix0 using rev_ind.
+      + simpl. constructor.
+      + intros. rewrite map_app !fold_fix_context_app. simpl. constructor.
+        * simpl. reflexivity.
+        * apply IHmfix0.
 
+    (* Rel (with body) *)
+    - red in h. simpl.
+      specialize (h n).
+      destruct (nth_error Γ n) as [c|] eqn:e.
+      2:{ cbn in Heq. discriminate. }
+      simp rho lhs_viewc.
+      cbn in Heq. apply some_inj in Heq. rewrite Heq in h.
+      rewrite lift0_inst.
+      destruct h as [b' [-> Hb']] => /=.
+      rewrite lift0_inst.
+      sigma. autorewrite with sigma in *. rewrite Hb'.
+      reflexivity.
 
-    simpl. simp rho.
-      generalize (lhs_viewc (tApp t u)). intro l.
-      dependent destruction l.
+    (* Rel without body *)
+    - simpl. simp rho lhs_viewc.
+      red in h. specialize (h n).
+      destruct nth_error eqn:e.
+      2:{ cbn in Heq. discriminate. }
+      cbn in Heq. apply some_inj in Heq. rewrite Heq in h.
+      rewrite h. cbn. reflexivity.
 
-      (* Rewrite rule *)
-      + fold_rho.
+    (* Undeclared rel *)
+    - red in h. specialize (h n).
+      destruct nth_error eqn:e.
+      1:{ cbn in Heq. discriminate. }
+      simp rho lhs_viewc. rewrite h.
+      cbn. reflexivity.
 
-
-      (* Not a rewrite rule *)
-      +
-
-
-      simp rho lhs_viewc. repeat fold_rho. rewrite rho_equation_8.
-      destruct (view_lambda_fix_app t u).
-
-      + (* Fixpoint application *)
-        simpl; simp rho. rewrite rename_mkApps. cbn [rename].
-        assert (eqargs : map (rename r) (map (rho Γ) (l ++ [a])) =
-                map (rho Δ) (map (rename r) (l ++ [a]))).
-        { rewrite !map_map_compose !map_app. f_equal => /= //.
-          2:{ f_equal. now apply H1. }
-          unshelve epose proof (All_IH l _ _ _ H); simpl; eauto.
-          - rewrite size_mkApps. lia.
-          - solve_all.
+    (* Fixpoint application *)
+    - (* TODO Adapt *)
+      simp rho. simpl. simp rho lhs_viewc. repeat fold_rho.
+      rewrite rename_mkApps. cbn [rename].
+      simp rho.
+      assert (eqargs : map (rename r) (map (rho Γ) (l ++ [a])) =
+              map (rho Δ) (map (rename r) (l ++ [a]))).
+      { rewrite !map_map_compose !map_app. f_equal => /= //.
+        2:{ f_equal. now apply H1. }
+        unshelve epose proof (All_IH l _ _ _ H); simpl; eauto.
+        - rewrite size_mkApps. lia.
+        - solve_all.
+      }
+      destruct (rho_fix_elim Γ mfix i (l ++ [a])).
+      * simpl. simp rho.
+        rewrite /unfold_fix /map_fix nth_error_map e /= i0.
+        simp rho; rewrite /map_fix !nth_error_map /= e /=.
+        move: i0; rewrite /is_constructor -(map_app (rename r) l [a]) nth_error_map.
+        destruct (nth_error_spec (l ++ [a]) (rarg d)) => /= //.
+        rewrite -isConstruct_app_rename => -> //.
+        rewrite rename_mkApps.
+        f_equal; auto.
+        assert (Hbod: ∀ (Γ Δ : list context_decl) (r : nat → nat),
+                  renaming Γ Δ r → rename r (rho Γ (dbody d)) = rho Δ (rename r (dbody d))).
+        { pose proof (H (dbody d)) as Hbod.
+          forward Hbod.
+          { simpl; rewrite mkApps_size. simpl.
+            eapply mfixpoint_size_nth_error in e. lia.
+          }
+          auto.
         }
-        destruct (rho_fix_elim Γ mfix i (l ++ [a])).
-        * simpl. simp rho.
-          rewrite /unfold_fix /map_fix nth_error_map e /= i0.
-          simp rho; rewrite /map_fix !nth_error_map /= e /=.
-          move: i0; rewrite /is_constructor -(map_app (rename r) l [a]) nth_error_map.
-          destruct (nth_error_spec (l ++ [a]) (rarg d)) => /= //.
-          rewrite -isConstruct_app_rename => -> //.
-          rewrite rename_mkApps.
-          f_equal; auto.
-          assert (Hbod: ∀ (Γ Δ : list context_decl) (r : nat → nat),
-                    renaming Γ Δ r → rename r (rho Γ (dbody d)) = rho Δ (rename r (dbody d))).
-          { pose proof (H (dbody d)) as Hbod.
+        assert (Hren : renaming (Γ ,,, rho_fix_context Γ mfix)
+                          (Δ ,,, rho_fix_context Δ (map (map_def (rename r) (rename (shiftn #|mfix| r))) mfix))
+                          (shiftn #|mfix| r)).
+        { now apply renaming_shift_rho_fix_context. }
+        specialize (Hbod _ _ _ Hren).
+        rewrite -Hbod.
+        rewrite !subst_inst.
+        { sigma. eapply inst_ext.
+          rewrite -ren_shiftn. sigma.
+          rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
+          rewrite subst_consn_compose compose_ids_l. apply subst_consn_proper => //.
+          rewrite map_fix_subst //.
+          - intros n. simp rho. simpl. simp rho.
+            reflexivity.
+          - clear -H H2 Hren.
+            unfold fix_subst. autorewrite with len. generalize #|mfix| at 1 4.
+            induction n; simpl; auto.
+            rewrite IHn. clear IHn. f_equal; auto.
+            specialize (H (tFix mfix n)) as Hbod.
             forward Hbod.
-            { simpl; rewrite mkApps_size. simpl.
-              eapply mfixpoint_size_nth_error in e. lia.
-            }
-            auto.
-          }
-          assert (Hren : renaming (Γ ,,, rho_fix_context Γ mfix)
-                           (Δ ,,, rho_fix_context Δ (map (map_def (rename r) (rename (shiftn #|mfix| r))) mfix))
-                           (shiftn #|mfix| r)).
-          { now apply renaming_shift_rho_fix_context. }
-          specialize (Hbod _ _ _ Hren).
-          rewrite -Hbod.
-          rewrite !subst_inst.
-          { sigma. eapply inst_ext.
-            rewrite -ren_shiftn. sigma.
-            rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
-            rewrite subst_consn_compose compose_ids_l. apply subst_consn_proper => //.
-            rewrite map_fix_subst //.
-            - intros n. simp rho. simpl. simp rho.
-              reflexivity.
-            - clear -H H2 Hren.
-              unfold fix_subst. autorewrite with len. generalize #|mfix| at 1 4.
-              induction n; simpl; auto.
-              rewrite IHn. clear IHn. f_equal; auto.
-              specialize (H (tFix mfix n)) as Hbod.
-              forward Hbod.
-              { simpl; rewrite mkApps_size. simpl. lia. }
-              simp rho. simpl. simp rho.
-              specialize (Hbod _ _ _ H2).
-              simpl in Hbod. simp rho in Hbod.
-              simpl in Hbod; simp rho in Hbod.
-              rewrite -Hbod.
-              rewrite map_length. f_equal.
-              rewrite !map_map_compose. apply map_ext.
-              intros []; unfold map_def; cbn.
-              rewrite !rename_inst. f_equal. apply inst_ext.
-              apply ren_shiftn.
-          }
+            { simpl; rewrite mkApps_size. simpl. lia. }
+            simp rho. simpl. simp rho.
+            specialize (Hbod _ _ _ H2).
+            simpl in Hbod. simp rho in Hbod.
+            simpl in Hbod; simp rho in Hbod.
+            rewrite -Hbod.
+            rewrite map_length. f_equal.
+            rewrite !map_map_compose. apply map_ext.
+            intros []; unfold map_def; cbn.
+            rewrite !rename_inst. f_equal. apply inst_ext.
+            apply ren_shiftn.
+        }
 
-        * simp rho; simpl; simp rho.
-          rewrite /unfold_fix /map_fix !nth_error_map.
-          destruct (nth_error mfix i) eqn:hfix => /=.
-          -- assert(is_constructor (rarg d) (l ++ [a]) = false).
-             { red in i0; unfold negb in i0.
-               destruct is_constructor; auto.
-             }
-            rewrite H3.
-            rewrite -(map_app (rename r) l [a]) -is_constructor_rename H3 //.
-            rewrite rename_mkApps.
-            f_equal.
-            ++ simpl. f_equal.
-              autorewrite with len.
-              eapply (map_fix_rho_rename mfix i l); eauto.
-              intros. eapply H.
-              ** rewrite /=. lia.
-              ** auto.
-            ++ apply eqargs.
-          -- rewrite rename_mkApps. f_equal; auto.
-            2:{ now rewrite -(map_app (rename r) _ [_]). }
-            simpl. f_equal. autorewrite with len.
-            apply (map_fix_rho_rename mfix i l); eauto.
-            intros; eapply H; simpl; try lia. auto.
+      * simp rho; simpl; simp rho.
+        rewrite /unfold_fix /map_fix !nth_error_map.
+        destruct (nth_error mfix i) eqn:hfix => /=.
+        -- assert(is_constructor (rarg d) (l ++ [a]) = false).
+            { red in i0; unfold negb in i0.
+              destruct is_constructor; auto.
+            }
+          rewrite H3.
+          rewrite -(map_app (rename r) l [a]) -is_constructor_rename H3 //.
+          rewrite rename_mkApps.
+          f_equal.
+          ++ simpl. f_equal.
+            autorewrite with len.
+            eapply (map_fix_rho_rename mfix i l); eauto.
+            intros. eapply H.
+            ** rewrite /=. lia.
+            ** auto.
+          ++ apply eqargs.
+        -- rewrite rename_mkApps. f_equal; auto.
+          2:{ now rewrite -(map_app (rename r) _ [_]). }
+          simpl. f_equal. autorewrite with len.
+          apply (map_fix_rho_rename mfix i l); eauto.
+          intros; eapply H; simpl; try lia. auto.
 
       + (* Lambda abstraction *)
         pose proof (rho_app_lambda' Γ na ty b (l ++ [a])).
@@ -2578,42 +2669,6 @@ Section Rho.
         apply map_def_eq_spec; simpl. 1: now sigma.
         sigma.
         rewrite -ren_shiftn. rewrite up_Upn. reflexivity.
-
-    - (* Fix *)
-      simpl; simp rho; simpl; simp rho.
-      f_equal. rewrite /map_fix !map_length !map_map_compose.
-      red in X. solve_all.
-      rewrite !map_def_map_def.
-      eapply map_def_eq_spec.
-      1:{ eapply a. auto. }
-      erewrite b; auto.
-      assert (#|m| = #|fold_fix_context rho Γ [] m|).
-      1: rewrite fold_fix_context_length /= //.
-      rewrite {2}H0.
-      eapply shift_renaming; auto.
-      clear. generalize #|m|. induction m using rev_ind.
-      + simpl. constructor.
-      + intros. rewrite map_app !fold_fix_context_app. simpl. constructor.
-        * simpl. reflexivity.
-        * apply IHm.
-
-    - (* CoFix *)
-      simpl; simp rho; simpl; simp rho.
-      f_equal. rewrite /map_fix !map_length !map_map_compose.
-      red in X. solve_all.
-      rewrite !map_def_map_def.
-      eapply map_def_eq_spec.
-      1:{ eapply a. auto. }
-      erewrite b; auto.
-      assert (#|m| = #|fold_fix_context rho Γ [] m|).
-      1: rewrite fold_fix_context_length /= //.
-      rewrite {2}H0.
-      eapply shift_renaming; auto.
-      clear. generalize #|m|. induction m using rev_ind.
-      + simpl. constructor.
-      + intros. rewrite map_app !fold_fix_context_app. simpl. constructor.
-        * simpl. reflexivity.
-        * apply IHm.
   Qed.
 
   Lemma rho_lift0 Γ Δ t : lift0 #|Δ| (rho Γ t) = rho (Γ ,,, Δ) (lift0 #|Δ| t).
