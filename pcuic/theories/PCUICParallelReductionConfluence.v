@@ -1617,14 +1617,27 @@ Section Rho.
     mkApps (tCoFix (map_fix rho Γ (rho_fix_context Γ mfix) mfix) idx) (map (rho Γ) l).
   Proof.
     induction l using rev_ind; autorewrite with rho; auto.
-    (* - simpl. now simp rho.
-    - rewrite -mkApps_nested. simp rho.
+    - simpl. simp rho lhs_viewc. cbn.
+      rewrite map_fix_rho_map. reflexivity.
+    - rewrite -mkApps_nested.
+      destruct lhs_viewc.
+      1:{
+        eapply first_match_lookup_sound in e0 as et. 2: auto.
+        apply (f_equal elim_kn) in et.
+        apply first_match_subst_length in e0 as σl.
+        rewrite σl in et.
+        eapply first_match_rule_list in e0 as hr. destruct hr as [n ?].
+        erewrite elim_kn_lhs in et. 2-3: eauto.
+        cbn in et. rewrite elim_kn_mkApps in et.
+        discriminate.
+      }
+      simpl.
       unshelve erewrite view_lambda_fix_app_other.
       + simpl. clear. induction l using rev_ind; simpl; auto.
         rewrite -mkApps_nested. simpl. apply IHl.
-      + simp rho. rewrite IHl. now rewrite map_app -mkApps_nested.
-  Qed. *)
-  Admitted.
+      + simp rho. repeat fold_rho. rewrite IHl.
+        now rewrite map_app -mkApps_nested.
+  Qed.
 
   Hint Rewrite rho_app_cofix : rho.
 
