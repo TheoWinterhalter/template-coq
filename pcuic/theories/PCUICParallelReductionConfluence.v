@@ -1566,10 +1566,23 @@ Section Rho.
     end.
   Proof.
     destruct l using rev_case; autorewrite with rho; auto.
-    simpl. rewrite -mkApps_nested. simp rho.
-    (* destruct l; simpl; auto. now simp rho.
-  Qed. *)
-  Admitted.
+    destruct lhs_viewc.
+    1:{
+      eapply first_match_lookup_sound in e0 as et. 2: auto.
+      apply (f_equal elim_kn) in et.
+      apply first_match_subst_length in e0 as σl.
+      rewrite σl in et.
+      eapply first_match_rule_list in e0 as hr. destruct hr as [n ?].
+      erewrite elim_kn_lhs in et. 2-3: eauto.
+      rewrite elim_kn_mkApps in et.
+      cbn in et.
+      discriminate.
+    }
+    repeat fold_rho.
+    simpl. revert f. rewrite -mkApps_nested. intro f. simp rho.
+    repeat fold_rho.
+    destruct l; simpl; auto. now simp rho.
+  Qed.
 
   Lemma rho_app_construct Γ c u i l :
     rho Γ (mkApps (tConstruct c u i) l) =
