@@ -2673,19 +2673,40 @@ Section Rho.
           specialize H2 with (1 := h).
           autorewrite with sigma in H2. auto.
 
-    - simpl.
-      simp rho. pose proof (isFixLambda_app_rename r _ i).
-      simpl in H3. rewrite (view_lambda_fix_app_other (rename r t) (rename r a) H3). simpl.
-      erewrite H0, H1; eauto.
+    (* Application *)
+    - (* TODO Once again, I need that renaming a non-lhs gives a non-lhs *)
+      (* simpl.
+      simp rho. pose proof (isFixLambda_app_rename r _ i0) as H3.
+      simpl in H3.
+      rewrite (view_lambda_fix_app_other (rename r t) (rename r a) H3). simpl.
+      erewrite H0, H1; eauto. *)
+      admit.
 
-    - (* Constant unfolding *)
-      simpl; simp rho; simpl.
-      case e: lookup_env => [[decl|decl|decl]|] //; simp rho.
-      case eb: cst_body => [b|] //; simp rho.
+    (* Ill-defined constant *)
+    - simpl. simp rho lhs_viewc.
+      rewrite Heq. cbn. reflexivity.
+
+    (* Ill-defined constant *)
+    - simpl. simp rho lhs_viewc.
+      rewrite Heq. cbn. reflexivity.
+
+    (* Undeclared constant *)
+    - simpl. simp rho lhs_viewc.
+      rewrite Heq. cbn. reflexivity.
+
+    (* Constant unfolding *)
+    - simpl. simp rho lhs_viewc.
+      rewrite Heq0. cbn. rewrite Heq. cbn.
       rewrite rename_inst inst_closed0 //.
-      apply declared_decl_closed in e => //.
-      hnf in e. rewrite eb in e. rewrite closedn_subst_instance_constr; auto.
-      now move/andP: e => [-> _].
+      apply declared_decl_closed in Heq0 => //.
+      hnf in Heq0. rewrite Heq in Heq0.
+      rewrite closedn_subst_instance_constr; auto.
+      now move/andP: Heq0 => [-> _].
+
+    (* Constant with no body *)
+    - simpl. simp rho lhs_viewc.
+      rewrite Heq0. cbn. rewrite Heq. cbn.
+      reflexivity.
 
     - (* construct/cofix iota reduction *)
       simpl; simp rho. destruct p. simp rho.
