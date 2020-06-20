@@ -1745,11 +1745,8 @@ Section Rho.
     - apply rho_fix_stuck. now rewrite e /=.
   Qed.
 
-  (* TODO Restore, but not true, maybe assume not lhs *)
-  (* It might be a good idea to give a name to the type of argument of
-    is_not_lhs to make this easier, and the goals nicer.
-  *)
   Lemma rho_app_case Γ ind pars p x brs :
+    not_lhs (tCase (ind, pars) p x brs) ->
     rho Γ (tCase (ind, pars) p x brs) =
     let (f, args) := decompose_app x in
     match f with
@@ -1770,10 +1767,18 @@ Section Rho.
     | _ => tCase (ind, pars) (rho Γ p) (rho Γ x) (map (on_snd (rho Γ)) brs)
     end.
   Proof.
+    intros notlhs.
     autorewrite with rho.
-    (* set (app := inspect _).
+    destruct lhs_viewc.
+    1:{
+      exfalso. apply notlhs.
+      exists k, rd, (ui, σ, r). split. all: auto.
+    }
+    simp rho.
+    repeat fold_rho.
+    set (app := inspect _).
     destruct app as [[f l] eqapp].
-    rewrite -{2}eqapp. autorewrite with rho.
+    rewrite -{2}eqapp. autorewrite with rho. repeat fold_rho.
     destruct view_construct_cofix; autorewrite with rho.
     - destruct eq_inductive eqn:eqi; simp rho => //.
     - destruct unfold_cofix as [[rarg fn]|]; simp rho => //.
@@ -1781,18 +1786,18 @@ Section Rho.
         destruct nth_error => /=.
         * f_equal.
           f_equal. rewrite (map_cofix_subst rho (fun x y => rho (x ,,, y))) //.
-          intros. autorewrite with rho. simpl. now autorewrite with rho.
+          intros. autorewrite with rho lhs_viewc. simpl.
+          now autorewrite with rho.
         * reflexivity.
       + simpl.
         autorewrite with rho.
         rewrite /map_fix nth_error_map.
         destruct nth_error => /= //.
         rewrite (map_cofix_subst rho (fun x y => rho (x ,,, y))) //.
-        intros; simp rho; simpl; now simp rho.
+        intros. simp rho lhs_viewc. simpl. now simp rho.
     - simpl. eapply symmetry, decompose_app_inv in eqapp.
       subst x. destruct t; simpl in d => //.
-  Qed. *)
-  Admitted.
+  Qed.
 
   Lemma rho_app_proj Γ ind pars arg x :
     rho Γ (tProj (ind, pars, arg) x) =
