@@ -1101,27 +1101,22 @@ Section Rho.
     all: reflexivity.
   Qed.
 
+  Definition not_lhs (t : term) :=
+    (∑ k rd x,
+      lookup_rewrite_decl k = Some rd ×
+      let l := all_rewrite_rules rd in
+      first_match k l t = Some x
+    ) ->
+    False.
+
   Inductive lhs_view (t : term) : Type :=
   | is_lhs k rd r ui σ :
       lookup_rewrite_decl k = Some rd ->
-      (* let l := all_rewrite_rules rd in
-      let ss := symbols_subst k 0 ui #|rd.(symbols)| in
-      let t := subst0 σ (subst ss #|σ| (lhs r)) in
-      first_match k l t = Some (ui, σ, r) ->
-      lhs_view t *)
       first_match k (all_rewrite_rules rd) t = Some (ui, σ, r) ->
-      (* t = subst0 σ (subst (symbols_subst k 0 ui #|rd.(symbols)|) #|σ| (lhs r)) -> *)
       lhs_view t
 
   | is_not_lhs :
-      (
-        (∑ k rd x,
-          lookup_rewrite_decl k = Some rd ×
-          let l := all_rewrite_rules rd in
-          first_match k l t = Some x
-        ) ->
-        False
-      ) ->
+      not_lhs t ->
       lhs_view t.
 
   Arguments is_lhs {_}.
@@ -1139,7 +1134,8 @@ Section Rho.
     | @exist None e1 := is_not_lhs _
     }.
   Proof.
-    - apply lookup_rewrite_decl_onrd in e as hrd.
+    - destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
       apply first_match_rd_sound in e0 as ?. 2: assumption.
       subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
       rewrite elim_kn_mkElims in e1.
@@ -1162,7 +1158,8 @@ Section Rho.
       rewrite e in e2. noconf e2.
       rewrite e0 in e3.
       discriminate.
-    - apply lookup_rewrite_decl_onrd in e as hrd.
+    - destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
       apply first_match_rd_sound in e0 as ?. 2: assumption.
       subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
       rewrite elim_kn_mkElims in e1.
@@ -1183,7 +1180,8 @@ Section Rho.
       apply list_make_nth_error in e4. subst.
       cbn in e1. noconf e1.
       rewrite e in e2. noconf e2.
-    - apply lookup_rewrite_decl_onrd in e as hrd.
+    - destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
       apply first_match_rd_sound in e0 as ?. 2: assumption.
       subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
       rewrite elim_kn_mkElims in e1.
@@ -1537,7 +1535,7 @@ Section Rho.
         discriminate.
       }
       cbn. repeat fold_rho.
-      revert f. rewrite -mkApps_nested. intro f.
+      revert n. rewrite -mkApps_nested. intro n.
       cbn.
       change (mkApps (tApp (tLambda na ty b) a) l) with
         (mkApps (tLambda na ty b) (a :: l)).
@@ -1579,7 +1577,7 @@ Section Rho.
       discriminate.
     }
     repeat fold_rho.
-    simpl. revert f. rewrite -mkApps_nested. intro f. simp rho.
+    simpl. revert n. rewrite -mkApps_nested. intro n. simp rho.
     repeat fold_rho.
     destruct l; simpl; auto. now simp rho.
   Qed.
@@ -1706,16 +1704,16 @@ Section Rho.
       simpl.
       destruct nth_error as [d|] eqn:eqfix => //.
       + destruct (is_constructor (rarg d) (args ++ [x])) eqn:isc; simp rho.
-        * revert f. rewrite -mkApps_nested /=. intro f.
+        * revert n. rewrite -mkApps_nested /=. intro n.
           autorewrite with rho.
           simpl. simp rho. repeat fold_rho. rewrite /unfold_fix.
           rewrite /map_fix nth_error_map eqfix /= isc map_fix_subst ?map_app //.
-          intros n; simp rho lhs_viewc. simpl. f_equal; now simp rho.
-        * revert f. rewrite -mkApps_nested /=. intro f.
+          intros m; simp rho lhs_viewc. simpl. f_equal; now simp rho.
+        * revert n. rewrite -mkApps_nested /=. intro n.
           simp rho lhs_viewc. simpl. simp rho lhs_viewc.
           repeat fold_rho.
           now rewrite /unfold_fix /map_fix nth_error_map eqfix /= isc map_app.
-      + revert f. rewrite -mkApps_nested /=. intro f. simp rho lhs_viewc.
+      + revert n. rewrite -mkApps_nested /=. intro n. simp rho lhs_viewc.
         simpl. simp rho lhs_viewc.
         repeat fold_rho.
         now rewrite /unfold_fix /map_fix nth_error_map eqfix /= map_app.
@@ -1747,6 +1745,10 @@ Section Rho.
     - apply rho_fix_stuck. now rewrite e /=.
   Qed.
 
+  (* TODO Restore, but not true, maybe assume not lhs *)
+  (* It might be a good idea to give a name to the type of argument of
+    is_not_lhs to make this easier, and the goals nicer.
+  *)
   Lemma rho_app_case Γ ind pars p x brs :
     rho Γ (tCase (ind, pars) p x brs) =
     let (f, args) := decompose_app x in
