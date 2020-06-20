@@ -1800,6 +1800,7 @@ Section Rho.
   Qed.
 
   Lemma rho_app_proj Γ ind pars arg x :
+    not_lhs (tProj (ind, pars, arg) x) ->
     rho Γ (tProj (ind, pars, arg) x) =
     let (f, args) := decompose_app x in
     match f with
@@ -1820,10 +1821,18 @@ Section Rho.
     | _ => tProj (ind, pars, arg) (rho Γ x)
     end.
   Proof.
+    intro notlhs.
     autorewrite with rho.
-    (* set (app := inspect _).
+    destruct lhs_viewc.
+    1:{
+      exfalso. apply notlhs.
+      exists k, rd, (ui, σ, r). split. all: auto.
+    }
+    simp rho.
+    repeat fold_rho.
+    set (app := inspect _).
     destruct app as [[f l] eqapp].
-    rewrite -{2}eqapp. autorewrite with rho.
+    rewrite -{2}eqapp. autorewrite with rho. repeat fold_rho.
     destruct view_construct_cofix; autorewrite with rho.
     - destruct eq_inductive eqn:eqi; simp rho => //.
       + set (arg' := inspect _). clearbody arg'.
@@ -1834,18 +1843,17 @@ Section Rho.
           destruct nth_error => //. now simpl in eqarg'.
         * simp rho in eqarg'; rewrite nth_error_map in eqarg'.
           destruct nth_error => //.
-      + destruct inspect as [[arg'|] eqarg'] => //; simp rho.
+      + repeat fold_rho. destruct inspect as [[arg'|] eqarg'] => //; simp rho.
         now rewrite eqi.
     - simpl. autorewrite with rho.
       rewrite /map_fix nth_error_map.
       destruct nth_error eqn:nth => /= //.
       f_equal. f_equal. f_equal.
       rewrite (map_cofix_subst rho (fun x y => rho (x ,,, y))) //.
-      intros. autorewrite with rho. simpl. now autorewrite with rho.
+      intros. autorewrite with rho lhs_viewc. simpl. now autorewrite with rho.
     - simpl. eapply symmetry, decompose_app_inv in eqapp.
       subst x. destruct t; simpl in d => //.
-  Qed. *)
-  Admitted.
+  Qed.
 
 
 
