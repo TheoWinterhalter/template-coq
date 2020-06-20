@@ -2485,8 +2485,8 @@ Section Rho.
 
     (* Rel (with body) *)
     - red in h. simpl.
-      specialize (h n).
-      destruct (nth_error Γ n) as [c|] eqn:e.
+      specialize (h n0).
+      destruct (nth_error Γ n0) as [c|] eqn:e.
       2:{ cbn in Heq. discriminate. }
       simp rho lhs_viewc.
       cbn in Heq. apply some_inj in Heq. rewrite Heq in h.
@@ -2498,14 +2498,14 @@ Section Rho.
 
     (* Rel without body *)
     - simpl. simp rho lhs_viewc.
-      red in h. specialize (h n).
+      red in h. specialize (h n0).
       destruct nth_error eqn:e.
       2:{ cbn in Heq. discriminate. }
       cbn in Heq. apply some_inj in Heq. rewrite Heq in h.
       rewrite h. cbn. reflexivity.
 
     (* Undeclared rel *)
-    - red in h. specialize (h n).
+    - red in h. specialize (h n0).
       destruct nth_error eqn:e.
       1:{ cbn in Heq. discriminate. }
       simp rho lhs_viewc. rewrite h.
@@ -2519,12 +2519,12 @@ Section Rho.
         apply (f_equal elim_kn) in et.
         apply first_match_subst_length in e0 as σl.
         rewrite σl in et.
-        eapply first_match_rule_list in e0 as hr. destruct hr as [n ?].
+        eapply first_match_rule_list in e0 as hr. destruct hr as [m ?].
         erewrite elim_kn_lhs in et. 2-3: eauto.
         cbn in et. rewrite rename_mkApps in et. rewrite elim_kn_mkApps in et.
         discriminate.
       }
-      revert f0. cbn [rename]. rewrite rename_mkApps. intros f0.
+      revert n0. cbn [rename]. rewrite rename_mkApps. intros n0.
       simpl.
       assert (eqargs : map (rename r) (map (rho Γ) (l ++ [a])) =
               map (rho Δ) (map (rename r) (l ++ [a]))).
@@ -2570,7 +2570,7 @@ Section Rho.
           rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
           rewrite subst_consn_compose compose_ids_l. apply subst_consn_proper => //.
           rewrite map_fix_subst //.
-          - intros n. simp rho lhs_viewc. simpl. simp rho.
+          - intros m. simp rho lhs_viewc. simpl. simp rho.
             reflexivity.
           - clear - H2 h Hren.
             unfold fix_subst. autorewrite with len. generalize #|mfix| at 1 4.
@@ -2617,47 +2617,63 @@ Section Rho.
           intros; eapply H2; simpl; try lia. auto.
 
     (* Lambda abstraction (empty list) *)
-    - admit.
-
-    (* Lambda abstraction (cons, the two proofs are the same, shame) *)
-    - simpl.
-      rewrite !rename_mkApps. simpl.
+    - set (l' := []) in *.
+      cbn - [l'].
+      rewrite (rename_mkApps _ (tLambda _ _ _)). cbn - [l'].
       rewrite tApp_mkApps mkApps_nested.
       rewrite -(map_app (rename r) _ [_]).
-      (* TODO Adapt *)
       rewrite rho_app_lambda'.
       simpl.
-      assert (All (fun x => rename r (rho Γ x) = rho Δ (rename r x)) (l ++ [a])).
-      { apply All_app_inv. 2:constructor; auto.
-        unshelve epose proof (All_IH l _ _ _ H); simpl; eauto.
-        - rewrite size_mkApps. lia.
-        - solve_all.
-      }
-      remember (l ++ [a]) as args.
-      destruct args; simpl; simp rho.
-      { apply (f_equal (@List.length _)) in Heqargs. simpl in Heqargs.
-        autorewrite with len in Heqargs. simpl in Heqargs. lia.
-      }
+      rewrite -H. 1: auto.
+      rewrite -H0. 1: auto.
+      rewrite -H1.
+      { eapply shiftn1_renaming; auto. }
       rewrite rename_inst /subst1 subst_inst.
-      simpl in H.
-      specialize (H b).
-      forward H.
-      + rewrite size_mkApps /=. lia.
-      + rewrite inst_mkApps.
-        specialize (H (vass na (rho Γ ty) :: Γ) (vass na (rho Δ ty.[ren r]) :: Δ) (shiftn 1 r)).
-        forward H.
-        { eapply shiftn1_renaming; auto. }
-        sigma. depelim X.
-        autorewrite with sigma in H, e, X.
-        f_equal.
-        * rewrite -H. sigma. apply inst_ext.
-          rewrite e.
-          rewrite -ren_shiftn. sigma.
-          unfold Up. now sigma.
-        * rewrite !map_map_compose. solve_all.
-          now autorewrite with sigma in H3.
+      sigma. apply inst_ext.
+      rewrite -ren_shiftn. sigma.
+      unfold Up. now sigma.
 
-    + simpl.
+    (* Lambda abstraction (cons, the two proofs are the same, shame) *)
+    - set (l' := t0 :: l) in *.
+      cbn - [l'].
+      rewrite (rename_mkApps _ (tLambda _ _ _)). cbn - [l'].
+      rewrite tApp_mkApps mkApps_nested.
+      rewrite -(map_app (rename r) _ [_]).
+      rewrite rho_app_lambda'.
+      simpl.
+      rewrite rename_inst /subst1 subst_inst.
+      rewrite inst_mkApps.
+      specialize (H1 (vass na (rho Δ ty.[ren r]) :: Δ) (shiftn 1 r)).
+      forward H1.
+      { eapply shiftn1_renaming; auto. }
+      sigma.
+      specialize (H Δ r).
+      forward H by assumption.
+      autorewrite with sigma in H, H1.
+      f_equal.
+      + rewrite -H1. sigma. apply inst_ext.
+        rewrite H.
+        rewrite -ren_shiftn. sigma.
+        unfold Up. now sigma.
+      + rewrite !map_map_compose. solve_all.
+        apply All_app_inv.
+        * eapply All_size with (f := size).
+          intros t ht. cbn in H2.
+          specialize (H2 Γ t).
+          forward H2.
+          { rewrite size_mkApps. lia. }
+          specialize H2 with (2 := eq_refl).
+          specialize H2 with (1 := h).
+          autorewrite with sigma in H2. auto.
+        * constructor. 2: constructor.
+          specialize (H2 Γ a0).
+          forward H2.
+          { cbn. lia. }
+          specialize H2 with (2 := eq_refl).
+          specialize H2 with (1 := h).
+          autorewrite with sigma in H2. auto.
+
+    - simpl.
       simp rho. pose proof (isFixLambda_app_rename r _ i).
       simpl in H3. rewrite (view_lambda_fix_app_other (rename r t) (rename r a) H3). simpl.
       erewrite H0, H1; eauto.
