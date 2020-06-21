@@ -908,3 +908,18 @@ Proof.
   apply All_rev in pl.
   eapply match_prelhs_complete in pl. 3: eauto.
 Admitted.
+
+Lemma match_lhs_rename :
+  forall npat k n ui l t σ r,
+    All (elim_pattern npat) l ->
+    match_lhs npat k n l t = Some (ui, σ) ->
+    match_lhs npat k n l (rename r t) = Some (ui, map (rename r) σ).
+Proof.
+  intros npat k n ui l t σ r pl e.
+  unfold match_lhs in e.
+  destruct match_prelhs as [[? ?]|] eqn:e1. 2: discriminate.
+  cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+  inversion e. subst. clear e.
+  unfold match_lhs.
+  (* Need to do it on all previous things *)
+Admitted.

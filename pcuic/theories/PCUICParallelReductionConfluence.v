@@ -2709,7 +2709,9 @@ Section Rho.
       reflexivity.
 
     - (* construct/cofix iota reduction *)
-      simpl; simp rho. destruct p. simp rho.
+      (* TODO Prove rename lhs first *)
+      (* simpl. simp rho. *)
+      simp rho.
       destruct inspect as [[f a] decapp].
       destruct inspect as [[f' a'] decapp'].
       epose proof (decompose_app_rename (symmetry decapp)).
