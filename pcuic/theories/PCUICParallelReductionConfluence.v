@@ -2447,18 +2447,45 @@ Section Rho.
 
     (* lhs *)
     - eapply first_match_lookup_sound in e0 as et. 2: auto.
-      simp rho. destruct lhs_viewc as [? ? ? ?| notlhs].
+      apply lookup_rewrite_decl_onrd in e as hrd.
+      eapply all_rewrite_rules_on_rd in hrd as ?.
+      eapply first_match_rename with (f := r0) in e0 as e3.
+      2:{
+        eapply All_impl. 1: eauto.
+        intros rr [h1 h2]. assumption.
+      }
+      simp rho. destruct (lhs_viewc (rename _ _)) as [? ? ? ?| notlhs].
       2:{
         exfalso. apply notlhs.
-        exists k, rd.
-        (* Need some property on rename and first_match *)
-        admit.
+        eexists k, rd, _. intuition eauto.
       }
-      (* autorewrite with sigma.
-      simp rho lhs_viewc.
-      rewrite !rename_subst0. *)
-      (* autorewrite with sigma. *)
-      admit.
+      cbn. rewrite map_terms_map.
+      eapply first_match_rd_sound in e3 as et3. 2: auto.
+      apply lookup_rewrite_decl_onrd in e1 as hrd0.
+      eapply first_match_rd_sound in e2 as et2. 2: auto.
+      rewrite et3 in et2. clear et3.
+      apply (f_equal elim_kn) in et2.
+      apply first_match_subst_length in e2 as σl2.
+      rewrite σl2 in et2.
+      eapply first_match_rule_list in e2 as hr. destruct hr as [? ?].
+      erewrite elim_kn_lhs in et2. 2-3: eauto.
+      apply first_match_subst_length in e3 as σl3.
+      rewrite σl3 in et2.
+      eapply first_match_rule_list in e3 as hr. destruct hr as [? ?].
+      erewrite elim_kn_lhs in et2. 2-3: eauto.
+      apply some_inj in et2. subst k0.
+      rewrite e in e1. apply some_inj in e1. subst rd0.
+      rewrite e3 in e2. inversion e2.
+      sigma. rewrite map_length. eapply inst_ext.
+      intro i. unfold "∘s". eapply inst_ext.
+      intro j. unfold "⋅n".
+      rewrite !nth_error_map.
+      destruct (nth_error _ j) eqn:e6.
+      + cbn. rewrite <- 2!rename_inst.
+        (* eapply H. *)
+        admit.
+      + cbn. rewrite !map_length.
+        give_up.
 
     (* Evar *)
     - cbn. simp rho lhs_viewc. f_equal.
