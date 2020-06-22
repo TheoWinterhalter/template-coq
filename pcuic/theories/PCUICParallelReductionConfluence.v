@@ -2802,102 +2802,191 @@ Section Rho.
       rewrite Heq0. cbn. rewrite Heq. cbn.
       reflexivity.
 
-    - (* construct/cofix iota reduction *)
-      (* TODO Prove rename lhs first *)
-      (* simpl. simp rho. *)
-      simp rho.
-      destruct inspect as [[f a] decapp].
+    (* Cofix iota reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      repeat fold_rho.
       destruct inspect as [[f' a'] decapp'].
-      epose proof (decompose_app_rename (symmetry decapp)).
-      rewrite <- decapp' in H2. noconf H2.
-      assert (map (on_snd (rename r)) (map (λ x : nat × term, (fst x, rho Γ (snd x))) l) =
-              (map (λ x : nat × term, (fst x, rho Δ (snd x))) (map (on_snd (rename r)) l))).
-      { red in X. rewrite !map_map_compose /on_snd. solve_all. }
-
-      simpl. destruct view_construct_cofix; simpl; simp rho.
-
-      * destruct (eq_inductive i c) eqn:eqi.
-        -- simp rho. simpl. rewrite -H2.
-           (* Reduction *)
-           rewrite /iota_red /= -map_skipn rename_mkApps !nth_map //.
-           f_equal. simpl. rewrite !map_skipn.
-           apply symmetry, decompose_app_inv in decapp. subst t0.
-           specialize (H0 _ _ _ H1).
-           rewrite !rho_app_construct !rename_mkApps in H0.
-           simpl in H0. rewrite rho_app_construct in H0.
-           apply mkApps_eq_inj in H0 as [_ Heq] => //. congruence.
-
-        -- simp rho. simpl.
-           erewrite H, H0; eauto.
-           now rewrite -H2.
-
-      * simpl; simp rho.
-        rewrite /map_fix !map_map_compose.
-        red in X.
-        rewrite /unfold_cofix !nth_error_map.
-        apply symmetry, decompose_app_inv in decapp. subst t0.
-        specialize (H0 _ _ _ H1).
-        simp rho in H0.
-        rewrite !rename_mkApps in H0.
-        simpl in H0. simp rho in H0.
-        apply mkApps_eq_inj in H0 as [Heqcof Heq] => //.
-        noconf Heqcof. simpl in H0. noconf H0.
-        autorewrite with len in H0.
-        rewrite /map_fix !map_map_compose in H0.
-
-        case efix: (nth_error mfix idx) => [d|] /= //.
-        + rewrite rename_mkApps !map_map_compose compose_map_def /on_snd.
+      epose proof (decompose_app_rename (symmetry e)) as hd.
+      rewrite <- decapp' in hd. noconf hd.
+      assert (
+        map (on_snd (rename r)) (map (λ x : nat × term, (fst x, rho Γ (snd x))) brs) =
+        (map (λ x : nat × term, (fst x, rho Δ (snd x))) (map (on_snd (rename r)) brs))
+      ).
+      { rewrite !map_map_compose /on_snd. solve_all.
+        eapply All_size with (f := (fun x => size (snd x))).
+        intros [? ?]. cbn. intros ?.
+        f_equal. eapply H1. 2: auto.
+        cbn. lia.
+      }
+      (* The proof diverges here *)
+      simpl. simp view_construct_cofix.
+      simpl. simp rho. repeat fold_rho.
+      rewrite /map_fix !map_map_compose.
+      rewrite /unfold_cofix !nth_error_map. clear H5.
+      apply symmetry, decompose_app_inv in e. subst c.
+      specialize H4 with (1 := h).
+      simp rho in H4.
+      rewrite !rename_mkApps in H4.
+      simpl in H4. rewrite <- !fold_rho in H4. simp rho in H4.
+      apply mkApps_eq_inj in H4 as [Heqcof Heq0] => //.
+      noconf Heqcof. simpl in H4. noconf H4.
+      autorewrite with len in H4.
+      rewrite /map_fix !map_map_compose in H4.
+      case efix: (nth_error mfix idx) => [d|] /= //.
+      + rewrite rename_mkApps !map_map_compose compose_map_def /on_snd.
+        f_equal.
+        * erewrite H; eauto.
+        * {
+          f_equal => //.
+          - rewrite !subst_inst. sigma.
+            apply map_eq_inj in H4.
+            epose proof (nth_error_all efix H4) as hh.
+            simpl in hh. apply (f_equal dbody) in hh.
+            simpl in hh. autorewrite with sigma in hh.
+            rewrite -hh. sigma.
+            apply inst_ext.
+            rewrite -ren_shiftn. sigma.
+            rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
+            + rewrite subst_consn_compose compose_ids_l.
+              apply subst_consn_proper => //.
+              rewrite map_cofix_subst' //.
+              * intros ?. simp rho lhs_viewc. simpl; f_equal. now simp rho.
+              * {
+                rewrite map_cofix_subst' //.
+                - simpl. move=> ? ; f_equal.
+                  simp rho lhs_viewc. simpl. simp rho.
+                  f_equal. rewrite /map_fix.
+                  rewrite !map_map_compose !compose_map_def.
+                  apply map_ext => x; apply map_def_eq_spec => //.
+                - rewrite !map_map_compose.
+                  unfold cofix_subst. generalize #|mfix|.
+                  clear -H4.
+                  induction n; simpl; auto. f_equal; auto.
+                  simp rho lhs_viewc. simpl. simp rho. f_equal.
+                  rewrite /map_fix !map_map_compose.
+                  autorewrite with len.
+                  solve_all.
+                  rewrite -H.
+                  apply map_def_eq_spec; simpl.
+                  + now sigma.
+                  + sigma.
+                    rewrite -ren_shiftn. rewrite up_Upn. reflexivity.
+              }
+            + now autorewrite with len.
+          - now rewrite !map_map_compose in Heq0.
+        }
+        * simpl. solve_all.
+          eapply All_size with (f := (fun x => size (snd x))).
+          intros [? ?]. cbn. intros ?.
+          f_equal. eapply H1. 2: auto.
+          cbn. lia.
+      + rewrite map_map_compose /on_snd. f_equal; auto.
+        * simp rho.
+          rewrite !rename_mkApps /= !map_map_compose !compose_map_def /=.
+          repeat fold_rho.
+          simp rho.
           f_equal.
-          -- erewrite H; eauto.
-          -- f_equal => //.
-             ++ rewrite !subst_inst. sigma.
-                apply map_eq_inj in H0.
-                epose proof (nth_error_all efix H0).
-                simpl in H3. apply (f_equal dbody) in H3.
-                simpl in H3. autorewrite with sigma in H3.
-                rewrite -H3. sigma.
-                apply inst_ext.
-                rewrite -ren_shiftn. sigma.
-                rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
-                ** rewrite subst_consn_compose compose_ids_l.
-                   apply subst_consn_proper => //.
-                   rewrite map_cofix_subst' //.
-                   --- intros n'; simp rho. simpl; f_equal. now simp rho.
-                   --- rewrite map_cofix_subst' //.
-                       +++ simpl. move=> n'; f_equal. simp rho; simpl; simp rho.
-                           f_equal. rewrite /map_fix.
-                           rewrite !map_map_compose !compose_map_def.
-                           apply map_ext => x; apply map_def_eq_spec => //.
-                       +++ rewrite !map_map_compose.
-                           unfold cofix_subst. generalize #|mfix|.
-                           clear -H0.
-                           induction n; simpl; auto. f_equal; auto.
-                           simp rho. simpl. simp rho. f_equal.
-                           rewrite /map_fix !map_map_compose.
-                           autorewrite with len.
-                           solve_all.
-                           rewrite -H.
-                           apply map_def_eq_spec; simpl.
-                           *** now sigma.
-                           *** sigma.
-                               rewrite -ren_shiftn. rewrite up_Upn. reflexivity.
-                ** now autorewrite with len.
-             ++ now rewrite !map_map_compose in Heq.
-          -- simpl. solve_all.
+          -- f_equal.
+             rewrite /map_fix map_map_compose. rewrite -H4.
+             autorewrite with len. reflexivity.
+          -- now rewrite -Heq0 !map_map_compose.
+        * simpl. solve_all.
+          eapply All_size with (f := (fun x => size (snd x))).
+          intros [? ?]. cbn. intros ?.
+          f_equal. eapply H1. 2: auto.
+          cbn. lia.
 
-        + rewrite map_map_compose /on_snd. f_equal; auto.
-          -- simp rho.
-             rewrite !rename_mkApps /= !map_map_compose !compose_map_def /=.
-             simp rho.
-             f_equal.
-             ++ f_equal.
-                rewrite /map_fix map_map_compose. rewrite -H0.
-                autorewrite with len. reflexivity.
-             ++ now rewrite -Heq !map_map_compose.
-          -- simpl. solve_all.
-      * pose proof (construct_cofix_rename r t1 d).
-        destruct (view_construct_cofix (rename r t1)); simpl in H3 => //.
-        simp rho. simpl. rewrite -H2. erewrite H, H0; eauto.
+    (* Pattern matching *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq0 as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      repeat fold_rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as hd.
+      rewrite <- decapp' in hd. noconf hd.
+      assert (
+        map (on_snd (rename r)) (map (λ x : nat × term, (fst x, rho Γ (snd x))) brs) =
+        (map (λ x : nat × term, (fst x, rho Δ (snd x))) (map (on_snd (rename r)) brs))
+      ).
+      { rewrite !map_map_compose /on_snd. solve_all.
+        eapply All_size with (f := (fun x => size (snd x))).
+        intros [? ?]. cbn. intros ?.
+        f_equal. eapply H1. 2: auto.
+        cbn. lia.
+      }
+      (* The proof diverges here *)
+      simpl.
+      pose proof (construct_cofix_rename r t1 d) as H4.
+      destruct (view_construct_cofix (rename r t1)); simpl in H4 => //.
+      simp rho. simpl. rewrite -H3. repeat fold_rho. erewrite H, H0.
+      all: eauto.
+
+    (* Construct iota reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq0 as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      repeat fold_rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as hd.
+      rewrite <- decapp' in hd. noconf hd.
+      assert (
+        map (on_snd (rename r)) (map (λ x : nat × term, (fst x, rho Γ (snd x))) brs) =
+        (map (λ x : nat × term, (fst x, rho Δ (snd x))) (map (on_snd (rename r)) brs))
+      ).
+      { rewrite !map_map_compose /on_snd. solve_all.
+        eapply All_size with (f := (fun x => size (snd x))).
+        intros [? ?]. cbn. intros ?.
+        f_equal. eapply H1. 2: auto.
+        cbn. lia.
+      }
+      (* The proof diverges here *)
+      simpl. simp view_construct_cofix.
+      simpl. simp rho. repeat fold_rho.
+      rewrite Heq. simpl.
+      simp rho. rewrite -H3.
+      (* Reduction *)
+      rewrite /iota_red /= -map_skipn rename_mkApps !nth_map //.
+      f_equal. rewrite !map_skipn.
+      clear H2. apply symmetry, decompose_app_inv in e. subst c.
+      specialize H0 with (2 := h).
+      specialize (H0 (mkApps (tConstruct c0 u i0) l)).
+      forward H0.
+      { cbn. lia. }
+      rewrite !rho_app_construct !rename_mkApps in H0.
+      simpl in H0. rewrite rho_app_construct in H0.
+      apply mkApps_eq_inj in H0 as [_ ?] => //. congruence.
+
+    (* Construct without iota reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq0 as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      repeat fold_rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as hd.
+      rewrite <- decapp' in hd. noconf hd.
+      assert (
+        map (on_snd (rename r)) (map (λ x : nat × term, (fst x, rho Γ (snd x))) brs) =
+        (map (λ x : nat × term, (fst x, rho Δ (snd x))) (map (on_snd (rename r)) brs))
+      ).
+      { rewrite !map_map_compose /on_snd. solve_all.
+        eapply All_size with (f := (fun x => size (snd x))).
+        intros [? ?]. cbn. intros ?.
+        f_equal. eapply H1. 2: auto.
+        cbn. lia.
+      }
+      (* The proof diverges here *)
+      simpl. simp view_construct_cofix.
+      simpl. simp rho. repeat fold_rho.
+      rewrite Heq. simpl.
+      simp rho. rewrite -H3.
+      repeat fold_rho.
+      erewrite H, H0. all: auto.
 
     - (* Proj construct/cofix reduction *)
       simpl; simp rho. destruct s as [[ind pars] n].
