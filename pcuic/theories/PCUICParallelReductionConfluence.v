@@ -2540,7 +2540,7 @@ Section Rho.
         destruct d. cbn in sd. cbn. unfold mfixpoint_size.
         lia.
       }
-      eapply H. 3: eauto.
+      eapply H. 2: eauto.
       1:{
         destruct d. cbn in sd. cbn. unfold mfixpoint_size.
         lia.
@@ -2565,7 +2565,7 @@ Section Rho.
       rewrite !map_def_map_def.
       eapply map_def_eq_spec.
       1:{ eapply H. all: eauto. cbn. unfold mfixpoint_size. lia. }
-      eapply H. 3: eauto.
+      eapply H. 2: eauto.
       1:{ cbn. unfold mfixpoint_size. lia. }
       assert (em : #|mfix0| = #|fold_fix_context rho Γ [] mfix0|).
       { rewrite fold_fix_context_length /= //. }
@@ -2737,11 +2737,11 @@ Section Rho.
       simpl.
       rewrite rename_inst /subst1 subst_inst.
       rewrite inst_mkApps.
-      specialize (H1 (vass na (rho Δ ty.[ren r]) :: Δ) (shiftn 1 r)).
+      specialize (H1 (shiftn 1 r) (vass na (rho Δ ty.[ren r]) :: Δ)).
       forward H1.
       { eapply shiftn1_renaming; auto. }
       sigma.
-      specialize (H Δ r).
+      specialize (H r Δ).
       forward H by assumption.
       autorewrite with sigma in H, H1.
       f_equal.
@@ -2756,25 +2756,25 @@ Section Rho.
           specialize (H2 Γ t).
           forward H2.
           { rewrite size_mkApps. lia. }
-          specialize H2 with (2 := eq_refl).
+          specialize H2 with (1 := eq_refl).
           specialize H2 with (1 := h).
           autorewrite with sigma in H2. auto.
         * constructor. 2: constructor.
           specialize (H2 Γ a0).
           forward H2.
           { cbn. lia. }
-          specialize H2 with (2 := eq_refl).
+          specialize H2 with (1 := eq_refl).
           specialize H2 with (1 := h).
           autorewrite with sigma in H2. auto.
 
     (* Application *)
-    - (* TODO Once again, I need that renaming a non-lhs gives a non-lhs *)
-      (* simpl.
-      simp rho. pose proof (isFixLambda_app_rename r _ i0) as H3.
+    - simp rho. eapply is_not_lhs_rename with (r := r) in Heq0 as e.
+      destruct e as [n' e]. rewrite e.
+      simpl. repeat fold_rho.
+      pose proof (isFixLambda_app_rename r _ i0) as H3.
       simpl in H3.
-      rewrite (view_lambda_fix_app_other (rename r t) (rename r a) H3). simpl.
-      erewrite H0, H1; eauto. *)
-      admit.
+      rewrite (view_lambda_fix_app_other (rename r t0) (rename r a1) H3). simpl.
+      erewrite H, H0. all: eauto.
 
     (* Ill-defined constant *)
     - simpl. simp rho lhs_viewc.
