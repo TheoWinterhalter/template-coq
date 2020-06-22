@@ -2988,60 +2988,137 @@ Section Rho.
       repeat fold_rho.
       erewrite H, H0. all: auto.
 
-    - (* Proj construct/cofix reduction *)
-      simpl; simp rho. destruct s as [[ind pars] n].
-      rewrite !rho_app_proj.
-      destruct decompose_app as [f a] eqn:decapp.
-      erewrite (decompose_app_rename decapp).
-      erewrite <-H; eauto.
-      apply decompose_app_inv in decapp. subst t.
-      specialize (H _ _ _ H0).
-      rewrite rename_mkApps in H.
+    (* Proj construct/cofix reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as e'.
+      rewrite <- decapp' in e'.
+      noconf e'. simpl.
+      simp view_construct_cofix. simpl.
+      simp rho.
+      repeat fold_rho.
+      clear H3. symmetry in e.
+      apply decompose_app_inv in e. subst c0.
+      specialize H2 with (1 := h).
+      rewrite rename_mkApps in H2.
+      (* Proof divergence *)
+      rewrite !nth_error_map.
+      destruct nth_error eqn:hnth.
+      2:{
+        cbn. rewrite H2. rewrite rename_mkApps. auto.
+      }
+      simpl. rewrite rename_mkApps.
+      f_equal; auto.
+      simpl in H2. simp rho in H2. rewrite rename_mkApps in H2.
+      eapply mkApps_eq_inj in H2 as [Hcof Hargs] => //.
+      f_equal; auto. simpl in Hcof. noconf Hcof. simpl in H2.
+      noconf H2.
+      rewrite /map_fix !map_map_compose in H2.
+      apply map_eq_inj in H2.
+      epose proof (nth_error_all hnth H2) as H3.
+      simpl in H3. apply (f_equal dbody) in H3.
+      simpl in H3. autorewrite with sigma in H3.
+      sigma. autorewrite with len in H2, H3.
+      rewrite -H3. sigma.
+      apply inst_ext.
+      rewrite -ren_shiftn. sigma.
+      rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
+      2: now autorewrite with len.
+      rewrite subst_consn_compose compose_ids_l.
+      apply subst_consn_proper => //.
+      rewrite map_cofix_subst' //.
+      { intro. simp rho lhs_viewc. simpl. simp rho. reflexivity. }
+      rewrite map_cofix_subst' //.
+      { intro. simp rho lhs_viewc. simpl. simp rho. reflexivity. }
+      rewrite map_cofix_subst' //.
+      rewrite !map_map_compose.
+      unfold cofix_subst. generalize #|mfix|.
+      clear -H2.
+      induction n; simpl; auto. f_equal; auto.
+      simp rho lhs_viewc. simpl. simp rho. f_equal.
+      rewrite /map_fix !map_map_compose.
+      autorewrite with len.
+      solve_all.
+      rewrite -H.
+      apply map_def_eq_spec; simpl. 1: now sigma.
+      sigma.
+      rewrite -ren_shiftn. rewrite up_Upn. reflexivity.
 
-      destruct f; simpl; auto.
-      * destruct eq_inductive eqn:eqi; simpl; auto.
-        rewrite nth_error_map.
-        destruct nth_error eqn:hnth; simpl; auto.
-        simp rho in H. rewrite rename_mkApps in H.
-        eapply mkApps_eq_inj in H as [_ Hargs] => //.
-        rewrite !map_map_compose in Hargs.
-        eapply map_eq_inj in Hargs.
-        apply (nth_error_all hnth Hargs).
-      * rewrite nth_error_map.
-        destruct nth_error eqn:hnth; auto.
-        simpl. rewrite rename_mkApps.
-        f_equal; auto.
-        simpl in H; simp rho in H. rewrite rename_mkApps in H.
-        eapply mkApps_eq_inj in H as [Hcof Hargs] => //.
-        f_equal; auto. simpl in Hcof. noconf Hcof. simpl in H.
-        noconf H.
-        rewrite /map_fix !map_map_compose in H.
-        apply map_eq_inj in H.
-        epose proof (nth_error_all hnth H).
-        simpl in H1. apply (f_equal dbody) in H1.
-        simpl in H1. autorewrite with sigma in H1.
-        sigma. autorewrite with len in H, H1.
-        rewrite -H1. sigma.
-        apply inst_ext.
-        rewrite -ren_shiftn. sigma.
-        rewrite Upn_comp ?map_length ?fix_subst_length ?map_length //.
-        2:now autorewrite with len.
-        rewrite subst_consn_compose compose_ids_l.
-        apply subst_consn_proper => //.
-        rewrite map_cofix_subst' //.
-        rewrite !map_map_compose.
-        unfold cofix_subst. generalize #|mfix|.
-        clear -H.
-        induction n; simpl; auto. f_equal; auto.
-        simp rho. simpl. simp rho. f_equal.
-        rewrite /map_fix !map_map_compose.
-        autorewrite with len.
-        solve_all.
-        rewrite -H.
-        apply map_def_eq_spec; simpl. 1: now sigma.
-        sigma.
-        rewrite -ren_shiftn. rewrite up_Upn. reflexivity.
-  Qed.
+    (* Proj construct/cofix reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq0 as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as e'.
+      rewrite <- decapp' in e'.
+      noconf e'. simpl.
+      (* Proof divergence *)
+      pose proof (construct_cofix_rename r t1 d) as H4.
+      destruct (view_construct_cofix (rename r t1)); simpl in H4 => //.
+      simp rho. repeat fold_rho. erewrite H. all: auto.
+
+    (* Proj construct/cofix reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as e'.
+      rewrite <- decapp' in e'.
+      noconf e'. simpl.
+      (* Proof divergence *)
+      simp view_construct_cofix. simpl.
+      simp rho.
+      repeat fold_rho.
+      clear H0. rewrite map_terms_map in e0.
+      clear H1. symmetry in e.
+      apply decompose_app_inv in e. subst c0.
+      specialize H with (1 := h).
+      rewrite rename_mkApps in H.
+      rewrite !nth_error_map.
+      rewrite nth_error_map in e0.
+      destruct (nth_error l _) eqn:hnth. 2: discriminate.
+      cbn in e0. apply some_inj in e0. subst.
+      simpl.
+      destruct eq_inductive eqn:eqi.
+      2:{
+        cbn. rewrite H. rewrite rename_mkApps. reflexivity.
+      }
+      simp rho in H. rewrite rename_mkApps in H.
+      eapply mkApps_eq_inj in H as [_ Hargs] => //.
+      rewrite !map_map_compose in Hargs.
+      eapply map_eq_inj in Hargs.
+      apply (nth_error_all hnth Hargs).
+
+   (* Proj construct/cofix reduction *)
+    - simp rho.
+      eapply is_not_lhs_rename with (r := r) in Heq as er.
+      destruct er as [n' er]. rewrite er.
+      cbn [rename]. simp rho.
+      destruct inspect as [[f' a'] decapp'].
+      epose proof (decompose_app_rename (symmetry e)) as e'.
+      rewrite <- decapp' in e'.
+      noconf e'. simpl.
+      (* Proof divergence *)
+      simp view_construct_cofix. simpl.
+      simp rho.
+      repeat fold_rho.
+      clear H0. rewrite map_terms_map in e0.
+      clear H1. symmetry in e.
+      apply decompose_app_inv in e. subst c0.
+      specialize H with (1 := h).
+      rewrite rename_mkApps in H.
+      rewrite !nth_error_map.
+      rewrite nth_error_map in e0.
+      destruct (nth_error l _) eqn:hnth. 1: discriminate.
+      simpl.
+      rewrite H. rewrite rename_mkApps. reflexivity.
+  (* Qed. *)
+  Admitted.
 
   Lemma rho_lift0 Γ Δ t : lift0 #|Δ| (rho Γ t) = rho (Γ ,,, Δ) (lift0 #|Δ| t).
   Proof.
