@@ -2350,17 +2350,83 @@ Section Rho.
     all: auto.
   Qed.
 
-  (* Lemma is_not_lhs_rename :
+  Lemma first_match_rename :
+    forall k l t ui σ r f,
+      All (fun r => All (elim_pattern #|r.(pat_context)|) r.(elims)) l ->
+      first_match k l t = Some (ui, σ, r) ->
+      first_match k l (rename f t) = Some (ui, map (rename f) σ, r).
+  Proof.
+    intros k l t ui σ r f hr e.
+    induction l in ui, σ, r, e, hr |- *.
+    - cbn in e. discriminate.
+    - cbn - [ match_lhs ] in e. cbn - [ match_lhs ].
+      inversion hr. subst.
+      destruct match_lhs as [[? ?]|] eqn:e1.
+      + noconf e. eapply match_lhs_rename with (r := f) in e1. 2: auto.
+        rewrite e1. reflexivity.
+      + eapply match_lhs_rename_None with (r := f) in e1. 2: auto.
+        rewrite e1. eapply IHl. all: auto.
+  Qed.
+
+  Lemma first_match_rename_None :
+    forall k l t f,
+      All (fun r => All (elim_pattern #|r.(pat_context)|) r.(elims)) l ->
+      first_match k l t = None ->
+      first_match k l (rename f t) = None.
+  Proof.
+    intros k l t f hr e.
+    induction l in e, hr |- *.
+    - reflexivity.
+    - cbn - [ match_lhs ] in e. cbn - [ match_lhs ].
+      inversion hr. subst.
+      destruct match_lhs as [[? ?]|] eqn:e1. 1: discriminate.
+      eapply match_lhs_rename_None with (r := f) in e1. 2: auto.
+      rewrite e1. eapply IHl. all: auto.
+  Qed.
+
+  Lemma not_lhs_rename :
+    forall t r,
+      not_lhs t ->
+      not_lhs (rename r t).
+  Proof.
+    intros t r h.
+    unfold not_lhs in *.
+    intros [k [rd [[[ui σ] rw] [e1 e2]]]].
+    apply h.
+    exists k, rd.
+    apply lookup_rewrite_decl_onrd in e1 as hrd.
+    eapply all_rewrite_rules_on_rd in hrd.
+    destruct (first_match _ _ t) as [[[? ?] ?]|] eqn:e3.
+    - eapply first_match_rename with (f := r) in e3.
+      2:{
+        eapply All_impl. 1: eauto.
+        intros rr [h1 h2]. assumption.
+      }
+      rewrite e3 in e2. noconf e2.
+      eexists. intuition auto.
+    - eapply first_match_rename_None with (f := r) in e3.
+      2:{
+        eapply All_impl. 1: eauto.
+        intros rr [h1 h2]. assumption.
+      }
+      rewrite e3 in e2. discriminate.
+  Qed.
+
+  Lemma is_not_lhs_rename :
     forall r t h,
-      lhs_viewc t = is_not_lhs t h ->
-      ∑ h', lhs_viewc (rename r t) = is_not_lhs (rename r t) h'.
+      lhs_viewc t = is_not_lhs h ->
+      ∑ h', lhs_viewc (rename r t) = is_not_lhs h'.
   Proof.
     intros r t h e.
-    funelim (lhs_viewc t).
-    - cbn in H. inversion H. simp lhs_viewc. rewrite elim_kn_rename.
-    -
-    -
-    - *)
+    destruct (lhs_viewc t). 1: discriminate.
+    destruct (lhs_viewc (rename r t)).
+    1:{
+      exfalso. clear e.
+      eapply not_lhs_rename with (r := r) in h.
+      apply h. eexists k, rd, _. intuition eauto.
+    }
+    eexists. reflexivity.
+  Qed.
 
   Lemma app_cong :
     forall {A} (a b c d : list A),

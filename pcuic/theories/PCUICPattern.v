@@ -923,3 +923,10 @@ Proof.
   unfold match_lhs.
   (* Need to do it on all previous things *)
 Admitted.
+
+Lemma match_lhs_rename_None :
+  forall npat k n l t r,
+    All (elim_pattern npat) l ->
+    match_lhs npat k n l t = None ->
+    match_lhs npat k n l (rename r t) = None.
+Admitted.
