@@ -841,7 +841,8 @@ Section Rho.
 
   Definition onrr nsymb r :=
     r.(head) < nsymb ×
-    All (elim_pattern #|r.(pat_context)|) r.(elims).
+    All (elim_pattern #|r.(pat_context)|) r.(elims) ×
+    closedn (#|r.(pat_context)| + nsymb) (rhs r).
 
   Definition onrd rd :=
     (* let Δ := map (vass nAnon) rd.(symbols) in *)
@@ -889,13 +890,25 @@ Section Rho.
     destruct hd as [? [hr [hpr ?]]].
     unfold onrd. split.
     - eapply All_impl. 1: exact hr.
-      intros r [? ? ? hh ? he ?]. unfold onrr. split.
+      intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
       + rewrite map_length in hh. assumption.
       + assumption.
+      + eapply typecheck_closed in hrhs. 2: auto.
+        destruct hrhs as [_ hrhs].
+        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
+        rewrite app_context_length in hrhs.
+        rewrite map_length in hrhs.
+        assumption.
     - eapply All_impl. 1: exact hpr.
-      intros r [? ? ? hh ? he ?]. unfold onrr. split.
+      intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
       + rewrite map_length in hh. assumption.
       + assumption.
+      + eapply typecheck_closed in hrhs. 2: auto.
+        destruct hrhs as [_ hrhs].
+        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
+        rewrite app_context_length in hrhs.
+        rewrite map_length in hrhs.
+        assumption.
   Qed.
 
   Definition lookup_rewrite_decl (k : kername) : option rewrite_decl :=
@@ -1048,7 +1061,7 @@ Section Rho.
     apply all_rewrite_rules_on_rd in hrd.
     apply first_match_rule_list in h as hr. destruct hr as [m hr].
     eapply nth_error_all in hr. 2: eauto.
-    unfold onrr in hr. destruct hr as [hh he].
+    unfold onrr in hr. destruct hr as [hh [he hc]].
     apply first_match_subst_length in h as hl.
     apply first_match_sound in h. 2: auto.
     subst. f_equal. unfold lhs.
@@ -2400,14 +2413,14 @@ Section Rho.
     - eapply first_match_rename with (f := r) in e3.
       2:{
         eapply All_impl. 1: eauto.
-        intros rr [h1 h2]. assumption.
+        intros rr [h1 [h2 h3]]. assumption.
       }
       rewrite e3 in e2. noconf e2.
       eexists. intuition auto.
     - eapply first_match_rename_None with (f := r) in e3.
       2:{
         eapply All_impl. 1: eauto.
-        intros rr [h1 h2]. assumption.
+        intros rr [h1 [h2 h3]]. assumption.
       }
       rewrite e3 in e2. discriminate.
   Qed.
@@ -2455,7 +2468,7 @@ Section Rho.
       eapply first_match_rename with (f := r0) in e0 as e3.
       2:{
         eapply All_impl. 1: eauto.
-        intros rr [h1 h2]. assumption.
+        intros rr [h1 [h2 h3]]. assumption.
       }
       simp rho. destruct (lhs_viewc (rename _ _)) as [? ? ? ?| notlhs].
       2:{
@@ -2485,8 +2498,18 @@ Section Rho.
         intros ? ?. eapply H. 2: auto.
         eapply first_match_subst_size in e0 as ?.
         lia.
-      + (* Need closedness *)
-        admit.
+      + apply rename_closedn. rewrite map_length. subst.
+        rewrite map_length in σl3. rewrite σl3.
+        eapply All_nth_error in e4. 2: eassumption.
+        destruct e4 as [? [? ?]].
+        eapply closedn_subst with (k := 0).
+        * unfold symbols_subst. generalize (#|rd.(symbols)| - 0).
+          generalize 0 at 2.
+          intros n m. induction m in n |- *. 1: reflexivity.
+          cbn. auto.
+        * cbn. rewrite symbols_subst_length.
+          replace (#|symbols rd| - 0) with #|symbols rd| by lia.
+          assumption.
 
     (* Evar *)
     - cbn. simp rho lhs_viewc. f_equal.
@@ -3117,8 +3140,7 @@ Section Rho.
       destruct (nth_error l _) eqn:hnth. 1: discriminate.
       simpl.
       rewrite H. rewrite rename_mkApps. reflexivity.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma rho_lift0 Γ Δ t : lift0 #|Δ| (rho Γ t) = rho (Γ ,,, Δ) (lift0 #|Δ| t).
   Proof.
