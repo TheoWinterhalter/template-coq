@@ -2441,8 +2441,11 @@ Section Rho.
     renaming Γ Δ r ->
     rename r (rho Γ t) = rho Δ (rename r t).
   Proof.
-    intro h.
-    funelim (rho Γ t). all: rewrite ?map_terms_map.
+    (* intro h. *)
+    revert Δ.
+    funelim (rho Γ t).
+    all: intros Δ h.
+    all: rewrite ?map_terms_map.
     all: auto 2.
 
     (* lhs *)
@@ -2476,16 +2479,14 @@ Section Rho.
       apply some_inj in et2. subst k0.
       rewrite e in e1. apply some_inj in e1. subst rd0.
       rewrite e3 in e2. inversion e2.
-      sigma. rewrite map_length. eapply inst_ext.
-      intro i. unfold "∘s". eapply inst_ext.
-      intro j. unfold "⋅n".
-      rewrite !nth_error_map.
-      destruct (nth_error _ j) eqn:e6.
-      + cbn. rewrite <- 2!rename_inst.
-        (* eapply H. *)
+      rewrite map_length. rewrite rename_subst0. f_equal.
+      + rewrite !map_map_compose. solve_all.
+        eapply All_size with (f := size).
+        intros ? ?. eapply H. 2: auto.
+        eapply first_match_subst_size in e0 as ?.
+        lia.
+      + (* Need closedness *)
         admit.
-      + cbn. rewrite !map_length.
-        give_up.
 
     (* Evar *)
     - cbn. simp rho lhs_viewc. f_equal.
