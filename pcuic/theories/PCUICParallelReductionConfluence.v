@@ -3444,7 +3444,7 @@ Section Rho.
         simpl in *. simpl in H.
         rewrite H in o |- *.
         rewrite rho_ctx_app in o. apply o.
-      + simp rho; simpl; simp rho.
+      + simp rho lhs_viewc. simpl. simp rho.
         econstructor.
         * eauto.
         * clear Hctxs o IHAll2.
