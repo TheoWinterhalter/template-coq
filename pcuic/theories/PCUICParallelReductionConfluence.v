@@ -4885,18 +4885,55 @@ Section Rho.
           rewrite rho_app_lambda' in X0.
           destruct l.
           - simpl in X.
-            depelim X.
-            + solve_discr.
-            + (* Missing equality between lambda and a lhs to discriminate *)
-              todo "rewrite rules"%string.
-            + (* Missing equality between lambda and a lhs to discriminate *)
-              todo "rewrite rules"%string.
-            + simp rho lhs_viewc in X4. rewrite <- !fold_rho in X4.
-              depelim X4...
-              * todo "rewrite rules"%string.
-              * todo "rewrite rules"%string.
-              * econstructor; eauto.
-            + discriminate.
+            (* Bug with depelim forgetting let bindings *)
+            (* depelim X. *)
+            generalize_by_eqs_vars X. destruct X.
+            all: try solve [ simplify_dep_elim ].
+            + simplify_dep_elim. solve_discr.
+            + subst lhs rhs. simplify_dep_elim.
+              apply (f_equal isElimSymb) in H. cbn in H.
+              rewrite isElimSymb_subst in H.
+              { apply untyped_subslet_length in u. rewrite u.
+                rewrite subst_context_length.
+                apply isElimSymb_lhs.
+                eapply declared_symbol_head in d. all: eauto.
+              }
+              discriminate.
+            + subst lhs rhs. simplify_dep_elim.
+              apply (f_equal isElimSymb) in H. cbn in H.
+              rewrite isElimSymb_subst in H.
+              { apply untyped_subslet_length in u. rewrite u.
+                rewrite subst_context_length.
+                apply isElimSymb_lhs.
+                eapply declared_symbol_par_head in d. all: eauto.
+              }
+              discriminate.
+            + simplify_dep_elim.
+              simp rho lhs_viewc in X4. rewrite <- !fold_rho in X4.
+              (* Same bug *)
+              (* depelim X4... *)
+              generalize_by_eqs_vars X4.
+              destruct X4 ; try solve [ simplify_dep_elim ; solve_discr ].
+              * subst lhs rhs. simplify_dep_elim.
+                apply (f_equal isElimSymb) in H. cbn in H.
+                rewrite isElimSymb_subst in H.
+                { apply untyped_subslet_length in u. rewrite u.
+                  rewrite subst_context_length.
+                  apply isElimSymb_lhs.
+                  eapply declared_symbol_head in d. all: eauto.
+                }
+                discriminate.
+              * subst lhs rhs. simplify_dep_elim.
+                apply (f_equal isElimSymb) in H. cbn in H.
+                rewrite isElimSymb_subst in H.
+                { apply untyped_subslet_length in u. rewrite u.
+                  rewrite subst_context_length.
+                  apply isElimSymb_lhs.
+                  eapply declared_symbol_par_head in d. all: eauto.
+                }
+                discriminate.
+              * simplify_dep_elim. econstructor ; eauto.
+            + simplify_dep_elim. discriminate.
           - simpl. simp rho. repeat fold_rho.
             rewrite map_app -mkApps_nested.
             constructor; eauto.
