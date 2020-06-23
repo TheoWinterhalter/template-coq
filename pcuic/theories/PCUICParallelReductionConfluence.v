@@ -3698,7 +3698,7 @@ Section Rho.
       rewrite /subst_consn H.
       eapply nth_error_fix_subst in Hb0. subst b'.
       cbn. rewrite (All2_length _ _ eqf). constructor; auto.
-      + simp rho; simpl; simp rho.
+      + simp rho lhs_viewc; simpl; simp rho.
         rewrite -fold_fix_context_rho_ctx. constructor; auto.
         * eapply All2_local_env_pred_fix_ctx. apply fctx.
         * red. clear -wfΣ eqf redr redl.
