@@ -2215,7 +2215,7 @@ Section RedConfluence.
   Proof.
     move/(red1_pred1 wfΣ) => tu.
     move/(red1_pred1 wfΣ) => tv.
-    eapply pred1_diamond in tu; eauto.
+    unshelve eapply pred1_diamond in tu; eauto.
     destruct tu as [redl redr].
     eapply pred1_red in redl; auto.
     eapply pred1_red in redr; auto.
@@ -2226,7 +2226,7 @@ Section RedConfluence.
   Proof.
     move=> t u v tu tv.
     destruct (pred1_diamond wfΣ tu tv).
-    eexists (rho_ctx Σ (fst t), rho Σ (rho_ctx Σ (fst t)) (snd t)).
+    eexists (rho_ctx Σ wfΣ None I (fst t), rho Σ wfΣ None I (rho_ctx Σ wfΣ None I (fst t)) (snd t)).
     split; auto.
   Qed.
 
