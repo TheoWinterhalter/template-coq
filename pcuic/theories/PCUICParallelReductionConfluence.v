@@ -3250,7 +3250,7 @@ Section Rho.
   Proof.
     unfold cofix_subst. unfold map_fix at 2. rewrite !map_length.
     induction #|mfix|. 1: reflexivity.
-    simpl. simp rho. simpl.
+    simpl. simp rho lhs_viewc. simpl.
     simp rho.
     rewrite - fold_fix_context_rho_ctx. f_equal. apply IHn.
   Qed.
