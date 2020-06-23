@@ -5133,11 +5133,11 @@ End Rho.
 (* The diamond lemma for parallel reduction follows directly from the triangle lemma. *)
 
 Corollary pred1_diamond {cf : checker_flags} {Σ : global_env} {Γ Δ Δ' t u v} :
-  wf Σ ->
-  pred1 Σ Γ Δ t u ->
-  pred1 Σ Γ Δ' t v ->
-  pred1 Σ Δ (rho_ctx Σ Γ) u (rho Σ (rho_ctx Σ Γ) t) *
-  pred1 Σ Δ' (rho_ctx Σ Γ) v (rho Σ (rho_ctx Σ Γ) t).
+  forall (hΣ : wf Σ) e he,
+    pred1 Σ Γ Δ t u ->
+    pred1 Σ Γ Δ' t v ->
+    pred1 Σ Δ (rho_ctx Σ hΣ e he Γ) u (rho Σ hΣ e he (rho_ctx Σ hΣ e he Γ) t) *
+    pred1 Σ Δ' (rho_ctx Σ hΣ e he Γ) v (rho Σ hΣ e he (rho_ctx Σ hΣ e he Γ) t).
 Proof.
   intros.
   split; eapply triangle; auto.
