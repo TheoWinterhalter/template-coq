@@ -754,6 +754,33 @@ End Pred1_inversion.
 
 Hint Constructors pred1 : pcuic.
 
+Section Confluenv.
+
+  (* Constraints on the global environment that would ensure confluence. *)
+
+  (* TODO Add rho and first_match to context, will instantiate later when
+    proving triangle.
+  *)
+
+  Definition confl_rew_decl (Σ : global_env) (kn : kername) d :=
+    let l := d.(prules) ++ d.(rules) in
+    True.
+
+  Definition confl_decl Σ kn decl :=
+    match decl with
+    | RewriteDecl rew => confl_rew_decl Σ kn rew
+    | _ => True
+    end.
+
+  Inductive confluenv : global_env -> Type :=
+  | confluenv_nil : confluenv []
+  | confluenv_decl Σ kn d :
+      confluenv Σ ->
+      confl_decl Σ kn d ->
+      confluenv (Σ ,, (kn, d)).
+
+End Confluenv.
+
 Section Rho.
   Context {cf : checker_flags}.
   Context (Σ : global_env).
