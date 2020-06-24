@@ -4607,6 +4607,8 @@ Section Rho.
   Qed.
 
 
+  Context (cΣ : confluenv Σ).
+
   Lemma triangle Γ Δ t u :
   let Pctx :=
       fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ) in
