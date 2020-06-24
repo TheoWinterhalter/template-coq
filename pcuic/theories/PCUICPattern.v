@@ -930,3 +930,79 @@ Lemma match_lhs_rename_None :
     match_lhs npat k n l t = None ->
     match_lhs npat k n l (rename r t) = None.
 Admitted.
+
+Lemma subs_merge_length_r :
+  forall σ1 σ2 σ,
+    subs_merge σ1 σ2 = Some σ ->
+    #|σ2| = #|σ|.
+Proof.
+  intros σ1 σ2 σ e.
+  induction σ1 as [| [] σ1 ih] in σ2, σ, e |- *.
+  - destruct σ2.
+    + cbn in e. apply some_inj in e. subst. reflexivity.
+    + cbn in *. discriminate.
+  - destruct σ2 as [| [] σ2].
+    + cbn in e. discriminate.
+    + cbn in e. discriminate.
+    + cbn in *. destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst. cbn.
+      eapply ih in e1. auto.
+  - destruct σ2 as [| [] σ2].
+    + cbn in e. discriminate.
+    + cbn in *. destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst. cbn.
+      eapply ih in e1. auto.
+    + cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst. cbn.
+      eapply ih in e1. auto.
+Qed.
+
+Lemma match_prelhs_subst_length :
+  forall npat k n l t ui σ,
+    match_prelhs npat k n l t = Some (ui, σ) ->
+    #|σ| = npat.
+Proof.
+  intros npat k n l t ui σ e.
+  induction l as [| a l ih] in t, ui, σ, e |- *.
+  - cbn in e. destruct t. all: try discriminate.
+    destruct assert_eq. 2: discriminate.
+    destruct assert_eq. 2: discriminate.
+    inversion e.
+    apply subs_empty_length.
+  - cbn in e. destruct a.
+    + destruct t. all: try discriminate.
+      destruct match_pattern. 2: discriminate.
+      destruct match_prelhs as [[? ?]|] eqn:e1. 2: discriminate.
+      destruct subs_merge eqn:e2. 2: discriminate.
+      inversion e. subst. clear e.
+      eapply ih in e1. subst.
+      eapply subs_merge_length_r in e2. auto.
+    + destruct t. all: try discriminate.
+      destruct assert_eq. 2: discriminate.
+      destruct match_pattern. 2: discriminate.
+      destruct option_map2. 2: discriminate.
+      destruct monad_fold_right eqn:e1. 2: discriminate.
+      destruct match_prelhs as [[? ?]|] eqn:e2. 2: discriminate.
+      destruct subs_merge as [θ|] eqn:e3. 2: discriminate.
+      destruct (subs_merge θ _) eqn:e4. 2: discriminate.
+      inversion e. subst. clear e.
+      eapply ih in e2. subst.
+      eapply subs_merge_length_r in e4. auto.
+    + destruct t. all: try discriminate.
+      destruct assert_eq. 2: discriminate.
+      eapply ih in e. auto.
+Qed.
+
+Lemma match_lhs_subst_length :
+  forall npat k n l t ui σ,
+    match_lhs npat k n l t = Some (ui, σ) ->
+    #|σ| = npat.
+Proof.
+  intros npat k n l t ui σ e.
+  unfold match_lhs in e.
+  destruct match_prelhs as [[? ?]|] eqn:e1. 2: discriminate.
+  cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+  inversion e. subst. clear e.
+  eapply match_prelhs_subst_length in e1.
+  eapply map_option_out_length in e2. lia.
+Qed.

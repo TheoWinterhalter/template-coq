@@ -1000,9 +1000,9 @@ Section Rho.
       | context [ match ?t with _ => _ end ] =>
         destruct t as [[ui' σ']|] eqn:e
       end.
-      + noconf h. admit.
+      + noconf h. eapply match_lhs_subst_length in e. auto.
       + eapply IHl. eauto.
-  Admitted.
+  Qed.
 
   Lemma symbols_subst_pattern :
     forall p k ui nsymb npat,
