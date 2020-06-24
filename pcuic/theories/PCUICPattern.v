@@ -826,7 +826,65 @@ Lemma match_prelhs_sound :
     forall θ,
       subs_complete σ θ ->
       t = subst0 θ (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
-Admitted.
+Proof.
+  intros npat k n ui l t σ h e θ hθ.
+  induction h as [| ? l [] hl ih ] in t, σ, e, θ, hθ |- *.
+  - cbn in *. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    assert_eq e. subst. cbn in e.
+    inversion e. subst. clear e.
+    reflexivity.
+  - cbn in *. destruct t. all: try discriminate.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct match_prelhs as [[] |] eqn:e2. 2: discriminate.
+    destruct subs_merge eqn:e3. 2: discriminate.
+    inversion e. subst. clear e.
+    eapply subs_merge_complete in e3 as sc. 2: eassumption.
+    destruct sc.
+    eapply match_pattern_sound in e1. 2,3: eauto.
+    eapply ih in e2. 2: eauto.
+    subst. reflexivity.
+  - cbn in *. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct option_map2 eqn:e2. 2: discriminate.
+    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct match_prelhs as [[] |] eqn:e4. 2: discriminate.
+    destruct subs_merge eqn:e5. 2: discriminate.
+    move e at top.
+    destruct subs_merge eqn:e6. 2: discriminate.
+    inversion e. subst. clear e.
+    eapply subs_merge_complete in e6 as sc. 2: eassumption.
+    destruct sc.
+    eapply subs_merge_complete in e5 as sc. 2: eassumption.
+    destruct sc as [? hl2].
+    eapply match_pattern_sound in e1. 2,3: eauto.
+    eapply ih in e4. 2: eauto.
+    subst. f_equal.
+    clear - a e2 e3 hl2.
+    induction a as [| [] brs ? a ih] in brs0, l1, e2, l2, e3, θ, hl2 |- *.
+    + destruct brs0. 2: discriminate.
+      cbn in e2. apply some_inj in e2. subst.
+      cbn in e3. apply some_inj in e3. subst.
+      reflexivity.
+    + destruct brs0 as [| [] brs0]. 1: discriminate.
+      cbn in *.
+      assert_eq e2. subst. cbn in e2.
+      destruct match_pattern eqn:e1. 2: discriminate.
+      destruct option_map2 eqn:e4. 2: discriminate.
+      apply some_inj in e2. subst.
+      cbn in e3. destruct monad_fold_right eqn:e5. 2: discriminate.
+      eapply subs_merge_complete in e3 as sc. 2: eauto.
+      destruct sc.
+      eapply ih in e4. 2-3: eauto.
+      eapply match_pattern_sound in e1. 2-3: eauto.
+      subst.
+      reflexivity.
+  - cbn in *. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    eapply ih in e. 2: eauto.
+    subst. reflexivity.
+Qed.
 
 Lemma match_prelhs_complete :
   forall npat k n ui l m σ,
