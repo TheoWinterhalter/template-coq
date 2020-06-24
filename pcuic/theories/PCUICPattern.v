@@ -5,7 +5,7 @@ From MetaCoq.Template Require Import config utils monad_utils Universes BasicAst
   AstUtils UnivSubst EnvironmentTyping.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICReflect PCUICLiftSubst PCUICUnivSubst PCUICEquality PCUICUtils
-  PCUICPosition.
+  PCUICPosition PCUICSize.
 
 Import MonadNotation.
 
@@ -1005,4 +1005,217 @@ Proof.
   inversion e. subst. clear e.
   eapply match_prelhs_subst_length in e1.
   eapply map_option_out_length in e2. lia.
+Qed.
+
+Fixpoint partial_subst_size (σ : partial_subst) : nat :=
+  match σ with
+  | [] => 0
+  | None :: σ => partial_subst_size σ
+  | Some t :: σ => S (size t + partial_subst_size σ)
+  end.
+
+Lemma partial_subst_size_subs_empty :
+  forall npat,
+    partial_subst_size (subs_empty npat) = 0.
+Proof.
+  intro npat.
+  unfold subs_empty.
+  induction npat.
+  - reflexivity.
+  - cbn. auto.
+Qed.
+
+Lemma partial_subst_size_subs_merge :
+  forall σ θ ρ,
+    subs_merge σ θ = Some ρ ->
+    partial_subst_size ρ = partial_subst_size σ + partial_subst_size θ.
+Proof.
+  intros σ θ ρ e.
+  induction σ as [| [] σ ih] in θ, ρ, e |- *.
+  - destruct θ. 2: discriminate.
+    cbn in e. apply some_inj in e. subst.
+    cbn. reflexivity.
+  - destruct θ as [| [] θ]. 1-2: discriminate.
+    cbn in *. destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    eapply ih in e1. cbn. lia.
+  - destruct θ as [| x θ].
+    + discriminate.
+    + cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      eapply ih in e1.
+      cbn.
+      destruct x.
+      * lia.
+      * lia.
+Qed.
+
+Lemma partial_subst_size_app :
+  forall σ θ,
+    partial_subst_size (σ ++ θ) = partial_subst_size σ + partial_subst_size θ.
+Proof.
+  intros σ θ.
+  induction σ as [| [] σ ih] in θ |- *.
+  - reflexivity.
+  - cbn. rewrite ih. lia.
+  - cbn. apply ih.
+Qed.
+
+Lemma list_decompose :
+  forall {A : Type} n (l : list A) t,
+    nth_error l n = Some t ->
+    l = firstn n l ++ t :: skipn (S n) l.
+Proof.
+  intros A n l t e.
+  induction l in n, t, e |- *.
+  - destruct n. all: discriminate.
+  - destruct n.
+    + cbn in e. apply some_inj in e. subst.
+      cbn. reflexivity.
+    + cbn in e. eapply IHl in e.
+      cbn. f_equal. auto.
+Qed.
+
+Lemma partial_subst_size_subs_add :
+  forall n t σ θ,
+    subs_add n t σ = Some θ ->
+    partial_subst_size θ = S (size t + partial_subst_size σ).
+Proof.
+  intros n t σ θ e.
+  unfold subs_add in e.
+  destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+  apply some_inj in e. subst.
+  rewrite partial_subst_size_app. cbn.
+  rewrite (list_decompose n σ) at 3. 2: eauto.
+  rewrite partial_subst_size_app. cbn.
+  lia.
+Qed.
+
+Lemma partial_subst_size_subs_init :
+  forall npat n t σ,
+    subs_init npat n t = Some σ ->
+    partial_subst_size σ = S (size t).
+Proof.
+  intros npat n t σ e.
+  unfold subs_init in e.
+  eapply partial_subst_size_subs_add in e.
+  rewrite e. rewrite partial_subst_size_subs_empty.
+  lia.
+Qed.
+
+Lemma partial_subst_size_map_option_out :
+  forall σ θ,
+    map_option_out σ = Some θ ->
+    partial_subst_size σ = list_size size θ.
+Proof.
+  intros σ θ e.
+  induction σ as [| [] σ ih] in θ, e |- *.
+  - cbn in e. apply some_inj in e. subst.
+    reflexivity.
+  - cbn in *. destruct map_option_out eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    specialize ih with (1 := eq_refl).
+    cbn. auto.
+  - cbn in e. discriminate.
+Qed.
+
+Lemma match_pattern_subst_size :
+  forall npat p t σ,
+    match_pattern npat p t = Some σ ->
+    partial_subst_size σ <= S (size t).
+Proof.
+  intros npat p t σ e.
+  induction p using term_forall_list_ind in t, σ, e |- *.
+  all: try discriminate.
+  - cbn in e. eapply partial_subst_size_subs_init in e. lia.
+  - cbn in e. destruct t. all: try discriminate.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    move e at top.
+    destruct match_pattern eqn:e2. 2: discriminate.
+    eapply partial_subst_size_subs_merge in e.
+    eapply IHp1 in e1.
+    eapply IHp2 in e2.
+    cbn. lia.
+  - cbn - [ assert_eq ] in e.
+    unfold assert_eq in e.
+    destruct (eqb_spec (tConstruct i n u) t). 2: discriminate.
+    cbn in e. apply some_inj in e. subst.
+    cbn. rewrite partial_subst_size_subs_empty. auto.
+Qed.
+
+Lemma match_prelhs_subst_size :
+  forall npat k n l t ui σ,
+    match_prelhs npat k n l t = Some (ui, σ) ->
+    partial_subst_size σ < size t.
+Proof.
+  intros npat k n l t ui σ e.
+  induction l as [| a l ih] in t, ui, σ, e |- *.
+  - cbn in e. destruct t. all: try discriminate.
+    destruct assert_eq. 2: discriminate.
+    destruct assert_eq. 2: discriminate.
+    inversion e.
+    cbn. rewrite partial_subst_size_subs_empty. auto.
+  - cbn in e. destruct a.
+    + destruct t. all: try discriminate.
+      destruct match_pattern eqn:e3. 2: discriminate.
+      destruct match_prelhs as [[? ?]|] eqn:e1. 2: discriminate.
+      destruct subs_merge eqn:e2. 2: discriminate.
+      inversion e. subst. clear e.
+      eapply ih in e1.
+      cbn.
+      eapply partial_subst_size_subs_merge in e2.
+      eapply match_pattern_subst_size in e3.
+      lia.
+    + destruct t. all: try discriminate.
+      destruct assert_eq. 2: discriminate.
+      destruct match_pattern eqn:e5. 2: discriminate.
+      destruct option_map2 as [l1 |] eqn:e6. 2: discriminate.
+      destruct monad_fold_right as [l2 |] eqn:e1. 2: discriminate.
+      destruct match_prelhs as [[? ?]|] eqn:e2. 2: discriminate.
+      destruct subs_merge as [θ|] eqn:e3. 2: discriminate.
+      destruct (subs_merge θ _) eqn:e4. 2: discriminate.
+      inversion e. subst. clear e.
+      eapply ih in e2.
+      cbn.
+      eapply match_pattern_subst_size in e5.
+      eapply partial_subst_size_subs_merge in e3.
+      eapply partial_subst_size_subs_merge in e4.
+      assert (partial_subst_size l2 <= list_size (fun x => size x.2) brs0).
+      { clear - e6 e1.
+        induction brs0 as [| [] brs0 ih] in brs, l1, e6, l2, e1 |- *.
+        - destruct brs. 2: discriminate.
+          cbn in e6. apply some_inj in e6. subst.
+          cbn in e1. apply some_inj in e1. subst.
+          rewrite partial_subst_size_subs_empty. cbn. auto.
+        - cbn. destruct brs as [| [] brs]. 1: discriminate.
+          cbn in e6.
+          destruct assert_eq. 2: discriminate.
+          destruct match_pattern eqn:e2. 2: discriminate.
+          destruct option_map2 eqn:e3. 2: discriminate.
+          apply some_inj in e6. subst.
+          cbn in e1. destruct monad_fold_right eqn:e4. 2: discriminate.
+          eapply ih in e3. 2: eauto.
+          eapply partial_subst_size_subs_merge in e1.
+          eapply match_pattern_subst_size in e2.
+          lia.
+      }
+      lia.
+    + destruct t. all: try discriminate.
+      destruct assert_eq. 2: discriminate.
+      eapply ih in e. cbn. auto.
+Qed.
+
+Lemma match_lhs_subst_size :
+  forall npat k n l t ui σ,
+    match_lhs npat k n l t = Some (ui, σ) ->
+    list_size size σ < size t.
+Proof.
+  intros npat k n l t ui σ e.
+  unfold match_lhs in e.
+  destruct match_prelhs as [[? ?]|] eqn:e1. 2: discriminate.
+  cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+  inversion e. subst. clear e.
+  eapply match_prelhs_subst_size in e1.
+  eapply partial_subst_size_map_option_out in e2.
+  lia.
 Qed.

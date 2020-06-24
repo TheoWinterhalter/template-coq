@@ -1224,11 +1224,11 @@ Section Rho.
     intros k l t ui σ r h.
     induction l in ui, σ, r, h |- *. 1: discriminate.
     cbn - [ match_lhs ] in h.
-    destruct match_lhs eqn:e.
-    - (* TODO Need to prove this on match_lhs, should hold even without assuming linearity *)
-      admit.
+    destruct match_lhs as [[] |] eqn:e.
+    - eapply match_lhs_subst_size in e.
+      inversion h. subst. auto.
     - eapply IHl. eassumption.
-  Admitted.
+  Qed.
 
   Equations? rho (Γ : context) (t : term) : term by wf (size t) :=
     rho Γ t with lhs_viewc t := {
