@@ -967,6 +967,171 @@ Proof.
   eapply match_prelhs_complete in pl. 3: eauto.
 Admitted.
 
+(* TODO MOVE *)
+Lemma map_list_init :
+  forall {A} (x : A) n {B} (f : A -> B),
+    map f (list_init x n) = list_init (f x) n.
+Proof.
+  intros A x n B f.
+  induction n.
+  - reflexivity.
+  - cbn. rewrite IHn. reflexivity.
+Qed.
+
+Lemma subs_merge_map :
+  forall σ θ ρ f,
+    subs_merge σ θ = Some ρ ->
+    subs_merge (map (option_map f) σ) (map (option_map f) θ) =
+    Some (map (option_map f) ρ).
+Proof.
+  intros σ θ ρ f e.
+  induction σ as [| [] σ ih] in θ, ρ, f, e |- *.
+  - destruct θ. 2: discriminate.
+    cbn in e. apply some_inj in e. subst.
+    cbn. reflexivity.
+  - destruct θ as [| [] θ]. 1,2: discriminate.
+    cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    eapply ih in e1.
+    cbn. rewrite e1. reflexivity.
+  - destruct θ as [| x θ]. 1: discriminate.
+    cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    eapply ih in e1.
+    cbn. rewrite e1. reflexivity.
+Qed.
+
+Lemma match_pattern_rename :
+  forall npat p t σ r,
+    pattern npat p ->
+    match_pattern npat p t = Some σ ->
+    match_pattern npat p (rename r t) = Some (map (option_map (rename r)) σ).
+Proof.
+  intros npat p t σ r hp e.
+  induction hp
+  as [n hn | ind n ui args ha ih]
+  in t, σ, e |- *
+  using pattern_all_rect.
+  - cbn in *.
+    unfold subs_init in *. unfold subs_add in *.
+    destruct nth_error as [[]|]. 1,3: discriminate.
+    apply some_inj in e. subst. f_equal.
+    rewrite map_app. cbn.
+    rewrite <- firstn_map. rewrite map_skipn.
+    unfold subs_empty. rewrite !map_list_init.
+    cbn. reflexivity.
+  - eapply All_prod in ih. 2: exact ha.
+    clear ha.
+    induction ih
+    as [| p args [hp ihp] _ ih]
+    in t, σ, e |- *
+    using All_rev_rect.
+    + unfold mkApps in *.
+      unfold match_pattern in *.
+      unfold assert_eq.
+      assert_eq e. subst.
+      cbn in e. inversion e. subst.
+      cbn [ rename ].
+      destruct (eqb_spec (tConstruct ind n ui) (tConstruct ind n ui)).
+      2:{ exfalso. auto. }
+      cbn. unfold subs_empty. rewrite map_list_init. reflexivity.
+    + rewrite <- mkApps_nested. cbn.
+      rewrite <- mkApps_nested in e. cbn in e.
+      destruct t. all: try discriminate.
+      destruct match_pattern eqn:e1. 2: discriminate.
+      move e at top.
+      destruct match_pattern eqn:e2. 2: discriminate.
+      cbn. eapply ih in e1.
+      eapply ihp in e2.
+      rewrite e1. rewrite e2.
+      eapply subs_merge_map. assumption.
+Qed.
+
+Lemma match_prelhs_rename :
+  forall npat k n l t ui σ r,
+    All (elim_pattern npat) l ->
+    match_prelhs npat k n l t = Some (ui, σ) ->
+    match_prelhs npat k n l (rename r t) =
+    Some (ui, map (option_map (rename r)) σ).
+Proof.
+  intros npat k n l t ui σ r hl e.
+  induction hl as [| ? l [] hl ih ] in t, σ, e, r |- *.
+  - cbn in *. destruct t. all: try discriminate.
+    cbn. unfold assert_eq.
+    assert_eq e. subst. cbn in e.
+    assert_eq e. subst. cbn in e.
+    inversion e. subst. clear e.
+    cbn. unfold subs_empty. rewrite map_list_init.
+    reflexivity.
+  - cbn in *. destruct t. all: try discriminate.
+    cbn. destruct match_pattern eqn:e1. 2: discriminate.
+    destruct match_prelhs as [[]|] eqn:e2. 2: discriminate.
+    destruct subs_merge eqn:e3. 2: discriminate.
+    inversion e. subst. clear e.
+    eapply match_pattern_rename in e1. 2: auto.
+    eapply ih in e2.
+    rewrite e1. rewrite e2. erewrite subs_merge_map. 2: eassumption.
+    reflexivity.
+  - cbn in *. destruct t. all: try discriminate.
+    cbn. unfold assert_eq.
+    assert_eq e. subst. cbn in e.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct option_map2 eqn:e2. 2: discriminate.
+    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct match_prelhs as [[]|] eqn:e4. 2: discriminate.
+    destruct subs_merge eqn:e5. 2: discriminate.
+    move e at top.
+    destruct subs_merge eqn:e6. 2: discriminate.
+    inversion e. subst. clear e.
+    cbn. eapply match_pattern_rename in e1. 2: auto.
+    eapply ih in e4.
+    rewrite e1. rewrite e4.
+    match goal with
+    | |- context [ option_map2 ?f ?b1 ?b2 ] =>
+      assert (e7 :
+        ∑ l,
+          option_map2 f b1 b2 = Some l ×
+          monad_fold_right subs_merge l (subs_empty npat) =
+          Some (map (option_map (rename r)) l2)
+      )
+    end.
+    { clear - a e2 e3.
+      induction a as [| [] ] in brs0, l1, e2, l2, e3 |- *.
+      - destruct brs0. 2: discriminate.
+        cbn in e2. apply some_inj in e2. subst.
+        cbn in e3. apply some_inj in e3. subst.
+        cbn. exists []. intuition auto.
+        unfold subs_empty. rewrite map_list_init. reflexivity.
+      - destruct brs0 as [| []]. 1: discriminate.
+        cbn in e2.
+        assert_eq e2. subst. cbn in e2.
+        destruct match_pattern eqn:e4. 2: discriminate.
+        destruct option_map2 eqn:e5. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn in e3. destruct monad_fold_right eqn:e1. 2: discriminate.
+        eapply IHa in e5. 2: eauto.
+        destruct e5 as [ll [e5 e2]].
+        cbn. change (n0 =? n0) with (eqb n0 n0).
+        destruct (eqb_spec n0 n0). 2:{ exfalso. auto. }
+        cbn.
+        eapply match_pattern_rename in e4. 2: auto.
+        rewrite e4.
+        rewrite e5.
+        eexists. intuition eauto.
+        cbn. rewrite e2.
+        eapply subs_merge_map. auto.
+    }
+    destruct e7 as [? [e7 e8]].
+    rewrite e7. rewrite e8.
+    erewrite subs_merge_map. 2: eauto.
+    erewrite subs_merge_map. 2: eauto.
+    reflexivity.
+  - cbn in *. destruct t. all: try discriminate.
+    cbn. unfold assert_eq. assert_eq e.
+    cbn in e. subst. cbn.
+    eapply ih. assumption.
+Qed.
+
 Lemma match_lhs_rename :
   forall npat k n ui l t σ r,
     All (elim_pattern npat) l ->
@@ -979,8 +1144,12 @@ Proof.
   cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
   inversion e. subst. clear e.
   unfold match_lhs.
-  (* Need to do it on all previous things *)
-Admitted.
+  eapply match_prelhs_rename in e1.
+  2:{ eapply All_rev. auto. }
+  rewrite e1. cbn.
+  rewrite map_option_out_map_option_map. rewrite e2.
+  cbn. reflexivity.
+Qed.
 
 Lemma match_lhs_rename_None :
   forall npat k n l t r,
