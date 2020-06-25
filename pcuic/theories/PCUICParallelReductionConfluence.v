@@ -4656,6 +4656,10 @@ Section Rho.
 
   Fail Context (cΣ : confluenv cf first_match onrd rho).
 
+  Axiom todo_triangle : forall {A}, A.
+
+  Ltac todo_triangle := (exact todo_triangle).
+
   Lemma triangle Γ Δ t u :
     let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ) in
     pred1 Σ Γ Δ t u ->
@@ -4840,11 +4844,11 @@ Section Rho.
         now eapply All2_length in X3.
       + eapply All2_sym, All2_map_left, All2_impl; eauto; simpl; intuition eauto.
 
-    - todo "rewrite rules"%string.
+    - todo_triangle.
 
-    - todo "rewrite rules"%string.
+    - todo_triangle.
 
-    - todo "rewrite rules"%string.
+    - todo_triangle.
 
     - simpl; simp rho lhs_viewc; simpl.
       simpl in X0. red in H. rewrite H /= heq_cst_body /=.
@@ -4880,7 +4884,7 @@ Section Rho.
       simp rho.
       (* An application might be a lhs *)
       destruct lhs_viewc.
-      + cbn. todo "rewrite rules"%string.
+      + cbn. todo_triangle.
       + cbn. destruct view_lambda_fix_app.
         * {
           simpl; simp rho; simpl.
@@ -5025,7 +5029,7 @@ Section Rho.
       (* A pattern-matching may be a lhs *)
       destruct (lhs_viewc (tCase (i, n) p0 c0 brs0)) eqn:elhs.
       + simp rho. rewrite elhs. simp rho. simpl.
-        todo "rewrite rules"%string.
+        todo_triangle.
       + rewrite rho_app_case. 1: auto.
         destruct (decompose_app c0) eqn:Heq. simpl.
         destruct (construct_cofix_discr t) eqn:Heq'.
@@ -5134,7 +5138,7 @@ Section Rho.
       destruct p as [[ind pars] arg].
       (* A projection may be a lhs *)
       destruct (lhs_viewc (tProj (ind, pars, arg) c)) eqn:elhs.
-      + todo "rewrite rules"%string.
+      + todo_triangle.
       + rewrite rho_app_proj. 1: auto.
         destruct decompose_app eqn:Heq.
         destruct (view_construct_cofix t).
@@ -5256,4 +5260,4 @@ Proof.
   split; eapply triangle; auto.
 Qed.
 
-Print Assumptions pred1_diamond.
+(* Print Assumptions pred1_diamond. *)
