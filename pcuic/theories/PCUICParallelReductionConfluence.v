@@ -754,29 +754,84 @@ End Pred1_inversion.
 
 Hint Constructors pred1 : pcuic.
 
+(* TODO MOVE *)
+Definition on_option {A} (P : A -> Type) : option A -> Type :=
+  fun o =>
+    match o with
+    | Some a => P a
+    | None => True
+    end.
+
 Section Confluenv.
 
   (* Constraints on the global environment that would ensure confluence. *)
 
-  (* TODO Add rho and first_match to context, will instantiate later when
-    proving triangle.
-  *)
+  Context (cf : checker_flags).
 
-  Definition confl_rew_decl (Σ : global_env) (kn : kername) d :=
+  Context (first_match :
+    kername ->
+    list rewrite_rule ->
+    term ->
+    option ((Instance.t × list term) × rewrite_rule)
+  ).
+
+  Context (onrd : rewrite_decl -> Type).
+
+  Context (rho :
+    ∀ (Σ : global_env),
+      wf Σ →
+      ∀ extra : option (kername × rewrite_decl),
+        on_option (λ '(_, rd), onrd rd) extra →
+        context →
+        term →
+        term
+  ).
+
+  Context (rho_ctx :
+    ∀ (Σ : global_env),
+      wf Σ →
+      ∀ extra : option (kername × rewrite_decl),
+        on_option (λ '(_, rd), onrd rd) extra →
+        context →
+        context
+  ).
+
+  Inductive triangle_rules  Σ kn nsymb (rho : context -> term -> term) rho_ctx : list rewrite_rule -> Type :=
+  | triangle_rules_nil : triangle_rules Σ kn nsymb rho rho_ctx []
+  | triangle_rules_cons :
+      forall r rl,
+        (forall σ ui θ r',
+          (* TODO Find the right contexts, probably with some untyped_subslet *)
+          let ss := symbols_subst kn 0 ui nsymb in
+          let Δ := [] in
+          let Γ := [] in
+          let tl := subst0 σ (subst ss #|σ| (lhs r)) in
+          let tr := subst0 (map (rho Γ) σ) (subst ss #|σ| (rhs r)) in
+          let tr' := subst0 (map (rho Γ) θ) (subst ss #|θ| (rhs r')) in
+          first_match kn rl tl = Some (ui, θ, r') ->
+          pred1 Σ Δ (rho_ctx Γ) tr tr'
+        ) ->
+        triangle_rules Σ kn nsymb rho rho_ctx rl ->
+        triangle_rules Σ kn nsymb rho rho_ctx (rl ++ [r]).
+
+  Definition confl_rew_decl Σ wfΣ kn d :=
     let l := d.(prules) ++ d.(rules) in
-    True.
+    let extra := Some (kn, d) in
+    ∑ on_extra,
+      triangle_rules
+        Σ kn #|d.(symbols)| (rho Σ wfΣ extra on_extra) (rho_ctx Σ wfΣ extra on_extra) l.
 
-  Definition confl_decl Σ kn decl :=
+  Definition confl_decl Σ hΣ kn decl : Type :=
     match decl with
-    | RewriteDecl rew => confl_rew_decl Σ kn rew
+    | RewriteDecl rew => confl_rew_decl Σ hΣ kn rew
     | _ => True
     end.
 
   Inductive confluenv : global_env -> Type :=
   | confluenv_nil : confluenv []
-  | confluenv_decl Σ kn d :
+  | confluenv_decl Σ hΣ kn d :
       confluenv Σ ->
-      confl_decl Σ kn d ->
+      confl_decl Σ hΣ kn d ->
       confluenv (Σ ,, (kn, d)).
 
 End Confluenv.
@@ -857,14 +912,6 @@ Section Rho.
     all: rewrite mkElims_app.
     all: reflexivity.
   Qed.
-
-  (* TODO MOVE *)
-  Definition on_option {A} (P : A -> Type) : option A -> Type :=
-    fun o =>
-      match o with
-      | Some a => P a
-      | None => True
-      end.
 
   Definition onrr nsymb r :=
     r.(head) < nsymb ×
@@ -4607,12 +4654,12 @@ Section Rho.
   Qed.
 
 
-  Context (cΣ : confluenv Σ).
+  Fail Context (cΣ : confluenv cf first_match onrd rho).
 
   Lemma triangle Γ Δ t u :
-  let Pctx :=
-      fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ) in
-  pred1 Σ Γ Δ t u -> pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
+    let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ) in
+    pred1 Σ Γ Δ t u ->
+    pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
     refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
