@@ -766,7 +766,7 @@ Section Confluenv.
 
   (* Constraints on the global environment that would ensure confluence. *)
 
-  Context (cf : checker_flags).
+  Context {cf : checker_flags}.
 
   Context (first_match :
     kername ->
@@ -4653,17 +4653,41 @@ Section Rho.
     - rewrite !pred_atom_inst; auto. eapply pred1_refl_gen; auto with pcuic.
   Qed.
 
+End Rho.
 
-  Fail Context (cΣ : confluenv cf first_match onrd rho).
+Section Triangle.
+
+  Context {cf : checker_flags}.
+  Context (Σ : global_env).
+  Context (wfΣ : wf Σ).
+
+  Hint Rewrite map_terms_map : rho.
+  Hint Rewrite map_brs_map : rho.
+  Hint Rewrite map_fix_rho_map fold_fix_context_wf_fold : rho.
+  Hint Rewrite rho_app_construct : rho.
+  Hint Rewrite rho_app_cofix : rho.
+  Hint Constructors All2i : core pcuic.
+  Hint Constructors All2i_ctx : core pcuic.
+  Hint Resolve pres_bodies_inst_context : pcuic.
+  Hint Resolve Upn_ctxmap : pcuic.
+  Hint Extern 4 (pred1_ctx ?Σ ?Δ ?Δ') =>
+    match goal with
+      H : pred1_subst _ Δ Δ' _ _ |- _ =>
+      apply (pred1_subst_pred1_ctx H)
+    end : pcuic.
+  Hint Rewrite decompose_app_inst using auto : lift.
+  Hint Resolve inst_is_constructor : core.
+
+  (* Fail Context (cΣ : confluenv cf first_match onrd rho). *)
 
   Axiom todo_triangle : forall {A}, A.
 
   Ltac todo_triangle := (exact todo_triangle).
 
   Lemma triangle Γ Δ t u :
-    let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Γ) in
+    let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Σ wfΣ None I Γ) in
     pred1 Σ Γ Δ t u ->
-    pred1 Σ Δ (rho_ctx Γ) u (rho (rho_ctx Γ) t).
+    pred1 Σ Δ (rho_ctx Σ wfΣ None I Γ) u (rho Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
     refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
@@ -4676,7 +4700,7 @@ Section Rho.
       all:simpl NoConfusion in *; noconf H; noconf H0; auto.
 
     - simpl.
-      rewrite (rho_app_lambda _ _ _ _ _ []).
+      rewrite (rho_app_lambda _ _ _ _ _ _ _ _ _ []).
       eapply (substitution0_pred1); simpl in *. 1-2: eauto.
       rewrite app_context_nil_l in X0.
       eapply X0.
@@ -4696,11 +4720,11 @@ Section Rho.
         eapply nth_error_pred1_ctx_l in H; eauto.
         destruct H. intuition. rewrite a. simp rho.
         rewrite -{1}(firstn_skipn (S i) Γ').
-        rewrite -{1}(firstn_skipn (S i) (rho_ctx Γ)).
+        rewrite -{1}(firstn_skipn (S i) (rho_ctx _ _ _ _ Γ)).
         pose proof (All2_local_env_length X0).
         assert (S i = #|firstn (S i) Γ'|).
         { rewrite !firstn_length_le; try lia. }
-        assert (S i = #|firstn (S i) (rho_ctx Γ)|).
+        assert (S i = #|firstn (S i) (rho_ctx Σ wfΣ None I Γ)|).
         { rewrite !firstn_length_le; try lia. }
         rewrite {5}H0 {6}H1.
         eapply weakening_pred1_pred1; eauto.
@@ -4717,13 +4741,14 @@ Section Rho.
     - simpl in X0. cbn.
       rewrite rho_app_case.
       { intros [k [rd [[[? ?] ?] [? e]]]].
-        cbn in e. eapply first_match_lookup_sound in e as et. 2: auto.
+        cbn in e. eapply first_match_lookup_sound in e as et. 4: eauto.
+        2: auto. 2: exact I.
         apply (f_equal elim_kn) in et. cbn in et.
         rewrite elim_kn_mkApps in et. cbn in et.
         apply first_match_subst_length in e as σl.
         rewrite σl in et.
         eapply first_match_rule_list in e as hr. destruct hr as [n ?].
-        erewrite elim_kn_lhs in et. 2-3: eauto.
+        erewrite elim_kn_lhs in et. 2-5: eauto. 2: exact I.
         discriminate.
       }
       rewrite decompose_app_mkApps; auto.
@@ -4779,13 +4804,14 @@ Section Rho.
       destruct ip.
       rewrite rho_app_case.
       { intros [k [rd [[[? ?] ?] [? e]]]].
-        cbn in e. eapply first_match_lookup_sound in e as et. 2: auto.
+        cbn in e. eapply first_match_lookup_sound in e as et. 2-4: eauto.
+        2: exact I.
         apply (f_equal elim_kn) in et. cbn in et.
         rewrite elim_kn_mkApps in et. cbn in et.
         apply first_match_subst_length in e as σl.
         rewrite σl in et.
         eapply first_match_rule_list in e as hr. destruct hr as [? ?].
-        erewrite elim_kn_lhs in et. 2-3: eauto.
+        erewrite elim_kn_lhs in et. 2-5: eauto. 2: exact I.
         discriminate.
       }
       rewrite decompose_app_mkApps; auto.
@@ -4800,7 +4826,7 @@ Section Rho.
         * red in Hrel. destruct Hrel.
           rewrite rho_ctx_app in p2.
           rewrite - fold_fix_context_rho_ctx.
-          set (rhoΓ := rho_ctx Γ ,,, rho_ctx_over (rho_ctx Γ) (fix_context mfix0)) in *.
+          set (rhoΓ := rho_ctx _ _ _ _ Γ ,,, rho_ctx_over _ _ _ _ (rho_ctx _ _ _ _ Γ) (fix_context mfix0)) in *.
           rewrite !subst_inst. eapply simpl_pred; try now sigma.
           eapply strong_substitutivity; eauto.
           -- apply ctxmap_cofix_subst.
@@ -4821,13 +4847,14 @@ Section Rho.
       destruct p as [[ind pars] arg].
       rewrite rho_app_proj.
       { intros [k [rd [[[? ?] ?] [? e]]]].
-        cbn in e. eapply first_match_lookup_sound in e as et. 2: auto.
+        cbn in e. eapply first_match_lookup_sound in e as et. 2-4: eauto.
+        2: exact I.
         apply (f_equal elim_kn) in et. cbn in et.
         rewrite elim_kn_mkApps in et. cbn in et.
         apply first_match_subst_length in e as σl.
         rewrite σl in et.
         eapply first_match_rule_list in e as hr. destruct hr as [n ?].
-        erewrite elim_kn_lhs in et. 2-3: eauto.
+        erewrite elim_kn_lhs in et. 2-5: eauto. 2: exact I.
         discriminate.
       }
       rewrite decompose_app_mkApps. 1: auto.
@@ -4861,13 +4888,14 @@ Section Rho.
     - simpl in *.
       rewrite rho_app_proj.
       { intros [? [rd [[[? ?] ?] [? e]]]].
-        cbn in e. eapply first_match_lookup_sound in e as et. 2: auto.
+        cbn in e. eapply first_match_lookup_sound in e as et. 2-4: eauto.
+        2: exact I.
         apply (f_equal elim_kn) in et. cbn in et.
         rewrite elim_kn_mkApps in et. cbn in et.
         apply first_match_subst_length in e as σl.
         rewrite σl in et.
         eapply first_match_rule_list in e as hr. destruct hr as [n ?].
-        erewrite elim_kn_lhs in et. 2-3: eauto.
+        erewrite elim_kn_lhs in et. 2-5: eauto. 2: exact I.
         discriminate.
       }
       rewrite decompose_app_mkApps; auto.
@@ -4889,7 +4917,7 @@ Section Rho.
         * {
           simpl; simp rho; simpl.
           (* Fix at head *)
-          destruct (rho_fix_elim (rho_ctx Γ) mfix i l).
+          destruct (rho_fix_elim _ wfΣ None I (rho_ctx Σ wfΣ None I Γ) mfix i l).
           - rewrite /unfold_fix {1}/map_fix nth_error_map e /=.
             eapply (is_constructor_app_ge (rarg d) _ _) in i0 => //.
             rewrite -> i0.
@@ -4903,7 +4931,7 @@ Section Rho.
             auto.
           - simp rho lhs_viewc in X0.
             simpl in X0. simp rho in X0.
-            destruct (rho_fix_elim (rho_ctx Γ) mfix i (l ++ [a])).
+            destruct (rho_fix_elim Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ) mfix i (l ++ [a])).
             (* Shorter application does not reduce *)
             + (* Longer application reduces *)
               rewrite e in i0.
@@ -4945,7 +4973,7 @@ Section Rho.
                 rewrite map_fix_subst /= //.
                 intros ?. simp rho lhs_viewc; simpl; now simp rho.
               * move: i1.
-                eapply is_constructor_pred1.
+                eapply is_constructor_pred1. 1: eauto.
                 eapply All2_app; eauto.
               * eapply All2_app => //. repeat constructor; auto.
 
@@ -4995,8 +5023,8 @@ Section Rho.
               generalize_by_eqs_vars X4.
               destruct X4 ; try solve [ simplify_dep_elim ; solve_discr ].
               * subst lhs rhs. simplify_dep_elim.
-                apply (f_equal isElimSymb) in H. cbn in H.
-                rewrite isElimSymb_subst in H.
+                apply (f_equal isElimSymb) in H0. cbn in H0.
+                rewrite isElimSymb_subst in H0.
                 { apply untyped_subslet_length in u. rewrite u.
                   rewrite subst_context_length.
                   apply isElimSymb_lhs.
@@ -5004,17 +5032,18 @@ Section Rho.
                 }
                 discriminate.
               * subst lhs rhs. simplify_dep_elim.
-                apply (f_equal isElimSymb) in H. cbn in H.
-                rewrite isElimSymb_subst in H.
+                apply (f_equal isElimSymb) in H0. cbn in H0.
+                rewrite isElimSymb_subst in H0.
                 { apply untyped_subslet_length in u. rewrite u.
                   rewrite subst_context_length.
                   apply isElimSymb_lhs.
                   eapply declared_symbol_par_head in d. all: eauto.
                 }
                 discriminate.
-              * simplify_dep_elim. econstructor ; eauto.
+              * simplify_dep_elim. solve_discr. subst. econstructor ; eauto.
+              * simplify_dep_elim. solve_discr. subst. inversion i.
             + simplify_dep_elim. discriminate.
-          - simpl. simp rho. repeat fold_rho.
+          - simpl. simp rho. rewrite <- !fold_rho.
             rewrite map_app -mkApps_nested.
             constructor; eauto.
         }
@@ -5027,7 +5056,7 @@ Section Rho.
     - (* Case reduction *)
       destruct ind.
       (* A pattern-matching may be a lhs *)
-      destruct (lhs_viewc (tCase (i, n) p0 c0 brs0)) eqn:elhs.
+      destruct (lhs_viewc Σ wfΣ None I (tCase (i, n) p0 c0 brs0)) eqn:elhs.
       + simp rho. rewrite elhs. simp rho. simpl.
         todo_triangle.
       + rewrite rho_app_case. 1: auto.
@@ -5038,7 +5067,7 @@ Section Rho.
           - (* Iota *)
             apply decompose_app_inv in Heq.
             subst c0. simpl.
-            simp rho. repeat fold_rho.
+            simp rho. rewrite <- !fold_rho.
             simpl. simp rho in X2.
             change eq_inductive with (@eqb inductive _).
             destruct (eqb_spec i ind).
@@ -5056,7 +5085,7 @@ Section Rho.
 
           - (* CoFix *)
             apply decompose_app_inv in Heq.
-            subst c0. simpl. simp rho. repeat fold_rho.
+            subst c0. simpl. simp rho. rewrite <- !fold_rho.
             simpl. simp rho in X2.
             eapply pred1_mkApps_tCoFix_inv in X1 as [mfix' [idx' [[? ?] ?]]].
             2: auto.
@@ -5066,7 +5095,7 @@ Section Rho.
             eapply All2_prop2_eq_split in a1. intuition.
             unfold unfold_cofix.
             assert (All2 (on_Trel eq dname) mfix'
-                      (map_fix rho (rho_ctx Γ) (fold_fix_context rho (rho_ctx Γ) [] mfix) mfix)).
+                      (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (fold_fix_context (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) [] mfix) mfix)).
             { eapply All2_impl; [eapply b0|]; pcuic. }
             pose proof (All2_mix a1 X1).
             eapply pred1_rho_fix_context_2 in X2; pcuic.
@@ -5082,7 +5111,7 @@ Section Rho.
               eapply All2_nth_error_Some in Heq; eauto.
               destruct Heq; intuition auto.
               eapply pred_cofix_case
-                with (map_fix rho (rho_ctx Γ) (rho_ctx_over (rho_ctx Γ)
+                with (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (rho_ctx_over Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ)
                                                       (fix_context mfix)) mfix)
                                           (rarg d); pcuic.
               * eapply All2_local_env_pred_fix_ctx; eauto.
@@ -5098,7 +5127,7 @@ Section Rho.
                 rewrite H. simpl. f_equal. f_equal.
                 unfold map_fix.
                 rewrite fold_fix_context_rho_ctx.
-                rewrite (map_cofix_subst _ (fun Γ Γ' => rho (Γ ,,,  Γ'))) //.
+                rewrite (map_cofix_subst _ (fun Γ Γ' => rho Σ wfΣ None I (Γ ,,,  Γ'))) //.
                 intros. simp rho lhs_viewc; simpl; simp rho. reflexivity.
               * apply All2_sym. eapply All2_map_left. eapply All2_impl; eauto.
                 unfold on_Trel in *.
@@ -5125,8 +5154,8 @@ Section Rho.
                 intros. intuition pcuic.
         }
         * apply decompose_app_inv in Heq. subst c0.
-          assert (All2 (on_Trel_eq (pred1 Σ Γ' (rho_ctx Γ)) snd fst) brs1
-                      (map (λ x : nat * term, (fst x, rho (rho_ctx Γ) (snd x))) brs0)).
+          assert (All2 (on_Trel_eq (pred1 Σ Γ' (rho_ctx Σ wfΣ None I Γ)) snd fst) brs1
+                      (map (λ x : nat * term, (fst x, rho Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ) (snd x))) brs0)).
           { eapply All2_sym, All2_map_left, All2_impl; eauto.
             unfold on_Trel in *.
             intros. intuition pcuic.
@@ -5137,7 +5166,7 @@ Section Rho.
       simpl.
       destruct p as [[ind pars] arg].
       (* A projection may be a lhs *)
-      destruct (lhs_viewc (tProj (ind, pars, arg) c)) eqn:elhs.
+      destruct (lhs_viewc Σ wfΣ None I (tProj (ind, pars, arg) c)) eqn:elhs.
       + todo_triangle.
       + rewrite rho_app_proj. 1: auto.
         destruct decompose_app eqn:Heq.
@@ -5176,7 +5205,7 @@ Section Rho.
           unfold unfold_cofix.
           eapply All2_prop2_eq_split in a1. intuition auto.
           assert (All2 (on_Trel eq dname) mfix'
-                      (map_fix rho (rho_ctx Γ) (fold_fix_context rho (rho_ctx Γ) [] mfix) mfix)).
+                      (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (fold_fix_context (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) [] mfix) mfix)).
           { eapply All2_impl; [eapply b|]; pcuic. }
           pose proof (All2_mix a1 X0) as X2.
           eapply pred1_rho_fix_context_2 in X2; pcuic.
@@ -5192,7 +5221,7 @@ Section Rho.
             pose proof Heq.
             eapply All2_nth_error_Some in Heq; eauto. destruct Heq; intuition auto.
 
-            eapply pred_cofix_proj with (map_fix rho (rho_ctx Γ) (rho_ctx_over (rho_ctx Γ)
+            eapply pred_cofix_proj with (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (rho_ctx_over Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ)
                                                                               (fix_context mfix)) mfix)
                                         (rarg d); pcuic.
 
@@ -5210,7 +5239,7 @@ Section Rho.
               rewrite H. simpl. f_equal. f_equal.
               unfold map_fix.
               rewrite fold_fix_context_rho_ctx. auto.
-              rewrite (map_cofix_subst _ (fun Γ Γ' => rho (Γ ,,,  Γ'))) //.
+              rewrite (map_cofix_subst _ (fun Γ Γ' => rho Σ wfΣ None I (Γ ,,,  Γ'))) //.
               intros. simp rho lhs_viewc; simpl; simp rho. reflexivity.
 
           - eapply pred_proj_congr; eauto.
@@ -5245,7 +5274,8 @@ Section Rho.
 
     - destruct t; noconf H; simpl; constructor; eauto.
   Qed.
-End Rho.
+
+End Triangle.
 
 (* The diamond lemma for parallel reduction follows directly from the triangle lemma. *)
 
