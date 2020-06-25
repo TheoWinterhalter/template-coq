@@ -4871,11 +4871,46 @@ Section Triangle.
         now eapply All2_length in X3.
       + eapply All2_sym, All2_map_left, All2_impl; eauto; simpl; intuition eauto.
 
-    - todo_triangle.
+    - simp rho. destruct lhs_viewc.
+      + simp rho. todo_triangle.
+      + cbn. eapply pred1_refl_gen. assumption.
 
-    - todo_triangle.
+    - simp rho. destruct lhs_viewc.
+      2:{
+        exfalso. apply n0. cbn.
+        unfold declared_symbol in H.
+        unfold lookup_rd.
+        eexists k, decl. rewrite H.
+        assert (h : ∑ n, nth_error (all_rewrite_rules decl) n = Some r).
+        { unfold all_rewrite_rules.
+          exists (#|prules decl| + n).
+          rewrite nth_error_app_ge. 1: lia.
+          rewrite <- heq_nth_error. f_equal. lia.
+        }
+        destruct h as [m e].
+        (* TODO Make a lemma? *)
+        assert (h : ∑ x, first_match k (all_rewrite_rules decl) lhs = Some x).
+        { set (l := all_rewrite_rules decl) in *. clearbody l.
+          subst lhs.
+          clear - l e. induction l in m, r, e |- *.
+          - destruct m. all: discriminate.
+          - destruct m.
+            + cbn in e. apply some_inj in e. subst.
+              cbn - [ match_lhs ].
+              (* TODO Need completeness of match_lhs *)
+              todo_triangle.
+            + cbn in e. cbn - [ match_lhs ].
+              destruct match_lhs as [[]|] eqn:e1.
+              * eexists. reflexivity.
+              * eapply IHl. eassumption.
+        }
+        destruct h as [? ?].
+        eexists. intuition eauto.
+      }
+      simp rho. todo_triangle.
 
-    - todo_triangle.
+    - (* Deal with the above, then copy and adapt *)
+      todo_triangle.
 
     - simpl; simp rho lhs_viewc; simpl.
       simpl in X0. red in H. rewrite H /= heq_cst_body /=.
@@ -4912,7 +4947,7 @@ Section Triangle.
       simp rho.
       (* An application might be a lhs *)
       destruct lhs_viewc.
-      + cbn. todo_triangle.
+      + simp rho. todo_triangle.
       + cbn. destruct view_lambda_fix_app.
         * {
           simpl; simp rho; simpl.
@@ -5057,7 +5092,7 @@ Section Triangle.
       destruct ind.
       (* A pattern-matching may be a lhs *)
       destruct (lhs_viewc Σ wfΣ None I (tCase (i, n) p0 c0 brs0)) eqn:elhs.
-      + simp rho. rewrite elhs. simp rho. simpl.
+      + simp rho. rewrite elhs. simp rho.
         todo_triangle.
       + rewrite rho_app_case. 1: auto.
         destruct (decompose_app c0) eqn:Heq. simpl.
@@ -5167,7 +5202,8 @@ Section Triangle.
       destruct p as [[ind pars] arg].
       (* A projection may be a lhs *)
       destruct (lhs_viewc Σ wfΣ None I (tProj (ind, pars, arg) c)) eqn:elhs.
-      + todo_triangle.
+      + simp rho. rewrite elhs. simp rho.
+        todo_triangle.
       + rewrite rho_app_proj. 1: auto.
         destruct decompose_app eqn:Heq.
         destruct (view_construct_cofix t).
