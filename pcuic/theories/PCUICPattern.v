@@ -934,15 +934,6 @@ Proof.
   - eapply All_rev. assumption.
 Qed.
 
-(* Lemma monad_map_rev :
-  forall M {hM : Monad M} A B (f : A -> M B) l l',
-    monad_map f l = ret l' ->
-    monad_map f (List.rev l) = ret (List.rev l').
-Proof.
-  intros M hM A B f l l' e.
-  induction l in l', e |- *.
-  - cbn in *. *)
-
 Lemma option_monad_map_app :
   forall A B (f : A -> option B) l l',
     monad_map f (l ++ l') = (
@@ -958,6 +949,22 @@ Proof.
     rewrite IHl. cbn. destruct monad_map. 2: reflexivity.
     destruct monad_map. 2: reflexivity.
     reflexivity.
+Qed.
+
+Lemma option_monad_map_rev :
+  forall A B (f : A -> option B) l l',
+    monad_map f l = Some l' ->
+    monad_map f (List.rev l) = Some (List.rev l').
+Proof.
+  intros A B f l l' e.
+  induction l in l', e |- *.
+  - cbn in *. apply some_inj in e. subst. reflexivity.
+  - cbn in *. destruct (f _) eqn:e1. 2: discriminate.
+    destruct monad_map eqn:e2. 2: discriminate.
+    apply some_inj in e. subst.
+    specialize IHl with (1 := eq_refl).
+    rewrite option_monad_map_app. rewrite IHl.
+    cbn. rewrite e1. reflexivity.
 Qed.
 
 Lemma option_monad_fold_right_app :
@@ -1003,6 +1010,74 @@ Proof.
     + destruct (f a1 a0) as [a3|] eqn:e3.
       * *)
 
+Lemma list_ext :
+  forall {A} (m1 m2 : list A),
+    (forall n, nth_error m1 n = nth_error m2 n) ->
+    m1 = m2.
+Proof.
+  intros A m1 m2 h.
+  induction m1 in m2, h |- *.
+  - destruct m2. 1: reflexivity.
+    exfalso. specialize (h 0). cbn in h. discriminate.
+  - destruct m2.
+    1:{ specialize (h 0). cbn in h. discriminate. }
+    f_equal.
+    + specialize (h 0). cbn in h. apply some_inj in h. auto.
+    + eapply IHm1. intros n.
+      apply (h (S n)).
+Qed.
+
+Lemma linera_mask_spec :
+  forall npat l m,
+    (forall n,
+      nth_error m n = Some true ->
+      ∑ k l',
+        nth_error l k = Some l' ×
+        nth_error l' n = Some true ×
+        forall k' l'',
+          nth_error l k' = Some l'' ->
+          nth_error l'' n = Some true ->
+          k = k'
+    ) ->
+    (forall n,
+      nth_error m n = Some false ->
+      forall k l',
+        nth_error l k = Some l' ->
+        nth_error l' n = Some false
+    ) ->
+    (* (forall n,
+      nth_error m n = None ->
+      forall k l',
+        nth_error l k = Some l' ->
+        nth_error l' n = None
+    ) -> *)
+    #|m| = npat ->
+    monad_fold_right lin_merge l (linear_mask_init npat) = Some m.
+Proof.
+  intros npat l m ht hf hn.
+  induction l as [| li l ih] in m, ht, hf, hn |- *.
+  - cbn. f_equal. apply list_ext. intro n.
+    destruct nth_error eqn:e.
+    + unfold linear_mask_init in e.
+      eapply nth_error_Some_length in e as hl.
+      rewrite list_init_length in hl.
+      rewrite nth_error_list_init in e.
+      2:{
+        apply nth_error_Some_length in e. rewrite list_init_length in e. auto.
+      }
+      apply some_inj in e. subst.
+      destruct nth_error as [[]|] eqn:e.
+      * eapply ht in e as [[] [? [? ?]]]. all: discriminate.
+      * reflexivity.
+      * apply nth_error_None in e. lia.
+    + unfold linear_mask_init in e.
+      eapply nth_error_None in e as hl.
+      rewrite list_init_length in hl.
+      destruct (nth_error m n) eqn:e1. 2: reflexivity.
+      apply nth_error_Some_length in e1. lia.
+  - cbn.
+Abort.
+
 Lemma linear_mask_rev :
   forall npat l m,
     linear_mask npat l = Some m ->
@@ -1011,23 +1086,11 @@ Proof.
   intros npat l m h.
   unfold linear_mask in *.
   destruct monad_map as [l1|] eqn:e1. 2: discriminate.
+  eapply option_monad_map_rev in e1.
   cbn in h.
-  induction l in m, l1, e1, h |- *.
-  - cbn in e1. apply some_inj in e1. subst.
-    cbn in h. apply some_inj in h. subst.
-    cbn. reflexivity.
-  - cbn in e1. destruct elim_mask eqn:e2. 2: discriminate.
-    destruct monad_map eqn:e3. 2: discriminate.
-    apply some_inj in e1. subst.
-    cbn in h. destruct monad_fold_right eqn:e4. 2: discriminate.
-    eapply IHl in e4. 2: reflexivity.
-    cbn.
-    pose proof (option_monad_map_app _ _ (elim_mask npat) (List.rev l) [a]) as e.
-    destruct (monad_map _ (List.rev l)). 2: discriminate.
-    cbn in e4. cbn in e. rewrite e2 in e.
-    destruct (monad_map _ (_ ++ _)). 2: discriminate.
-    apply some_inj in e. subst.
-    rewrite option_monad_fold_right_app. cbn.
+  destruct monad_map. 2: discriminate.
+  apply some_inj in e1. subst.
+  cbn.
 Abort.
 
 Lemma match_lhs_complete :
