@@ -943,14 +943,92 @@ Proof.
   induction l in l', e |- *.
   - cbn in *. *)
 
-(* Lemma linear_mask_rev :
+Lemma option_monad_map_app :
+  forall A B (f : A -> option B) l l',
+    monad_map f (l ++ l') = (
+      x <- monad_map f l ;;
+      y <- monad_map f l' ;;
+      ret (x ++ y)
+    ).
+Proof.
+  intros A B f l l'.
+  induction l in l' |- *.
+  - cbn. destruct monad_map. all: reflexivity.
+  - cbn. destruct f. 2: reflexivity.
+    rewrite IHl. cbn. destruct monad_map. 2: reflexivity.
+    destruct monad_map. 2: reflexivity.
+    reflexivity.
+Qed.
+
+Lemma option_monad_fold_right_app :
+  forall A B (f : A -> B -> option A) l l' a,
+    monad_fold_right f (l ++ l') a = (
+      x <- monad_fold_right f l' a ;;
+      monad_fold_right f l x
+    ).
+Proof.
+  intros A B f l l' a.
+  induction l in l', a |- *.
+  - cbn. destruct monad_fold_right. all: reflexivity.
+  - cbn. rewrite IHl. cbn. destruct monad_fold_right. 2: reflexivity.
+    reflexivity.
+Qed.
+
+(* Lemma option_monad_fold_right_app_comm :
+  forall A (f : A -> A -> option A) l a a',
+    (forall x y, f x y = f y x) ->
+    monad_fold_right f (l ++ [ a' ]) a = monad_fold_right f (a' :: l) a.
+Proof.
+  intros A f l a a' h.
+  induction l as [| a0 l ih] in a, a' |- *.
+  - cbn. reflexivity.
+  - cbn. rewrite ih. cbn.
+    destruct monad_fold_right as [a1|]. 2: reflexivity.
+    destruct (f a1 a') as [a2|] eqn:e1.
+    + destruct (f a1 a0) eqn:e2.
+      * admit.
+      *
+
+Lemma option_monad_fold_right_app_comm :
+  forall A (f : A -> A -> option A) l l' a,
+    (forall x y, f x y = f y x) ->
+    monad_fold_right f (l ++ l') a = monad_fold_right f (l' ++ l) a.
+Proof.
+  intros A f l l' a h.
+  induction l as [| a0 l ih] in l', a |- *.
+  - cbn. rewrite app_nil_r. reflexivity.
+  - cbn. rewrite ih. rewrite !option_monad_fold_right_app.
+    cbn. destruct monad_fold_right as [a1|] eqn:e1. 2: reflexivity.
+    destruct (monad_fold_right f l' _) as [a2|] eqn:e2.
+    + destruct (f a1 a0) as [a3|] eqn:e3.
+      * *)
+
+Lemma linear_mask_rev :
   forall npat l m,
     linear_mask npat l = Some m ->
     linear_mask npat (List.rev l) = Some m.
 Proof.
   intros npat l m h.
   unfold linear_mask in *.
-  induction *)
+  destruct monad_map as [l1|] eqn:e1. 2: discriminate.
+  cbn in h.
+  induction l in m, l1, e1, h |- *.
+  - cbn in e1. apply some_inj in e1. subst.
+    cbn in h. apply some_inj in h. subst.
+    cbn. reflexivity.
+  - cbn in e1. destruct elim_mask eqn:e2. 2: discriminate.
+    destruct monad_map eqn:e3. 2: discriminate.
+    apply some_inj in e1. subst.
+    cbn in h. destruct monad_fold_right eqn:e4. 2: discriminate.
+    eapply IHl in e4. 2: reflexivity.
+    cbn.
+    pose proof (option_monad_map_app _ _ (elim_mask npat) (List.rev l) [a]) as e.
+    destruct (monad_map _ (List.rev l)). 2: discriminate.
+    cbn in e4. cbn in e. rewrite e2 in e.
+    destruct (monad_map _ (_ ++ _)). 2: discriminate.
+    apply some_inj in e. subst.
+    rewrite option_monad_fold_right_app. cbn.
+Abort.
 
 Lemma match_lhs_complete :
   forall npat k n ui l σ,
