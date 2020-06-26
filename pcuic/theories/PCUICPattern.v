@@ -1162,6 +1162,22 @@ Proof.
   apply lin_merge_rev. assumption.
 Qed.
 
+Lemma all_mask_map_option_out :
+  forall σ θ m,
+    forallb (fun x => x) m ->
+    masks m θ ->
+    subs_complete θ σ ->
+    map_option_out θ = Some σ.
+Proof.
+  intros σ θ m hm hθ h.
+  induction h in m, hm, hθ |- *.
+  - cbn. reflexivity.
+  - cbn. inversion hθ. subst.
+    inversion hm.
+    erewrite IHh. all: eauto.
+  - inversion hθ. subst. inversion hm.
+Qed.
+
 Lemma match_lhs_complete :
   forall npat k n ui l σ,
     All (elim_pattern npat) l ->
@@ -1179,8 +1195,11 @@ Proof.
     eapply linear_mask_rev. eassumption.
   }
   destruct pl as [θ [hθ [e ?]]].
-  (* rewrite e. *)
-Admitted.
+  rewrite fold_left_rev_right in e. unfold mkElims.
+  rewrite e.
+  cbn. eapply all_mask_map_option_out in ll. 2,3: eauto.
+  rewrite ll. reflexivity.
+Qed.
 
 (* TODO MOVE *)
 Lemma map_list_init :
