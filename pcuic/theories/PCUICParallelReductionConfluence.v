@@ -4678,6 +4678,36 @@ Section Triangle.
   Hint Rewrite decompose_app_inst using auto : lift.
   Hint Resolve inst_is_constructor : core.
 
+  (* Corollay of match_lhs_complete *)
+  Lemma match_lhs_rule :
+    forall n r ui σ k rd,
+      lookup_rd Σ k = Some rd ->
+      nth_error (all_rewrite_rules rd) n = Some r ->
+      #|σ| = #|r.(pat_context)| ->
+      let ss := symbols_subst k 0 ui #|symbols rd| in
+      match_lhs #|r.(pat_context)| k r.(head) r.(elims)
+        (subst0 σ (subst ss #|σ| (lhs r)))
+      = Some (ui, σ).
+  Proof.
+    intros n r ui σ k rd hrd hn σl ss.
+    unfold lhs. rewrite mkElims_subst. cbn - [match_lhs].
+    destruct (Nat.leb_spec #|σ| (#|pat_context r| + head r)). 2: lia.
+    eapply lookup_rd_onrd in hrd. 2: auto.
+    eapply all_rewrite_rules_on_rd in hrd.
+    eapply All_nth_error in hrd. 2: eauto.
+    destruct hrd as [hh [pl hc]].
+    destruct (nth_error ss _) eqn:e1.
+    2:{
+      eapply nth_error_None in e1. rewrite symbols_subst_length in e1. lia.
+    }
+    unfold symbols_subst in e1. apply list_make_nth_error in e1. subst.
+    cbn - [match_lhs].
+    rewrite subst_elims_symbols_subst.
+    { rewrite σl. auto. }
+    replace (#|pat_context r| + head r - #|σ| + 0) with r.(head) by lia.
+    eapply match_lhs_complete. all: auto.
+  Abort.
+
   (* Fail Context (cΣ : confluenv cf first_match onrd rho). *)
 
   Axiom todo_triangle : forall {A}, A.
@@ -4896,7 +4926,10 @@ Section Triangle.
           - destruct m. all: discriminate.
           - destruct m.
             + cbn in e. apply some_inj in e. subst.
-              cbn - [ match_lhs ].
+              cbn - [ match_lhs ]. unfold lhs.
+              rewrite mkElims_subst.
+              (* TODO Make a real lemma talking about instances. *)
+              (* erewrite match_lhs_complete. *)
               (* TODO Need completeness of match_lhs *)
               todo_triangle.
             + cbn in e. cbn - [ match_lhs ].
