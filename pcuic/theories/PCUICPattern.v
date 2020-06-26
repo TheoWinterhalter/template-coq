@@ -1027,7 +1027,16 @@ Proof.
       apply (h (S n)).
 Qed.
 
-Lemma linera_mask_spec :
+Fixpoint minus_mask m l :=
+  match m, l with
+  | true :: m, true :: l => false :: minus_mask m l
+  | x :: m, y :: l => x :: minus_mask m l
+  | _, _ => []
+  end.
+
+(* Lemma minus_mask_ *)
+
+Lemma linear_mask_spec :
   forall npat l m,
     (forall n,
       nth_error m n = Some true ->
@@ -1045,12 +1054,6 @@ Lemma linera_mask_spec :
         nth_error l k = Some l' ->
         nth_error l' n = Some false
     ) ->
-    (* (forall n,
-      nth_error m n = None ->
-      forall k l',
-        nth_error l k = Some l' ->
-        nth_error l' n = None
-    ) -> *)
     #|m| = npat ->
     monad_fold_right lin_merge l (linear_mask_init npat) = Some m.
 Proof.
@@ -1075,8 +1078,11 @@ Proof.
       rewrite list_init_length in hl.
       destruct (nth_error m n) eqn:e1. 2: reflexivity.
       apply nth_error_Some_length in e1. lia.
-  - cbn.
-Abort.
+  - cbn. specialize (ih (minus_mask m li)).
+    forward ih.
+    { intros n e.
+    (* } *)
+Admitted.
 
 Lemma linear_mask_rev :
   forall npat l m,
@@ -1091,6 +1097,8 @@ Proof.
   destruct monad_map. 2: discriminate.
   apply some_inj in e1. subst.
   cbn.
+  eapply linear_mask_spec.
+  - intros n e.
 Abort.
 
 Lemma match_lhs_complete :
