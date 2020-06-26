@@ -4681,7 +4681,7 @@ Section Triangle.
   (* Corollay of match_lhs_complete *)
   Lemma match_lhs_rule :
     forall n r ui σ k rd,
-      lookup_rd Σ k = Some rd ->
+      lookup_env Σ k = Some (RewriteDecl rd) ->
       nth_error (all_rewrite_rules rd) n = Some r ->
       #|σ| = #|r.(pat_context)| ->
       let ss := symbols_subst k 0 ui #|symbols rd| in
@@ -4692,21 +4692,31 @@ Section Triangle.
     intros n r ui σ k rd hrd hn σl ss.
     unfold lhs. rewrite mkElims_subst. cbn - [match_lhs].
     destruct (Nat.leb_spec #|σ| (#|pat_context r| + head r)). 2: lia.
-    eapply lookup_rd_onrd in hrd. 2: auto.
-    eapply all_rewrite_rules_on_rd in hrd.
-    eapply All_nth_error in hrd. 2: eauto.
-    destruct hrd as [hh [pl hc]].
+    eapply lookup_on_global_env in wfΣ as h. 2: eauto.
+    destruct h as [Σ' [? hd]].
+    destruct hd as [? [hr [hpr ?]]].
+    assert (h :
+      All (on_rewrite_rule
+        (lift_typing typing)
+        Σ'
+        (map (vass nAnon) rd.(symbols))
+      ) (all_rewrite_rules rd)
+    ).
+    { unfold all_rewrite_rules. apply All_app_inv. all: auto. }
+    eapply All_nth_error in h. 2: eauto.
+    destruct h as [? ? ? hh hl pl ?].
+    rewrite map_length in hh.
     destruct (nth_error ss _) eqn:e1.
     2:{
       eapply nth_error_None in e1. rewrite symbols_subst_length in e1. lia.
     }
-    unfold symbols_subst in e1. apply list_make_nth_error in e1. subst.
+    apply list_make_nth_error in e1. subst.
     cbn - [match_lhs].
     rewrite subst_elims_symbols_subst.
     { rewrite σl. auto. }
     replace (#|pat_context r| + head r - #|σ| + 0) with r.(head) by lia.
     eapply match_lhs_complete. all: auto.
-  Abort.
+  Qed.
 
   (* Fail Context (cΣ : confluenv cf first_match onrd rho). *)
 
