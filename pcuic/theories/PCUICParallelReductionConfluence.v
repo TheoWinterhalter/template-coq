@@ -4947,20 +4947,46 @@ Section Triangle.
           rewrite <- heq_nth_error. f_equal. lia.
         }
         destruct hn as [m e].
-        (* TODO Make a lemma? *)
         assert (h : ∑ x, first_match k (all_rewrite_rules decl) lhs = Some x).
         { eapply match_lhs_first_match. 1: eauto.
           subst lhs.
           eapply match_lhs_rule. all: eauto.
-          todo_triangle.
+          apply untyped_subslet_length in X2.
+          rewrite subst_context_length in X2.
+          auto.
         }
         destruct h as [? ?].
         eexists. intuition eauto.
       }
       simp rho. todo_triangle.
 
-    - (* Deal with the above, then copy and adapt *)
-      todo_triangle.
+    - simp rho. destruct lhs_viewc.
+      2:{
+        exfalso. apply n0. cbn.
+        unfold declared_symbol in H.
+        unfold lookup_rd.
+        eexists k, decl. rewrite H.
+        assert (hn : ∑ n, nth_error (all_rewrite_rules decl) n = Some r).
+        { unfold all_rewrite_rules.
+          exists n.
+          rewrite nth_error_app_lt.
+          1:{ apply nth_error_Some_length in heq_nth_error. auto. }
+          auto.
+        }
+        destruct hn as [m e].
+        assert (h : ∑ x, first_match k (all_rewrite_rules decl) lhs = Some x).
+        { eapply match_lhs_first_match. 1: eauto.
+          subst lhs.
+          eapply match_lhs_rule. all: eauto.
+          apply untyped_subslet_length in X2.
+          rewrite subst_context_length in X2.
+          auto.
+        }
+        destruct h as [? ?].
+        eexists. intuition eauto.
+      }
+      (* Deal with the above, then copy and adapt *)
+      simp rho. todo_triangle.
 
     - simpl; simp rho lhs_viewc; simpl.
       simpl in X0. red in H. rewrite H /= heq_cst_body /=.
