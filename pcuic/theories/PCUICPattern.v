@@ -981,6 +981,32 @@ Proof.
     reflexivity.
 Qed.
 
+(* Fixpoint sum_at n l :=
+  match l with
+  | a :: l =>
+    match nth_error a n with
+    | Some true => 1 + sum_at n l
+    | _ => sum_at n l
+    end
+  | [] => 0
+  end.
+
+Lemma linear_mask_spec :
+  forall npat l m,
+    (
+      (forall n,
+        nth_error m n = Some true ->
+        sum_at
+      ) ×
+      (forall n,
+        sum_at
+      ) ×
+      #|m| = npat
+    )
+    <->
+    monad_fold_right lin_merge l (linear_mask_init npat) = Some m.
+Proof. *)
+
 (* Lemma option_monad_fold_right_app_comm :
   forall A (f : A -> A -> option A) l a a',
     (forall x y, f x y = f y x) ->
