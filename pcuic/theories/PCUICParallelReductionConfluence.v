@@ -4718,6 +4718,25 @@ Section Triangle.
     eapply match_lhs_complete. all: auto.
   Qed.
 
+  Lemma match_lhs_first_match :
+    forall k l n r t x,
+      nth_error l n = Some r ->
+      match_lhs #|pat_context r| k (head r) (elims r) t = Some x ->
+      ∑ y, first_match k l t = Some y.
+  Proof.
+    intros k l n r t [? ?] h e.
+    induction l in n, r, h, e |- *.
+    - destruct n. all: discriminate.
+    - destruct n.
+      + cbn in h. apply some_inj in h. subst.
+        cbn - [ match_lhs ].
+        rewrite e. eexists. reflexivity.
+      + cbn in h. cbn - [ match_lhs ].
+        destruct (match_lhs _ _ (head a) _) as [[]|] eqn:e1.
+        * eexists. reflexivity.
+        * eapply IHl. all: eassumption.
+  Qed.
+
   (* Fail Context (cΣ : confluenv cf first_match onrd rho). *)
 
   Axiom todo_triangle : forall {A}, A.
@@ -4921,31 +4940,19 @@ Section Triangle.
         unfold declared_symbol in H.
         unfold lookup_rd.
         eexists k, decl. rewrite H.
-        assert (h : ∑ n, nth_error (all_rewrite_rules decl) n = Some r).
+        assert (hn : ∑ n, nth_error (all_rewrite_rules decl) n = Some r).
         { unfold all_rewrite_rules.
           exists (#|prules decl| + n).
           rewrite nth_error_app_ge. 1: lia.
           rewrite <- heq_nth_error. f_equal. lia.
         }
-        destruct h as [m e].
+        destruct hn as [m e].
         (* TODO Make a lemma? *)
         assert (h : ∑ x, first_match k (all_rewrite_rules decl) lhs = Some x).
-        { set (l := all_rewrite_rules decl) in *. clearbody l.
+        { eapply match_lhs_first_match. 1: eauto.
           subst lhs.
-          clear - l e. induction l in m, r, e |- *.
-          - destruct m. all: discriminate.
-          - destruct m.
-            + cbn in e. apply some_inj in e. subst.
-              cbn - [ match_lhs ]. unfold lhs.
-              rewrite mkElims_subst.
-              (* TODO Make a real lemma talking about instances. *)
-              (* erewrite match_lhs_complete. *)
-              (* TODO Need completeness of match_lhs *)
-              todo_triangle.
-            + cbn in e. cbn - [ match_lhs ].
-              destruct match_lhs as [[]|] eqn:e1.
-              * eexists. reflexivity.
-              * eapply IHl. eassumption.
+          eapply match_lhs_rule. all: eauto.
+          todo_triangle.
         }
         destruct h as [? ?].
         eexists. intuition eauto.
