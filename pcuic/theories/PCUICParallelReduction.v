@@ -4582,27 +4582,6 @@ Section ParallelSubstitution.
   Qed.
 
   (* TODO MOVE? *)
-  Lemma lin_merge_length :
-    forall m1 m2 m,
-      lin_merge m1 m2 = Some m ->
-      #|m| = #|m1| /\ #|m| = #|m2|.
-  Proof.
-    intros m1 m2 m hm.
-    induction m1 as [| [] m1 ih] in m2, m, hm |- *.
-    - destruct m2. 2: discriminate.
-      cbn in hm. apply some_inj in hm. subst.
-      auto.
-    - destruct m2 as [| [] m2]. 1,2: discriminate.
-      cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
-      apply some_inj in hm. subst.
-      apply ih in e. cbn. intuition eauto.
-    - cbn in hm. destruct m2. 1: discriminate.
-      destruct lin_merge eqn:e. 2: discriminate.
-      apply some_inj in hm. subst.
-      apply ih in e. cbn. intuition eauto.
-  Qed.
-
-  (* TODO MOVE? *)
   Lemma pattern_mask_length :
     forall npat p m,
       pattern_mask npat p = Some m ->
@@ -5158,17 +5137,6 @@ Section ParallelSubstitution.
         rewrite hσ. apply lin_merge_sym. assumption.
       + cbn in *. rewrite skipn_S.
         eapply ih. all: eassumption.
-  Qed.
-
-  Lemma lin_merge_linear_mask_init :
-    forall m,
-      lin_merge (linear_mask_init #|m|) m = Some m.
-  Proof.
-    intros m.
-    induction m as [| [] m ih].
-    - reflexivity.
-    - cbn. rewrite ih. reflexivity.
-    - cbn. rewrite ih. reflexivity.
   Qed.
 
   Lemma partial_subst_mask_subs_init :

@@ -981,60 +981,153 @@ Proof.
     reflexivity.
 Qed.
 
-(* Fixpoint sum_at n l :=
-  match l with
-  | a :: l =>
-    match nth_error a n with
-    | Some true => 1 + sum_at n l
-    | _ => sum_at n l
-    end
-  | [] => 0
-  end.
+Lemma lin_merge_linear_mask_init_eq :
+  forall npat m1 m2,
+    lin_merge (linear_mask_init npat) m1 = Some m2 ->
+    m1 = m2.
+Proof.
+  intros npat m1 m2 h.
+  induction npat in m1, m2, h |- *.
+  - cbn in h. destruct m1. 2: discriminate.
+    apply some_inj in h. assumption.
+  - destruct m1. 1: discriminate.
+    cbn in h. destruct lin_merge eqn:e. 2: discriminate.
+    apply some_inj in h. subst.
+    eapply IHnpat in e. subst. reflexivity.
+Qed.
 
-Lemma linear_mask_spec :
+Lemma lin_merge_assoc :
+  forall a b c d e,
+    lin_merge a b = Some c ->
+    lin_merge c d = Some e ->
+    ∑ f,
+      lin_merge a d = Some f ×
+      lin_merge f b = Some e.
+Proof.
+  intros a b c d e hc he.
+  induction a as [| [] a ih] in b, c, d, e, hc, he |- *.
+  - destruct b. 2: discriminate.
+    cbn in hc. apply some_inj in hc. subst.
+    destruct d. 2: discriminate.
+    cbn in he. apply some_inj in he. subst.
+    exists []. intuition reflexivity.
+  - destruct b as [| [] b]. 1,2: discriminate.
+    cbn in hc. destruct (lin_merge a b) as [g|] eqn:hg. 2: discriminate.
+    apply some_inj in hc. subst.
+    destruct d as [| [] d]. 1,2: discriminate.
+    cbn in he. destruct (lin_merge g d) as [h|] eqn:hh. 2: discriminate.
+    apply some_inj in he. subst.
+    specialize ih with (1 := hg) (2 := hh).
+    destruct ih as [f [h1 h2]].
+    cbn. rewrite h1.
+    eexists. intuition eauto.
+    cbn. rewrite h2. reflexivity.
+  - destruct b as [| x b]. 1: discriminate.
+    cbn in hc. destruct (lin_merge a b) as [g|] eqn:hg. 2: discriminate.
+    apply some_inj in hc. subst.
+    destruct x.
+    + destruct d as [| [] d]. 1,2: discriminate.
+      cbn in he. destruct (lin_merge g d) as [h|] eqn:hh. 2: discriminate.
+      apply some_inj in he. subst.
+      specialize ih with (1 := hg) (2 := hh).
+      destruct ih as [f [h1 h2]].
+      cbn. rewrite h1.
+      eexists. intuition eauto.
+      cbn. rewrite h2. reflexivity.
+    + destruct d as [| x d]. 1: discriminate.
+      cbn in he. destruct (lin_merge g d) as [h|] eqn:hh. 2: discriminate.
+      apply some_inj in he. subst.
+      specialize ih with (1 := hg) (2 := hh).
+      destruct ih as [f [h1 h2]].
+      cbn. rewrite h1.
+      eexists. intuition eauto.
+      destruct x.
+      * cbn. rewrite h2. reflexivity.
+      * cbn. rewrite h2. reflexivity.
+Qed.
+
+Lemma lin_merge_app :
+  forall npat l1 l2 m1 m2 m,
+    monad_fold_right lin_merge l1 (linear_mask_init npat) = Some m1 ->
+    monad_fold_right lin_merge l2 (linear_mask_init npat) = Some m2 ->
+    lin_merge m1 m2 = Some m ->
+    monad_fold_right lin_merge (l1 ++ l2) (linear_mask_init npat) = Some m.
+Proof.
+  intros npat l1 l2 m1 m2 m h1 h2 hm.
+  induction l1 in l2, m1, m2, m, h1, h2, hm |- *.
+  - cbn in h1. apply some_inj in h1. subst.
+    cbn. rewrite h2. f_equal.
+    apply lin_merge_linear_mask_init_eq in hm. auto.
+  - cbn in *. destruct monad_fold_right eqn:e. 2: discriminate.
+    pose proof (lin_merge_assoc _ _ _ _ _ h1 hm) as h3.
+    destruct h3 as [m' [h3 h4]].
+    eapply IHl1 in h2. 2,3: eauto.
+    rewrite h2. auto.
+Qed.
+
+Lemma lin_merge_length :
+  forall m1 m2 m,
+    lin_merge m1 m2 = Some m ->
+    #|m| = #|m1| /\ #|m| = #|m2|.
+Proof.
+  intros m1 m2 m hm.
+  induction m1 as [| [] m1 ih] in m2, m, hm |- *.
+  - destruct m2. 2: discriminate.
+    cbn in hm. apply some_inj in hm. subst.
+    auto.
+  - destruct m2 as [| [] m2]. 1,2: discriminate.
+    cbn in hm. destruct lin_merge eqn:e. 2: discriminate.
+    apply some_inj in hm. subst.
+    apply ih in e. cbn. intuition eauto.
+  - cbn in hm. destruct m2. 1: discriminate.
+    destruct lin_merge eqn:e. 2: discriminate.
+    apply some_inj in hm. subst.
+    apply ih in e. cbn. intuition eauto.
+Qed.
+
+Lemma fold_lin_merge_length :
   forall npat l m,
-    (
-      (forall n,
-        nth_error m n = Some true ->
-        sum_at
-      ) ×
-      (forall n,
-        sum_at
-      ) ×
-      #|m| = npat
-    )
-    <->
-    monad_fold_right lin_merge l (linear_mask_init npat) = Some m.
-Proof. *)
-
-(* Lemma option_monad_fold_right_app_comm :
-  forall A (f : A -> A -> option A) l a a',
-    (forall x y, f x y = f y x) ->
-    monad_fold_right f (l ++ [ a' ]) a = monad_fold_right f (a' :: l) a.
+    monad_fold_right lin_merge l (linear_mask_init npat) = Some m ->
+    #|m| = npat.
 Proof.
-  intros A f l a a' h.
-  induction l as [| a0 l ih] in a, a' |- *.
-  - cbn. reflexivity.
-  - cbn. rewrite ih. cbn.
-    destruct monad_fold_right as [a1|]. 2: reflexivity.
-    destruct (f a1 a') as [a2|] eqn:e1.
-    + destruct (f a1 a0) eqn:e2.
-      * admit.
-      *
+  intros npat l m h.
+  induction l in npat, m, h |- *.
+  - cbn in h. apply some_inj in h. subst.
+    unfold linear_mask_init. apply list_init_length.
+  - cbn in h. destruct monad_fold_right eqn:e. 2: discriminate.
+    eapply IHl in e. eapply lin_merge_length in h as [? ?].
+    lia.
+Qed.
 
-Lemma option_monad_fold_right_app_comm :
-  forall A (f : A -> A -> option A) l l' a,
-    (forall x y, f x y = f y x) ->
-    monad_fold_right f (l ++ l') a = monad_fold_right f (l' ++ l) a.
+Lemma lin_merge_linear_mask_init :
+    forall m,
+      lin_merge (linear_mask_init #|m|) m = Some m.
+  Proof.
+    intros m.
+    unfold linear_mask_init.
+    induction m as [| [] m ih].
+    - reflexivity.
+    - cbn. rewrite ih. reflexivity.
+    - cbn. rewrite ih. reflexivity.
+  Qed.
+
+Lemma lin_merge_rev :
+  forall npat l m,
+    monad_fold_right lin_merge l (linear_mask_init npat) = Some m ->
+    monad_fold_right lin_merge (List.rev l) (linear_mask_init npat) = Some m.
 Proof.
-  intros A f l l' a h.
-  induction l as [| a0 l ih] in l', a |- *.
-  - cbn. rewrite app_nil_r. reflexivity.
-  - cbn. rewrite ih. rewrite !option_monad_fold_right_app.
-    cbn. destruct monad_fold_right as [a1|] eqn:e1. 2: reflexivity.
-    destruct (monad_fold_right f l' _) as [a2|] eqn:e2.
-    + destruct (f a1 a0) as [a3|] eqn:e3.
-      * *)
+  intros npat l m h.
+  induction l in npat, m, h |- *.
+  - cbn in h. apply some_inj in h. subst.
+    cbn. reflexivity.
+  - cbn in h. destruct monad_fold_right eqn:e. 2: discriminate.
+    eapply IHl in e.
+    cbn. eapply lin_merge_app. 1,3: eauto.
+    cbn. eapply lin_merge_length in h as [? ?].
+    eapply fold_lin_merge_length in e.
+    replace npat with #|a| by lia.
+    apply lin_merge_linear_mask_init.
+Qed.
 
 Lemma list_ext :
   forall {A} (m1 m2 : list A),
@@ -1053,63 +1146,6 @@ Proof.
       apply (h (S n)).
 Qed.
 
-Fixpoint minus_mask m l :=
-  match m, l with
-  | true :: m, true :: l => false :: minus_mask m l
-  | x :: m, y :: l => x :: minus_mask m l
-  | _, _ => []
-  end.
-
-(* Lemma minus_mask_ *)
-
-Lemma linear_mask_spec :
-  forall npat l m,
-    (forall n,
-      nth_error m n = Some true ->
-      ∑ k l',
-        nth_error l k = Some l' ×
-        nth_error l' n = Some true ×
-        forall k' l'',
-          nth_error l k' = Some l'' ->
-          nth_error l'' n = Some true ->
-          k = k'
-    ) ->
-    (forall n,
-      nth_error m n = Some false ->
-      forall k l',
-        nth_error l k = Some l' ->
-        nth_error l' n = Some false
-    ) ->
-    #|m| = npat ->
-    monad_fold_right lin_merge l (linear_mask_init npat) = Some m.
-Proof.
-  intros npat l m ht hf hn.
-  induction l as [| li l ih] in m, ht, hf, hn |- *.
-  - cbn. f_equal. apply list_ext. intro n.
-    destruct nth_error eqn:e.
-    + unfold linear_mask_init in e.
-      eapply nth_error_Some_length in e as hl.
-      rewrite list_init_length in hl.
-      rewrite nth_error_list_init in e.
-      2:{
-        apply nth_error_Some_length in e. rewrite list_init_length in e. auto.
-      }
-      apply some_inj in e. subst.
-      destruct nth_error as [[]|] eqn:e.
-      * eapply ht in e as [[] [? [? ?]]]. all: discriminate.
-      * reflexivity.
-      * apply nth_error_None in e. lia.
-    + unfold linear_mask_init in e.
-      eapply nth_error_None in e as hl.
-      rewrite list_init_length in hl.
-      destruct (nth_error m n) eqn:e1. 2: reflexivity.
-      apply nth_error_Some_length in e1. lia.
-  - cbn. specialize (ih (minus_mask m li)).
-    forward ih.
-    { intros n e.
-    (* } *)
-Admitted.
-
 Lemma linear_mask_rev :
   forall npat l m,
     linear_mask npat l = Some m ->
@@ -1123,9 +1159,8 @@ Proof.
   destruct monad_map. 2: discriminate.
   apply some_inj in e1. subst.
   cbn.
-  eapply linear_mask_spec.
-  - intros n e.
-Abort.
+  apply lin_merge_rev. assumption.
+Qed.
 
 Lemma match_lhs_complete :
   forall npat k n ui l σ,
@@ -1140,6 +1175,11 @@ Proof.
   unfold match_lhs.
   apply All_rev in pl.
   eapply match_prelhs_complete in pl. 3: eauto.
+  2:{
+    eapply linear_mask_rev. eassumption.
+  }
+  destruct pl as [θ [hθ [e ?]]].
+  (* rewrite e. *)
 Admitted.
 
 (* TODO MOVE *)
