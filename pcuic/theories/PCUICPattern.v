@@ -886,6 +886,16 @@ Proof.
     subst. reflexivity.
 Qed.
 
+Lemma assert_eq_refl :
+  forall {A} `{ReflectEq A} (x : A),
+    assert_eq x x = Some ().
+Proof.
+  intros A H x.
+  unfold assert_eq. destruct (eqb_spec x x).
+  - reflexivity.
+  - exfalso. auto.
+Qed.
+
 Lemma match_prelhs_complete :
   forall npat k n ui l m σ,
     All (elim_pattern npat) l ->
@@ -896,6 +906,28 @@ Lemma match_prelhs_complete :
       let t := fold_right (fun e t => mkElim t e) (tSymb k n ui) l in
       match_prelhs npat k n l (subst0 σ t) = Some (ui, θ) ×
       subs_complete θ σ.
+Proof.
+  intros npat k n ui l m σ pl ll σl.
+  induction pl as [| [] l pe pl ih] in m, σ, ll, σl |- *.
+  - cbn. rewrite !assert_eq_refl.
+    cbn in ll. apply some_inj in ll. subst.
+    eexists. intuition eauto.
+    + apply masks_linear_mask_init.
+    + apply subs_complete_subs_empty. reflexivity.
+  - cbn. cbn in ll.
+    destruct pattern_mask eqn:e1. 2: discriminate.
+    destruct monad_map eqn:e2. 2: discriminate.
+    cbn in ll. destruct monad_fold_right eqn:e3. 2: discriminate.
+    cbn in ih. rewrite e2 in ih.
+    specialize ih with (1 := e3).
+    inversion pe. subst.
+    eapply match_pattern_complete in e1. 2,3: eauto.
+    destruct e1 as [θ1 [hθ1 [e1 hc1]]].
+    rewrite e1.
+    specialize ih with (1 := eq_refl).
+    destruct ih as [θ2 [hθ2 [eq2 hc2]]].
+    rewrite eq2.
+    (* Now merge using ll *)
 Admitted.
 
 Definition match_lhs npat k n l t :=
