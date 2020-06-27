@@ -921,6 +921,21 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma lin_merge_linear_mask_init_eq :
+  forall npat m1 m2,
+    lin_merge (linear_mask_init npat) m1 = Some m2 ->
+    m1 = m2.
+Proof.
+  intros npat m1 m2 h.
+  induction npat in m1, m2, h |- *.
+  - cbn in h. destruct m1. 2: discriminate.
+    apply some_inj in h. assumption.
+  - destruct m1. 1: discriminate.
+    cbn in h. destruct lin_merge eqn:e. 2: discriminate.
+    apply some_inj in h. subst.
+    eapply IHnpat in e. subst. reflexivity.
+Qed.
+
 Lemma match_prelhs_complete :
   forall npat k n ui l m σ,
     All (elim_pattern npat) l ->
@@ -1024,7 +1039,20 @@ Proof.
     eexists. intuition eauto.
     eapply subs_complete_merge. all: eauto.
     eapply subs_complete_merge. all: eauto.
-Admitted.
+  - cbn. rewrite assert_eq_refl.
+    cbn in ll. destruct monad_map eqn:e1. 2: discriminate.
+    cbn in ll. destruct monad_fold_right eqn:e2. 2: discriminate.
+    unfold linear_mask in ih. cbn in ih.
+    rewrite e1 in ih. rewrite e2 in ih.
+    specialize ih with (1 := eq_refl).
+    specialize ih with (1 := σl).
+    destruct ih as [θ [hm [e hc]]].
+    rewrite e.
+    eexists. intuition eauto.
+    eapply lin_merge_sym in ll.
+    apply lin_merge_linear_mask_init_eq in ll. subst.
+    assumption.
+Qed.
 
 Definition match_lhs npat k n l t :=
   '(ui,σ) <- match_prelhs npat k n (List.rev l) t ;;
@@ -1107,21 +1135,6 @@ Proof.
   - cbn. destruct monad_fold_right. all: reflexivity.
   - cbn. rewrite IHl. cbn. destruct monad_fold_right. 2: reflexivity.
     reflexivity.
-Qed.
-
-Lemma lin_merge_linear_mask_init_eq :
-  forall npat m1 m2,
-    lin_merge (linear_mask_init npat) m1 = Some m2 ->
-    m1 = m2.
-Proof.
-  intros npat m1 m2 h.
-  induction npat in m1, m2, h |- *.
-  - cbn in h. destruct m1. 2: discriminate.
-    apply some_inj in h. assumption.
-  - destruct m1. 1: discriminate.
-    cbn in h. destruct lin_merge eqn:e. 2: discriminate.
-    apply some_inj in h. subst.
-    eapply IHnpat in e. subst. reflexivity.
 Qed.
 
 Lemma lin_merge_assoc :
