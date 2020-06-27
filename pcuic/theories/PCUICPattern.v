@@ -957,7 +957,73 @@ Proof.
     destruct ll as [θ [hθ hm]].
     rewrite hθ. eexists. intuition eauto.
     eapply subs_complete_merge. all: eauto.
-  -
+  - cbn. rewrite !assert_eq_refl.
+    cbn in ll.
+    destruct pattern_mask eqn:e1. 2: discriminate.
+    destruct monad_map eqn:e2. 2: discriminate.
+    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct lin_merge eqn:e4. 2: discriminate.
+    move ll at top.
+    destruct monad_map eqn:e5. 2: discriminate.
+    cbn in ll. destruct monad_fold_right eqn:e6. 2: discriminate.
+    cbn in ih. rewrite e5 in ih. rewrite e6 in ih.
+    specialize ih with (1 := eq_refl).
+    inversion pe. subst.
+    specialize ih with (1 := eq_refl).
+    eapply match_pattern_complete in e1. 2,3: eauto.
+    destruct e1 as [θ1 [hθ1 [e1 hc1]]].
+    rewrite e1.
+    destruct ih as [θ2 [hθ2 [eq2 hc2]]].
+    rewrite eq2.
+    match goal with
+    | |- context [ option_map2 ?f ?x ?y ] =>
+      assert (e7 :
+        ∑ l ρ,
+          option_map2 f x y = Some l ×
+          monad_fold_right subs_merge l (subs_empty #|σ|) = Some ρ ×
+          masks l2 ρ ×
+          subs_complete ρ σ
+      )
+    end.
+    { clear - e2 e3 X0. induction X0 in l1, e2, l2, e3 |- *.
+      - cbn in e2. apply some_inj in e2. subst.
+        cbn in e3. apply some_inj in e3. subst.
+        cbn. eexists _,_. intuition eauto.
+        + eapply masks_linear_mask_init.
+        + eapply subs_complete_subs_empty. reflexivity.
+      - cbn in e2. destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct monad_map eqn:e4. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn in e3.
+        destruct monad_fold_right eqn:e5. 2: discriminate.
+        specialize IHX0 with (1 := eq_refl).
+        specialize IHX0 with (1 := e5).
+        cbn. rewrite !assert_eq_refl.
+        eapply match_pattern_complete in e1. 2,3: eauto.
+        destruct e1 as [θ1 [hθ1 [e1 hc1]]].
+        rewrite e1.
+        destruct IHX0 as [l' [ρ [e [e6 [? ?]]]]].
+        rewrite e.
+        eapply masks_merge in e3. 3,2: eauto.
+        destruct e3 as [θ [hθ hm]].
+        eexists _,_. split. 1: reflexivity.
+        split. 2: split.
+        + cbn. rewrite e6. eassumption.
+        + assumption.
+        + eapply subs_complete_merge. all: eauto.
+    }
+    destruct e7 as [l' [ρ [e [e7 [? ?]]]]].
+    rewrite e. rewrite e7.
+    eapply masks_merge in e4. 3,2: eauto.
+    destruct e4 as [θ [hθ hm]].
+    rewrite hθ.
+    eapply lin_merge_sym in ll.
+    eapply masks_merge in ll. 3,2: eauto.
+    destruct ll as [θ' [hθ' hm']].
+    rewrite hθ'.
+    eexists. intuition eauto.
+    eapply subs_complete_merge. all: eauto.
+    eapply subs_complete_merge. all: eauto.
 Admitted.
 
 Definition match_lhs npat k n l t :=
