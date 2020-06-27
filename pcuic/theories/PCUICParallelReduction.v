@@ -5075,31 +5075,6 @@ Section ParallelSubstitution.
       + crush_bool.
   Qed.
 
-  Lemma lin_merge_sym :
-    forall m1 m2 m,
-      lin_merge m1 m2 = Some m ->
-      lin_merge m2 m1 = Some m.
-  Proof.
-    intros m1 m2 m e.
-    induction m1 as [| [] m1 ih] in m2, m, e |- *.
-    - destruct m2. 2: discriminate.
-      assumption.
-    - destruct m2 as [| [] m2]. 1,2: discriminate.
-      cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
-      apply some_inj in e. subst.
-      cbn. erewrite -> ih by eassumption.
-      reflexivity.
-    - destruct m2 as [| [] m2]. 1: discriminate.
-      + cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
-        apply some_inj in e. subst.
-        cbn. erewrite -> ih by eassumption.
-        reflexivity.
-      + cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
-        apply some_inj in e. subst.
-        cbn. erewrite -> ih by eassumption.
-        reflexivity.
-  Qed.
-
   Lemma partial_subst_mask_subs_empty :
     forall npat n,
       partial_subst_mask npat (subs_empty n) = Some (linear_mask_init npat).

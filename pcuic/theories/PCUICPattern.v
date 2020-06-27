@@ -896,6 +896,31 @@ Proof.
   - exfalso. auto.
 Qed.
 
+Lemma lin_merge_sym :
+  forall m1 m2 m,
+    lin_merge m1 m2 = Some m ->
+    lin_merge m2 m1 = Some m.
+Proof.
+  intros m1 m2 m e.
+  induction m1 as [| [] m1 ih] in m2, m, e |- *.
+  - destruct m2. 2: discriminate.
+    assumption.
+  - destruct m2 as [| [] m2]. 1,2: discriminate.
+    cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    cbn. erewrite -> ih by eassumption.
+    reflexivity.
+  - destruct m2 as [| [] m2]. 1: discriminate.
+    + cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. erewrite -> ih by eassumption.
+      reflexivity.
+    + cbn in e. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in e. subst.
+      cbn. erewrite -> ih by eassumption.
+      reflexivity.
+Qed.
+
 Lemma match_prelhs_complete :
   forall npat k n ui l m σ,
     All (elim_pattern npat) l ->
@@ -927,7 +952,12 @@ Proof.
     specialize ih with (1 := eq_refl).
     destruct ih as [θ2 [hθ2 [eq2 hc2]]].
     rewrite eq2.
-    (* Now merge using ll *)
+    eapply lin_merge_sym in ll.
+    eapply masks_merge in ll. 3,2: eauto.
+    destruct ll as [θ [hθ hm]].
+    rewrite hθ. eexists. intuition eauto.
+    eapply subs_complete_merge. all: eauto.
+  -
 Admitted.
 
 Definition match_lhs npat k n l t :=
