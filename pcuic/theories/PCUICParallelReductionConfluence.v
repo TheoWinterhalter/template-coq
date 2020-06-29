@@ -762,80 +762,6 @@ Definition on_option {A} (P : A -> Type) : option A -> Type :=
     | None => True
     end.
 
-Section Confluenv.
-
-  (* Constraints on the global environment that would ensure confluence. *)
-
-  Context {cf : checker_flags}.
-
-  Context (first_match :
-    kername ->
-    list rewrite_rule ->
-    term ->
-    option ((Instance.t × list term) × rewrite_rule)
-  ).
-
-  Context (onrd : rewrite_decl -> Type).
-
-  Context (rho :
-    ∀ (Σ : global_env),
-      wf Σ →
-      ∀ extra : option (kername × rewrite_decl),
-        on_option (λ '(_, rd), onrd rd) extra →
-        context →
-        term →
-        term
-  ).
-
-  Context (rho_ctx :
-    ∀ (Σ : global_env),
-      wf Σ →
-      ∀ extra : option (kername × rewrite_decl),
-        on_option (λ '(_, rd), onrd rd) extra →
-        context →
-        context
-  ).
-
-  Inductive triangle_rules  Σ kn nsymb (rho : context -> term -> term) rho_ctx : list rewrite_rule -> Type :=
-  | triangle_rules_nil : triangle_rules Σ kn nsymb rho rho_ctx []
-  | triangle_rules_cons :
-      forall r rl,
-        (forall σ ui θ r',
-          (* TODO Find the right contexts, probably with some untyped_subslet *)
-          let ss := symbols_subst kn 0 ui nsymb in
-          let Δ := [] in
-          let Γ := [] in
-          let tl := subst0 σ (subst ss #|σ| (lhs r)) in
-          let tr := subst0 (map (rho Γ) σ) (subst ss #|σ| (rhs r)) in
-          let tr' := subst0 (map (rho Γ) θ) (subst ss #|θ| (rhs r')) in
-          first_match kn rl tl = Some (ui, θ, r') ->
-          pred1 Σ Δ (rho_ctx Γ) tr tr'
-        ) ->
-        triangle_rules Σ kn nsymb rho rho_ctx rl ->
-        triangle_rules Σ kn nsymb rho rho_ctx (rl ++ [r]).
-
-  Definition confl_rew_decl Σ wfΣ kn d :=
-    let l := d.(prules) ++ d.(rules) in
-    let extra := Some (kn, d) in
-    ∑ on_extra,
-      triangle_rules
-        Σ kn #|d.(symbols)| (rho Σ wfΣ extra on_extra) (rho_ctx Σ wfΣ extra on_extra) l.
-
-  Definition confl_decl Σ hΣ kn decl : Type :=
-    match decl with
-    | RewriteDecl rew => confl_rew_decl Σ hΣ kn rew
-    | _ => True
-    end.
-
-  Inductive confluenv : global_env -> Type :=
-  | confluenv_nil : confluenv []
-  | confluenv_decl Σ hΣ kn d :
-      confluenv Σ ->
-      confl_decl Σ hΣ kn d ->
-      confluenv (Σ ,, (kn, d)).
-
-End Confluenv.
-
 Section Rho.
   Context {cf : checker_flags}.
   Context (Σ : global_env).
@@ -4654,6 +4580,53 @@ Section Rho.
   Qed.
 
 End Rho.
+
+Section Confluenv.
+
+  (* Constraints on the global environment that would ensure confluence. *)
+
+  Context {cf : checker_flags}.
+
+  Inductive triangle_rules  Σ kn nsymb (rho : context -> term -> term) rho_ctx : list rewrite_rule -> Type :=
+  | triangle_rules_nil : triangle_rules Σ kn nsymb rho rho_ctx []
+  | triangle_rules_cons :
+      forall r rl,
+        (forall σ ui θ r',
+          (* TODO Find the right contexts, probably with some untyped_subslet *)
+          let ss := symbols_subst kn 0 ui nsymb in
+          let Δ := [] in
+          let Γ := [] in
+          let tl := subst0 σ (subst ss #|σ| (lhs r)) in
+          let tr := subst0 (map (rho Γ) σ) (subst ss #|σ| (rhs r)) in
+          let tr' := subst0 (map (rho Γ) θ) (subst ss #|θ| (rhs r')) in
+          first_match kn rl tl = Some (ui, θ, r') ->
+          (* TODO Use the env notion of pred1 *)
+          pred1 Σ Δ (rho_ctx Γ) tr tr'
+        ) ->
+        triangle_rules Σ kn nsymb rho rho_ctx rl ->
+        triangle_rules Σ kn nsymb rho rho_ctx (rl ++ [r]).
+
+  Definition confl_rew_decl Σ wfΣ kn d :=
+    let l := d.(prules) ++ d.(rules) in
+    let extra := Some (kn, d) in
+    ∑ on_extra,
+      triangle_rules
+        Σ kn #|d.(symbols)| (rho Σ wfΣ extra on_extra) (rho_ctx Σ wfΣ extra on_extra) l.
+
+  Definition confl_decl Σ hΣ kn decl : Type :=
+    match decl with
+    | RewriteDecl rew => confl_rew_decl Σ hΣ kn rew
+    | _ => True
+    end.
+
+  Inductive confluenv : global_env -> Type :=
+  | confluenv_nil : confluenv []
+  | confluenv_decl Σ hΣ kn d :
+      confluenv Σ ->
+      confl_decl Σ hΣ kn d ->
+      confluenv (Σ ,, (kn, d)).
+
+End Confluenv.
 
 Section Triangle.
 
