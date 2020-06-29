@@ -22,15 +22,16 @@ Ltac pcuic := intuition eauto 5 with pcuic ||
 Hint Resolve eq_universe_leq_universe' : pcuic.
 
 Derive Signature for cumul assumption_context.
- 
+
 (* Bug in Equations ... *)
 (* Derive Signature for clos_refl_trans_1n. *)
 
 (* So that we can use [conv_trans]... *)
 Existing Class wf.
+Existing Class confluenv.
 
 (* todo move *)
-Lemma All2_refl {A} {P : A -> A -> Type} l : 
+Lemma All2_refl {A} {P : A -> A -> Type} l :
   (forall x, P x x) ->
   All2 P l l.
 Proof.
@@ -40,13 +41,15 @@ Qed.
 (** Remark that confluence is needed for transitivity of conv and cumul. *)
 
 Instance conv_trans {cf:checker_flags} (Σ : global_env_ext) {Γ} :
-  wf Σ -> Transitive (conv Σ Γ).
+  wf Σ ->
+  confluenv Σ ->
+  Transitive (conv Σ Γ).
 Proof.
-  intros wfΣ t u v X0 X1.
+  intros wfΣ cΣ t u v X0 X1.
   eapply conv_alt_red in X0 as [t' [u' [[tt' uu'] eq]]].
   eapply conv_alt_red in X1 as [u'' [v' [[uu'' vv'] eq']]].
   eapply conv_alt_red.
-  destruct (red_confluence wfΣ uu' uu'') as [u'nf [ul ur]].
+  destruct (red_confluence wfΣ cΣ uu' uu'') as [u'nf [ul ur]].
   eapply red_eq_term_upto_univ_r in ul as [tnf [redtnf ?]]; tea; tc.
   eapply red_eq_term_upto_univ_l in ur as [unf [redunf ?]]; tea; tc.
   exists tnf, unf.
@@ -57,12 +60,14 @@ Proof.
 Qed.
 
 Instance cumul_trans {cf:checker_flags} (Σ : global_env_ext) Γ :
-  wf Σ -> Transitive (cumul Σ Γ).
+  wf Σ ->
+  confluenv Σ ->
+  Transitive (cumul Σ Γ).
 Proof.
-  intros wfΣ t u v X X0.
+  intros wfΣ cΣ t u v X X0.
   eapply cumul_alt in X as [v' [v'' [[redl redr] eq]]].
   eapply cumul_alt in X0 as [w [w' [[redl' redr'] eq']]].
-  destruct (red_confluence wfΣ redr redl') as [nf [nfl nfr]].
+  destruct (red_confluence wfΣ cΣ redr redl') as [nf [nfl nfr]].
   eapply cumul_alt.
   eapply red_eq_term_upto_univ_r in eq; tc;eauto with pcuic.
   destruct eq as [v'0 [red'0 eq2]].
@@ -76,9 +81,11 @@ Proof.
 Qed.
 
 Instance conv_context_trans {cf:checker_flags} Σ :
-  wf Σ.1 -> Transitive (fun Γ Γ' => conv_context Σ Γ Γ').
+  wf Σ.1 ->
+  confluenv Σ.1 ->
+  Transitive (fun Γ Γ' => conv_context Σ Γ Γ').
 Proof.
-  intros wfΣ.
+  intros wfΣ cΣ.
   eapply context_relation_trans.
   intros.
   depelim X2; depelim X3; try constructor; auto.
@@ -146,7 +153,7 @@ Section Eta.
       ∑ w,
         red Σ Γ t w ×
         eta_expansions w v.
-  Proof.
+  (* Proof.
     intros Γ t u v [na [A [f [π [e1 e2]]]]] r. subst.
     induction π in Γ, v, na, A, f, r |- * using stack_rev_rect.
     - simpl in *. dependent destruction r.
@@ -162,7 +169,7 @@ Section Eta.
           eexists. split. 1: constructor.
           (* We have a problem here because the type is not the same! *)
           give_up.
-        *
+        * *)
   Abort.
 
 End Eta.
@@ -224,16 +231,18 @@ Proof.
   - constructor; [apply eqdom|reflexivity].
 Qed.
 
-Lemma congr_cumul_prod : forall `{checker_flags} Σ Γ na na' M1 M2 N1 N2,
-  wf Σ.1 ->
+Lemma congr_cumul_prod :
+  forall `{checker_flags} Σ Γ na na' M1 M2 N1 N2,
+    wf Σ.1 ->
+    confluenv Σ.1 ->
     Σ ;;; Γ |- M1 = N1 ->
     Σ ;;; (Γ ,, vass na M1) |- M2 <= N2 ->
     Σ ;;; Γ |- (tProd na M1 M2) <= (tProd na' N1 N2).
 Proof.
-  intros * wfΣ ? ?.
+  intros * wfΣ cΣ ? ?.
   transitivity (tProd na' N1 M2).
   - eapply congr_cumul_prod_l; eauto.
-  - eapply (cumul_conv_ctx _ _ _ (Γ ,, vass na' N1)) in X0.
+  - eapply (cumul_conv_ctx _ _ _ _ (Γ ,, vass na' N1)) in X0.
     2:{ constructor; [apply conv_ctx_refl|constructor; auto]. }
     clear X.
     eapply cumul_alt in X0 as (codom & codom' & (rcodom & rcodom') & eqcodom).
@@ -245,14 +254,85 @@ Proof.
     + constructor; auto. reflexivity.
 Qed.
 
+Fixpoint remove_elims (t : term) :=
+  match t with
+  | tApp u v => remove_elims u
+  | tCase ind p c brs => remove_elims c
+  | tProj p t => remove_elims t
+  | _ => t
+  end.
+
+Lemma remove_elims_mkElims :
+  forall t l,
+    remove_elims (mkElims t l) = remove_elims t.
+Proof.
+  intros t l.
+  induction l as [| [] l ih] in t |- *.
+  1: reflexivity.
+  all: rewrite ih.
+  all: reflexivity.
+Qed.
+
+(* Lemma remove_elims_subst :
+  forall s k t,
+    remove_elims (subst s k t) = subst s k (remove_elims t).
+Proof.
+  intros s k t.
+  induction t in s, k |- *.
+  all: auto.
+  - cbn. *)
+
 Lemma cumul_Sort_inv {cf:checker_flags} Σ Γ s s' :
   Σ ;;; Γ |- tSort s <= tSort s' ->
   leq_universe (global_ext_constraints Σ) s s'.
 Proof.
-  intros H. depind H.
+  intros H.
+  depind H.
   - now inversion l.
-  - depelim r. solve_discr.
-  - depelim r. solve_discr.
+  - (* depelim r. *)
+    generalize_by_eqs_vars r. destruct r.
+    all: try solve [ simplify_dep_elim ].
+    + simplify_dep_elim. solve_discr.
+    + subst lhs rhs. simplify_dep_elim.
+      apply (f_equal remove_elims) in H0. cbn in H0.
+      unfold lhs in H0. rewrite 2!PCUICParallelReduction.mkElims_subst in H0.
+      rewrite remove_elims_mkElims in H0. cbn in H0.
+      apply untyped_subslet_length in u.
+      rewrite subst_context_length in u.
+      destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)). 2: lia.
+      move H0 at top. destruct nth_error eqn:e1.
+      * subst ss. unfold symbols_subst in e1.
+        eapply PCUICParallelReduction.list_make_nth_error in e1.
+        subst. discriminate.
+      * cbn in H0.
+        apply nth_error_None in e1.
+        destruct nth_error eqn:e2.
+        1:{
+          eapply nth_error_Some_length in e2. lia.
+        }
+        cbn in H0. discriminate.
+  - (* depelim r. *)
+    generalize_by_eqs_vars r. destruct r.
+    all: try solve [ simplify_dep_elim ].
+    + simplify_dep_elim. solve_discr.
+    + subst lhs rhs. simplify_dep_elim.
+      apply (f_equal remove_elims) in H0. cbn in H0.
+      unfold lhs in H0. rewrite 2!PCUICParallelReduction.mkElims_subst in H0.
+      rewrite remove_elims_mkElims in H0. cbn in H0.
+      apply untyped_subslet_length in u.
+      rewrite subst_context_length in u.
+      destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)). 2: lia.
+      move H0 at top. destruct nth_error eqn:e1.
+      * subst ss. unfold symbols_subst in e1.
+        eapply PCUICParallelReduction.list_make_nth_error in e1.
+        subst. discriminate.
+      * cbn in H0.
+        apply nth_error_None in e1.
+        destruct nth_error eqn:e2.
+        1:{
+          eapply nth_error_Some_length in e2. lia.
+        }
+        cbn in H0. discriminate.
   - todoeta.
   - todoeta.
 Qed.
@@ -260,7 +340,7 @@ Qed.
 Lemma cumul_Sort_Prod_inv {cf:checker_flags} Σ Γ s na dom codom :
   Σ ;;; Γ |- tSort s <= tProd na dom codom ->
   False.
-Proof.
+(* Proof.
   intros H. depind H.
   - now inversion l.
   - depelim r. solve_discr.
@@ -284,12 +364,13 @@ Proof.
     *)
     todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_Sort_l_inv {cf:checker_flags} Σ Γ s T :
   Σ ;;; Γ |- tSort s <= T ->
   ∑ s', red Σ Γ T (tSort s') * leq_universe Σ s s'.
-Proof.
+(* Proof.
   intros H. depind H.
   - now inversion l.
   - depelim r.
@@ -299,12 +380,13 @@ Proof.
     exists s'. split; auto. now eapply red_step with v.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_Sort_r_inv {cf:checker_flags} Σ Γ s T :
   Σ ;;; Γ |- T <= tSort s ->
   ∑ s', red Σ Γ T (tSort s') * leq_universe Σ s' s.
-Proof.
+(* Proof.
   intros H. depind H.
   - now inversion l.
   - destruct IHcumul as [s' [redv leq]].
@@ -312,14 +394,15 @@ Proof.
   - depelim r. solve_discr.
   - todoeta. (* The lemma is now WRONG *)
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_LetIn_l_inv {cf:checker_flags} (Σ : global_env_ext) Γ na b B codom T :
   wf Σ ->
   Σ ;;; Γ |- tLetIn na b B codom <= T ->
   ∑ codom', red Σ Γ T codom' *
                      (Σ ;;; Γ |- codom {0 := b} <= codom').
-Proof.
+(* Proof.
   intros wfΣ H. depind H.
   - inv l. eexists (u' {0 := t'}); intuition eauto.
     + eapply red1_red. constructor.
@@ -356,14 +439,15 @@ Proof.
     now eapply red_step with v.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_LetIn_r_inv {cf:checker_flags} (Σ : global_env_ext) Γ na b B codom T :
   wf Σ ->
   Σ ;;; Γ |- T <= tLetIn na b B codom ->
   ∑ codom', red Σ Γ T codom' *
                      (Σ ;;; Γ |- codom' <= codom {0 := b}).
-Proof.
+(* Proof.
   intros wfΣ H; depind H; auto.
   - inv l. eexists (u {0 := t0}); intuition eauto.
     + eapply red1_red. constructor.
@@ -400,14 +484,15 @@ Proof.
       repeat constructor.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_Prod_l_inv {cf:checker_flags} (Σ : global_env_ext) Γ na dom codom T :
   wf Σ ->
   Σ ;;; Γ |- tProd na dom codom <= T ->
   ∑ na' dom' codom', red Σ Γ T (tProd na' dom' codom') *
                      (Σ ;;; Γ |- dom = dom') * (Σ ;;; Γ ,, vass na dom |- codom <= codom').
-Proof.
+(* Proof.
   intros wfΣ H; depind H; auto.
   - inv l. exists na', a', b'; intuition eauto; constructor; auto.
   - depelim r.
@@ -427,14 +512,15 @@ Proof.
     now eapply red_step with v.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_Prod_r_inv {cf:checker_flags} (Σ : global_env_ext) Γ na' dom' codom' T :
   wf Σ ->
   Σ ;;; Γ |- T <= tProd na' dom' codom' ->
   ∑ na dom codom, red Σ Γ T (tProd na dom codom) *
                      (Σ ;;; Γ |- dom = dom') * (Σ ;;; Γ ,, vass na' dom' |- codom <= codom').
-Proof.
+(* Proof.
   intros wfΣ H; depind H; auto.
   - inv l. exists na, a, b; intuition eauto; constructor; auto.
   - destruct IHcumul as [na [dom [codom [[reddom' eqdom'] leq]]]] => //.
@@ -454,11 +540,12 @@ Proof.
       transitivity N2; eauto. eapply red_cumul_inv; auto.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_Prod_Sort_inv {cf:checker_flags} Σ Γ s na dom codom :
   Σ ;;; Γ |- tProd na dom codom <= tSort s -> False.
-Proof.
+(* Proof.
   intros H; depind H; auto.
   - now inversion l.
   - depelim r.
@@ -468,13 +555,14 @@ Proof.
   - depelim r. solve_discr.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma cumul_Prod_Prod_inv {cf:checker_flags} (Σ : global_env_ext) Γ na na' dom dom' codom codom' :
   wf Σ ->
   Σ ;;; Γ |- tProd na dom codom <= tProd na' dom' codom' ->
   (Σ ;;; Γ |- dom = dom') × (Σ ;;; Γ ,, vass na' dom' |- codom <= codom').
-Proof.
+(* Proof.
   intros wfΣ H; depind H; auto.
   - inv l. split; auto; constructor; auto.
   - depelim r.
@@ -502,12 +590,14 @@ Proof.
       now eapply red1_red, red_cumul_inv in r.
   - todoeta.
   - todoeta.
-Qed.
+Qed. *)
+Admitted.
 
 Section Inversions.
   Context {cf : checker_flags}.
   Context (Σ : global_env_ext).
   Context (wfΣ : wf Σ).
+  Context (cΣ : confluenv Σ).
 
   Definition Is_conv_to_Arity Σ Γ T :=
     exists T', ∥ red Σ Γ T T' ∥ /\ isArity T'.
@@ -573,7 +663,27 @@ Section Inversions.
     intros H; apply red_alt in H.
     generalize_eq x (tSort u).
     induction H; simplify *.
-    - depind r. solve_discr.
+    - generalize_by_eqs_vars r. destruct r.
+      all: try solve [ simplify_dep_elim ].
+      + simplify_dep_elim. solve_discr.
+      + subst lhs rhs. simplify_dep_elim.
+        apply (f_equal remove_elims) in H. cbn in H.
+        unfold lhs in H. rewrite 2!PCUICParallelReduction.mkElims_subst in H.
+        rewrite remove_elims_mkElims in H. cbn in H.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec #|s| (#|pat_context r| + head r)). 2: lia.
+        move H at top. destruct nth_error eqn:e1.
+        * subst ss. unfold symbols_subst in e1.
+          eapply PCUICParallelReduction.list_make_nth_error in e1.
+          subst. discriminate.
+        * cbn in H.
+          apply nth_error_None in e1.
+          destruct nth_error eqn:e2.
+          1:{
+            eapply nth_error_Some_length in e2. lia.
+          }
+          cbn in H. discriminate.
     - reflexivity.
     - rewrite IHclos_refl_trans2; auto.
   Qed.
@@ -607,10 +717,29 @@ Section Inversions.
     intros H. apply red_alt in H.
     generalize_eq x (tProd na A B). revert na A B.
     induction H; simplify_dep_elim.
-    - depelim r.
-      + solve_discr.
-      + do 2 eexists. repeat split; eauto with pcuic.
-      + do 2 eexists. repeat split; eauto with pcuic.
+    - generalize_by_eqs_vars r. destruct r.
+      all: try solve [ simplify_dep_elim ].
+      + simplify_dep_elim. solve_discr.
+      + subst lhs rhs. simplify_dep_elim.
+        apply (f_equal remove_elims) in H. cbn in H.
+        unfold lhs in H. rewrite 2!PCUICParallelReduction.mkElims_subst in H.
+        rewrite remove_elims_mkElims in H. cbn in H.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
+        move H at top. destruct nth_error eqn:e1.
+        * subst ss. unfold symbols_subst in e1.
+          eapply PCUICParallelReduction.list_make_nth_error in e1.
+          subst. discriminate.
+        * cbn in H.
+          apply nth_error_None in e1.
+          destruct nth_error eqn:e2.
+          1:{
+            eapply nth_error_Some_length in e2. lia.
+          }
+          cbn in H. discriminate.
+      + simplify_dep_elim. do 2 eexists. repeat split; eauto with pcuic.
+      + simplify_dep_elim. do 2 eexists. repeat split; eauto with pcuic.
     - do 2 eexists. repeat split; eauto with pcuic.
     - specialize (IHclos_refl_trans1 _ _ _ eq_refl).
       destruct IHclos_refl_trans1 as (? & ? & (-> & ?) & ?).
@@ -720,27 +849,91 @@ Section Inversions.
   Proof.
     intros Γ u v h a.
     induction u in Γ, v, h, a |- *. all: try contradiction.
-    - dependent destruction h.
-      apply (f_equal nApp) in H as eq. simpl in eq.
-      rewrite nApp_mkApps in eq. simpl in eq.
-      destruct args. 2: discriminate.
-      simpl in H. discriminate.
-    - dependent destruction h.
-      + apply (f_equal nApp) in H as eq. simpl in eq.
+    - (* dependent destruction h. *)
+      generalize_by_eqs_vars h. destruct h.
+      all: try solve [ simplify_dep_elim ].
+      + simplify_dep_elim.
+        apply (f_equal nApp) in H as eq. simpl in eq.
         rewrite nApp_mkApps in eq. simpl in eq.
         destruct args. 2: discriminate.
         simpl in H. discriminate.
-      + assumption.
-      + simpl in *. eapply IHu2. all: eassumption.
-    - dependent destruction h.
-      + simpl in *. apply isArity_subst. assumption.
-      + apply (f_equal nApp) in H as eq. simpl in eq.
+      + subst lhs rhs. simplify_dep_elim.
+        apply (f_equal remove_elims) in H. cbn in H.
+        unfold lhs in H. rewrite 2!PCUICParallelReduction.mkElims_subst in H.
+        rewrite remove_elims_mkElims in H. cbn in H.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
+        move H at top. destruct nth_error eqn:e1.
+        * subst ss. unfold symbols_subst in e1.
+          eapply PCUICParallelReduction.list_make_nth_error in e1.
+          subst. discriminate.
+        * cbn in H.
+          apply nth_error_None in e1.
+          destruct nth_error eqn:e2.
+          1:{
+            eapply nth_error_Some_length in e2. lia.
+          }
+          cbn in H. discriminate.
+    - (* dependent destruction h. *)
+      generalize_by_eqs_vars h. destruct h.
+      all: try solve [ simplify_dep_elim ].
+      + simplify_dep_elim.
+        apply (f_equal nApp) in H as eq. simpl in eq.
         rewrite nApp_mkApps in eq. simpl in eq.
         destruct args. 2: discriminate.
         simpl in H. discriminate.
-      + assumption.
-      + assumption.
-      + simpl in *. eapply IHu3. all: eassumption.
+      + subst lhs rhs. simplify_dep_elim.
+        apply (f_equal remove_elims) in H. cbn in H.
+        unfold lhs in H. rewrite 2!PCUICParallelReduction.mkElims_subst in H.
+        rewrite remove_elims_mkElims in H. cbn in H.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
+        move H at top. destruct nth_error eqn:e1.
+        * subst ss. unfold symbols_subst in e1.
+          eapply PCUICParallelReduction.list_make_nth_error in e1.
+          subst. discriminate.
+        * cbn in H.
+          apply nth_error_None in e1.
+          destruct nth_error eqn:e2.
+          1:{
+            eapply nth_error_Some_length in e2. lia.
+          }
+          cbn in H. discriminate.
+      + simplify_dep_elim. assumption.
+      + simplify_dep_elim. simpl in *. eapply IHu2. all: eassumption.
+    - (* dependent destruction h. *)
+      generalize_by_eqs_vars h. destruct h.
+      all: try solve [ simplify_dep_elim ].
+      + simplify_dep_elim.
+        simpl in *. apply isArity_subst. assumption.
+      + simplify_dep_elim.
+        apply (f_equal nApp) in H as eq. simpl in eq.
+        rewrite nApp_mkApps in eq. simpl in eq.
+        destruct args. 2: discriminate.
+        simpl in H. discriminate.
+      + subst lhs rhs. simplify_dep_elim.
+        apply (f_equal remove_elims) in H. cbn in H.
+        unfold lhs in H. rewrite 2!PCUICParallelReduction.mkElims_subst in H.
+        rewrite remove_elims_mkElims in H. cbn in H.
+        apply untyped_subslet_length in u.
+        rewrite subst_context_length in u.
+        destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
+        move H at top. destruct nth_error eqn:e1.
+        * subst ss. unfold symbols_subst in e1.
+          eapply PCUICParallelReduction.list_make_nth_error in e1.
+          subst. discriminate.
+        * cbn in H.
+          apply nth_error_None in e1.
+          destruct nth_error eqn:e2.
+          1:{
+            eapply nth_error_Some_length in e2. lia.
+          }
+          cbn in H. discriminate.
+      + simplify_dep_elim. assumption.
+      + simplify_dep_elim. assumption.
+      + simplify_dep_elim. simpl in *. eapply IHu3. all: eassumption.
   Qed.
 
   Lemma invert_cumul_arity_r :
@@ -813,7 +1006,7 @@ Section Inversions.
       red Σ.1 Γ ty ty' *
       red Σ.1 (Γ ,, vdef na d ty) b b')) +
     (red Σ.1 Γ (subst10 d b) C)%type.
-  Proof.
+  (* Proof.
     generalize_eq x (tLetIn na d ty b).
     intros e H. apply red_alt in H.
     revert na d ty b e.
@@ -844,7 +1037,8 @@ Section Inversions.
         transitivity (r {0 := d}); auto.
         eapply (substitution_untyped_let_red _ _ [vdef na d ty] []); eauto.
         rewrite -{1}(subst_empty 0 d). constructor. constructor.
-  Qed.
+  Qed. *)
+  Admitted.
 
   Lemma cumul_red_r_inv :
     forall (Γ : context) T U U',
@@ -856,8 +1050,8 @@ Section Inversions.
     apply cumul_alt in cumtu.
     destruct cumtu as [v [v' [[redl redr] eq]]].
     apply cumul_alt.
-    destruct (red_confluence wfΣ redr red) as [nf [nfl nfr]].
-    eapply (fill_le _ wfΣ) in eq. 3:eapply nfl. 2:eapply reflexivity.
+    destruct (red_confluence wfΣ cΣ redr red) as [nf [nfl nfr]].
+    eapply (fill_le _ wfΣ) in eq. 2: auto. 3:eapply nfl. 2:eapply reflexivity.
     destruct eq as [t'' [u'' [[l r] eq]]].
     exists t''. exists u''. repeat split; auto.
     - now transitivity v.
@@ -874,8 +1068,8 @@ Section Inversions.
     apply cumul_alt in cumtu.
     destruct cumtu as [v [v' [[redl redr] eq]]].
     apply cumul_alt.
-    destruct (red_confluence wfΣ redl red) as [nf [nfl nfr]].
-    eapply (fill_le _ wfΣ) in eq. 2:eapply nfl. 2:eapply reflexivity.
+    destruct (red_confluence wfΣ cΣ redl red) as [nf [nfl nfr]].
+    eapply (fill_le _ wfΣ) in eq. 2: auto. 2:eapply nfl. 2:eapply reflexivity.
     destruct eq as [t'' [u'' [[l r] eq]]].
     exists t''. exists u''. repeat split; auto.
     - now transitivity nf.
@@ -889,7 +1083,7 @@ Section Inversions.
     intros Hlet.
     eapply cumul_red_l_inv; eauto.
     eapply red1_red; constructor.
-  Qed.  
+  Qed.
 
   Lemma invert_cumul_letin_r Γ C na d ty b :
     Σ ;;; Γ |- C <= tLetIn na d ty b ->
@@ -917,7 +1111,7 @@ Section Inversions.
 
   (* TODO deprecate? #[deprecated(note="use red_mkApps_tInd")] *)
   Notation invert_red_ind := red_mkApps_tInd.
-  
+
   Lemma invert_cumul_ind_l :
     forall Γ ind ui l T,
       Σ ;;; Γ |- mkApps (tInd ind ui) l <= T ->
@@ -979,13 +1173,14 @@ Qed.
 (* Unused... *)
 Lemma it_mkProd_or_LetIn_ass_inv {cf : checker_flags} (Σ : global_env_ext) Γ ctx ctx' s s' :
   wf Σ ->
+  confluenv Σ ->
   assumption_context ctx ->
   assumption_context ctx' ->
   Σ ;;; Γ |- it_mkProd_or_LetIn ctx (tSort s) <= it_mkProd_or_LetIn ctx' (tSort s') ->
   context_relation (fun ctx ctx' => conv_decls Σ (Γ ,,, ctx) (Γ ,,, ctx')) ctx ctx' *
    leq_term Σ (tSort s) (tSort s').
 Proof.
-  intros wfΣ.
+  intros wfΣ cΣ.
   revert Γ ctx' s s'.
   induction ctx using rev_ind.
   - intros. destruct ctx' using rev_ind.
@@ -1048,18 +1243,20 @@ Qed.
 
 (** Injectivity of products, the essential property of cumulativity needed for subject reduction. *)
 Lemma cumul_Prod_inv {cf:checker_flags} Σ Γ na na' A B A' B' :
-  wf Σ.1 -> wf_local Σ Γ ->
+  wf Σ.1 ->
+  confluenv Σ.1 ->
+  wf_local Σ Γ ->
   Σ ;;; Γ |- tProd na A B <= tProd na' A' B' ->
    ((Σ ;;; Γ |- A = A') * (Σ ;;; Γ ,, vass na' A' |- B <= B'))%type.
-Proof.
-  intros wfΣ wfΓ H; depind H.
+(* Proof.
+  intros wfΣ cΣ wfΓ H; depind H.
   - depelim l.
     split; auto.
     all: now constructor.
 
   - depelim r.
     + solve_discr.
-    + specialize (IHcumul _ _ _ _ _ _ wfΣ wfΓ eq_refl).
+    + specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
       intuition auto.
       econstructor 2; eauto.
     + specialize (IHcumul _ _ _ _ _ _ wfΣ wfΓ eq_refl).
@@ -1087,7 +1284,8 @@ Proof.
   - todoeta.
   - todoeta.
 
-Qed.
+Qed. *)
+Admitted.
 
 Lemma tProd_it_mkProd_or_LetIn na A B ctx s :
   tProd na A B = it_mkProd_or_LetIn ctx (tSort s) ->
@@ -1107,6 +1305,7 @@ Qed.
 Section Inversions.
   Context {cf : checker_flags}.
   Context (Σ : global_env_ext) (wfΣ : wf Σ).
+  Context (cΣ : confluenv Σ).
 
   Lemma cumul_App_r {Γ f u v} :
     Σ ;;; Γ |- u = v ->
@@ -1298,8 +1497,7 @@ Section Inversions.
       + eapply conv_Prod_r. eassumption.
       + eapply conv_Prod_l. eassumption.
     - simpl in *. destruct h2 as [h2]. constructor.
-      eapply cumul_trans.
-      + auto.
+      eapply cumul_trans. 1,2: auto.
       + eapply cumul_Prod_r. eassumption.
       + eapply conv_cumul. eapply conv_Prod_l. assumption.
   Qed.
@@ -2093,7 +2291,7 @@ Section Inversions.
     red Σ Γ (tLambda na A1 b1) T ->
     ∑ A2 b2, (T = tLambda na A2 b2) *
              red Σ Γ A1 A2 * red Σ (Γ ,, vass na A1) b1 b2.
-  Proof.
+  (* Proof.
     intros.
     eapply red_alt in X. eapply clos_rt_rt1n_iff in X.
     depind X.
@@ -2108,7 +2306,8 @@ Section Inversions.
         * red. auto.
       + eexists _, _; intuition eauto.
         now eapply red_step with M'.
-  Qed.
+  Qed. *)
+  Admitted.
 
   Lemma Lambda_conv_cum_inv :
     forall leq Γ na1 na2 A1 A2 b1 b2,
@@ -2163,12 +2362,13 @@ End Inversions.
 
 Lemma cum_LetIn `{cf:checker_flags} Σ Γ na1 na2 t1 t2 A1 A2 u1 u2 :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   Σ;;; Γ |- t1 = t2 ->
   Σ;;; Γ |- A1 = A2 ->
   cumul Σ (Γ ,, vdef na1 t1 A1) u1 u2 ->
   cumul Σ Γ (tLetIn na1 t1 A1 u1) (tLetIn na2 t2 A2 u2).
 Proof.
-  intros wfΣ X H H'.
+  intros wfΣ cΣ X H H'.
   - eapply cumul_trans => //.
     + eapply cumul_LetIn_bo. eassumption.
     + etransitivity.
@@ -2177,7 +2377,7 @@ Proof.
 Qed.
 
 Lemma untyped_substitution_conv `{cf : checker_flags} (Σ : global_env_ext) Γ Γ' Γ'' s M N :
-  wf Σ -> wf_local Σ (Γ ,,, Γ' ,,, Γ'') -> 
+  wf Σ -> wf_local Σ (Γ ,,, Γ' ,,, Γ'') ->
   untyped_subslet Γ s Γ' ->
   Σ ;;; Γ ,,, Γ' ,,, Γ'' |- M = N ->
   Σ ;;; Γ ,,, subst_context s 0 Γ'' |- subst s #|Γ''| M = subst s #|Γ''| N.
@@ -2224,13 +2424,15 @@ Qed.
 
 Derive Signature for untyped_subslet.
 
-Lemma conv_subst_conv {cf:checker_flags} (Σ : global_env_ext) Γ Δ Δ' Γ' s s' b : wf Σ ->
+Lemma conv_subst_conv {cf:checker_flags} (Σ : global_env_ext) Γ Δ Δ' Γ' s s' b :
+  wf Σ ->
+  confluenv Σ ->
   All2 (conv Σ Γ) s s' ->
   untyped_subslet Γ s Δ ->
   untyped_subslet Γ s' Δ' ->
   conv Σ (Γ ,,, Γ') (subst s #|Γ'| b) (subst s' #|Γ'| b).
 Proof.
-  move=> wfΣ eqsub subs subs'.
+  move=> wfΣ cΣ eqsub subs subs'.
   assert(∑ s0 s'0, All2 (red Σ Γ) s s0 * All2 (red Σ Γ) s' s'0 * All2 (eq_term Σ) s0 s'0)
     as [s0 [s'0 [[redl redr] eqs]]].
   { induction eqsub in Δ, subs |- *.
@@ -2242,9 +2444,9 @@ Proof.
     - specialize (IHeqsub _ subs) as [s0 [s'0 [[redl redr] eqs0]]].
       eapply conv_alt_red in r as [v [v' [[redv redv'] eqvv']]].
       exists (v :: s0), (v' :: s'0). repeat split; constructor; auto. }
-  eapply conv_trans => //. 
+  eapply conv_trans => //.
   * apply red_conv. eapply red_red => //; eauto.
-  * eapply conv_sym, conv_trans => //. 
+  * eapply conv_sym, conv_trans => //.
   ** apply red_conv. eapply red_red => //; eauto.
   ** apply conv_refl. red. apply eq_term_upto_univ_substs; try typeclasses eauto; try reflexivity.
      now symmetry.
@@ -2255,8 +2457,9 @@ Proof.
   induction 1; constructor; auto.
 Qed.
 
-Lemma untyped_subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U : 
+Lemma untyped_subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   untyped_subslet Γ s Γ0 ->
   untyped_subslet Γ s' Γ1 ->
   All2 (conv Σ Γ) s s' ->
@@ -2264,19 +2467,20 @@ Lemma untyped_subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
   Σ;;; Γ ,,, Γ0 ,,, Δ |- T = U ->
   Σ;;; Γ ,,, subst_context s 0 Δ |- subst s #|Δ| T = subst s' #|Δ| U.
 Proof.
-  move=> wfΣ subss subss' eqsub wfctx eqty.
+  move=> wfΣ cΣ subss subss' eqsub wfctx eqty.
   eapply conv_trans => //.
   * eapply untyped_substitution_conv => //.
   ** eapply wfctx.
-  ** auto. 
+  ** auto.
   ** apply eqty.
   * clear eqty.
     rewrite -(subst_context_length s 0 Δ).
     eapply conv_subst_conv => //; eauto using subslet_untyped_subslet.
 Qed.
 
-Lemma subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U : 
+Lemma subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   subslet Σ Γ s Γ0 ->
   subslet Σ Γ s' Γ1 ->
   All2 (conv Σ Γ) s s' ->
@@ -2284,19 +2488,20 @@ Lemma subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
   Σ;;; Γ ,,, Γ0 ,,, Δ |- T = U ->
   Σ;;; Γ ,,, subst_context s 0 Δ |- subst s #|Δ| T = subst s' #|Δ| U.
 Proof.
-  move=> wfΣ subss subss' eqsub wfctx eqty.
+  move=> wfΣ cΣ subss subss' eqsub wfctx eqty.
   eapply conv_trans => //.
   * eapply substitution_conv => //.
   ** eapply wfctx.
-  ** auto. 
+  ** auto.
   ** apply eqty.
   * clear eqty.
     rewrite -(subst_context_length s 0 Δ).
     eapply conv_subst_conv => //; eauto using subslet_untyped_subslet.
 Qed.
 
-Lemma context_relation_subst {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ Δ' s s' : 
+Lemma context_relation_subst {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ Δ' s s' :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   wf_local Σ (Γ ,,, Γ0 ,,, Δ) ->
   subslet Σ Γ s Γ0 ->
   subslet Σ Γ s' Γ1 ->
@@ -2310,14 +2515,14 @@ Lemma context_relation_subst {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ Δ' s s' :
   (subst_context s 0 Δ)
   (subst_context s' 0 Δ').
 Proof.
-  move=> wfΣ wfl subss subss' eqsub ctxr.
+  move=> wfΣ cΣ wfl subss subss' eqsub ctxr.
   assert (hlen: #|Γ0| = #|Γ1|).
   { rewrite -(subslet_length subss) -(subslet_length subss').
     now apply All2_length in eqsub. }
   assert(clen := context_relation_length _ _ _ ctxr).
   autorewrite with len in clen. rewrite hlen in clen.
   assert(#|Δ| = #|Δ'|) by lia.
-  clear clen. 
+  clear clen.
   move: Δ' wfl ctxr H.
   induction Δ as [|d Δ]; intros * wfl ctxr len0; destruct Δ' as [|d' Δ']; simpl in len0; try lia.
   - constructor.
@@ -2333,9 +2538,9 @@ Proof.
     * constructor; auto. constructor; simpl;
       rewrite !Nat.add_0_r -H;
       eapply subst_conv; eauto; now rewrite -app_context_assoc.
-Qed.  
+Qed.
 
-Lemma weaken_conv {cf:checker_flags} {Σ Γ t u} Δ : 
+Lemma weaken_conv {cf:checker_flags} {Σ Γ t u} Δ :
   wf Σ.1 -> wf_local Σ Δ -> wf_local Σ Γ ->
   closedn #|Γ| t -> closedn #|Γ| u ->
   Σ ;;; Γ |- t = u ->
@@ -2369,7 +2574,7 @@ Proof.
     eapply eta_expands_subst_instance_constr. assumption.
 Qed.
 
-Lemma context_relation_subst_instance {cf:checker_flags} {Σ} Γ Δ u u' : 
+Lemma context_relation_subst_instance {cf:checker_flags} {Σ} Γ Δ u u' :
   wf Σ.1 ->
   wf_local Σ Γ -> wf_local Σ (subst_instance_context u Δ) ->
   R_universe_instance (eq_universe (global_ext_constraints Σ)) u u' ->
@@ -2447,17 +2652,18 @@ Qed.
 Lemma cumul_it_mkProd_or_LetIn {cf : checker_flags} (Σ : PCUICAst.global_env_ext)
   (Δ Γ Γ' : PCUICAst.context) (B B' : term) :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   context_relation (fun Γ Γ' => conv_decls Σ (Δ ,,, Γ) (Δ  ,,, Γ')) Γ Γ' ->
   Σ ;;; Δ ,,, Γ |- B <= B' ->
   Σ ;;; Δ |- PCUICAst.it_mkProd_or_LetIn Γ B <= PCUICAst.it_mkProd_or_LetIn Γ' B'.
 Proof.
-  move=> wfΣ; move: B B' Γ' Δ.
-  induction Γ as [|d Γ] using rev_ind; move=> B B' Γ' Δ; 
+  move=> wfΣ cΣ; move: B B' Γ' Δ.
+  induction Γ as [|d Γ] using rev_ind; move=> B B' Γ' Δ;
   destruct Γ' as [|d' Γ'] using rev_ind; try clear IHΓ';
     move=> H; try solve [simpl; auto].
   + depelim H. apply app_eq_nil in H; intuition discriminate.
   + depelim H. apply app_eq_nil in H; intuition discriminate.
-  + assert (clen : #|Γ| = #|Γ'|). 
+  + assert (clen : #|Γ| = #|Γ'|).
     { apply context_relation_length in H.
       autorewrite with len in H; simpl in H. lia. }
     apply context_relation_app in H as [cd cctx] => //.
@@ -2465,14 +2671,14 @@ Proof.
     - rewrite !it_mkProd_or_LetIn_app => //=.
       simpl. move=> HB. apply congr_cumul_prod => //.
       eapply IHΓ.
-      * unshelve eapply (context_relation_impl _ cctx). 
+      * unshelve eapply (context_relation_impl _ cctx).
         simpl. intros * X. rewrite !app_context_assoc in X.
         destruct X; constructor; auto.
       * now rewrite app_context_assoc in HB.
     - rewrite !it_mkProd_or_LetIn_app => //=.
       simpl. intros HB. apply cum_LetIn => //; auto.
       eapply IHΓ.
-      * unshelve eapply (context_relation_impl _ cctx). 
+      * unshelve eapply (context_relation_impl _ cctx).
         simpl. intros * X. rewrite !app_context_assoc in X.
         destruct X; constructor; auto.
       * now rewrite app_context_assoc in HB.
@@ -2480,7 +2686,7 @@ Proof.
       simpl.
       intros HB. apply cum_LetIn => //; auto.
       eapply IHΓ.
-      * unshelve eapply (context_relation_impl _ cctx). 
+      * unshelve eapply (context_relation_impl _ cctx).
         simpl. intros * X. rewrite !app_context_assoc in X.
         destruct X; constructor; auto.
       * now rewrite app_context_assoc in HB.
