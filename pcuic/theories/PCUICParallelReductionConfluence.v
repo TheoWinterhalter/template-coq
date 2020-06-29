@@ -4710,7 +4710,7 @@ Section Triangle.
         * eapply IHl. all: eassumption.
   Qed.
 
-  (* Fail Context (cΣ : confluenv cf first_match onrd rho). *)
+  Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
 
@@ -5366,6 +5366,7 @@ End Triangle.
 
 Corollary pred1_diamond {cf : checker_flags} {Σ : global_env} {Γ Δ Δ' t u v} :
   forall (hΣ : wf Σ),
+    confluenv Σ ->
     pred1 Σ Γ Δ t u ->
     pred1 Σ Γ Δ' t v ->
     pred1 Σ Δ (rho_ctx Σ hΣ None I Γ) u (rho Σ hΣ None I (rho_ctx Σ hΣ None I Γ) t) *

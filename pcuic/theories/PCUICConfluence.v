@@ -2199,6 +2199,7 @@ Qed.
 Section RedConfluence.
   Context {cf : checker_flags}.
   Context {Σ : global_env} (wfΣ : wf Σ).
+  Context (cΣ : confluenv Σ).
 
   Instance pred1_refl Γ : Reflexive (pred1 Σ Γ Γ).
   Proof. red; apply pred1_refl. Qed.
@@ -2225,7 +2226,7 @@ Section RedConfluence.
   Lemma diamond_pred1_rel : diamond pred1_rel.
   Proof.
     move=> t u v tu tv.
-    destruct (pred1_diamond wfΣ tu tv).
+    destruct (pred1_diamond wfΣ cΣ tu tv).
     eexists (rho_ctx Σ wfΣ None I (fst t), rho Σ wfΣ None I (rho_ctx Σ wfΣ None I (fst t)) (snd t)).
     split; auto.
   Qed.
@@ -3090,6 +3091,7 @@ Arguments red1_ctx _ _ _ : clear implicits.
 Section ConfluenceFacts.
   Context {cf : checker_flags}.
   Context (Σ : global_env) (wfΣ : wf Σ).
+  Context (cΣ : confluenv Σ).
 
   Lemma red_mkApps_tConstruct (Γ : context)
         ind pars k (args : list term) c :
@@ -3169,7 +3171,7 @@ Section ConfluenceFacts.
     ∑ v', red Σ Γ u v' * red Σ Γ v v'.
   Proof.
     move=> H H'. apply red_alt in H. apply red_alt in H'.
-    destruct (red1_confluent wfΣ _ _ _ _ H H') as [nf [redl redr]].
+    destruct (red1_confluent wfΣ cΣ _ _ _ _ H H') as [nf [redl redr]].
     apply red_alt in redl; apply red_alt in redr.
     exists nf; intuition auto.
   Qed.
@@ -3178,7 +3180,7 @@ Section ConfluenceFacts.
 
 End ConfluenceFacts.
 
-Arguments red_confluence {cf} {Σ} wfΣ {Γ t u v}.
+Arguments red_confluence {cf} {Σ} wfΣ cΣ {Γ t u v}.
 
 (** We can now derive transitivity of the conversion relation,
     see [PCUICConversion.v] *)
