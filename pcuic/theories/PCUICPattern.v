@@ -2171,7 +2171,7 @@ Proof.
   rewrite IHl. simpl. lia.
 Qed.
 
-Equations? pattern_footprint (t : term) : term × list term
+(* Equations? pattern_footprint (t : term) : term × list term
   by wf (size t) :=
   pattern_footprint t with view_app_construct t := {
   | is_app_construct ind u i l with inspect (map_terms pattern_footprint l _) := {
@@ -2180,6 +2180,25 @@ Equations? pattern_footprint (t : term) : term × list term
           (fun '(pl, al) '(p,a) => (pl ++ [ lift0 #|al| p ], al ++ a))
           ml
           ([], [])
+      ) => {
+      | @exist (pl, al) e2 => (mkApps (tConstruct ind u i) pl, al)
+      }
+    } ;
+  | app_construct_other t h => (tRel 0, [ t ])
+  }.
+Proof.
+  rewrite size_mkApps. cbn. auto.
+Qed. *)
+
+Equations? pattern_footprint (t : term) : term × list term
+  by wf (size t) :=
+  pattern_footprint t with view_app_construct t := {
+  | is_app_construct ind u i l with inspect (map_terms pattern_footprint l _) := {
+    | @exist ml e1 with inspect (
+        fold_right
+          (fun '(p,a) '(pl, al) => (lift0 #|al| p :: pl, al ++ a))
+          ([], [])
+          ml
       ) => {
       | @exist (pl, al) e2 => (mkApps (tConstruct ind u i) pl, al)
       }
@@ -2212,18 +2231,21 @@ Proof.
   - cbn. rewrite lift0_id. reflexivity.
   - clear H. rewrite map_terms_map in e0.
     rewrite subst_mkApps. cbn. f_equal.
-    rewrite <- fold_left_rev_right in e0.
-    rewrite <- map_rev in e0.
-    induction l in l0, l1, e0, Hind |- * using list_ind_rev.
+    induction l in l0, l1, e0, Hind |- *.
     + cbn in e0. inversion e0. reflexivity.
-    + rewrite rev_app_distr in e0. cbn in e0.
-      destruct fold_right eqn:e1.
-      destruct pattern_footprint eqn:e2.
+    + cbn in e0.
+      destruct pattern_footprint eqn:e1.
+      destruct fold_right eqn:e2.
       inversion e0. subst. clear e0.
+      specialize IHl with (1 := eq_refl).
+      forward IHl.
+      { intros x hx. eapply Hind. rewrite size_mkApps. cbn.
+        rewrite size_mkApps in hx. cbn in hx. lia.
+      }
+      subst. cbn.
       specialize (Hind a). forward Hind.
-      { rewrite size_mkApps. cbn. rewrite list_size_app'. cbn. lia. }
-      rewrite e2 in Hind. subst.
-      rewrite map_app. cbn.
+      { rewrite size_mkApps. cbn. lia. }
+      rewrite e1 in Hind. subst.
       rewrite subst_app_decomp.
       rewrite simpl_subst_k.
       2:{ rewrite map_length. reflexivity. }
