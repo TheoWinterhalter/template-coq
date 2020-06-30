@@ -152,18 +152,27 @@ Proof.
   - cbn. rewrite IHl. cbn. rewrite andb_assoc. reflexivity.
 Qed.
 
-Lemma pattern_footprint_closedn :
+Lemma pattern_footprint_closedn_eq :
   forall t,
     let '(p, τ) := pattern_footprint t in
-    closedn #|τ| p.
+    closedn #|τ| p ×
+    t = subst0 τ p.
 Proof.
   intros t.
   funelim (pattern_footprint t).
-  - cbn. reflexivity.
+  - cbn. split.
+    + reflexivity.
+    + rewrite lift0_id. reflexivity.
   - clear H. rewrite map_terms_map in e0.
     rewrite closedn_mkApps. cbn.
+    rewrite subst_mkApps. cbn.
+    match goal with
+    | |- ?h × mkApps _ ?l = mkApps _ ?l' =>
+      cut (h × l = l')
+    end.
+    { intros [? ?]. intuition auto. f_equal. assumption. }
     induction l in l0, l1, e0, Hind |- *.
-    + cbn in e0. inversion e0. reflexivity.
+    + cbn in e0. inversion e0. intuition reflexivity.
     + cbn in e0.
       destruct pattern_footprint eqn:e1.
       destruct fold_right eqn:e2.
@@ -177,47 +186,26 @@ Proof.
       specialize (Hind a). forward Hind.
       { rewrite size_mkApps. cbn. lia. }
       rewrite e1 in Hind.
-      eapply andb_true_intro. split.
-      * rewrite app_length. rewrite plus_comm. eapply closedn_lift. assumption.
-      * eapply forallb_impl. 2: eauto.
-        intros x ? h.
-        rewrite app_length. eapply closed_upwards. 1: eauto.
-        lia.
-Qed.
-
-Lemma pattern_footprint_eq :
-  forall t,
-    let '(p, τ) := pattern_footprint t in
-    t = subst0 τ p.
-Proof.
-  intros t.
-  pose proof (pattern_footprint_closedn t) as hc. revert hc.
-  funelim (pattern_footprint t). all: intro hc.
-  - cbn. rewrite lift0_id. reflexivity.
-  - clear H. rewrite map_terms_map in e0.
-    rewrite subst_mkApps. cbn. f_equal.
-    rewrite closedn_mkApps in hc. cbn in hc.
-    induction l in l0, l1, e0, Hind, hc |- *.
-    + cbn in e0. inversion e0. reflexivity.
-    + cbn in e0.
-      destruct pattern_footprint eqn:e1.
-      destruct fold_right eqn:e2.
-      inversion e0. subst. clear e0.
-      cbn in hc. apply andP in hc as [hp hc].
-      specialize IHl with (2 := eq_refl).
-      (* forward IHl.
-      { intros x hx. eapply Hind. rewrite size_mkApps. cbn.
-        rewrite size_mkApps in hx. cbn in hx. lia.
+      destruct IHl as [hc ?].
+      destruct Hind as [? ?].
+      split.
+      * {
+        eapply andb_true_intro. split.
+        - rewrite app_length. rewrite plus_comm. eapply closedn_lift. assumption.
+        - eapply forallb_impl. 2: eauto.
+          intros x ? h.
+          rewrite app_length. eapply closed_upwards. 1: eauto.
+          lia.
       }
-      subst. cbn.
-      specialize (Hind a). forward Hind.
-      { rewrite size_mkApps. cbn. lia. }
-      rewrite e1 in Hind. subst.
-      rewrite subst_app_decomp.
-      rewrite simpl_subst_k.
-      1:{ rewrite map_length. reflexivity. }
-      f_equal. *)
-
-Admitted.
+      * subst. rewrite subst_app_decomp.
+        rewrite simpl_subst_k.
+        1:{ rewrite map_length. reflexivity. }
+        f_equal.
+        eapply All_map_eq. apply forallb_All in hc.
+        eapply All_impl. 1: eauto.
+        cbn. intros x hx.
+        rewrite subst_app_simpl. cbn.
+        eapply subst_closedn in hx. erewrite hx. reflexivity.
+Qed.
 
 (* Also a lemma saying p is a pattern under #|τ| *)
