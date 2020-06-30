@@ -6,7 +6,7 @@ From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICSize
   PCUICLiftSubst PCUICSigmaCalculus PCUICUnivSubst PCUICTyping PCUICReduction
   PCUICSubstitution PCUICReflect PCUICClosed PCUICParallelReduction
-  PCUICPattern PCUICInduction.
+  PCUICPattern PCUICInduction PCUICRW.
 
 Require Import monad_utils.
 Import MonadNotation.
