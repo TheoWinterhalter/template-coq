@@ -41,37 +41,6 @@ Proof.
   destruct t; simpl; intros; try discriminate; auto.
 Qed.
 
-Equations map_In {A B : Type} (l : list A) (f : ∀ (x : A), In x l → B) : list B :=
-map_In nil _ := nil;
-map_In (cons x xs) f := cons (f x _) (map_In xs (fun x H => f x _)).
-
-Lemma map_In_spec {A B : Type} (f : A → B) (l : list A) :
-  map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
-Proof.
-  remember (fun (x : A) (_ : In x l) => f x) as g.
-  funelim (map_In l g); rewrite ?H; trivial.
-Qed.
-
-Section list_size.
-  Context {A : Type} (f : A → nat).
-
-  Lemma In_list_size:
-    forall x xs, In x xs -> f x < S (list_size f xs).
-  Proof.
-    intros x xs H. induction xs.
-    1: destruct H.
-    destruct H.
-    - simpl. subst. lia.
-    - specialize (IHxs H). simpl. lia.
-  Qed.
-
-End list_size.
-Lemma size_mkApps f l : size (mkApps f l) = size f + list_size size l.
-Proof.
-  induction l in f |- *; simpl; try lia.
-  rewrite IHl. simpl. lia.
-Qed.
-
 Lemma list_size_app (l l' : list term) : list_size size (l ++ l') = list_size size l + list_size size l'.
 Proof.
   induction l; simpl; auto.

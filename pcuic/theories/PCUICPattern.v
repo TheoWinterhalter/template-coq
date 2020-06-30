@@ -1,6 +1,7 @@
 (* Distributed under the terms of the MIT license.   *)
 
-From Coq Require Import Bool String List Program BinPos Compare_dec Arith Lia.
+From Coq Require Import Bool String List Utf8 Program BinPos Compare_dec Arith
+  Lia.
 From MetaCoq.Template Require Import config utils monad_utils Universes BasicAst
   AstUtils UnivSubst EnvironmentTyping.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
@@ -8,6 +9,9 @@ From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICInduction
   PCUICPosition PCUICSize.
 
 Import MonadNotation.
+
+Require Import Equations.Prop.DepElim.
+From Equations Require Import Equations.
 
 Set Default Goal Selector "!".
 
@@ -2092,4 +2096,96 @@ Proof.
   eapply match_prelhs_subst_size in e1.
   eapply partial_subst_size_map_option_out in e2.
   lia.
+Qed.
+
+Equations app_construct_discr (t : term) : bool :=
+  app_construct_discr (tConstruct _ _ _) := true ;
+  app_construct_discr (tApp t _) := app_construct_discr t ;
+  app_construct_discr _ := false.
+
+Transparent app_construct_discr.
+
+Equations discr_app_construct (t : term) : Prop := {
+  | tConstruct _ _ _ => False ;
+  | tApp t _ => discr_app_construct t ;
+  | _ => True
+}.
+Transparent discr_app_construct.
+
+Inductive app_construct_view : term -> Type :=
+| is_app_construct c u i l : app_construct_view (mkApps (tConstruct c u i) l)
+| app_construct_other t : discr_app_construct t -> app_construct_view t.
+
+Equations? view_app_construct (t : term) : app_construct_view t := {
+  | tConstruct ind u i => is_app_construct ind u i [] ;
+  | tApp t u with view_app_construct t => {
+    | is_app_construct c x i l => _ # is_app_construct c x i (l ++ [ u ]) ;
+    | app_construct_other t h => app_construct_other _ _
+    } ;
+  | t => app_construct_other t I
+}.
+Proof.
+  rewrite <- mkApps_nested. reflexivity.
+Qed.
+
+Definition inspect {A} (x : A) : { y : A | y = x } := exist x eq_refl.
+
+Section list_size.
+  Context {A : Type} (f : A → nat).
+
+  Lemma In_list_size:
+    forall x xs, In x xs -> f x < S (list_size f xs).
+  Proof.
+    intros x xs H. induction xs.
+    1: destruct H.
+    destruct H.
+    - simpl. subst. lia.
+    - specialize (IHxs H). simpl. lia.
+  Qed.
+
+End list_size.
+
+Equations map_In {A B : Type} (l : list A) (f : ∀ (x : A), In x l → B) : list B :=
+  map_In nil _ := nil;
+  map_In (cons x xs) f := cons (f x _) (map_In xs (fun x H => f x _)).
+
+Lemma map_In_spec {A B : Type} (f : A → B) (l : list A) :
+  map_In l (fun (x : A) (_ : In x l) => f x) = List.map f l.
+Proof.
+  remember (fun (x : A) (_ : In x l) => f x) as g.
+  funelim (map_In l g). 1: reflexivity.
+  simp map_In. rewrite H. trivial.
+Qed.
+
+#[program] Definition map_terms {A} {t} (f : forall x, size x < size t -> A)
+  (l : list term)
+  (h : list_size size l < size t) :=
+  (map_In l (fun t (h : In t l) => f t _)).
+Next Obligation.
+  eapply (In_list_size size) in h. lia.
+Qed.
+
+Lemma size_mkApps f l : size (mkApps f l) = size f + list_size size l.
+Proof.
+  induction l in f |- *; simpl; try lia.
+  rewrite IHl. simpl. lia.
+Qed.
+
+Equations? pattern_footprint (t : term) : term × list term
+  by wf (size t) :=
+  pattern_footprint t with view_app_construct t := {
+  | is_app_construct ind u i l with inspect (map_terms pattern_footprint l _) := {
+    | @exist ml e1 with inspect (
+        fold_left
+          (fun '(pl, al) '(p,a) => (pl ++ [ lift0 #|al| p ], al ++ a))
+          ml
+          ([], [])
+      ) => {
+      | @exist (pl, al) e2 => (mkApps (tConstruct ind u i) pl, al)
+      }
+    } ;
+  | app_construct_other t h => (tRel 0, [ t ])
+  }.
+Proof.
+  rewrite size_mkApps. cbn. auto.
 Qed.
