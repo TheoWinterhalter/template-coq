@@ -191,18 +191,21 @@ Lemma pattern_footprint_eq :
     t = subst0 τ p.
 Proof.
   intros t.
-  funelim (pattern_footprint t).
+  pose proof (pattern_footprint_closedn t) as hc. revert hc.
+  funelim (pattern_footprint t). all: intro hc.
   - cbn. rewrite lift0_id. reflexivity.
   - clear H. rewrite map_terms_map in e0.
     rewrite subst_mkApps. cbn. f_equal.
-    induction l in l0, l1, e0, Hind |- *.
+    rewrite closedn_mkApps in hc. cbn in hc.
+    induction l in l0, l1, e0, Hind, hc |- *.
     + cbn in e0. inversion e0. reflexivity.
     + cbn in e0.
       destruct pattern_footprint eqn:e1.
       destruct fold_right eqn:e2.
       inversion e0. subst. clear e0.
+      cbn in hc. apply andP in hc as [hp hc].
       specialize IHl with (2 := eq_refl).
-      forward IHl.
+      (* forward IHl.
       { intros x hx. eapply Hind. rewrite size_mkApps. cbn.
         rewrite size_mkApps in hx. cbn in hx. lia.
       }
@@ -213,7 +216,7 @@ Proof.
       rewrite subst_app_decomp.
       rewrite simpl_subst_k.
       1:{ rewrite map_length. reflexivity. }
-      f_equal.
+      f_equal. *)
 
 Admitted.
 
