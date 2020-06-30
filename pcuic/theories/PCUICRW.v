@@ -292,6 +292,14 @@ Tactic Notation "eqb_dec" "in" hyp(h) :=
     destruct (eqb_spec x y)
   end.
 
+Lemma fold_right_rev_left :
+  forall A B (f : A -> B -> B) l i,
+    fold_right f i l = fold_left (fun x y => f y x) (List.rev l) i.
+Proof.
+  intros A B f l i.
+  rewrite <- fold_left_rev_right. rewrite rev_involutive. reflexivity.
+Qed.
+
 Lemma pattern_footprint_match_pattern :
   forall npat t p σ,
     pattern npat p ->
@@ -332,13 +340,15 @@ Proof.
       rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
       unfold subs_empty. rewrite map_list_init. cbn. f_equal. f_equal. f_equal.
       auto.
-    + induction ha in l, l0, l1, Hind, σ, e, ef(* , e0 *) |- * using All_rev_rect.
+    + rewrite fold_right_rev_left in e0.
+      rewrite <- map_rev in e0.
+      induction ha in l, l0, l1, Hind, σ, e, ef, e0 |- * using All_rev_rect.
       * cbn - [eqb] in e. cbn - [eqb]. unfold assert_eq in *.
         eqb_dec in e. 2: discriminate.
         cbn in e. apply some_inj in e. subst.
         destruct l using list_rect_rev.
-        2:{ rewrite <- mkApps_nested in e0. discriminate. }
-        cbn in e0. inversion e0. subst. clear e0.
+        2:{ rewrite <- mkApps_nested in e1. discriminate. }
+        cbn in e1. inversion e1. subst. clear e1.
         cbn in ef. rewrite subst_mkApps in ef. cbn in ef.
         destruct l0 using list_rect_rev.
         2:{
@@ -358,12 +368,15 @@ Proof.
         move e at top.
         destruct match_pattern eqn:e2. 2: discriminate.
         rewrite <- mkApps_nested in ef. cbn in ef.
+        rewrite rev_app_distr in e0. cbn in e0.
+        destruct pattern_footprint eqn:e4. cbn in e0.
         destruct l0 using list_rect_rev. 1: discriminate.
         clear IHl0.
         rewrite <- mkApps_nested in ef. cbn in ef. inversion ef. subst.
         rewrite <- mkApps_nested. cbn.
-        specialize IHha with (2 := e1) (3 := H0).
-        forward IHha.
+        specialize IHha with (2 := e1) (* (3 := H0) *).
+        (* Need to find a proper way to handle e0 *)
+        (* forward IHha.
         { intros v hv. intros. subst.
           eapply Hind. all: eauto.
           rewrite size_mkApps. rewrite size_mkApps in hv.
@@ -376,7 +389,7 @@ Proof.
         { rewrite size_mkApps. rewrite list_size_app. cbn. lia. }
         forward Hind by auto.
         forward Hind.
-        { apply pattern_footprint_closedn_eq. }
+        { apply pattern_footprint_closedn_eq. } *)
         (* Without e0 we lose too much information, we have to remember somehow
           where l0 comes from or something similar.
         *)
