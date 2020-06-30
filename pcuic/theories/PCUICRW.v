@@ -177,8 +177,13 @@ Proof.
       specialize (Hind a). forward Hind.
       { rewrite size_mkApps. cbn. lia. }
       rewrite e1 in Hind.
-      (* rewrite closedn_lift. *)
-Abort.
+      eapply andb_true_intro. split.
+      * rewrite app_length. rewrite plus_comm. eapply closedn_lift. assumption.
+      * eapply forallb_impl. 2: eauto.
+        intros x ? h.
+        rewrite app_length. eapply closed_upwards. 1: eauto.
+        lia.
+Qed.
 
 Lemma pattern_footprint_eq :
   forall t,
