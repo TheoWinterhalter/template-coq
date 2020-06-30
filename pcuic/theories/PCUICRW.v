@@ -332,7 +332,7 @@ Proof.
       rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
       unfold subs_empty. rewrite map_list_init. cbn. f_equal. f_equal. f_equal.
       auto.
-    + induction ha using All_rev_rect.
+    + induction ha in l, l0, l1, Hind, σ, e, ef, e0 |- * using All_rev_rect.
       * cbn - [eqb] in e. cbn - [eqb]. unfold assert_eq in *.
         eqb_dec in e. 2: discriminate.
         cbn in e. apply some_inj in e. subst.
@@ -352,10 +352,17 @@ Proof.
       * rewrite <- mkApps_nested in e. cbn in e.
         destruct l using list_rect_rev. 1: discriminate.
         clear IHl.
+        rewrite <- mkApps_nested. cbn.
         rewrite <- mkApps_nested in e. cbn in e.
         destruct match_pattern eqn:e1. 2: discriminate.
         move e at top.
         destruct match_pattern eqn:e2. 2: discriminate.
+        rewrite <- mkApps_nested in ef. cbn in ef.
+        destruct l0 using list_rect_rev. 1: discriminate.
+        clear IHl0.
+        rewrite <- mkApps_nested in ef. cbn in ef. inversion ef. subst.
+        rewrite <- mkApps_nested. cbn.
+        specialize IHha with (2 := e1) (3 := H0).
         rewrite map_app in e0. cbn in e0. rewrite fold_right_app in e0.
         cbn in e0. destruct pattern_footprint eqn:e3.
         cbn in e0.
