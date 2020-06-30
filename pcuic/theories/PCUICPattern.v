@@ -2196,6 +2196,12 @@ Proof.
   unfold map_terms. now rewrite map_In_spec.
 Qed.
 
+Lemma list_size_app' (l l' : list term) : list_size size (l ++ l') = list_size size l + list_size size l'.
+Proof.
+  induction l; simpl; auto.
+  rewrite IHl. lia.
+Qed.
+
 Lemma pattern_footprint_eq :
   forall t,
     let '(p, τ) := pattern_footprint t in
@@ -2206,9 +2212,23 @@ Proof.
   - cbn. rewrite lift0_id. reflexivity.
   - clear H. rewrite map_terms_map in e0.
     rewrite subst_mkApps. cbn. f_equal.
-    induction l in l0, l1, e0, Hind |- *.
+    rewrite <- fold_left_rev_right in e0.
+    rewrite <- map_rev in e0.
+    induction l in l0, l1, e0, Hind |- * using list_ind_rev.
     + cbn in e0. inversion e0. reflexivity.
-    + cbn in e0.
+    + rewrite rev_app_distr in e0. cbn in e0.
+      destruct fold_right eqn:e1.
+      destruct pattern_footprint eqn:e2.
+      inversion e0. subst. clear e0.
+      specialize (Hind a). forward Hind.
+      { rewrite size_mkApps. cbn. rewrite list_size_app'. cbn. lia. }
+      rewrite e2 in Hind. subst.
+      rewrite map_app. cbn.
+      rewrite subst_app_decomp.
+      rewrite simpl_subst_k.
+      2:{ rewrite map_length. reflexivity. }
+      f_equal.
+      eapply IHl.
 Admitted.
 
 (* Also a lemma saying p is a pattern under #|τ| *)
