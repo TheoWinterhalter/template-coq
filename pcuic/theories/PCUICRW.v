@@ -208,4 +208,64 @@ Proof.
         eapply subst_closedn in hx. erewrite hx. reflexivity.
 Qed.
 
+Lemma pattern_lift :
+  forall n m p,
+    pattern n p ->
+    pattern (m + n) (lift0 m p).
+Proof.
+  intros n m p hp.
+  induction hp as [k hk | ind k ui args ha ih] in m |- * using pattern_all_rect.
+  - cbn. constructor. lia.
+  - rewrite lift_mkApps. cbn. constructor.
+    apply All_map. eapply All_impl. 1: eauto.
+    cbn. intros x hx. eapply hx.
+Qed.
+
+Lemma pattern_upwards :
+  forall n m p,
+    pattern n p ->
+    m ≥ n ->
+    pattern m p.
+Proof.
+  intros n m p hp h.
+  induction hp as [k hk | ind k ui args ha ih]
+  in m, h |- * using pattern_all_rect.
+  - constructor. lia.
+  - constructor.
+    eapply All_impl. 1: eauto.
+    cbn. intros x hx. eapply hx. assumption.
+Qed.
+
+Lemma pattern_footprint_pattern :
+  forall t,
+    let '(p, τ) := pattern_footprint t in
+    pattern #|τ| p.
+Proof.
+  intros t.
+  funelim (pattern_footprint t).
+  - cbn. constructor. auto.
+  - clear H. rewrite map_terms_map in e0.
+    constructor.
+    induction l in l0, l1, e0, Hind |- *.
+    + cbn in e0. inversion e0. constructor.
+    + cbn in e0.
+      destruct pattern_footprint eqn:e1.
+      destruct fold_right eqn:e2.
+      inversion e0. subst. clear e0.
+      specialize IHl with (2 := eq_refl).
+      forward IHl.
+      { intros x hx. eapply Hind. rewrite size_mkApps. cbn.
+        rewrite size_mkApps in hx. cbn in hx. lia.
+      }
+      specialize (Hind a). forward Hind.
+      { rewrite size_mkApps. cbn. lia. }
+      rewrite e1 in Hind.
+      constructor.
+      * rewrite app_length. eapply pattern_lift. assumption.
+      * eapply All_impl. 1: eauto.
+        intros x hx. rewrite app_length.
+        eapply pattern_upwards. 1: eauto.
+        lia.
+Qed.
+
 (* Also a lemma saying p is a pattern under #|τ| *)
