@@ -2221,6 +2221,45 @@ Proof.
   rewrite IHl. lia.
 Qed.
 
+(* TODO MOVE *)
+Lemma closedn_mkApps :
+  forall n t l,
+    closedn n (mkApps t l) = closedn n t && forallb (closedn n) l.
+Proof.
+  intros n t l.
+  induction l in n, t |- *.
+  - cbn. rewrite andb_true_r. reflexivity.
+  - cbn. rewrite IHl. cbn. rewrite andb_assoc. reflexivity.
+Qed.
+
+Lemma pattern_footprint_closedn :
+  forall t,
+    let '(p, τ) := pattern_footprint t in
+    closedn #|τ| p.
+Proof.
+  intros t.
+  funelim (pattern_footprint t).
+  - cbn. reflexivity.
+  - clear H. rewrite map_terms_map in e0.
+    rewrite closedn_mkApps. cbn.
+    induction l in l0, l1, e0, Hind |- *.
+    + cbn in e0. inversion e0. reflexivity.
+    + cbn in e0.
+      destruct pattern_footprint eqn:e1.
+      destruct fold_right eqn:e2.
+      inversion e0. subst. clear e0.
+      cbn.
+      specialize IHl with (1 := eq_refl).
+      forward IHl.
+      { intros x hx. eapply Hind. rewrite size_mkApps. cbn.
+        rewrite size_mkApps in hx. cbn in hx. lia.
+      }
+      specialize (Hind a). forward Hind.
+      { rewrite size_mkApps. cbn. lia. }
+      rewrite e1 in Hind.
+      (* rewrite closedn_lift. *)
+Abort.
+
 Lemma pattern_footprint_eq :
   forall t,
     let '(p, τ) := pattern_footprint t in
@@ -2250,7 +2289,7 @@ Proof.
       rewrite simpl_subst_k.
       2:{ rewrite map_length. reflexivity. }
       f_equal.
-      eapply IHl.
+
 Admitted.
 
 (* Also a lemma saying p is a pattern under #|τ| *)
