@@ -41,12 +41,6 @@ Proof.
   destruct t; simpl; intros; try discriminate; auto.
 Qed.
 
-Lemma list_size_app (l l' : list term) : list_size size (l ++ l') = list_size size l + list_size size l'.
-Proof.
-  induction l; simpl; auto.
-  rewrite IHl. lia.
-Qed.
-
 Lemma mfixpoint_size_In {mfix d} :
   In d mfix ->
   size (dbody d) < mfixpoint_size size mfix /\

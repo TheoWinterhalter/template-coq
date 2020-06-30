@@ -145,7 +145,7 @@ Proof.
   unfold map_terms. now rewrite map_In_spec.
 Qed.
 
-Lemma list_size_app' (l l' : list term) : list_size size (l ++ l') = list_size size l + list_size size l'.
+Lemma list_size_app (l l' : list term) : list_size size (l ++ l') = list_size size l + list_size size l'.
 Proof.
   induction l; simpl; auto.
   rewrite IHl. lia.
@@ -332,13 +332,13 @@ Proof.
       rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
       unfold subs_empty. rewrite map_list_init. cbn. f_equal. f_equal. f_equal.
       auto.
-    + induction ha in l, l0, l1, Hind, σ, e, ef, e0 |- * using All_rev_rect.
+    + induction ha in l, l0, l1, Hind, σ, e, ef(* , e0 *) |- * using All_rev_rect.
       * cbn - [eqb] in e. cbn - [eqb]. unfold assert_eq in *.
         eqb_dec in e. 2: discriminate.
         cbn in e. apply some_inj in e. subst.
         destruct l using list_rect_rev.
-        2:{ rewrite <- mkApps_nested in e1. discriminate. }
-        cbn in e1. inversion e1. subst. clear e1.
+        2:{ rewrite <- mkApps_nested in e0. discriminate. }
+        cbn in e0. inversion e0. subst. clear e0.
         cbn in ef. rewrite subst_mkApps in ef. cbn in ef.
         destruct l0 using list_rect_rev.
         2:{
@@ -346,7 +346,7 @@ Proof.
         }
         clear ef. cbn - [eqb].
         eqb_dec. 2: contradiction.
-        cbn. cbn in e0. inversion e0.
+        cbn.
         eexists. intuition eauto.
         unfold subs_empty. rewrite map_list_init. reflexivity.
       * rewrite <- mkApps_nested in e. cbn in e.
@@ -363,7 +363,24 @@ Proof.
         rewrite <- mkApps_nested in ef. cbn in ef. inversion ef. subst.
         rewrite <- mkApps_nested. cbn.
         specialize IHha with (2 := e1) (3 := H0).
-        rewrite map_app in e0. cbn in e0. rewrite fold_right_app in e0.
+        forward IHha.
+        { intros v hv. intros. subst.
+          eapply Hind. all: eauto.
+          rewrite size_mkApps. rewrite size_mkApps in hv.
+          rewrite list_size_app. lia.
+        }
+        destruct IHha as [θ [h1 h2]].
+        rewrite h1.
+        specialize Hind with (3 := e2) (4 := eq_refl).
+        forward Hind.
+        { rewrite size_mkApps. rewrite list_size_app. cbn. lia. }
+        forward Hind by auto.
+        forward Hind.
+        { apply pattern_footprint_closedn_eq. }
+        (* Without e0 we lose too much information, we have to remember somehow
+          where l0 comes from or something similar.
+        *)
+        (* rewrite map_app in e0. cbn in e0. rewrite fold_right_app in e0.
         cbn in e0. destruct pattern_footprint eqn:e3.
-        cbn in e0.
+        cbn in e0. *)
 Admitted.
