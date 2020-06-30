@@ -32,6 +32,16 @@ Equations discr_app_construct (t : term) : Prop := {
 }.
 Transparent discr_app_construct.
 
+Lemma discr_app_construct_mkApps :
+  forall t l,
+    discr_app_construct (mkApps t l) = discr_app_construct t.
+Proof.
+  intros t l.
+  induction l in t |- *.
+  - reflexivity.
+  - cbn. rewrite IHl. reflexivity.
+Qed.
+
 Inductive app_construct_view : term -> Type :=
 | is_app_construct c u i l : app_construct_view (mkApps (tConstruct c u i) l)
 | app_construct_other t : discr_app_construct t -> app_construct_view t.
@@ -268,4 +278,85 @@ Proof.
         lia.
 Qed.
 
-(* Also a lemma saying p is a pattern under #|τ| *)
+Ltac eqb_dec :=
+  match goal with
+  | |- context [ eqb ?x ?y ] =>
+    destruct (eqb_spec x y)
+  | h : context [ eqb ?x ?y ] |- _ =>
+    destruct (eqb_spec x y)
+  end.
+
+Tactic Notation "eqb_dec" "in" hyp(h) :=
+  match type of h with
+  | context [ eqb ?x ?y ] =>
+    destruct (eqb_spec x y)
+  end.
+
+Lemma pattern_footprint_match_pattern :
+  forall npat t p σ,
+    pattern npat p ->
+    match_pattern npat p t = Some σ ->
+    let '(q, τ) := pattern_footprint t in
+    ∑ θ,
+      match_pattern npat p q = Some θ ×
+      map (option_map (subst0 τ)) θ = σ.
+Proof.
+  intros npat t p σ hp e.
+  pose proof (pattern_footprint_closedn_eq t) as ef. revert ef.
+  funelim (pattern_footprint t). all: intros [_ ef].
+  - clear Heq.
+    cbn. destruct hp.
+    2:{
+      eapply match_pattern_sound in e. 2: constructor ; auto.
+      2: eapply subs_flatten_default_complete.
+      subst. rewrite subst_mkApps in d. cbn in d.
+      rewrite discr_app_construct_mkApps in d. cbn in d.
+      contradiction.
+    }
+    cbn in e. cbn.
+    unfold subs_init in *. unfold subs_add in *.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst.
+    eexists. intuition eauto.
+    rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
+    unfold subs_empty. rewrite map_list_init. cbn.
+    rewrite lift0_id. reflexivity.
+  - clear H Heq.
+    rewrite map_terms_map in e0.
+    destruct hp as [n hn | ind n ui args ha].
+    + cbn in e. cbn.
+      unfold subs_init in *. unfold subs_add in *.
+      destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+      apply some_inj in e. subst.
+      eexists. intuition eauto.
+      rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
+      unfold subs_empty. rewrite map_list_init. cbn. f_equal. f_equal. f_equal.
+      auto.
+    + induction ha using All_rev_rect.
+      * cbn - [eqb] in e. cbn - [eqb]. unfold assert_eq in *.
+        eqb_dec in e. 2: discriminate.
+        cbn in e. apply some_inj in e. subst.
+        destruct l using list_rect_rev.
+        2:{ rewrite <- mkApps_nested in e1. discriminate. }
+        cbn in e1. inversion e1. subst. clear e1.
+        cbn in ef. rewrite subst_mkApps in ef. cbn in ef.
+        destruct l0 using list_rect_rev.
+        2:{
+          rewrite map_app in ef. rewrite <- mkApps_nested in ef. discriminate.
+        }
+        clear ef. cbn - [eqb].
+        eqb_dec. 2: contradiction.
+        cbn. cbn in e0. inversion e0.
+        eexists. intuition eauto.
+        unfold subs_empty. rewrite map_list_init. reflexivity.
+      * rewrite <- mkApps_nested in e. cbn in e.
+        destruct l using list_rect_rev. 1: discriminate.
+        clear IHl.
+        rewrite <- mkApps_nested in e. cbn in e.
+        destruct match_pattern eqn:e1. 2: discriminate.
+        move e at top.
+        destruct match_pattern eqn:e2. 2: discriminate.
+        rewrite map_app in e0. cbn in e0. rewrite fold_right_app in e0.
+        cbn in e0. destruct pattern_footprint eqn:e3.
+        cbn in e0.
+Admitted.
