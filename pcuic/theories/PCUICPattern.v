@@ -2189,3 +2189,26 @@ Equations? pattern_footprint (t : term) : term × list term
 Proof.
   rewrite size_mkApps. cbn. auto.
 Qed.
+
+Lemma map_terms_map t A f l H :
+  @map_terms A t (fun x Hx => f x) l H = map f l.
+Proof.
+  unfold map_terms. now rewrite map_In_spec.
+Qed.
+
+Lemma pattern_footprint_eq :
+  forall t,
+    let '(p, τ) := pattern_footprint t in
+    t = subst0 τ p.
+Proof.
+  intros t.
+  funelim (pattern_footprint t).
+  - cbn. rewrite lift0_id. reflexivity.
+  - clear H. rewrite map_terms_map in e0.
+    rewrite subst_mkApps. cbn. f_equal.
+    induction l in l0, l1, e0, Hind |- *.
+    + cbn in e0. inversion e0. reflexivity.
+    + cbn in e0.
+Admitted.
+
+(* Also a lemma saying p is a pattern under #|τ| *)
