@@ -574,4 +574,13 @@ Proof.
             eapply simpl_subst_k. rewrite map_length. reflexivity.
           - epose proof (pattern_footprint_closedn_eq _) as h.
             erewrite e1 in h. destruct h as [hc _].
-Admitted.
+            eapply match_pattern_closedn in h1'. 2,3: eauto.
+            eapply All_map_eq. eapply All_impl. 1: eauto.
+            intros [] h. 2: reflexivity.
+            cbn in h. cbn. f_equal.
+            rewrite subst_app_simpl. cbn.
+            eapply subst_closedn in h. erewrite h. reflexivity.
+        }
+        eapply subs_merge_map_inv in h as [ρ [e5 ?]]. subst.
+        rewrite e5. intuition eauto.
+Qed.
