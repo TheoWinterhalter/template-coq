@@ -576,15 +576,21 @@ Qed.
 
 Fixpoint elim_footprint t :=
   match t with
+  | tSymb k n ui =>
+      ret (k, n, ui, [], [])
+
   | tApp u v =>
-    let '(t,l,τ) := elim_footprint u in
+    '(k,n,ui,l,τ) <- elim_footprint u ;;
     let '(p,σ) := pattern_footprint v in
-    (t, eApp (lift0 #|τ| p) :: l, τ ++ σ)
+    ret (k, n, ui, eApp (lift0 #|τ| p) :: l, τ ++ σ)
+
   (* TODO Case *)
+
   | tProj p u =>
-    let '(t,l,τ) := elim_footprint u in
-    (t, eProj p :: l, τ)
-  | _ => (t, [], [])
+    '(k,n,ui,l,τ) <- elim_footprint u ;;
+    ret (k, n, ui, eProj p :: l, τ)
+
+  | _ => None
   end.
 
 Definition on_elim (P : term -> Type) e : Type :=
@@ -612,25 +618,21 @@ Proof.
 Qed.
 
 Lemma elim_footprint_closedn_eq :
-  forall t,
-    let '(c,l,τ) := elim_footprint t in
+  ∀ t k n ui l τ,
+    elim_footprint t = Some (k,n,ui,l,τ) →
     All (on_elim (closedn #|τ|)) l ×
-    t = subst0 τ (fold_right (fun e t => mkElim t e) c l).
+    t = subst0 τ (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
 Proof.
-  intros t.
-  induction t using term_forall_list_ind.
-  all: try solve [
-    cbn ;
-    rewrite ?map_subst_nil ?subst_empty ;
-    split ;
-    [ constructor | reflexivity ]
-  ].
-  - cbn. destruct n. all: intuition constructor.
-  - cbn. destruct elim_footprint as [[c l] τ] eqn:e1.
+  intros t k n ui l τ e.
+  induction t in k, n, ui, l, τ, e |- * using term_forall_list_ind.
+  all: try solve [ cbn in e ; discriminate ].
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
     destruct pattern_footprint eqn:e2.
-    cbn.
+    inversion e. subst. clear e.
     epose proof (pattern_footprint_closedn_eq _) as h.
     erewrite e2 in h. destruct h as [hc ?].
+    specialize IHt1 with (1 := eq_refl).
     destruct IHt1 as [hl ?]. clear IHt2.
     subst. split.
     + rewrite app_length. rewrite plus_comm. constructor.
@@ -639,6 +641,31 @@ Proof.
         intros e he. eapply on_elim_impl. 1: eauto.
         cbn. intros. eapply closed_upwards. 1: eauto.
         lia.
-    + f_equal.
-      * (* Probably not true because no hyp on c, should reach tSymb and return None? *)
-Abort.
+    + cbn. f_equal.
+      * clear - hl. induction hl as [| e l he hl ih]. 1: reflexivity.
+        cbn. rewrite 2!mkElim_subst. f_equal. 1: auto.
+        { destruct e.
+          - cbn in *. f_equal. rewrite subst_app_simpl. cbn.
+            f_equal. symmetry. apply subst_closedn. assumption.
+          - cbn in *. destruct he as [? ?]. f_equal.
+            + rewrite subst_app_simpl. cbn.
+              f_equal. symmetry. apply subst_closedn. assumption.
+            + eapply All_map_eq. eapply All_impl. 1: eauto.
+              intros [? ?]. cbn. unfold on_snd. cbn. intros.
+              f_equal. rewrite subst_app_simpl. cbn.
+              f_equal. symmetry. apply subst_closedn. assumption.
+          - reflexivity.
+        }
+      * rewrite subst_app_decomp. f_equal. symmetry.
+        eapply simpl_subst_k. rewrite map_length. reflexivity.
+  - cbn in e. inversion e. subst. clear e.
+    cbn. intuition constructor.
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    inversion e. subst. clear e.
+    specialize IHt with (1 := eq_refl).
+    destruct IHt as [hl ?]. subst. cbn.
+    intuition eauto.
+    constructor. 2: auto.
+    cbn. constructor.
+Qed.
