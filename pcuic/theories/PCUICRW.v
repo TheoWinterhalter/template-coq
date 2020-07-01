@@ -342,6 +342,19 @@ Proof.
     f_equal. rewrite app_assoc. reflexivity.
 Qed.
 
+(* A version easier to do rewriting *)
+Lemma pattern_list_footprint_atend_eq :
+  forall l a,
+    pattern_list_footprint (l ++ [ a ]) =
+    (map (lift0 #|(pattern_footprint a).2|) (pattern_list_footprint l).1 ++ [ (pattern_footprint a).1 ], (pattern_footprint a).2 ++ (pattern_list_footprint l).2).
+Proof.
+  intros l a.
+  pose proof (pattern_list_footprint_atend l a) as h.
+  destruct pattern_footprint eqn:e1.
+  destruct pattern_list_footprint eqn:e2.
+  cbn. assumption.
+Qed.
+
 Lemma pattern_footprint_match_pattern :
   forall npat t p σ,
     pattern npat p ->
@@ -403,42 +416,45 @@ Proof.
       * rewrite <- mkApps_nested in e. cbn in e.
         destruct l using list_rect_rev. 1: discriminate.
         clear IHl.
-        (* rewrite pattern_list_footprint_atend in e0. *)
-
-        (* rewrite <- mkApps_nested. cbn.
-        rewrite <- mkApps_nested in e. cbn in e.
-        destruct match_pattern eqn:e1. 2: discriminate.
-        move e at top.
-        destruct match_pattern eqn:e2. 2: discriminate.
-        rewrite <- mkApps_nested in ef. cbn in ef.
-        rewrite rev_app_distr in e0. cbn in e0.
-        destruct pattern_footprint eqn:e4. cbn in e0.
-        destruct l0 using list_rect_rev. 1: discriminate.
-        clear IHl0.
-        rewrite <- mkApps_nested in ef. cbn in ef. inversion ef. subst.
+        rewrite pattern_list_footprint_atend_eq in e0.
+        destruct pattern_footprint eqn:e1.
+        destruct pattern_list_footprint eqn:e2.
+        cbn in e0. inversion e0. subst. clear e0.
+        symmetry in e2.
+        specialize IHha with (4 := e2).
         rewrite <- mkApps_nested. cbn.
-        specialize IHha with (2 := e1) (* (3 := H0) *). *)
-
-
-        (* Need to find a proper way to handle e0 *)
-        (* forward IHha.
+        rewrite <- mkApps_nested in e. cbn in e.
+        destruct match_pattern eqn:e3. 2: discriminate.
+        move e at top.
+        destruct match_pattern eqn:e4. 2: discriminate.
+        rewrite <- 2!mkApps_nested in ef. cbn in ef.
+        inversion ef. subst.
+        rewrite <- mkApps_nested. cbn.
+        forward IHha.
         { intros v hv. intros. subst.
           eapply Hind. all: eauto.
           rewrite size_mkApps. rewrite size_mkApps in hv.
           rewrite list_size_app. lia.
         }
+        specialize IHha with (1 := eq_refl).
+        forward IHha.
+        { rewrite H0. rewrite subst_app_decomp. f_equal.
+          rewrite subst_mkApps. cbn. f_equal.
+          rewrite map_map_compose. eapply map_id_f.
+          intros v. eapply simpl_subst_k. rewrite map_length. reflexivity.
+        }
         destruct IHha as [θ [h1 h2]].
-        rewrite h1.
-        specialize Hind with (3 := e2) (4 := eq_refl).
+        (* Somehow the induction hypothesis isn't strong enough?
+          Or is it just a question of match_pattern_lift?
+        *)
+        (* rewrite h1. *)
+        specialize Hind with (3 := e4) (4 := eq_refl).
         forward Hind.
         { rewrite size_mkApps. rewrite list_size_app. cbn. lia. }
         forward Hind by auto.
         forward Hind.
-        { apply pattern_footprint_closedn_eq. } *)
-        (* Without e0 we lose too much information, we have to remember somehow
-          where l0 comes from or something similar.
-        *)
-        (* rewrite map_app in e0. cbn in e0. rewrite fold_right_app in e0.
-        cbn in e0. destruct pattern_footprint eqn:e3.
-        cbn in e0. *)
+        { apply pattern_footprint_closedn_eq. }
+        rewrite e1 in Hind.
+        destruct Hind as [θ' [h1' h2']].
+        rewrite h1'.
 Admitted.
