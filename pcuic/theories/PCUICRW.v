@@ -300,6 +300,48 @@ Proof.
   rewrite <- fold_left_rev_right. rewrite rev_involutive. reflexivity.
 Qed.
 
+Definition pattern_list_footprint l :=
+  fold_right
+    (λ '(p, a) '(pl, al), (lift0 #|al| p :: pl, al ++ a))
+    ([], [])
+    (map pattern_footprint l).
+
+Lemma pattern_list_footprint_unfold :
+  forall l,
+    pattern_list_footprint l =
+    fold_right
+      (λ '(p, a) '(pl, al), (lift0 #|al| p :: pl, al ++ a))
+      ([], [])
+      (map pattern_footprint l).
+Proof.
+  reflexivity.
+Defined.
+
+Lemma pattern_list_footprint_atend :
+  forall l a,
+    let '(p, τ) := pattern_footprint a in
+    let '(pl, al) := pattern_list_footprint l in
+    pattern_list_footprint (l ++ [ a ]) =
+    (map (lift0 #|τ|) pl ++ [ p ], τ ++ al).
+Proof.
+  intros l a.
+  destruct pattern_footprint as [p τ] eqn:e1.
+  destruct pattern_list_footprint as [pl al] eqn:e2.
+  induction l in a, p, τ, e1, pl, al, e2 |- *.
+  - cbn. rewrite e1. cbn. rewrite lift0_id.
+    cbn in e2. inversion e2.
+    cbn. rewrite app_nil_r. reflexivity.
+  - cbn in e2. move e2 at top. destruct pattern_footprint eqn:e3.
+    rewrite <- pattern_list_footprint_unfold in e2.
+    destruct pattern_list_footprint eqn:e4.
+    inversion e2. subst. clear e2.
+    cbn. rewrite e3. rewrite <- pattern_list_footprint_unfold.
+    specialize IHl with (1 := e1) (2 := eq_refl).
+    rewrite IHl. rewrite app_length.
+    rewrite <- simpl_lift with (i := 0). 2,3: lia.
+    f_equal. rewrite app_assoc. reflexivity.
+Qed.
+
 Lemma pattern_footprint_match_pattern :
   forall npat t p σ,
     pattern npat p ->
@@ -331,6 +373,7 @@ Proof.
     rewrite lift0_id. reflexivity.
   - clear H Heq.
     rewrite map_terms_map in e0.
+    rewrite <- pattern_list_footprint_unfold in e0.
     destruct hp as [n hn | ind n ui args ha].
     + cbn in e. cbn.
       unfold subs_init in *. unfold subs_add in *.
@@ -340,9 +383,7 @@ Proof.
       rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
       unfold subs_empty. rewrite map_list_init. cbn. f_equal. f_equal. f_equal.
       auto.
-    + rewrite fold_right_rev_left in e0.
-      rewrite <- map_rev in e0.
-      induction ha in l, l0, l1, Hind, σ, e, ef, e0 |- * using All_rev_rect.
+    + induction ha in l, l0, l1, Hind, σ, e, ef, e0 |- * using All_rev_rect.
       * cbn - [eqb] in e. cbn - [eqb]. unfold assert_eq in *.
         eqb_dec in e. 2: discriminate.
         cbn in e. apply some_inj in e. subst.
@@ -362,7 +403,9 @@ Proof.
       * rewrite <- mkApps_nested in e. cbn in e.
         destruct l using list_rect_rev. 1: discriminate.
         clear IHl.
-        rewrite <- mkApps_nested. cbn.
+        (* rewrite pattern_list_footprint_atend in e0. *)
+
+        (* rewrite <- mkApps_nested. cbn.
         rewrite <- mkApps_nested in e. cbn in e.
         destruct match_pattern eqn:e1. 2: discriminate.
         move e at top.
@@ -374,7 +417,9 @@ Proof.
         clear IHl0.
         rewrite <- mkApps_nested in ef. cbn in ef. inversion ef. subst.
         rewrite <- mkApps_nested. cbn.
-        specialize IHha with (2 := e1) (* (3 := H0) *).
+        specialize IHha with (2 := e1) (* (3 := H0) *). *)
+
+
         (* Need to find a proper way to handle e0 *)
         (* forward IHha.
         { intros v hv. intros. subst.
