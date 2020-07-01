@@ -395,6 +395,30 @@ Proof.
       eapply subs_merge_map. assumption.
 Qed.
 
+Lemma subs_merge_map_inv :
+  forall σ θ ρ f,
+    subs_merge (map (option_map f) σ) (map (option_map f) θ) = Some ρ ->
+    ∑ ρ', subs_merge σ θ = Some ρ' × ρ = map (option_map f) ρ'.
+Proof.
+  intros σ θ ρ f e.
+  induction σ as [| [] σ ih] in θ, ρ, f, e |- *.
+  - destruct θ. 2: discriminate.
+    cbn in e. apply some_inj in e. subst.
+    cbn. eexists. intuition eauto.
+  - destruct θ as [| [] θ]. 1,2: discriminate.
+    cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    eapply ih in e1. destruct e1 as [ρ [e1 ?]]. subst.
+    cbn. rewrite e1.
+    intuition eauto.
+  - destruct θ as [| x θ]. 1: discriminate.
+    cbn in e. destruct subs_merge eqn:e1. 2: discriminate.
+    apply some_inj in e. subst.
+    eapply ih in e1. destruct e1 as [ρ [e1 ?]]. subst.
+    cbn. rewrite e1.
+    intuition eauto.
+Qed.
+
 Lemma pattern_footprint_match_pattern :
   forall npat t p σ,
     pattern npat p ->
@@ -496,4 +520,5 @@ Proof.
         rewrite e1 in Hind.
         destruct Hind as [θ' [h1' h2']].
         rewrite h1'.
+        subst.
 Admitted.
