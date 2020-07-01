@@ -671,7 +671,21 @@ Proof.
         eapply simpl_subst_k. rewrite map_length. reflexivity.
   - cbn in e. inversion e. subst. clear e.
     cbn. intuition constructor.
-  - admit.
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    destruct pattern_footprint eqn:e2.
+    destruct fold_right eqn:e3.
+    inversion e. subst. clear e.
+    clear IHt1.
+    specialize IHt2 with (1 := eq_refl).
+    destruct IHt2 as [hl ?]. subst.
+    epose proof (pattern_footprint_closedn_eq _) as h.
+    erewrite e2 in h. destruct h as [hc ?]. subst.
+    cbn. rewrite subst_app_decomp. rewrite simpl_subst_k.
+    { rewrite map_length. reflexivity. }
+    rewrite subst_app_simpl. cbn. eapply subst_closedn in hc as sc.
+    erewrite sc.
+    admit.
   - cbn in e.
     destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
     inversion e. subst. clear e.
