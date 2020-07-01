@@ -419,6 +419,45 @@ Proof.
     intuition eauto.
 Qed.
 
+Lemma match_pattern_closedn :
+  forall npat p t σ k,
+    pattern npat p ->
+    closedn k t ->
+    match_pattern npat p t = Some σ ->
+    All (on_Some (closedn k)) σ.
+Proof.
+  intros npat p t σ k hp hc e.
+  induction hp
+  as [n hn | ind n ui args ha ih]
+  in t, σ, e, k, hc |- *
+  using pattern_all_rect.
+  - cbn in e. unfold subs_init in e. unfold subs_add in e.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst. apply All_app_inv.
+    1:{ apply All_firstn. apply All_on_Some_subs_empty. }
+    constructor.
+    2:{ apply All_skipn. apply All_on_Some_subs_empty. }
+    cbn. assumption.
+  - eapply All_prod in ih. 2: exact ha.
+    clear ha.
+    induction ih
+    as [| p args [hp ihp] _ ih]
+    in t, σ, e, k, hc |- *
+    using All_rev_rect.
+    + cbn - [eqb] in e. unfold assert_eq in e. eqb_dec in e. 2: discriminate.
+      subst. cbn in e. apply some_inj in e. subst.
+      apply All_on_Some_subs_empty.
+    + rewrite <- mkApps_nested in e. cbn in e.
+      destruct t. all: try discriminate.
+      destruct match_pattern eqn:e1. 2: discriminate.
+      move e at top.
+      destruct match_pattern eqn:e2. 2: discriminate.
+      cbn in hc. apply andP in hc as [hc1 hc2].
+      eapply ih in e1. 2: eauto.
+      eapply ihp in e2. 2: eauto.
+      eapply All_on_Some_subs_merge. all: eauto.
+Qed.
+
 Lemma pattern_footprint_match_pattern :
   forall npat t p σ,
     pattern npat p ->
@@ -521,4 +560,18 @@ Proof.
         destruct Hind as [θ' [h1' h2']].
         rewrite h1'.
         subst.
+        match goal with
+        | e : subs_merge _ _ = ?z
+          |- context [ subs_merge ?x ?y = _ × map  ?f _ = _ ] =>
+          assert (h : subs_merge (map f x) (map f y) = z)
+        end.
+        { rewrite <- e. f_equal.
+          - rewrite map_map_compose. eapply map_ext.
+            intros o. rewrite option_map_two.
+            eapply option_map_ext.
+            intros v.
+            rewrite subst_app_decomp. f_equal.
+            eapply simpl_subst_k. rewrite map_length. reflexivity.
+          - epose proof (pattern_footprint_closedn_eq _) as h.
+            erewrite e1 in h. destruct h as [hc _].
 Admitted.
