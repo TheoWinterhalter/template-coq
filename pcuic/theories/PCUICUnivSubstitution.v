@@ -1746,7 +1746,7 @@ Section SubstIdentity.
     simpl. intros [= Hl]. f_equal. now rewrite mapi_rec_Sk.
   Qed.
 
-  Lemma subst_instance_instance_id Σ u mdecl : 
+  Lemma subst_instance_instance_id Σ u mdecl :
     consistent_instance_ext Σ (ind_universes mdecl) u ->
     subst_instance_instance u (PCUICLookup.abstract_instance (ind_universes mdecl)) = u.
   Proof.
@@ -1808,7 +1808,7 @@ Section SubstIdentity.
       * destruct H.
   Qed.
 
-  Lemma In_fold_right_add x l : 
+  Lemma In_fold_right_add x l :
     In x l <-> LevelSet.In x (fold_right LevelSet.add LevelSet.empty l).
   Proof.
     split.
@@ -1821,7 +1821,7 @@ Section SubstIdentity.
       * rewrite LevelSet.add_spec. intuition auto.
   Qed.
 
-  Lemma CS_For_all_union f cst cst' : ConstraintSet.For_all f (ConstraintSet.union cst cst') -> 
+  Lemma CS_For_all_union f cst cst' : ConstraintSet.For_all f (ConstraintSet.union cst cst') ->
     ConstraintSet.For_all f cst.
   Proof.
     unfold CS.For_all.
@@ -1854,12 +1854,12 @@ Section SubstIdentity.
   Hint Resolve declared_inductive_wf_ext_wk declared_inductive_wf_global_ext : pcuic.
 
   Instance For_all_proper P : Morphisms.Proper (CS.Equal ==> iff)%signature (ConstraintSet.For_all P).
-  Proof. 
+  Proof.
     intros s s' eqs.
     unfold CS.For_all. split; intros IH x inxs; apply (IH x);
     now apply eqs.
   Qed.
-   
+
   Lemma unfold_length {A} (f : nat -> A) m : #|unfold m f| = m.
   Proof.
     induction m; simpl; rewrite ?app_length /=; auto. lia.
@@ -1876,7 +1876,7 @@ Section SubstIdentity.
     - simpl in Hn. eapply nth_error_Some_length in Hn.
       rewrite app_length /= unfold_length in Hn. lia.
   Qed.
-  
+
   Lemma nth_error_unfold_inv {A} (f : nat -> A) m n t : nth_error (unfold m f) n = Some t -> t = (f n).
   Proof.
     induction m in n |- *; intros Hn; try lia.
@@ -1892,12 +1892,12 @@ Section SubstIdentity.
   Lemma CS_For_all_add P x s : CS.For_all P (CS.add x s) -> P x /\ CS.For_all P s.
   Proof.
     intros.
-    split. 
+    split.
     * apply (H x), CS.add_spec; left => //.
     * intros y iny. apply (H y), CS.add_spec; right => //.
   Qed.
 
-  Lemma subst_instance_level_abs l n Σ : 
+  Lemma subst_instance_level_abs l n Σ :
     wf Σ ->
     LevelSet.In l (LevelSet.union
      (fold_right LevelSet.add LevelSet.empty
@@ -1915,7 +1915,7 @@ Section SubstIdentity.
     - eapply not_var_global_levels in wfΣ.
       specialize (wfΣ l H). simpl in wfΣ.
       destruct l => //.
-  Qed.    
+  Qed.
 
   Lemma consistent_instance_ext_abstract_instance Σ udecl :
     wf Σ ->
@@ -1942,7 +1942,7 @@ Section SubstIdentity.
     - now rewrite mapi_length.
     - simpl. rewrite (mapi_unfold Level.Var).
       assert(CS.Equal (subst_instance_cstrs (unfold #|univs| Level.Var) cst) cst).
-      { unfold CS.Equal; intros a. 
+      { unfold CS.Equal; intros a.
         unfold subst_instance_cstrs.
         red in wf_glob_ext. destruct wf_glob_ext as [[_ [wfext _]] _].
         unfold on_udecl_prop in wfext.
@@ -1980,7 +1980,7 @@ Section SubstIdentity.
 
   Lemma in_var_global_ext n Σ :
     wf Σ.1 ->
-    LevelSet.In (Level.Var n) (global_ext_levels Σ) -> 
+    LevelSet.In (Level.Var n) (global_ext_levels Σ) ->
     LevelSet.In (Level.Var n) (levels_of_udecl Σ.2).
   Proof.
     intros wfΣ Hin.
@@ -2028,12 +2028,12 @@ Section SubstIdentity.
       now rewrite (nth_error_nth _ _ _ ina).
   Qed.
 
-  Lemma subst_abstract_instance_id : 
+  Lemma subst_abstract_instance_id :
     env_prop (fun Σ Γ t T =>
         wf_ext_wk Σ ->
         let u := PCUICLookup.abstract_instance (snd Σ) in
         subst_instance_constr u t = t)
-        (fun Σ Γ wfΓ => 
+        (fun Σ Γ wfΓ =>
         wf_ext_wk Σ ->
         let u := PCUICLookup.abstract_instance (snd Σ) in
         subst_instance_context u Γ = Γ).
@@ -2044,7 +2044,7 @@ Section SubstIdentity.
       * f_equal; auto.
         unfold map_decl. simpl. unfold vass. f_equal. auto.
       * unfold map_decl. simpl. unfold vdef. repeat f_equal; auto.
-      
+
     - unfold Universe.make.
       unfold subst_instance_level_expr.
       destruct (UnivExpr.make l) eqn:eql; auto.
@@ -2077,6 +2077,8 @@ Section SubstIdentity.
 
     - eapply consistent_instance_ext_subst_abs; eauto.
 
+    - eapply consistent_instance_ext_subst_abs; eauto.
+
     - solve_all.
 
     - solve_all.
@@ -2091,11 +2093,11 @@ Section SubstIdentity.
     let u := PCUICLookup.abstract_instance Σ.2 in
     subst_instance_constr u t = t.
   Proof.
-    intros [wfΣ onu] H. eapply (env_prop_typing _ _ subst_abstract_instance_id) in H; eauto. 
+    intros [wfΣ onu] H. eapply (env_prop_typing _ _ subst_abstract_instance_id) in H; eauto.
     split; auto.
   Qed.
 
-  Lemma subst_instance_context_id Σ Γ : 
+  Lemma subst_instance_context_id Σ Γ :
     wf_ext_wk Σ ->
     wf_local Σ Γ ->
     let u := PCUICLookup.abstract_instance Σ.2 in
@@ -2105,7 +2107,7 @@ Section SubstIdentity.
     apply X.
   Qed.
 
-  Lemma subst_instance_ind_sort_id Σ mdecl ind idecl : 
+  Lemma subst_instance_ind_sort_id Σ mdecl ind idecl :
     wf Σ ->
     declared_inductive Σ mdecl ind idecl ->
     forall (oib : on_ind_body (lift_typing typing) (Σ, ind_universes mdecl)
@@ -2128,7 +2130,7 @@ Section SubstIdentity.
       destruct declm. apply w.
   Qed.
 
-  Lemma subst_instance_ind_type_id Σ mdecl ind idecl : 
+  Lemma subst_instance_ind_type_id Σ mdecl ind idecl :
     wf Σ ->
     declared_inductive Σ mdecl ind idecl ->
     let u := PCUICLookup.abstract_instance (ind_universes mdecl) in
@@ -2145,7 +2147,7 @@ Section SubstIdentity.
     destruct declm. apply w.
   Qed.
 
-  Lemma isType_subst_instance_id Σ Γ T : 
+  Lemma isType_subst_instance_id Σ Γ T :
     wf_ext_wk Σ ->
     let u := PCUICLookup.abstract_instance Σ.2 in
     isType Σ Γ T -> subst_instance_constr u T = T.
