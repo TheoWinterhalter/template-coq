@@ -584,17 +584,18 @@ Fixpoint elim_footprint t :=
     let '(p,σ) := pattern_footprint v in
     ret (k, n, ui, eApp (lift0 #|τ| p) :: l, τ ++ σ)
 
-  (* TODO In particular update function in fold_right to account for nats *)
-  (* | tCase ind p c brs =>
+  | tCase ind p c brs =>
     '(k,n,ui,l,τ) <- elim_footprint c ;;
     let '(p', θ) := pattern_footprint p in
     let '(brs', σ) :=
       fold_right
-        (λ '(p, a) '(pl, al), (lift0 #|al| p :: pl, al ++ a))
+        (λ '(n, (p, a)) '(pl, al),
+          ((n, lift0 (#|τ| + #|θ| + #|al|) p) :: pl, al ++ a)
+        )
         ([], [])
-        (map (on_snd pattern_footprint) l)
+        (map (on_snd pattern_footprint) brs)
     in
-    ret () *)
+    ret (k, n, ui, eCase ind (lift0 #|τ| p') brs' :: l, τ ++ θ ++ σ)
 
   | tProj p u =>
     '(k,n,ui,l,τ) <- elim_footprint u ;;
@@ -670,6 +671,7 @@ Proof.
         eapply simpl_subst_k. rewrite map_length. reflexivity.
   - cbn in e. inversion e. subst. clear e.
     cbn. intuition constructor.
+  - admit.
   - cbn in e.
     destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
     inversion e. subst. clear e.
@@ -678,4 +680,5 @@ Proof.
     intuition eauto.
     constructor. 2: auto.
     cbn. constructor.
-Qed.
+(* Qed. *)
+Admitted.
