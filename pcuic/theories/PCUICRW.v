@@ -565,3 +565,80 @@ Proof.
         eapply subs_merge_map_inv in h as [ρ [e5 ?]]. subst.
         rewrite e5. intuition eauto.
 Qed.
+
+Lemma map_subst_nil :
+  forall l k,
+    map (subst [] k) l = l.
+Proof.
+  intros l k. eapply map_id_f.
+  intros t. apply subst_empty.
+Qed.
+
+Fixpoint elim_footprint t :=
+  match t with
+  | tApp u v =>
+    let '(t,l,τ) := elim_footprint u in
+    let '(p,σ) := pattern_footprint v in
+    (t, eApp (lift0 #|τ| p) :: l, τ ++ σ)
+  (* TODO Case *)
+  | tProj p u =>
+    let '(t,l,τ) := elim_footprint u in
+    (t, eProj p :: l, τ)
+  | _ => (t, [], [])
+  end.
+
+Definition on_elim (P : term -> Type) e : Type :=
+  match e with
+  | eApp p => P p
+  | eCase ind p brs => P p × All (fun b => P b.2) brs
+  | eProj p => True
+  end.
+
+Lemma on_elim_impl :
+  forall P Q e,
+    on_elim P e ->
+    (forall x, P x -> Q x) ->
+    on_elim Q e.
+Proof.
+  intros P Q e he h.
+  destruct e.
+  - cbn in *. eapply h. assumption.
+  - cbn in *. destruct he. split.
+    + eapply h. assumption.
+    + eapply All_impl. 1: eauto.
+      intros [? ?]. cbn. intros ?.
+      eapply h. assumption.
+  - cbn in *. constructor.
+Qed.
+
+Lemma elim_footprint_closedn_eq :
+  forall t,
+    let '(c,l,τ) := elim_footprint t in
+    All (on_elim (closedn #|τ|)) l ×
+    t = subst0 τ (fold_right (fun e t => mkElim t e) c l).
+Proof.
+  intros t.
+  induction t using term_forall_list_ind.
+  all: try solve [
+    cbn ;
+    rewrite ?map_subst_nil ?subst_empty ;
+    split ;
+    [ constructor | reflexivity ]
+  ].
+  - cbn. destruct n. all: intuition constructor.
+  - cbn. destruct elim_footprint as [[c l] τ] eqn:e1.
+    destruct pattern_footprint eqn:e2.
+    cbn.
+    epose proof (pattern_footprint_closedn_eq _) as h.
+    erewrite e2 in h. destruct h as [hc ?].
+    destruct IHt1 as [hl ?]. clear IHt2.
+    subst. split.
+    + rewrite app_length. rewrite plus_comm. constructor.
+      * cbn. apply closedn_lift. assumption.
+      * eapply All_impl. 1: eauto.
+        intros e he. eapply on_elim_impl. 1: eauto.
+        cbn. intros. eapply closed_upwards. 1: eauto.
+        lia.
+    + f_equal.
+      * (* Probably not true because no hyp on c, should reach tSymb and return None? *)
+Abort.
