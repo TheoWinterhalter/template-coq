@@ -584,7 +584,17 @@ Fixpoint elim_footprint t :=
     let '(p,σ) := pattern_footprint v in
     ret (k, n, ui, eApp (lift0 #|τ| p) :: l, τ ++ σ)
 
-  (* TODO Case *)
+  (* TODO In particular update function in fold_right to account for nats *)
+  (* | tCase ind p c brs =>
+    '(k,n,ui,l,τ) <- elim_footprint c ;;
+    let '(p', θ) := pattern_footprint p in
+    let '(brs', σ) :=
+      fold_right
+        (λ '(p, a) '(pl, al), (lift0 #|al| p :: pl, al ++ a))
+        ([], [])
+        (map (on_snd pattern_footprint) l)
+    in
+    ret () *)
 
   | tProj p u =>
     '(k,n,ui,l,τ) <- elim_footprint u ;;
