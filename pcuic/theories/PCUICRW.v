@@ -355,6 +355,46 @@ Proof.
   cbn. assumption.
 Qed.
 
+Lemma match_pattern_lift :
+  forall npat p t k σ,
+    pattern npat p ->
+    match_pattern npat p t = Some σ ->
+    match_pattern npat p (lift0 k t) = Some (map (option_map (lift0 k)) σ).
+Proof.
+  intros npat p t k σ hp e.
+  induction hp
+  as [n hn | ind n ui args ha ih]
+  in t, σ, e, k |- *
+  using pattern_all_rect.
+  - cbn in *. unfold subs_init in *. unfold subs_add in *.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in e. subst.
+    rewrite map_app. cbn. rewrite <- firstn_map. rewrite map_skipn.
+    unfold subs_empty. rewrite map_list_init. cbn.
+    reflexivity.
+  - eapply All_prod in ih. 2: exact ha.
+    clear ha.
+    induction ih
+    as [| p args [hp ihp] _ ih]
+    in t, σ, e, k |- *
+    using All_rev_rect.
+    + cbn - [eqb] in *. unfold assert_eq in *. eqb_dec in e. 2: discriminate.
+      subst. cbn - [eqb] in *.
+      eqb_dec. 2: contradiction.
+      cbn. apply some_inj in e. subst.
+      unfold subs_empty. rewrite map_list_init. reflexivity.
+    + rewrite <- mkApps_nested. cbn.
+      rewrite <- mkApps_nested in e. cbn in e.
+      destruct t. all: try discriminate.
+      destruct match_pattern eqn:e1. 2: discriminate.
+      move e at top.
+      destruct match_pattern eqn:e2. 2: discriminate.
+      cbn.
+      eapply ih in e1. eapply ihp in e2.
+      erewrite e1. erewrite e2.
+      eapply subs_merge_map. assumption.
+Qed.
+
 Lemma pattern_footprint_match_pattern :
   forall npat t p σ,
     pattern npat p ->
@@ -444,10 +484,9 @@ Proof.
           intros v. eapply simpl_subst_k. rewrite map_length. reflexivity.
         }
         destruct IHha as [θ [h1 h2]].
-        (* Somehow the induction hypothesis isn't strong enough?
-          Or is it just a question of match_pattern_lift?
-        *)
-        (* rewrite h1. *)
+        eapply match_pattern_lift in h1.
+        2:{ constructor. assumption. }
+        erewrite lift_mkApps in h1. cbn in h1. erewrite h1.
         specialize Hind with (3 := e4) (4 := eq_refl).
         forward Hind.
         { rewrite size_mkApps. rewrite list_size_app. cbn. lia. }
