@@ -101,25 +101,6 @@ Proof.
   rewrite IHl. simpl. lia.
 Qed.
 
-(* Equations? pattern_footprint (t : term) : term × list term
-  by wf (size t) :=
-  pattern_footprint t with view_app_construct t := {
-  | is_app_construct ind u i l with inspect (map_terms pattern_footprint l _) := {
-    | @exist ml e1 with inspect (
-        fold_left
-          (fun '(pl, al) '(p,a) => (pl ++ [ lift0 #|al| p ], al ++ a))
-          ml
-          ([], [])
-      ) => {
-      | @exist (pl, al) e2 => (mkApps (tConstruct ind u i) pl, al)
-      }
-    } ;
-  | app_construct_other t h => (tRel 0, [ t ])
-  }.
-Proof.
-  rewrite size_mkApps. cbn. auto.
-Qed. *)
-
 Equations? pattern_footprint (t : term) : term × list term
   by wf (size t) :=
   pattern_footprint t with view_app_construct t := {
