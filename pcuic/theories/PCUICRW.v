@@ -822,3 +822,131 @@ Proof.
     constructor. 2: auto.
     cbn. constructor.
 Qed.
+
+Local Notation prelhs k n ui l :=
+  (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
+
+Lemma match_prelhs_closedn :
+  ∀ npat t k n l ui σ m,
+    All (elim_pattern npat) l →
+    closedn m t →
+    match_prelhs npat k n l t = Some (ui, σ) →
+    All (on_Some (closedn m)) σ.
+Proof.
+  intros npat t k n l ui σ m hl hc e.
+  induction hl as [| ? l [] hl ih ] in t, σ, m, hc, e |- *.
+  - cbn in e. destruct t. all: try discriminate.
+    assert_eq e. assert_eq e. subst. cbn in e.
+    inversion e. subst. clear e.
+    apply All_on_Some_subs_empty.
+  - cbn in e. destruct t. all: try discriminate.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct match_prelhs as [[? ?]|] eqn:e2. 2: discriminate.
+    destruct subs_merge eqn:e3. 2: discriminate.
+    inversion e. subst. clear e.
+    cbn in hc. apply andP in hc. destruct hc.
+    eapply match_pattern_closedn in e1. 2,3: eauto.
+    eapply ih in e2. 2: eauto.
+    eapply All_on_Some_subs_merge. all: eauto.
+  - cbn in e. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct option_map2 as [l1|] eqn:e2. 2: discriminate.
+    destruct PCUICPattern.monad_fold_right as [l2|] eqn:e3. 2: discriminate.
+    destruct match_prelhs as [[]|] eqn:e4. 2: discriminate.
+    destruct subs_merge eqn:e5. 2: discriminate.
+    move e at top.
+    destruct subs_merge eqn:e6. 2: discriminate.
+    inversion e. subst. clear e.
+    cbn in hc. apply andP in hc. destruct hc as [hc cl].
+    apply andP in hc. destruct hc as [? ?].
+    eapply ih in e4. 2: eauto.
+    eapply match_pattern_closedn in e1. 2,3: eauto.
+    eapply All_on_Some_subs_merge. 1,3: eauto.
+    eapply All_on_Some_subs_merge. 1,2: eauto.
+    clear - a brs0 l1 e2 l2 e3 cl.
+    induction a in brs0, l1, e2, l2, e3, cl |- *.
+    + destruct brs0. 2: discriminate.
+      cbn in e2. apply some_inj in e2. subst.
+      cbn in e3. apply some_inj in e3. subst.
+      apply All_on_Some_subs_empty.
+    + destruct brs0. 1: discriminate.
+      cbn in e2. assert_eq e2. cbn in e2.
+      destruct match_pattern eqn:e1. 2: discriminate.
+      destruct option_map2 eqn:e4. 2: discriminate.
+      apply some_inj in e2. subst.
+      cbn in e3. destruct PCUICPattern.monad_fold_right eqn:e5. 2: discriminate.
+      cbn in cl. apply andP in cl. unfold test_snd in cl. destruct cl as [? ?].
+      eapply IHa in e4. 2,3: eauto.
+      eapply All_on_Some_subs_merge. 1,2: eauto.
+      eapply match_pattern_closedn. all: eauto.
+  - cbn in e. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    cbn in hc.
+    eapply ih in e. 2: eauto.
+    assumption.
+Qed.
+
+Lemma elim_footprint_match_prelhs :
+  forall npat t k n l ui σ,
+    All (elim_pattern npat) l ->
+    match_prelhs npat k n l t = Some (ui, σ) ->
+    ∑ l' τ θ,
+      elim_footprint t = Some (k, n, ui, l', τ) ×
+      match_prelhs npat k n l (prelhs k n ui l') = Some (ui, θ) ×
+      map (option_map (subst0 τ)) θ = σ.
+Proof.
+  intros npat t k n l ui σ h e.
+  induction h as [| ? l [] hl ih ] in t, σ, e |- *.
+  - cbn in e. destruct t. all: try discriminate.
+    cbn. assert_eq e. assert_eq e. subst.
+    cbn in e. inversion e. subst. clear e.
+    eexists _, _, _. intuition eauto.
+    + cbn. rewrite assert_eq_refl. rewrite assert_eq_refl. reflexivity.
+    + unfold subs_empty. rewrite map_list_init. reflexivity.
+  - cbn in e. destruct t. all: try discriminate.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct match_prelhs as [[? ?]|] eqn:e2. 2: discriminate.
+    destruct subs_merge eqn:e3. 2: discriminate.
+    inversion e. subst. clear e.
+    eapply ih in e2 as e4. destruct e4 as [l' [τ1 [θ1 [e4 [e5 e6]]]]]. clear ih.
+    eapply pattern_footprint_match_pattern in e1 as e7. 2: auto.
+    destruct pattern_footprint eqn:e8.
+    destruct e7 as [θ2 [e9 e10]].
+    cbn. rewrite e4. rewrite e8.
+    match goal with
+    | |- context [ Some (_,_,_, ?l, ?t) = _ ] =>
+      exists l, t
+    end.
+    cbn.
+    eapply match_pattern_lift in e9 as e11. 2: auto.
+    erewrite e11.
+    rewrite e5.
+    subst.
+    match goal with
+    | e : subs_merge _ _ = ?z
+      |- context [ subs_merge ?x ?y ] =>
+      match goal with
+      | |- context [ map  ?f _ = _ ] =>
+        assert (h : subs_merge (map f x) (map f y) = z)
+      end
+    end.
+    { rewrite <- e3. f_equal.
+      - rewrite map_map_compose. eapply map_ext.
+        intros o. rewrite option_map_two.
+        eapply option_map_ext.
+        intros v.
+        rewrite subst_app_decomp. f_equal.
+        eapply simpl_subst_k. rewrite map_length. reflexivity.
+      - eapply elim_footprint_closedn_eq in e4 as h. destruct h as [hc _].
+
+        (* eapply match_pattern_closedn in h1'. 2,3: eauto.
+        eapply All_map_eq. eapply All_impl. 1: eauto.
+        intros [] h. 2: reflexivity.
+        cbn in h. cbn. f_equal.
+        rewrite subst_app_simpl. cbn.
+        eapply subst_closedn in h. erewrite h. reflexivity.
+    }
+    eapply subs_merge_map_inv in h as [ρ [e5 ?]]. subst.
+    eapply subs_merge_map_inv in e3. *)
+Admitted.
