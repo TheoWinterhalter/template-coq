@@ -636,6 +636,42 @@ Proof.
   intros A B C f [? ?]. intuition auto.
 Qed.
 
+Lemma right_apply :
+  forall {A B C} (f : A -> B),
+    C × A ->
+    C × B.
+Proof.
+  intros A B C f [? ?]. intuition auto.
+Qed.
+
+Lemma unfold_map :
+  forall {A B} (f : A -> B) l,
+    map f l =
+    (fix map (l : list A) : list B :=
+      match l with
+      | [] => []
+      | a :: t => f a :: map t
+      end) l.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma closedn_mkElim :
+  forall n t e,
+    closedn n t ->
+    on_elim (closedn n) e ->
+    closedn n (mkElim t e).
+Proof.
+  intros n t e ht he.
+  destruct e.
+  - cbn in *. rewrite ht he. reflexivity.
+  - cbn in *. destruct he as [hp hl].
+    rewrite ht hp. cbn.
+    eapply All_forallb. eapply All_impl. 1: eauto.
+    intros [? ?]. cbn. auto.
+  - cbn. assumption.
+Qed.
+
 Lemma elim_footprint_closedn_eq :
   ∀ t k n ui l τ,
     elim_footprint t = Some (k,n,ui,l,τ) →
@@ -715,7 +751,65 @@ Proof.
       eapply closedn_lift. rewrite app_length. eapply closed_upwards. 1: eauto.
       lia.
     }
-    admit.
+    unshelve eapply (right_apply (fun (x : (_,_) = (_,_)) => f_equal (fun y => tCase _ _ y.1 y.2) x)).
+    rewrite -/subst. rewrite <- unfold_map.
+    clear - l3 l4 e3 l1 hl.
+    induction l0 in l3, l4, e3, l1, hl |- *.
+    + cbn in e3. inversion e3. subst. clear e3.
+      cbn. intuition auto. f_equal.
+      rewrite app_nil_r. rewrite subst_app_simpl. cbn. f_equal.
+      symmetry. eapply subst_closedn.
+      induction hl. 1: reflexivity.
+      cbn. apply closedn_mkElim. all: auto.
+    + cbn in e3. destruct pattern_footprint eqn:e1.
+      destruct fold_right eqn:e2.
+      inversion e3. subst. clear e3.
+      specialize IHl0 with (1 := eq_refl) (2 := hl).
+      destruct IHl0 as [? ?].
+      split.
+      * {
+        constructor.
+        - cbn. rewrite !app_length.
+          match goal with
+          | |- context [ ?x + (?y + ?z) + ?t ] =>
+            replace (x + (y + z) + t) with (z + (t + x + y)) by lia
+          end.
+          apply closedn_lift.
+          epose proof (pattern_footprint_closedn_eq _) as hc.
+          erewrite e1 in hc. intuition auto.
+        - eapply All_impl. 1: eauto.
+          intros [? ?]. cbn. rewrite !app_length. intro h.
+          eapply closed_upwards. 1: eauto.
+          lia.
+      }
+      * {
+        f_equal.
+        - rewrite subst_app_simpl. cbn. f_equal.
+          symmetry. eapply subst_closedn.
+          clear - hl.
+          induction hl. 1: reflexivity.
+          cbn. apply closedn_mkElim. all: auto.
+        - cbn.
+          match goal with
+          | |- ?a :: _ = _ =>
+            destruct a
+          end.
+          cbn. unfold on_snd at 1. cbn.
+          match goal with
+          | |- context [ ?x ++ ?y ++ ?z ++ ?t ] =>
+            replace (x ++ y ++ z ++ t) with ((x ++ y ++ z) ++ t)
+          end.
+          2:{ rewrite !app_assoc. reflexivity. }
+          rewrite subst_app_decomp. rewrite simpl_subst_k.
+          { rewrite map_length. rewrite !app_length. lia. }
+          epose proof (pattern_footprint_closedn_eq _) as hc.
+          erewrite e1 in hc. cbn in hc. destruct hc as [hc ?]. subst.
+          f_equal. inversion e.
+          eapply All_map_eq. eapply All_impl. 1: eauto.
+          intros [? ?]. unfold on_snd. cbn. intros h.
+          f_equal.
+          admit.
+      }
   - cbn in e.
     destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
     inversion e. subst. clear e.
