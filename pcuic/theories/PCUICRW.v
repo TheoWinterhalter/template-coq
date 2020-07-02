@@ -901,6 +901,65 @@ Proof.
   - cbn in *. assumption.
 Qed.
 
+Definition pattern_brs_footprint k1 k2 (brs : list (nat × term)) :=
+  fold_right
+    (λ '(n, (p, a)) '(pl, al),
+        ((n, lift0 (k1 + k2 + #|al|) p) :: pl, al ++ a)
+    )
+    ([], [])
+    (map (on_snd pattern_footprint) brs).
+
+Lemma pattern_brs_footprint_unfold :
+  forall k1 k2 brs,
+    pattern_brs_footprint k1 k2 brs =
+    fold_right
+      (λ '(n, (p, a)) '(pl, al),
+          ((n, lift0 (k1 + k2 + #|al|) p) :: pl, al ++ a)
+      )
+      ([], [])
+      (map (on_snd pattern_footprint) brs).
+Proof.
+  reflexivity.
+Defined.
+
+(* Lemma pattern_list_footprint_atend :
+  forall l a,
+    let '(p, τ) := pattern_footprint a in
+    let '(pl, al) := pattern_list_footprint l in
+    pattern_list_footprint (l ++ [ a ]) =
+    (map (lift0 #|τ|) pl ++ [ p ], τ ++ al).
+Proof.
+  intros l a.
+  destruct pattern_footprint as [p τ] eqn:e1.
+  destruct pattern_list_footprint as [pl al] eqn:e2.
+  induction l in a, p, τ, e1, pl, al, e2 |- *.
+  - cbn. rewrite e1. cbn. rewrite lift0_id.
+    cbn in e2. inversion e2.
+    cbn. rewrite app_nil_r. reflexivity.
+  - cbn in e2. move e2 at top. destruct pattern_footprint eqn:e3.
+    rewrite <- pattern_list_footprint_unfold in e2.
+    destruct pattern_list_footprint eqn:e4.
+    inversion e2. subst. clear e2.
+    cbn. rewrite e3. rewrite <- pattern_list_footprint_unfold.
+    specialize IHl with (1 := e1) (2 := eq_refl).
+    rewrite IHl. rewrite app_length.
+    rewrite <- simpl_lift with (i := 0). 2,3: lia.
+    f_equal. rewrite app_assoc. reflexivity.
+Qed.
+
+(* A version easier to do rewriting *)
+Lemma pattern_list_footprint_atend_eq :
+  forall l a,
+    pattern_list_footprint (l ++ [ a ]) =
+    (map (lift0 #|(pattern_footprint a).2|) (pattern_list_footprint l).1 ++ [ (pattern_footprint a).1 ], (pattern_footprint a).2 ++ (pattern_list_footprint l).2).
+Proof.
+  intros l a.
+  pose proof (pattern_list_footprint_atend l a) as h.
+  destruct pattern_footprint eqn:e1.
+  destruct pattern_list_footprint eqn:e2.
+  cbn. assumption.
+Qed. *)
+
 Lemma elim_footprint_match_prelhs :
   ∀ npat t k n l ui σ,
     All (elim_pattern npat) l →
@@ -994,14 +1053,75 @@ Proof.
     }
     eapply h. 1: reflexivity.
     clear h. subst.
-    clear - a e2 e3 e6 e5 e13.
-    induction a in σ, l4, e6, l1, brs0, e2, l2, e3, e5, l6, l7, e13 |- *.
-    + destruct brs0. 2: discriminate.
-      cbn in e13. inversion e13. subst. clear e13.
-      cbn in e2. apply some_inj in e2. subst.
-      cbn in e3. apply some_inj in e3. subst.
-      cbn.
-      (* It would be better to do it all at once rather than in the loop
-        we probably losed the necessary closedness hypotheses anyway.
+    rewrite <- pattern_brs_footprint_unfold in e13.
+    lazymatch goal with
+    | e : option_map2 _ _ _ = Some ?σ,
+      w : pattern_brs_footprint _ _ _ = (?u, ?v)
+      |- context [ option_map2 ?f ?l1 ?l2 ] =>
+      assert (h :
+        ∑ θ,
+          option_map2 f l1 l2 = Some θ ×
+          map (map (option_map (subst0 v))) θ = σ
+      )
+    end.
+    { clear - a e2 e3 e13.
+      induction a as [| [? ?] brs hp hb ih]
+      in brs0, l1, e2, l2, e3, l6, l7, e13 |- *.
+      - destruct brs0. 2: discriminate.
+        cbn in e2. apply some_inj in e2.
+        cbn in e13. inversion e13. subst. clear e13.
+        cbn in e3. apply some_inj in e3. subst.
+        cbn. eexists. intuition eauto.
+      - destruct brs0 as [| [] brs0]. 1: discriminate.
+        cbn in e2. assert_eq e2. subst. cbn in e2.
+        destruct match_pattern eqn:e1. 2: discriminate.
+        destruct option_map2 eqn:e4. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn in e3.
+        destruct PCUICPattern.monad_fold_right eqn:e2. 2: discriminate.
+        cbn in e13. destruct pattern_footprint eqn:e5.
+        destruct fold_right eqn:e6.
+        rewrite <- pattern_brs_footprint_unfold in e6.
+        inversion e13. subst. clear e13.
+        specialize ih with (1 := e4) (2 := e2) (3 := e6).
+        destruct ih as [θ [e7 e8]].
+        cbn in *. rewrite assert_eq_refl.
+        eapply pattern_footprint_match_pattern in e1 as h. 2: auto.
+        rewrite e5 in h.
+        destruct h as [τ [e9 ?]]. subst.
+        eapply match_pattern_lift in e9 as e10. 2: auto.
+        erewrite e10.
+        rewrite e7.
+        eexists. intuition eauto.
+        cbn. f_equal.
+        + rewrite -> map_map_compose. eapply map_ext.
+          intros o. rewrite option_map_two. apply option_map_ext.
+          intros v. rewrite subst_app_decomp. f_equal.
+          match goal with
+          | |- context [ ?x + ?y + ?z ] =>
+            replace (x + y + z) with (z + (x + y)) by lia
+          end.
+          erewrite <- simpl_lift with (i := 0). 2,3: lia.
+          rewrite simpl_subst_k.
+          { rewrite map_length. reflexivity. }
+          (* TODO Even knowing it comes from τ seems like I won't be able to
+            get this...
+          *)
+          give_up.
+        + (* Need to prove that θ is closed under l8 as well! Or l7 *)
+          give_up.
+    }
+    destruct h as [θ [e15 ?]]. subst.
+    rewrite e15.
+    (* TODO Maybe I should include monad_fold_right in the assert above as
+      well? I did the proof using it, so it seems fair.
+      Perhaps it will solve my equality.
       *)
+    admit.
+  - cbn in e. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    eapply ih in e as [l' [τ [θ [e1 [e2 e3]]]]].
+    cbn. rewrite e1.
+    eexists _, _, _. intuition eauto.
+    cbn. rewrite assert_eq_refl. assumption.
 Admitted.
