@@ -954,16 +954,54 @@ Proof.
         eapply simpl_subst_k. rewrite map_length. reflexivity.
       - eapply elim_footprint_closedn_eq in e4 as h. destruct h as [hc _].
         eapply match_prelhs_closedn in e5. 2: auto.
-        2:{
-          (* cbn.
-        }
-        eapply match_pattern_closedn in h1'. 2,3: eauto.
+        2:{ eapply prelhs_closedn. eassumption. }
         eapply All_map_eq. eapply All_impl. 1: eauto.
         intros [] h. 2: reflexivity.
         cbn in h. cbn. f_equal.
         rewrite subst_app_simpl. cbn.
         eapply subst_closedn in h. erewrite h. reflexivity.
     }
-    eapply subs_merge_map_inv in h as [ρ [e5 ?]]. subst.
-    eapply subs_merge_map_inv in e3. *)
+    eapply subs_merge_map_inv in h as [ρ [e12 ?]]. subst.
+    rewrite e12.
+    eexists. intuition eauto.
+  - cbn in e. destruct t. all: try discriminate.
+    assert_eq e. subst. cbn in e.
+    destruct match_pattern eqn:e1. 2: discriminate.
+    destruct option_map2 eqn:e2. 2: discriminate.
+    destruct PCUICPattern.monad_fold_right eqn:e3. 2: discriminate.
+    destruct match_prelhs as [[]|] eqn:e4. 2: discriminate.
+    destruct subs_merge eqn:e5. 2: discriminate.
+    move e at top.
+    destruct subs_merge eqn:e6. 2: discriminate.
+    inversion e. subst. clear e.
+    eapply ih in e4 as e7. destruct e7 as [l' [τ1 [θ1 [e7 [e8 e9]]]]]. clear ih.
+    eapply pattern_footprint_match_pattern in e1 as e10. 2: auto.
+    destruct pattern_footprint eqn:e11.
+    destruct e10 as [θ2 [e10 e12]].
+    cbn. rewrite e7. rewrite e11.
+    destruct (fold_right _ _ (map _ _)) eqn:e13.
+    lazymatch goal with
+    | |- context [ Some (_,_,_, ?l, ?t) = _ ] =>
+      exists l, t
+    end.
+    cbn. rewrite assert_eq_refl.
+    eapply match_pattern_lift in e10 as e14. 2: auto.
+    erewrite e14.
+    rewrite e8.
+    assert (h : ∀ R A (P Q : A -> Type), R → (∑ x, P x × Q x) → ∑ x, R × P x × Q x).
+    { clear. intros R A P Q h [x [? ?]].
+      exists x. intuition auto.
+    }
+    eapply h. 1: reflexivity.
+    clear h. subst.
+    clear - a e2 e3 e6 e5 e13.
+    induction a in σ, l4, e6, l1, brs0, e2, l2, e3, e5, l6, l7, e13 |- *.
+    + destruct brs0. 2: discriminate.
+      cbn in e13. inversion e13. subst. clear e13.
+      cbn in e2. apply some_inj in e2. subst.
+      cbn in e3. apply some_inj in e3. subst.
+      cbn.
+      (* It would be better to do it all at once rather than in the loop
+        we probably losed the necessary closedness hypotheses anyway.
+      *)
 Admitted.
