@@ -628,6 +628,14 @@ Proof.
   - cbn in *. constructor.
 Qed.
 
+Lemma left_apply :
+  forall {A B C} (f : A -> B),
+    A × C ->
+    B × C.
+Proof.
+  intros A B C f [? ?]. intuition auto.
+Qed.
+
 Lemma elim_footprint_closedn_eq :
   ∀ t k n ui l τ,
     elim_footprint t = Some (k,n,ui,l,τ) →
@@ -685,6 +693,28 @@ Proof.
     { rewrite map_length. reflexivity. }
     rewrite subst_app_simpl. cbn. eapply subst_closedn in hc as sc.
     erewrite sc.
+    unshelve eapply (left_apply (fun x => All_cons x _)).
+    1:{
+      eapply All_impl. 1: eauto.
+      intros [] hy.
+      - cbn in hy. cbn. rewrite app_length. eapply closed_upwards. 1: eauto.
+        lia.
+      - cbn in hy. destruct hy as [? ?].
+        cbn. split.
+        + rewrite app_length. eapply closed_upwards. 1: eauto.
+          lia.
+        + eapply All_impl. 1: eauto.
+          intros [? ?]. cbn. rewrite app_length. intro h.
+          eapply closed_upwards. 1: eauto.
+          lia.
+      - constructor.
+    }
+    cbn. rewrite app_length. rewrite plus_comm.
+    unshelve eapply (left_apply (fun x => (_,x))).
+    1:{
+      eapply closedn_lift. rewrite app_length. eapply closed_upwards. 1: eauto.
+      lia.
+    }
     admit.
   - cbn in e.
     destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
