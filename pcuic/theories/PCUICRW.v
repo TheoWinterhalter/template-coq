@@ -887,10 +887,24 @@ Proof.
     assumption.
 Qed.
 
+Lemma prelhs_closedn :
+  ∀ k n ui l m,
+    All (on_elim (closedn m)) l →
+    closedn m (prelhs k n ui l).
+Proof.
+  intros k n ui l m h.
+  induction h as [| [] l h hl ih ].
+  - cbn. reflexivity.
+  - cbn in *. rewrite ih. assumption.
+  - cbn in *. destruct h as [h1 h2]. rewrite h1 ih. cbn.
+    eapply All_forallb. assumption.
+  - cbn in *. assumption.
+Qed.
+
 Lemma elim_footprint_match_prelhs :
-  forall npat t k n l ui σ,
-    All (elim_pattern npat) l ->
-    match_prelhs npat k n l t = Some (ui, σ) ->
+  ∀ npat t k n l ui σ,
+    All (elim_pattern npat) l →
+    match_prelhs npat k n l t = Some (ui, σ) →
     ∑ l' τ θ,
       elim_footprint t = Some (k, n, ui, l', τ) ×
       match_prelhs npat k n l (prelhs k n ui l') = Some (ui, θ) ×
@@ -939,8 +953,11 @@ Proof.
         rewrite subst_app_decomp. f_equal.
         eapply simpl_subst_k. rewrite map_length. reflexivity.
       - eapply elim_footprint_closedn_eq in e4 as h. destruct h as [hc _].
-
-        (* eapply match_pattern_closedn in h1'. 2,3: eauto.
+        eapply match_prelhs_closedn in e5. 2: auto.
+        2:{
+          (* cbn.
+        }
+        eapply match_pattern_closedn in h1'. 2,3: eauto.
         eapply All_map_eq. eapply All_impl. 1: eauto.
         intros [] h. 2: reflexivity.
         cbn in h. cbn. f_equal.
