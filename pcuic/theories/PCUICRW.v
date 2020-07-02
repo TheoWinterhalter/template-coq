@@ -808,7 +808,10 @@ Proof.
           eapply All_map_eq. eapply All_impl. 1: eauto.
           intros [? ?]. unfold on_snd. cbn. intros h.
           f_equal.
-          admit.
+          rewrite [RHS]subst_app_simpl. cbn. f_equal.
+          symmetry. eapply subst_closedn.
+          rewrite !app_length. rewrite app_length in h.
+          rewrite plus_comm. assumption.
       }
   - cbn in e.
     destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
@@ -818,5 +821,4 @@ Proof.
     intuition eauto.
     constructor. 2: auto.
     cbn. constructor.
-(* Qed. *)
-Admitted.
+Qed.
