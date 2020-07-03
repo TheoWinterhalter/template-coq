@@ -1109,21 +1109,24 @@ Proof.
             assert (h : subs_merge (map f x) (map f y) = z)
           end
         end.
-        { (* rewrite <- e3. f_equal.
-          - rewrite map_map_compose. eapply map_ext.
-            intros o. rewrite option_map_two.
-            eapply option_map_ext.
+        { rewrite <- e3. f_equal.
+          - eapply map_ext.
+            intros o. eapply option_map_ext.
             intros v.
+            rewrite subst_app_simpl. cbn. f_equal.
+            (* eapply subst_closedn. *)
+            admit.
+          - rewrite map_map_compose. eapply map_ext.
+            intro o. rewrite option_map_two. eapply option_map_ext.
+            intro v.
             rewrite subst_app_decomp. f_equal.
-            eapply simpl_subst_k. rewrite map_length. reflexivity.
-          - eapply elim_footprint_closedn_eq in e4 as h. destruct h as [hc _].
-            eapply match_prelhs_closedn in e5. 2: auto.
-            2:{ eapply prelhs_closedn. eassumption. }
-            eapply All_map_eq. eapply All_impl. 1: eauto.
-            intros [] h. 2: reflexivity.
-            cbn in h. cbn. f_equal.
-            rewrite subst_app_simpl. cbn.
-            eapply subst_closedn in h. erewrite h. reflexivity. *)
+            match goal with
+            | |- context [ ?x + ?y + ?z ] =>
+              replace (x + y + z) with (z + (x + y)) by lia
+            end.
+            erewrite <- simpl_lift with (i := 0). 2,3: lia.
+            rewrite simpl_subst_k.
+            { rewrite map_length. reflexivity. }
             admit.
         }
         eapply subs_merge_map_inv in h as [ρ [e12 ?]]. subst.
