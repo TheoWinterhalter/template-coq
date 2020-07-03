@@ -922,44 +922,6 @@ Proof.
   reflexivity.
 Defined.
 
-(* Lemma pattern_list_footprint_atend :
-  forall l a,
-    let '(p, τ) := pattern_footprint a in
-    let '(pl, al) := pattern_list_footprint l in
-    pattern_list_footprint (l ++ [ a ]) =
-    (map (lift0 #|τ|) pl ++ [ p ], τ ++ al).
-Proof.
-  intros l a.
-  destruct pattern_footprint as [p τ] eqn:e1.
-  destruct pattern_list_footprint as [pl al] eqn:e2.
-  induction l in a, p, τ, e1, pl, al, e2 |- *.
-  - cbn. rewrite e1. cbn. rewrite lift0_id.
-    cbn in e2. inversion e2.
-    cbn. rewrite app_nil_r. reflexivity.
-  - cbn in e2. move e2 at top. destruct pattern_footprint eqn:e3.
-    rewrite <- pattern_list_footprint_unfold in e2.
-    destruct pattern_list_footprint eqn:e4.
-    inversion e2. subst. clear e2.
-    cbn. rewrite e3. rewrite <- pattern_list_footprint_unfold.
-    specialize IHl with (1 := e1) (2 := eq_refl).
-    rewrite IHl. rewrite app_length.
-    rewrite <- simpl_lift with (i := 0). 2,3: lia.
-    f_equal. rewrite app_assoc. reflexivity.
-Qed.
-
-(* A version easier to do rewriting *)
-Lemma pattern_list_footprint_atend_eq :
-  forall l a,
-    pattern_list_footprint (l ++ [ a ]) =
-    (map (lift0 #|(pattern_footprint a).2|) (pattern_list_footprint l).1 ++ [ (pattern_footprint a).1 ], (pattern_footprint a).2 ++ (pattern_list_footprint l).2).
-Proof.
-  intros l a.
-  pose proof (pattern_list_footprint_atend l a) as h.
-  destruct pattern_footprint eqn:e1.
-  destruct pattern_list_footprint eqn:e2.
-  cbn. assumption.
-Qed. *)
-
 Lemma elim_footprint_match_prelhs :
   ∀ npat t k n l ui σ,
     All (elim_pattern npat) l →
@@ -1054,6 +1016,58 @@ Proof.
     eapply h. 1: reflexivity.
     clear h. subst.
     rewrite <- pattern_brs_footprint_unfold in e13.
+    (* lazymatch goal with
+    | e : option_map2 _ _ _ = Some ?σ,
+      w : pattern_brs_footprint ?a ?b _ = (?u, ?v)
+      |- context [ option_map2 ?f ?l1 ?l2 ] =>
+      assert (h :
+        ∑ θ,
+          option_map2 f l1 l2 = Some θ ×
+          map (map (option_map (subst0 v))) θ =
+          map (map (option_map (lift0 (a + b)))) σ
+      )
+    end.
+    { clear - a e2 e13.
+      induction a as [| [? ?] brs hp hb ih] in brs0, l1, e2, l6, l7, e13 |- *.
+      - destruct brs0. 2: discriminate.
+        cbn in e2. apply some_inj in e2. subst.
+        cbn in e13. inversion e13. subst.
+        cbn. eexists. intuition eauto.
+      - destruct brs0 as [| [] brs0]. 1: discriminate.
+        cbn in e2. assert_eq e2. subst. cbn in e2.
+        destruct match_pattern eqn:e1. 2: discriminate.
+        destruct option_map2 eqn:e3. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn in e13. destruct pattern_footprint eqn:e4.
+        destruct fold_right eqn:e5.
+        rewrite <- pattern_brs_footprint_unfold in e5.
+        inversion e13. subst. clear e13.
+        specialize ih with (1 := e3) (2 := e5).
+        destruct ih as [θ [h1 h2]].
+        cbn. rewrite assert_eq_refl.
+        eapply pattern_footprint_match_pattern in e1 as h. 2: auto.
+        rewrite e4 in h.
+        destruct h as [τ [e6 ?]]. subst.
+        eapply match_pattern_lift in e6 as e7. 2: auto.
+        erewrite e7. rewrite h1.
+        eexists. intuition eauto.
+        cbn. f_equal.
+        + rewrite !map_map_compose. eapply map_ext.
+          intro o. rewrite !option_map_two. apply option_map_ext.
+          intro x.
+          match goal with
+          | |- context [ ?x + ?y + ?z ] =>
+            replace (x + y + z) with (z + (x + y)) by lia
+          end.
+          erewrite <- simpl_lift with (i := 0). 2,3: lia.
+          rewrite subst_app_decomp. rewrite simpl_subst_k.
+          { rewrite map_length. reflexivity. }
+          (* epose proof (pattern_footprint_closedn_eq _) as h.
+          erewrite e4 in h. destruct h as [hc ?]. subst.
+          eapply match_pattern_closedn in hc. 2,3: eauto. *)
+    } *)
+
+
     lazymatch goal with
     | e : option_map2 _ _ _ = Some ?σ,
       w : pattern_brs_footprint _ _ _ = (?u, ?v),
