@@ -4727,6 +4727,38 @@ Section Triangle.
         * eapply IHl. all: eassumption.
   Qed.
 
+  Lemma lhs_footprint_first_match :
+    ∀ k l t ui σ r,
+      first_match k l t = Some (ui, σ, r) →
+      All (elim_pattern #|pat_context r|) (elims r) →
+      ∑ n l' τ θ,
+        lhs_footprint t = Some (k, n, ui, l', τ) ×
+        first_match k l (mkElims (tSymb k n ui) l') = Some (ui, θ, r) ×
+        map (subst0 τ) θ = σ.
+  Proof.
+    intros k l t ui σ r e hr.
+    induction l in ui, σ, r, e, hr |- *. 1: discriminate.
+    cbn - [ match_lhs ] in e. destruct match_lhs as [[]|] eqn:e1.
+    - inversion e. subst. clear e.
+      eapply lhs_footprint_match_lhs in e1. 2: auto.
+      destruct e1 as [l' [τ [θ [e1 [e2 ?]]]]].
+      eexists _,_,_,_. intuition eauto.
+      cbn - [ match_lhs ]. rewrite e2. reflexivity.
+    - eapply IHl in e. 2: auto.
+      destruct e as [n [l' [τ [θ [? [? ?]]]]]].
+      eexists _,_,_,_. intuition eauto.
+      cbn - [ match_lhs ].
+      destruct (match_lhs _ _ _ _ (mkElims _ _)) as [[]|] eqn:e3.
+      1:{
+        exfalso.
+        (* NOW Can we conclude from soundness of lhs_footprint (need to be done)
+          and that of match_lhs?
+        *)
+        admit.
+      }
+      auto.
+  Admitted.
+
   Context (cΣ : confluenv Σ).
 
   Lemma lookup_criterion :
