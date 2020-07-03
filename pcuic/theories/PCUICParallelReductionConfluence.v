@@ -4589,6 +4589,37 @@ Section Confluenv.
       confl_decl Σ hΣ kn d →
       confluenv (Σ ,, (kn, d)).
 
+  Lemma triangle_rules_weakening :
+    ∀ Σ Σ' hΣ hΣ' k nsymb r e he,
+      PCUICWeakeningEnv.extends Σ Σ' →
+      triangle_rules Σ k nsymb (rho Σ hΣ e he)(rho_ctx Σ hΣ e he) r →
+      triangle_rules Σ' k nsymb (rho Σ' hΣ' e he)(rho_ctx Σ' hΣ' e he) r.
+  Proof.
+    intros Σ Σ' hΣ hΣ' k nsymb r e he hx hr.
+    induction hr.
+    - constructor.
+    - constructor.
+      + intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
+        (* Not really worth doing now, as it will change *)
+        admit.
+      + assumption.
+  Admitted.
+
+  Lemma confl_decl_weakening :
+    ∀ Σ Σ' hΣ hΣ' k d,
+      PCUICWeakeningEnv.extends Σ Σ' →
+      (* confluenv Σ' → *)
+      confl_decl Σ hΣ k d →
+      confl_decl Σ' hΣ' k d.
+  Proof.
+    intros Σ Σ' hΣ hΣ' k d e (* cΣ' *) hd.
+    destruct d. 1,2: constructor.
+    cbn in *. unfold confl_rew_decl in *. cbn in *.
+    destruct hd as [onex h].
+    exists onex.
+    eapply triangle_rules_weakening. all: eauto.
+  Qed.
+
   Lemma lookup_env_confl_decl :
     ∀ Σ k rd,
       confluenv Σ →
