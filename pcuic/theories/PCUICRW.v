@@ -1173,3 +1173,35 @@ Proof.
     eexists _, _, _. intuition eauto.
     cbn. rewrite assert_eq_refl. assumption.
 Qed.
+
+Definition lhs_footprint t :=
+  '(k, n, ui, l, τ) <- elim_footprint t ;;
+  ret (k, n, ui, List.rev l, τ).
+
+Lemma lhs_footprint_match_lhs :
+  ∀ npat t k n l ui σ,
+    All (elim_pattern npat) l →
+    match_lhs npat k n l t = Some (ui, σ) →
+    ∑ l' τ θ,
+      lhs_footprint t = Some (k, n, ui, l', τ) ×
+      match_lhs npat k n l (mkElims (tSymb k n ui) l') = Some (ui, θ) ×
+      map (subst0 τ) θ = σ.
+Proof.
+  intros npat t k n l ui σ h e.
+  unfold match_lhs in *.
+  destruct match_prelhs as [[]|] eqn:e1. 2: discriminate.
+  cbn in e. destruct map_option_out eqn:e2. 2: discriminate.
+  inversion e. subst. clear e.
+  eapply elim_footprint_match_prelhs in e1 as h1.
+  2:{ apply All_rev. assumption. }
+  destruct h1 as [l' [τ [θ [e3 [e4 ?]]]]]. subst.
+  unfold lhs_footprint.
+  rewrite e3. cbn.
+  rewrite map_option_out_map_option_map in e2.
+  destruct map_option_out eqn:e5. 2: discriminate.
+  cbn in e2. apply some_inj in e2. subst.
+  eexists _,_,_. intuition eauto.
+  unfold mkElims. rewrite <- fold_left_rev_right.
+  rewrite rev_involutive. rewrite e4.
+  rewrite e5. reflexivity.
+Qed.
