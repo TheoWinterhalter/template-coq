@@ -1110,15 +1110,20 @@ Proof.
           end
         end.
         { rewrite <- e3. f_equal.
-          - eapply map_ext.
+          - (* apply All_map_eq. *)
+            eapply map_ext.
             intros o. eapply option_map_ext.
             intros v.
             rewrite subst_app_simpl. cbn. f_equal.
             (* eapply subst_closedn. *)
             admit.
-          - rewrite map_map_compose. eapply map_ext.
-            intro o. rewrite option_map_two. eapply option_map_ext.
-            intro v.
+          - rewrite map_map_compose. eapply All_map_eq.
+            epose proof (pattern_footprint_closedn_eq _) as e11.
+            erewrite e5 in e11. destruct e11 as [? ?].
+            eapply match_pattern_closedn in e9 as ?. 2,3: eauto.
+            eapply All_impl. 1: eauto.
+            intros [] h. 2: reflexivity.
+            cbn in h. cbn. f_equal.
             rewrite subst_app_decomp. f_equal.
             match goal with
             | |- context [ ?x + ?y + ?z ] =>
@@ -1150,6 +1155,34 @@ Proof.
           give_up.
         + (* Need to prove that θ is closed under l8 as well! Or l7 *)
           give_up. *)
+    }
+    destruct h as [θ [α [h1 [h2 h3]]]].
+    rewrite h1. rewrite h2. subst.
+    match goal with
+    | e : subs_merge _ _ = ?z
+      |- context [ subs_merge ?x ?y ] =>
+      match goal with
+      | |- context [ map  ?f _ = _ ] =>
+        assert (h : subs_merge (map f x) (map f y) = z)
+      end
+    end.
+    { rewrite <- e5. f_equal.
+      - (* rewrite map_map_compose. eapply map_ext.
+        intros o. rewrite option_map_two.
+        eapply option_map_ext.
+        intros v.
+        rewrite subst_app_decomp. f_equal.
+        eapply simpl_subst_k. rewrite map_length. reflexivity. *)
+        admit.
+      - (* eapply elim_footprint_closedn_eq in e4 as h. destruct h as [hc _].
+        eapply match_prelhs_closedn in e5. 2: auto.
+        2:{ eapply prelhs_closedn. eassumption. }
+        eapply All_map_eq. eapply All_impl. 1: eauto.
+        intros [] h. 2: reflexivity.
+        cbn in h. cbn. f_equal.
+        rewrite subst_app_simpl. cbn.
+        eapply subst_closedn in h. erewrite h. reflexivity. *)
+        admit.
     }
     (* destruct h as [θ [e15 ?]]. subst.
     rewrite e15. *)
