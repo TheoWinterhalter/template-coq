@@ -1016,15 +1016,14 @@ Proof.
     eapply h. 1: reflexivity.
     clear h. subst.
     rewrite <- pattern_brs_footprint_unfold in e13.
-    (* lazymatch goal with
+    lazymatch goal with
     | e : option_map2 _ _ _ = Some ?σ,
-      w : pattern_brs_footprint ?a ?b _ = (?u, ?v)
+      w : pattern_brs_footprint #|?a| #|?b| _ = (?u, ?v)
       |- context [ option_map2 ?f ?l1 ?l2 ] =>
       assert (h :
         ∑ θ,
           option_map2 f l1 l2 = Some θ ×
-          map (map (option_map (subst0 v))) θ =
-          map (map (option_map (lift0 (a + b)))) σ
+          map (map (option_map (subst0 (a ++ b ++ v)))) θ = σ
       )
     end.
     { clear - a e2 e13.
@@ -1056,19 +1055,17 @@ Proof.
           intro o. rewrite !option_map_two. apply option_map_ext.
           intro x.
           match goal with
-          | |- context [ ?x + ?y + ?z ] =>
-            replace (x + y + z) with (z + (x + y)) by lia
+          | |- context [ ?a ++ ?b ++ ?c ++ ?d ] =>
+            replace (a ++ b ++ c ++ d) with ((a ++ b ++ c) ++ d)
           end.
-          erewrite <- simpl_lift with (i := 0). 2,3: lia.
-          rewrite subst_app_decomp. rewrite simpl_subst_k.
-          { rewrite map_length. reflexivity. }
-          (* epose proof (pattern_footprint_closedn_eq _) as h.
-          erewrite e4 in h. destruct h as [hc ?]. subst.
-          eapply match_pattern_closedn in hc. 2,3: eauto. *)
-    } *)
+          2:{ rewrite !app_assoc. reflexivity. }
+          rewrite subst_app_decomp. f_equal.
+          apply simpl_subst_k. rewrite map_length. rewrite !app_length. lia.
+        + apply All_map_eq. admit.
+    }
 
 
-    lazymatch goal with
+    (* lazymatch goal with
     | e : option_map2 _ _ _ = Some ?σ,
       w : pattern_brs_footprint _ _ _ = (?u, ?v),
       c : PCUICPattern.monad_fold_right _ _ _ = Some ?ρ
@@ -1197,7 +1194,7 @@ Proof.
         rewrite subst_app_simpl. cbn.
         eapply subst_closedn in h. erewrite h. reflexivity. *)
         admit.
-    }
+    } *)
     (* destruct h as [θ [e15 ?]]. subst.
     rewrite e15. *)
     (* TODO Maybe I should include monad_fold_right in the assert above as
