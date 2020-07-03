@@ -4589,6 +4589,22 @@ Section Confluenv.
       confl_decl Σ hΣ kn d →
       confluenv (Σ ,, (kn, d)).
 
+  Lemma lookup_env_confl_decl :
+    ∀ Σ k rd,
+      confluenv Σ →
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      ∑ wfΣ, confl_rew_decl Σ wfΣ k rd.
+  Proof.
+    intros Σ k rd h e.
+    induction h. 1: discriminate.
+    cbn in e. change (eq_kername k kn) with (eqb k kn) in e.
+    destruct (eqb_spec k kn).
+    - apply some_inj in e. subst.
+      cbn in c.
+      (* eexists. eauto. intuition eauto. *)
+      (* Need to prove modularity/weakening first *)
+  Abort.
+
 End Confluenv.
 
 Section Triangle.
@@ -4674,6 +4690,17 @@ Section Triangle.
   Qed.
 
   Context (cΣ : confluenv Σ).
+
+  Lemma lookup_criterion :
+    ∀ k rd,
+      lookup_rewrite_decl Σ None k = Some rd →
+      confl_rew_decl Σ wfΣ k rd.
+  Proof.
+    intros k rd e.
+    unfold lookup_rewrite_decl in e. unfold lookup_rd in e.
+    destruct lookup_env as [[]|] eqn:e1. all: try discriminate.
+    apply some_inj in e. subst.
+  Abort.
 
   Axiom todo_triangle : forall {A}, A.
 
