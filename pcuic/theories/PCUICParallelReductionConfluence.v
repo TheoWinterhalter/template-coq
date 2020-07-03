@@ -4550,6 +4550,13 @@ Section Confluenv.
 
   Context {cf : checker_flags}.
 
+  (* TODO Maybe take extra as argument here
+    Then no need to take rho/rho_ctx as arguments
+    And then use some pred1_extra that need to be defined
+    as the right extension to pred1
+    for this we show pred1_extra → pred1 when extra = None or extra is included
+    in Σ, and always pred1 → pred1_extra
+  *)
   Inductive triangle_rules  Σ kn nsymb (rho : context → term → term) rho_ctx : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ kn nsymb rho rho_ctx []
   | triangle_rules_cons :
