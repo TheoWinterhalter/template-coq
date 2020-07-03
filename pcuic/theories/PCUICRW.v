@@ -1098,112 +1098,29 @@ Proof.
     }
     destruct h as [θ [h1 [h2 ?]]]. subst.
     rewrite h1.
-
-
-    (* lazymatch goal with
-    | e : option_map2 _ _ _ = Some ?σ,
-      w : pattern_brs_footprint _ _ _ = (?u, ?v),
-      c : PCUICPattern.monad_fold_right _ _ _ = Some ?ρ
-      |- context [ option_map2 ?f ?l1 ?l2 ] =>
+    lazymatch goal with
+    | e : PCUICPattern.monad_fold_right _ (map ?f ?θ) ?b = Some ?l |- _ =>
       assert (h :
-        ∑ θ α,
-          option_map2 f l1 l2 = Some θ ×
-          PCUICPattern.monad_fold_right subs_merge θ (subs_empty npat) =
-          Some α ×
-          map (option_map (subst0 v)) α = ρ
+        ∑ α,
+          PCUICPattern.monad_fold_right subs_merge θ b = Some α ×
+          f α = l
       )
     end.
-    { clear - a e2 e3 e13.
-      induction a as [| [? ?] brs hp hb ih]
-      in brs0, l1, e2, l2, e3, l6, l7, e13 |- *.
-      - destruct brs0. 2: discriminate.
-        cbn in e2. apply some_inj in e2. subst.
-        cbn in e13. inversion e13. subst. clear e13.
-        cbn in e3. apply some_inj in e3. subst.
-        cbn. eexists _,_. intuition eauto.
+    { clear - e3. induction θ in l2, e3 |- *.
+      - cbn in e3. apply some_inj in e3. subst.
+        cbn. eexists. intuition eauto.
         unfold subs_empty. rewrite map_list_init. reflexivity.
-      - destruct brs0 as [| [] brs0]. 1: discriminate.
-        cbn in e2. assert_eq e2. subst. cbn in e2.
-        destruct match_pattern eqn:e1. 2: discriminate.
-        destruct option_map2 eqn:e4. 2: discriminate.
-        apply some_inj in e2. subst.
-        cbn in e3.
-        destruct PCUICPattern.monad_fold_right eqn:e2. 2: discriminate.
-        cbn in e13. destruct pattern_footprint eqn:e5.
-        destruct fold_right eqn:e6.
-        rewrite <- pattern_brs_footprint_unfold in e6.
-        inversion e13. subst. clear e13.
-        specialize ih with (1 := e4) (2 := e2) (3 := e6).
-        destruct ih as [θ [α [e7 [e8 e11]]]].
-        cbn in *. rewrite assert_eq_refl.
-        eapply pattern_footprint_match_pattern in e1 as h. 2: auto.
-        rewrite e5 in h.
-        destruct h as [τ [e9 ?]]. subst.
-        eapply match_pattern_lift in e9 as e10. 2: auto.
-        erewrite e10.
-        rewrite e7.
-        match goal with
-        | |- context [ Some ?x = Some _ ] =>
-          exists x
-        end.
-        cbn. rewrite e8.
-        match goal with
-        | e : subs_merge _ _ = ?z
-          |- context [ subs_merge ?x ?y ] =>
-          match goal with
-          | |- context [ map  ?f _ = _ ] =>
-            assert (h : subs_merge (map f x) (map f y) = z)
-          end
-        end.
-        { rewrite <- e3. f_equal.
-          - (* apply All_map_eq. *)
-            eapply map_ext.
-            intros o. eapply option_map_ext.
-            intros v.
-            rewrite subst_app_simpl. cbn. f_equal.
-            (* eapply subst_closedn. *)
-            admit.
-          - rewrite map_map_compose. eapply All_map_eq.
-            epose proof (pattern_footprint_closedn_eq _) as e11.
-            erewrite e5 in e11. destruct e11 as [? ?].
-            eapply match_pattern_closedn in e9 as ?. 2,3: eauto.
-            eapply All_impl. 1: eauto.
-            intros [] h. 2: reflexivity.
-            cbn in h. cbn. f_equal.
-            rewrite subst_app_decomp. f_equal.
-            match goal with
-            | |- context [ ?x + ?y + ?z ] =>
-              replace (x + y + z) with (z + (x + y)) by lia
-            end.
-            erewrite <- simpl_lift with (i := 0). 2,3: lia.
-            rewrite simpl_subst_k.
-            { rewrite map_length. reflexivity. }
-            admit.
-        }
-        eapply subs_merge_map_inv in h as [ρ [e12 ?]]. subst.
-        rewrite e12.
-        eexists. intuition eauto.
-
-        (* cbn. f_equal.
-        + rewrite -> map_map_compose. eapply map_ext.
-          intros o. rewrite option_map_two. apply option_map_ext.
-          intros v. rewrite subst_app_decomp. f_equal.
-          match goal with
-          | |- context [ ?x + ?y + ?z ] =>
-            replace (x + y + z) with (z + (x + y)) by lia
-          end.
-          erewrite <- simpl_lift with (i := 0). 2,3: lia.
-          rewrite simpl_subst_k.
-          { rewrite map_length. reflexivity. }
-          (* TODO Even knowing it comes from τ seems like I won't be able to
-            get this...
-          *)
-          give_up.
-        + (* Need to prove that θ is closed under l8 as well! Or l7 *)
-          give_up. *)
+      - cbn in e3.
+        destruct PCUICPattern.monad_fold_right eqn:e1. 2: discriminate.
+        specialize IHθ with (1 := eq_refl).
+        destruct IHθ as [τ [h1 ?]]. subst.
+        eapply subs_merge_map_inv in e3.
+        destruct e3 as [ρ [h2 ?]]. subst.
+        cbn. rewrite h1.
+        intuition eauto.
     }
-    destruct h as [θ [α [h1 [h2 h3]]]].
-    rewrite h1. rewrite h2. subst.
+    destruct h as [α [h3 ?]]. subst.
+    rewrite h3.
     match goal with
     | e : subs_merge _ _ = ?z
       |- context [ subs_merge ?x ?y ] =>
@@ -1213,34 +1130,46 @@ Proof.
       end
     end.
     { rewrite <- e5. f_equal.
-      - (* rewrite map_map_compose. eapply map_ext.
-        intros o. rewrite option_map_two.
-        eapply option_map_ext.
-        intros v.
-        rewrite subst_app_decomp. f_equal.
-        eapply simpl_subst_k. rewrite map_length. reflexivity. *)
-        admit.
-      - (* eapply elim_footprint_closedn_eq in e4 as h. destruct h as [hc _].
-        eapply match_prelhs_closedn in e5. 2: auto.
-        2:{ eapply prelhs_closedn. eassumption. }
-        eapply All_map_eq. eapply All_impl. 1: eauto.
-        intros [] h. 2: reflexivity.
-        cbn in h. cbn. f_equal.
-        rewrite subst_app_simpl. cbn.
-        eapply subst_closedn in h. erewrite h. reflexivity. *)
-        admit.
-    } *)
-    (* destruct h as [θ [e15 ?]]. subst.
-    rewrite e15. *)
-    (* TODO Maybe I should include monad_fold_right in the assert above as
-      well? I did the proof using it, so it seems fair.
-      Perhaps it will solve my equality.
-      *)
-    admit.
+      rewrite map_map_compose.
+      epose proof (pattern_footprint_closedn_eq _) as h.
+      erewrite e11 in h. destruct h as [hc ?].
+      eapply match_pattern_closedn in hc. 2,3: eauto.
+      apply All_map_eq. eapply All_impl. 1: eauto.
+      intros []. 2: auto.
+      cbn. intro. f_equal.
+      rewrite subst_app_decomp.
+      rewrite simpl_subst_k.
+      { rewrite map_length. reflexivity. }
+      rewrite subst_app_simpl. cbn. f_equal.
+      eapply subst_closedn. assumption.
+    }
+    eapply subs_merge_map_inv in h. destruct h as [ρ [h4 ?]]. subst.
+    rewrite h4. clear e5 h4.
+    match goal with
+    | e : subs_merge _ _ = ?z
+      |- context [ subs_merge ?x ?y ] =>
+      match goal with
+      | |- context [ map  ?f _ = _ ] =>
+        assert (h : subs_merge (map f x) (map f y) = z)
+      end
+    end.
+    { rewrite <- e6. f_equal.
+      eapply elim_footprint_closedn_eq in e7 as h. destruct h as [hc _].
+      eapply match_prelhs_closedn in e8. 2: auto.
+      2:{ eapply prelhs_closedn. eassumption. }
+      eapply All_map_eq. eapply All_impl. 1: eauto.
+      intros [] h. 2: reflexivity.
+      cbn in h. cbn. f_equal.
+      rewrite subst_app_simpl. cbn. f_equal.
+      eapply subst_closedn. assumption.
+    }
+    eapply subs_merge_map_inv in h. destruct h as [γ [h5 ?]]. subst.
+    rewrite h5.
+    intuition eauto.
   - cbn in e. destruct t. all: try discriminate.
     assert_eq e. subst. cbn in e.
     eapply ih in e as [l' [τ [θ [e1 [e2 e3]]]]].
     cbn. rewrite e1.
     eexists _, _, _. intuition eauto.
     cbn. rewrite assert_eq_refl. assumption.
-Admitted.
+Qed.
