@@ -1023,6 +1023,7 @@ Proof.
       assert (h :
         ∑ θ,
           option_map2 f l1 l2 = Some θ ×
+          All (All (on_Some (closedn #|a ++ b ++ v|))) θ ×
           map (map (option_map (subst0 (a ++ b ++ v)))) θ = σ
       )
     end.
@@ -1042,7 +1043,7 @@ Proof.
         rewrite <- pattern_brs_footprint_unfold in e5.
         inversion e13. subst. clear e13.
         specialize ih with (1 := e3) (2 := e5).
-        destruct ih as [θ [h1 h2]].
+        destruct ih as [θ [h1 [h2 ?]]].
         cbn. rewrite assert_eq_refl.
         eapply pattern_footprint_match_pattern in e1 as h. 2: auto.
         rewrite e4 in h.
@@ -1050,19 +1051,53 @@ Proof.
         eapply match_pattern_lift in e6 as e7. 2: auto.
         erewrite e7. rewrite h1.
         eexists. intuition eauto.
-        cbn. f_equal.
-        + rewrite !map_map_compose. eapply map_ext.
-          intro o. rewrite !option_map_two. apply option_map_ext.
-          intro x.
-          match goal with
-          | |- context [ ?a ++ ?b ++ ?c ++ ?d ] =>
-            replace (a ++ b ++ c ++ d) with ((a ++ b ++ c) ++ d)
-          end.
-          2:{ rewrite !app_assoc. reflexivity. }
-          rewrite subst_app_decomp. f_equal.
-          apply simpl_subst_k. rewrite map_length. rewrite !app_length. lia.
-        + apply All_map_eq. admit.
+        + constructor.
+          * apply All_map.
+            epose proof (pattern_footprint_closedn_eq _) as h.
+            erewrite e4 in h. destruct h as [hc ?]. subst.
+            eapply match_pattern_closedn in hc. 2,3: eauto.
+            eapply All_impl. 1: eauto.
+            intros []. 2: auto.
+            cbn. intro h.
+            rewrite !app_length.
+            erewrite <- simpl_lift with (i := 0). 2,3: lia.
+            erewrite <- simpl_lift with (i := 0). 2,3: lia.
+            rewrite plus_comm. apply closedn_lift.
+            rewrite plus_comm. apply closedn_lift.
+            rewrite plus_comm. apply closedn_lift.
+            assumption.
+          * eapply All_impl. 1: eauto.
+            intros s h.
+            eapply All_impl. 1: eauto.
+            intros []. 2: auto.
+            cbn. intro.
+            eapply closed_upwards. 1: eauto.
+            rewrite !app_length. lia.
+        + cbn. f_equal.
+          * rewrite !map_map_compose. eapply map_ext.
+            intro o. rewrite !option_map_two. apply option_map_ext.
+            intro x.
+            match goal with
+            | |- context [ ?a ++ ?b ++ ?c ++ ?d ] =>
+              replace (a ++ b ++ c ++ d) with ((a ++ b ++ c) ++ d)
+            end.
+            2:{ rewrite !app_assoc. reflexivity. }
+            rewrite subst_app_decomp. f_equal.
+            apply simpl_subst_k. rewrite map_length. rewrite !app_length. lia.
+          * apply All_map_eq. eapply All_impl. 1: eauto.
+            intros s h. apply All_map_eq. eapply All_impl. 1: eauto.
+            intros []. 2: auto.
+            cbn. intro. f_equal.
+            match goal with
+            | |- context [ ?a ++ ?b ++ ?c ++ ?d ] =>
+              replace (a ++ b ++ c ++ d) with ((a ++ b ++ c) ++ d)
+            end.
+            2:{ rewrite !app_assoc. reflexivity. }
+            rewrite subst_app_simpl. f_equal. cbn.
+            apply subst_closedn. assumption.
     }
+    destruct h as [θ [h1 [h2 ?]]]. subst.
+    rewrite h1.
 
 
     (* lazymatch goal with
