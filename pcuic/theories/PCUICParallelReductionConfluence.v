@@ -4550,23 +4550,23 @@ Section Confluenv.
 
   Context {cf : checker_flags}.
 
-  Inductive triangle_rules  Σ kn nsymb (rho : context -> term -> term) rho_ctx : list rewrite_rule -> Type :=
+  Inductive triangle_rules  Σ kn nsymb (rho : context → term → term) rho_ctx : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ kn nsymb rho rho_ctx []
   | triangle_rules_cons :
-      forall r rl,
-        (forall σ ui θ r',
-          (* TODO Find the right contexts, probably with some untyped_subslet *)
+      ∀ r rl,
+        (∀ npat' Γ σ ui θ r',
+          All (pattern npat') σ →
+          untyped_subslet Γ σ r.(pat_context) →
           let ss := symbols_subst kn 0 ui nsymb in
-          let Δ := [] in
-          let Γ := [] in
           let tl := subst0 σ (subst ss #|σ| (lhs r)) in
           let tr := subst0 (map (rho Γ) σ) (subst ss #|σ| (rhs r)) in
           let tr' := subst0 (map (rho Γ) θ) (subst ss #|θ| (rhs r')) in
-          first_match kn rl tl = Some (ui, θ, r') ->
-          (* TODO Use the env notion of pred1 *)
-          pred1 Σ Δ (rho_ctx Γ) tr tr'
-        ) ->
-        triangle_rules Σ kn nsymb rho rho_ctx rl ->
+          first_match kn rl tl = Some (ui, θ, r') →
+          (* TODO Use the env notion of pred1, right now too weak as it doesn't
+          include the extra rules! *)
+          pred1 Σ Γ (rho_ctx Γ) tr tr'
+        ) →
+        triangle_rules Σ kn nsymb rho rho_ctx rl →
         triangle_rules Σ kn nsymb rho rho_ctx (rl ++ [r]).
 
   Definition confl_rew_decl Σ wfΣ kn d :=
@@ -4582,11 +4582,11 @@ Section Confluenv.
     | _ => True
     end.
 
-  Inductive confluenv : global_env -> Type :=
+  Inductive confluenv : global_env → Type :=
   | confluenv_nil : confluenv []
   | confluenv_decl Σ hΣ kn d :
-      confluenv Σ ->
-      confl_decl Σ hΣ kn d ->
+      confluenv Σ →
+      confl_decl Σ hΣ kn d →
       confluenv (Σ ,, (kn, d)).
 
 End Confluenv.
