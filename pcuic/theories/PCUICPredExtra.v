@@ -534,3 +534,68 @@ Proof.
     intros ? ? [[? ?] [[? ?] ?]]. unfold on_Trel.
     intuition eauto.
 Qed.
+
+Lemma pred1_extra_pred1 :
+  ∀ Σ Γ Δ u v e,
+    on_Some (fun '(k, rd) =>
+      lookup_env Σ k = Some (RewriteDecl rd)
+    ) e →
+    pred1_extra Σ e Γ Δ u v →
+    pred1 Σ Γ Δ u v.
+Proof.
+  intros Σ Γ Δ u v e he h.
+  set (Pctx :=
+    fun Γ Δ =>
+      pred1_ctx Σ Γ Δ
+  ).
+  revert Γ Δ u v h.
+  refine (pred1_extra_ind_all_ctx Σ _ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+  all: try solve [ auto ].
+  all: try solve [ econstructor ; eauto ].
+  all: try solve [
+    intros ;
+    econstructor ; eauto ;
+    solve [ eapply All2_impl ; intuition eauto ; intuition eauto ]
+  ].
+  all: intros.
+  - econstructor. all: eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [? [[? ?] ?]]. intuition eauto.
+      unfold on_Trel in *. intuition eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. auto.
+  - econstructor. all: eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [[? ?] [[? ?] ?]]. unfold on_Trel.
+      intuition eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. auto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [[? ?] ?]. intuition auto.
+  - econstructor. all: eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [[? ?] [[? ?] ?]]. unfold on_Trel.
+      intuition eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. auto.
+  - subst. cbn in he.
+    match goal with
+    | h : nth_error (all_rewrite_rules _) _ = _ |- _ =>
+      unfold all_rewrite_rules in h ;
+      eapply nth_error_app_dec in h as [[? ?] | [? ?]]
+    end.
+    + eapply pred_par_rewrite_rule. all: eauto.
+      eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. auto.
+    + eapply pred_rewrite_rule. all: eauto.
+      eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. auto.
+  - econstructor. all: eauto.
+    eapply All2_impl. 1: eauto.
+    intros ? ? [[? ?] [[? ?] ?]]. unfold on_Trel.
+    intuition eauto.
+  - econstructor. all: eauto.
+    eapply All2_impl. 1: eauto.
+    intros ? ? [[? ?] [[? ?] ?]]. unfold on_Trel.
+    intuition eauto.
+Qed.
