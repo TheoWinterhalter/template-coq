@@ -6,7 +6,7 @@ From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICSize
   PCUICLiftSubst PCUICSigmaCalculus PCUICUnivSubst PCUICTyping PCUICReduction
   PCUICSubstitution PCUICReflect PCUICClosed PCUICParallelReduction
-  PCUICPattern PCUICInduction PCUICRW.
+  PCUICPattern PCUICInduction PCUICRW PCUICPredExtra.
 
 Require Import monad_utils.
 Import MonadNotation.
@@ -816,10 +816,6 @@ Section Rho.
   (* Potential extra rules, might be redundant *)
   Context (extra : option (kername × rewrite_decl)).
   Context (on_extra : on_option (fun '(k,rd) => onrd rd) extra).
-
-  (* All the rewrite rules of a rewrite_decl *)
-  Definition all_rewrite_rules (rd : rewrite_decl) :=
-    rd.(prules) ++ rd.(rules).
 
   Lemma all_rewrite_rules_on_rd :
     forall rd,

@@ -24,6 +24,7 @@ theories/PCUICCumulativity.v
 theories/PCUICReduction.v
 theories/PCUICParallelReduction.v
 theories/PCUICRW.v
+theories/PCUICPredExtra.v
 theories/PCUICParallelReductionConfluence.v
 theories/PCUICConfluence.v
 theories/PCUICContextConversion.v
