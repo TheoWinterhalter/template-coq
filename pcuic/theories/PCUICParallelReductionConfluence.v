@@ -4773,9 +4773,25 @@ Section Triangle.
     - cbn in *. reflexivity.
   Qed.
 
+  Lemma all_rewrite_rules_on_rewrite_rule :
+    ∀ k rd,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      let Δ := map (vass nAnon) rd.(symbols) in
+      ∑ Σ',
+        All (on_rewrite_rule (lift_typing typing) Σ' Δ) (all_rewrite_rules rd).
+  Proof.
+    intros k rd h Δ.
+    eapply lookup_on_global_env in wfΣ as h'. 2: eauto.
+    destruct h' as [Σ' [_ hd]].
+    red in hd. red in hd.
+    destruct hd as [? [? [? ?]]].
+    exists Σ'.
+    unfold all_rewrite_rules. apply All_app_inv. all: auto.
+  Qed.
+
   Lemma lhs_footprint_first_match :
     ∀ k r t ui σ rd,
-      onrd rd →
+      lookup_env Σ k = Some (RewriteDecl rd) →
       let l := all_rewrite_rules rd in
       first_match k l t = Some (ui, σ, r) →
       ∑ n l' τ θ,
@@ -4784,15 +4800,16 @@ Section Triangle.
         map (subst0 τ) θ = σ.
   Proof.
     intros k r t ui σ rd hrd l e.
-    apply all_rewrite_rules_on_rd in hrd. subst l.
+    apply all_rewrite_rules_on_rewrite_rule in hrd. subst l.
+    destruct hrd as [Σ' hrd].
     set (l := all_rewrite_rules rd) in *. clearbody l.
     induction l in ui, σ, r, e, hrd |- *. 1: discriminate.
     cbn - [ match_lhs ] in e. destruct match_lhs as [[]|] eqn:e1.
     - inversion e. subst. clear e.
       inversion hrd. subst.
       match goal with
-      | h : onrr _ _ |- _ =>
-        unfold onrr in h ; destruct h as [_ [he _]]
+      | h : on_rewrite_rule _ _ _ _ |- _ =>
+        destruct h as [_ _ _ _ _ he _]
       end.
       eapply lhs_footprint_match_lhs in e1. 2: auto.
       destruct e1 as [l' [τ [θ [e1 [e2 ?]]]]].
@@ -4800,8 +4817,8 @@ Section Triangle.
       cbn - [ match_lhs ]. rewrite e2. reflexivity.
     - inversion hrd. subst.
       match goal with
-      | h : onrr _ _ |- _ =>
-        unfold onrr in h ; destruct h as [_ [he _]]
+      | h : on_rewrite_rule _ _ _ _ |- _ =>
+        destruct h as [_ _ _ _ hl he _]
       end.
       eapply IHl in e. 2: auto.
       destruct e as [n [l' [τ [θ [? [? ?]]]]]].
@@ -4838,16 +4855,14 @@ Section Triangle.
           specialize (h σ)
         end.
         forward h by auto.
-        forward h.
-        { (* TODO Need to use something other than rd, we don't need extra here
-        so wa can use the full context *) admit. }
+        forward h by auto.
         forward h.
         { rewrite map_length. auto. }
         rewrite mkElims_subst in h. cbn - [ match_lhs ] in h.
         rewrite h in e1. discriminate.
       }
       auto.
-  Admitted.
+  Qed.
 
   Context (cΣ : confluenv Σ).
 
