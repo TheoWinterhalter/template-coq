@@ -4740,23 +4740,39 @@ Section Triangle.
   Qed.
 
   Lemma lhs_footprint_first_match :
-    ∀ k l t ui σ r,
+    ∀ k r t ui σ rd,
+      onrd rd →
+      let l := all_rewrite_rules rd in
       first_match k l t = Some (ui, σ, r) →
-      All (elim_pattern #|pat_context r|) (elims r) →
       ∑ n l' τ θ,
         lhs_footprint t = Some (k, n, ui, l', τ) ×
         first_match k l (mkElims (tSymb k n ui) l') = Some (ui, θ, r) ×
         map (subst0 τ) θ = σ.
   Proof.
-    intros k l t ui σ r e hr.
-    induction l in ui, σ, r, e, hr |- *. 1: discriminate.
+    intros k r t ui σ rd hrd l e.
+    apply all_rewrite_rules_on_rd in hrd. subst l.
+    (* apply first_match_rule_list in e as hr. destruct hr as [m hr].
+    eapply nth_error_all in hr. 2: eauto.
+    unfold onrr in hr. destruct hr as [_ [he _]]. *)
+    set (l := all_rewrite_rules rd) in *. clearbody l.
+    induction l in ui, σ, r, e, hrd |- *. 1: discriminate.
     cbn - [ match_lhs ] in e. destruct match_lhs as [[]|] eqn:e1.
     - inversion e. subst. clear e.
+      inversion hrd. subst.
+      match goal with
+      | h : onrr _ _ |- _ =>
+        unfold onrr in h ; destruct h as [_ [he _]]
+      end.
       eapply lhs_footprint_match_lhs in e1. 2: auto.
       destruct e1 as [l' [τ [θ [e1 [e2 ?]]]]].
       eexists _,_,_,_. intuition eauto.
       cbn - [ match_lhs ]. rewrite e2. reflexivity.
-    - eapply IHl in e. 2: auto.
+    - inversion hrd. subst.
+      match goal with
+      | h : onrr _ _ |- _ =>
+        unfold onrr in h ; destruct h as [_ [he _]]
+      end.
+      eapply IHl in e. 2: auto.
       destruct e as [n [l' [τ [θ [? [? ?]]]]]].
       eexists _,_,_,_. intuition eauto.
       cbn - [ match_lhs ].
@@ -4765,7 +4781,7 @@ Section Triangle.
         exfalso. clear IHl.
         eapply lhs_footprint_eq in e as ?.
         eapply lhs_footprint_closedn in e as hc.
-        eapply match_lhs_sound in e3 as e4. 2: admit. (* TODO Need stronger hyp *)
+        eapply match_lhs_sound in e3 as e4. 2: auto.
         subst.
         rewrite mkElims_subst in e4. cbn in e4.
         apply (f_equal (decompose_elims)) in e4.
@@ -4774,6 +4790,7 @@ Section Triangle.
         rewrite mkElims_subst in e1. cbn - [ match_lhs ] in e1.
         rewrite map_map_compose in e1.
         eapply match_lhs_subst_length in e3 as e4.
+        (* We have pattern_closedn: ∀ (n : nat) (p : term), pattern n p → closedn n p *)
         (* erewrite All_map_eq in e1. *)
         (* Need closedness of elim!
         *)
