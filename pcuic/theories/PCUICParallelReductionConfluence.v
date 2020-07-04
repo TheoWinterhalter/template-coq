@@ -4739,6 +4739,40 @@ Section Triangle.
     reflexivity.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma elim_pattern_closedn :
+    ∀ npat e,
+      elim_pattern npat e →
+      on_elim (closedn npat) e.
+  Proof.
+    intros npat e h.
+    destruct h.
+    - cbn. apply pattern_closedn. assumption.
+    - cbn. split.
+      + apply pattern_closedn. assumption.
+      + eapply All_impl. 1: eauto.
+        intros [? ?] ?. apply pattern_closedn. assumption.
+    - cbn. constructor.
+  Qed.
+
+  Lemma subst_elim_subst_elim_compose :
+    ∀ σ θ e,
+      on_elim (closedn #|θ|) e →
+      subst_elim σ 0 (subst_elim θ 0 e) = subst_elim (map (subst0 σ) θ) 0 e.
+  Proof.
+    intros σ θ e h.
+    destruct e.
+    - cbn in *. rewrite subst_subst_compose. 1: auto.
+      reflexivity.
+    - cbn in *. destruct h as [? h].
+      rewrite subst_subst_compose. 1: auto.
+      f_equal. rewrite map_map_compose.
+      apply All_map_eq. eapply All_impl. 1: eauto.
+      intros [? ?]. unfold on_snd. cbn. intros ?.
+      f_equal. apply subst_subst_compose. assumption.
+    - cbn in *. reflexivity.
+  Qed.
+
   Lemma lhs_footprint_first_match :
     ∀ k r t ui σ rd,
       onrd rd →
@@ -4751,9 +4785,6 @@ Section Triangle.
   Proof.
     intros k r t ui σ rd hrd l e.
     apply all_rewrite_rules_on_rd in hrd. subst l.
-    (* apply first_match_rule_list in e as hr. destruct hr as [m hr].
-    eapply nth_error_all in hr. 2: eauto.
-    unfold onrr in hr. destruct hr as [_ [he _]]. *)
     set (l := all_rewrite_rules rd) in *. clearbody l.
     induction l in ui, σ, r, e, hrd |- *. 1: discriminate.
     cbn - [ match_lhs ] in e. destruct match_lhs as [[]|] eqn:e1.
@@ -4790,11 +4821,30 @@ Section Triangle.
         rewrite mkElims_subst in e1. cbn - [ match_lhs ] in e1.
         rewrite map_map_compose in e1.
         eapply match_lhs_subst_length in e3 as e4.
-        (* We have pattern_closedn: ∀ (n : nat) (p : term), pattern n p → closedn n p *)
-        (* erewrite All_map_eq in e1. *)
-        (* Need closedness of elim!
-        *)
-        admit.
+        eapply All_impl in he as hr.
+        2: eapply elim_pattern_closedn.
+        erewrite All_map_eq in e1.
+        2:{
+          eapply All_impl. 1: eauto.
+          intros x h. eapply subst_elim_subst_elim_compose.
+          rewrite e4. assumption.
+        }
+        match type of e1 with
+        | match_lhs ?npat ?k ?n ?l (mkElims (tSymb _ _ ?ui) _) = _ =>
+          pose proof (match_lhs_complete npat k n ui l) as h
+        end.
+        match type of e1 with
+        | context [ subst_elim ?σ ] =>
+          specialize (h σ)
+        end.
+        forward h by auto.
+        forward h.
+        { (* TODO Need to use something other than rd, we don't need extra here
+        so wa can use the full context *) admit. }
+        forward h.
+        { rewrite map_length. auto. }
+        rewrite mkElims_subst in h. cbn - [ match_lhs ] in h.
+        rewrite h in e1. discriminate.
       }
       auto.
   Admitted.
