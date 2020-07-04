@@ -4553,8 +4553,8 @@ Section Confluenv.
     for this we show pred1_extra → pred1 when extra = None or extra is included
     in Σ, and always pred1 → pred1_extra
   *)
-  Inductive triangle_rules  Σ kn nsymb (rho : context → term → term) rho_ctx : list rewrite_rule → Type :=
-  | triangle_rules_nil : triangle_rules Σ kn nsymb rho rho_ctx []
+  Inductive triangle_rules  Σ e kn nsymb (rho : context → term → term) rho_ctx : list rewrite_rule → Type :=
+  | triangle_rules_nil : triangle_rules Σ e kn nsymb rho rho_ctx []
   | triangle_rules_cons :
       ∀ r rl,
         (∀ npat' Γ σ ui θ r',
@@ -4565,19 +4565,18 @@ Section Confluenv.
           let tr := subst0 (map (rho Γ) σ) (subst ss #|σ| (rhs r)) in
           let tr' := subst0 (map (rho Γ) θ) (subst ss #|θ| (rhs r')) in
           first_match kn rl tl = Some (ui, θ, r') →
-          (* TODO Use the env notion of pred1, right now too weak as it doesn't
-          include the extra rules! *)
-          pred1 Σ Γ (rho_ctx Γ) tr tr'
+          pred1_extra Σ e Γ (rho_ctx Γ) tr tr'
         ) →
-        triangle_rules Σ kn nsymb rho rho_ctx rl →
-        triangle_rules Σ kn nsymb rho rho_ctx (rl ++ [r]).
+        triangle_rules Σ e kn nsymb rho rho_ctx rl →
+        triangle_rules Σ e kn nsymb rho rho_ctx (rl ++ [r]).
 
   Definition confl_rew_decl Σ wfΣ kn d :=
     let l := d.(prules) ++ d.(rules) in
     let extra := Some (kn, d) in
     ∑ on_extra,
       triangle_rules
-        Σ kn #|d.(symbols)| (rho Σ wfΣ extra on_extra) (rho_ctx Σ wfΣ extra on_extra) l.
+        Σ extra kn #|d.(symbols)|
+        (rho Σ wfΣ extra on_extra) (rho_ctx Σ wfΣ extra on_extra) l.
 
   Definition confl_decl Σ hΣ kn decl : Type :=
     match decl with
@@ -4595,8 +4594,8 @@ Section Confluenv.
   Lemma triangle_rules_weakening :
     ∀ Σ Σ' hΣ hΣ' k nsymb r e he,
       PCUICWeakeningEnv.extends Σ Σ' →
-      triangle_rules Σ k nsymb (rho Σ hΣ e he)(rho_ctx Σ hΣ e he) r →
-      triangle_rules Σ' k nsymb (rho Σ' hΣ' e he)(rho_ctx Σ' hΣ' e he) r.
+      triangle_rules Σ e k nsymb (rho Σ hΣ e he)(rho_ctx Σ hΣ e he) r →
+      triangle_rules Σ' e k nsymb (rho Σ' hΣ' e he)(rho_ctx Σ' hΣ' e he) r.
   Proof.
     intros Σ Σ' hΣ hΣ' k nsymb r e he hx hr.
     induction hr.
