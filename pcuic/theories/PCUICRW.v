@@ -1205,3 +1205,29 @@ Proof.
   rewrite rev_involutive. rewrite e4.
   rewrite e5. reflexivity.
 Qed.
+
+Lemma lhs_footprint_eq :
+  ∀ t k n ui l τ,
+    lhs_footprint t = Some (k,n,ui,l,τ) →
+    t = subst0 τ (mkElims (tSymb k n ui) l).
+Proof.
+  intros t k n ui l τ e.
+  unfold lhs_footprint in e.
+  destruct elim_footprint as [[[[[? ?] ?] ?] ?]|] eqn:e1. 2: discriminate.
+  cbn in e. inversion e. subst. clear e.
+  eapply elim_footprint_closedn_eq in e1 as [? ?]. subst.
+  f_equal. rewrite fold_right_rev_left. reflexivity.
+Qed.
+
+Lemma lhs_footprint_closedn :
+  ∀ t k n ui l τ,
+    lhs_footprint t = Some (k,n,ui,l,τ) →
+    All (on_elim (closedn #|τ|)) l.
+Proof.
+  intros t k n ui l τ e.
+  unfold lhs_footprint in e.
+  destruct elim_footprint as [[[[[? ?] ?] ?] ?]|] eqn:e1. 2: discriminate.
+  cbn in e. inversion e. subst. clear e.
+  eapply elim_footprint_closedn_eq in e1 as [? ?].
+  apply All_rev. assumption.
+Qed.
