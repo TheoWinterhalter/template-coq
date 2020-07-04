@@ -4727,6 +4727,18 @@ Section Triangle.
         * eapply IHl. all: eassumption.
   Qed.
 
+  Lemma subst_subst_compose :
+    ∀ σ θ t,
+      closedn #|θ| t →
+      subst0 σ (subst0 θ t) = subst0 (map (subst0 σ) θ) t.
+  Proof.
+    intros σ θ t h.
+    rewrite distr_subst.
+    rewrite (subst_closedn σ).
+    { replace (#|θ| + 0) with #|θ| by lia. assumption. }
+    reflexivity.
+  Qed.
+
   Lemma lhs_footprint_first_match :
     ∀ k l t ui σ r,
       first_match k l t = Some (ui, σ, r) →
@@ -4750,9 +4762,20 @@ Section Triangle.
       cbn - [ match_lhs ].
       destruct (match_lhs _ _ _ _ (mkElims _ _)) as [[]|] eqn:e3.
       1:{
-        exfalso.
-        (* NOW Can we conclude from soundness of lhs_footprint (need to be done)
-          and that of match_lhs?
+        exfalso. clear IHl.
+        eapply lhs_footprint_eq in e as ?.
+        eapply lhs_footprint_closedn in e as hc.
+        eapply match_lhs_sound in e3 as e4. 2: admit. (* TODO Need stronger hyp *)
+        subst.
+        rewrite mkElims_subst in e4. cbn in e4.
+        apply (f_equal (decompose_elims)) in e4.
+        rewrite !mkElims_decompose_elims in e4. cbn in e4.
+        inversion e4. subst. clear e4.
+        rewrite mkElims_subst in e1. cbn - [ match_lhs ] in e1.
+        rewrite map_map_compose in e1.
+        eapply match_lhs_subst_length in e3 as e4.
+        (* erewrite All_map_eq in e1. *)
+        (* Need closedness of elim!
         *)
         admit.
       }
