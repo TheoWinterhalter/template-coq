@@ -1088,25 +1088,34 @@ Section Rho.
       lhs_view t
 
   | is_not_lhs :
-      not_lhs t ->
+      (* not_lhs t -> *)
       lhs_view t.
 
   Arguments is_lhs {_}.
   Arguments is_not_lhs {_}.
 
-  Equations? lhs_viewc (t : term) : lhs_view t :=
+  Equations lhs_viewc (t : term) : lhs_view t :=
     lhs_viewc t with inspect (elim_kn t) := {
     | @exist (Some k) e1 with inspect (lookup_rewrite_decl k) := {
       | @exist (Some rd) e2 with inspect (first_match k (all_rewrite_rules rd) t) := {
         | @exist (Some (ui, σ, r)) e3 := is_lhs k rd r ui σ _ _ ;
-        | @exist None e3 := is_not_lhs _
+        | @exist None e3 := is_not_lhs
         } ;
-      | @exist None e2 := is_not_lhs _
+      | @exist None e2 := is_not_lhs
       } ;
-    | @exist None e1 := is_not_lhs _
+    | @exist None e1 := is_not_lhs
     }.
+
+  Lemma lhs_viewc_not_lhs :
+    ∀ t,
+      lhs_viewc t = is_not_lhs →
+      not_lhs t.
   Proof.
-    - destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+    intros t.
+    funelim (lhs_viewc t). 3: discriminate.
+    all: intros _ X.
+    - rename e into e1. clear H.
+      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
       apply lookup_rewrite_decl_onrd in e as hrd.
       apply first_match_rd_sound in e0 as ?. 2: assumption.
       subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
@@ -1114,6 +1123,53 @@ Section Rho.
       cbn in e1.
       eapply first_match_subst_length in e0 as hl.
       destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+    - clear H H0.
+      rename e into e1, e0 into e2.
+      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+      rewrite e in e2. noconf e2.
+    - clear H H0 H1.
+      rename e into e1, e0 into e2, e1 into e3.
+      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r0.(pat_context)| + r0.(head))). 2: lia.
       destruct nth_error eqn:e4.
       2:{
         apply nth_error_None in e4. rewrite symbols_subst_length in e4.
@@ -1130,49 +1186,6 @@ Section Rho.
       rewrite e in e2. noconf e2.
       rewrite e0 in e3.
       discriminate.
-    - destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
-      apply lookup_rewrite_decl_onrd in e as hrd.
-      apply first_match_rd_sound in e0 as ?. 2: assumption.
-      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
-      rewrite elim_kn_mkElims in e1.
-      cbn in e1.
-      eapply first_match_subst_length in e0 as hl.
-      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
-      destruct nth_error eqn:e4.
-      2:{
-        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
-        eapply all_rewrite_rules_on_rd in hrd as h'.
-        eapply first_match_rule_list in e0 as hr.
-        destruct hr as [n er].
-        eapply All_nth_error in er. 2: eassumption.
-        destruct er as [? ?].
-        lia.
-      }
-      unfold symbols_subst in e4.
-      apply list_make_nth_error in e4. subst.
-      cbn in e1. noconf e1.
-      rewrite e in e2. noconf e2.
-    - destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
-      apply lookup_rewrite_decl_onrd in e as hrd.
-      apply first_match_rd_sound in e0 as ?. 2: assumption.
-      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
-      rewrite elim_kn_mkElims in e1.
-      cbn in e1.
-      eapply first_match_subst_length in e0 as hl.
-      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
-      destruct nth_error eqn:e4.
-      2:{
-        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
-        eapply all_rewrite_rules_on_rd in hrd as h'.
-        eapply first_match_rule_list in e0 as hr.
-        destruct hr as [n er].
-        eapply All_nth_error in er. 2: eassumption.
-        destruct er as [? ?].
-        lia.
-      }
-      unfold symbols_subst in e4.
-      apply list_make_nth_error in e4. subst.
-      cbn in e1. noconf e1.
   Qed.
 
   Lemma first_match_subst_size :
@@ -1195,7 +1208,7 @@ Section Rho.
       let ss := symbols_subst k 0 ui #|rd.(symbols)| in
       subst0 (map_terms rho Γ σ _) (subst ss #|σ| (rhs r)) ;
 
-    | is_not_lhs notlhs with t := {
+    | is_not_lhs with t := {
       | tApp t u with view_lambda_fix_app t u := {
         | fix_lambda_app_lambda na T b [] u' :=
           (rho (vass na (rho Γ T) :: Γ) b) {0 := rho Γ u'};
@@ -1507,7 +1520,7 @@ Section Rho.
         discriminate.
       }
       cbn. repeat fold_rho.
-      revert n. rewrite -mkApps_nested. intro n.
+      rewrite -mkApps_nested.
       cbn.
       change (mkApps (tApp (tLambda na ty b) a) l) with
         (mkApps (tLambda na ty b) (a :: l)).
@@ -1549,7 +1562,7 @@ Section Rho.
       discriminate.
     }
     repeat fold_rho.
-    simpl. revert n. rewrite -mkApps_nested. intro n. simp rho.
+    simpl. rewrite -mkApps_nested. simp rho.
     repeat fold_rho.
     destruct l; simpl; auto. now simp rho.
   Qed.
@@ -1587,8 +1600,7 @@ Section Rho.
     mkApps (tCoFix (map_fix rho Γ (rho_fix_context Γ mfix) mfix) idx) (map (rho Γ) l).
   Proof.
     induction l using rev_ind; autorewrite with rho; auto.
-    - simpl. simp rho lhs_viewc. cbn.
-      rewrite map_fix_rho_map. reflexivity.
+    - simpl. simp rho lhs_viewc. reflexivity.
     - rewrite -mkApps_nested.
       destruct lhs_viewc.
       1:{
@@ -1676,16 +1688,16 @@ Section Rho.
       simpl.
       destruct nth_error as [d|] eqn:eqfix => //.
       + destruct (is_constructor (rarg d) (args ++ [x])) eqn:isc; simp rho.
-        * revert n. rewrite -mkApps_nested /=. intro n.
+        * rewrite -mkApps_nested /=.
           autorewrite with rho.
           simpl. simp rho. repeat fold_rho. rewrite /unfold_fix.
           rewrite /map_fix nth_error_map eqfix /= isc map_fix_subst ?map_app //.
           intros m; simp rho lhs_viewc. simpl. f_equal; now simp rho.
-        * revert n. rewrite -mkApps_nested /=. intro n.
+        * rewrite -mkApps_nested /=.
           simp rho lhs_viewc. simpl. simp rho lhs_viewc.
           repeat fold_rho.
           now rewrite /unfold_fix /map_fix nth_error_map eqfix /= isc map_app.
-      + revert n. rewrite -mkApps_nested /=. intro n. simp rho lhs_viewc.
+      + rewrite -mkApps_nested /=. simp rho lhs_viewc.
         simpl. simp rho lhs_viewc.
         repeat fold_rho.
         now rewrite /unfold_fix /map_fix nth_error_map eqfix /= map_app.
@@ -2385,19 +2397,20 @@ Section Rho.
   Qed.
 
   Lemma is_not_lhs_rename :
-    forall r t h,
-      lhs_viewc t = is_not_lhs h ->
-      ∑ h', lhs_viewc (rename r t) = is_not_lhs h'.
+    forall r t,
+      lhs_viewc t = is_not_lhs ->
+      lhs_viewc (rename r t) = is_not_lhs.
   Proof.
-    intros r t h e.
-    destruct (lhs_viewc t). 1: discriminate.
-    destruct (lhs_viewc (rename r t)).
+    intros r t e.
+    destruct (lhs_viewc t) eqn:h1. 1: discriminate.
+    destruct (lhs_viewc (rename r t)) eqn:h2.
     1:{
       exfalso. clear e.
+      eapply lhs_viewc_not_lhs in h1 as h.
       eapply not_lhs_rename with (r := r) in h.
       apply h. eexists k, rd, _. intuition eauto.
     }
-    eexists. reflexivity.
+    reflexivity.
   Qed.
 
   Lemma app_cong :
@@ -2429,11 +2442,14 @@ Section Rho.
         eapply All_impl. 1: eauto.
         intros rr [h1 [h2 h3]]. assumption.
       }
-      simp rho. destruct (lhs_viewc (rename _ _)) as [? ? ? ?| notlhs].
+      simp rho. destruct (lhs_viewc (rename _ _)) as [? ? ? ?|] eqn:hv.
       2:{
-        exfalso. apply notlhs.
+        exfalso.
+        eapply lhs_viewc_not_lhs in hv.
+        apply hv.
         eexists k, rd, _. intuition eauto.
       }
+      clear hv.
       cbn. rewrite map_terms_map.
       eapply first_match_rd_sound in e3 as et3. 2: auto.
       apply lookup_rewrite_decl_onrd in e1 as hrd0.
@@ -2561,8 +2577,8 @@ Section Rho.
 
     (* Rel (with body) *)
     - red in h. simpl.
-      specialize (h n0).
-      destruct (nth_error Γ n0) as [c|] eqn:e.
+      specialize (h n).
+      destruct (nth_error Γ n) as [c|] eqn:e.
       2:{ cbn in Heq. discriminate. }
       simp rho lhs_viewc.
       cbn in Heq. apply some_inj in Heq. rewrite Heq in h.
@@ -2574,14 +2590,14 @@ Section Rho.
 
     (* Rel without body *)
     - simpl. simp rho lhs_viewc.
-      red in h. specialize (h n0).
+      red in h. specialize (h n).
       destruct nth_error eqn:e.
       2:{ cbn in Heq. discriminate. }
       cbn in Heq. apply some_inj in Heq. rewrite Heq in h.
       rewrite h. cbn. reflexivity.
 
     (* Undeclared rel *)
-    - red in h. specialize (h n0).
+    - red in h. specialize (h n).
       destruct nth_error eqn:e.
       1:{ cbn in Heq. discriminate. }
       simp rho lhs_viewc. rewrite h.
@@ -2600,7 +2616,7 @@ Section Rho.
         cbn in et. rewrite rename_mkApps in et. rewrite elim_kn_mkApps in et.
         discriminate.
       }
-      revert n0. cbn [rename]. rewrite rename_mkApps. intros n0.
+      cbn [rename]. rewrite rename_mkApps.
       simpl.
       assert (eqargs : map (rename r) (map (rho Γ) (l ++ [a])) =
               map (rho Δ) (map (rename r) (l ++ [a]))).
@@ -2610,12 +2626,12 @@ Section Rho.
         2:{
           cbn. (* clear - Heq0 H1.
           f_equal. *)
-          erewrite H2. all: eauto.
+          erewrite H1. all: eauto.
           cbn. lia.
         }
         solve_all.
         eapply All_size with (f := size).
-        intros t ht. eapply H2. 2: auto.
+        intros t ht. eapply H1. 2: auto.
         cbn. rewrite size_mkApps. lia.
       }
       destruct (rho_fix_elim Γ mfix i (l ++ [a])).
@@ -2648,11 +2664,11 @@ Section Rho.
           rewrite map_fix_subst //.
           - intros m. simp rho lhs_viewc. simpl. simp rho.
             reflexivity.
-          - clear - H2 h Hren.
+          - clear - H1 h Hren.
             unfold fix_subst. autorewrite with len. generalize #|mfix| at 1 4.
             induction n; simpl; auto.
             rewrite IHn. clear IHn. f_equal; auto.
-            specialize (H2 Γ (tFix mfix n)) as Hbod.
+            specialize (H1 Γ (tFix mfix n)) as Hbod.
             forward Hbod.
             { simpl. rewrite size_mkApps. cbn. lia. }
             simp rho lhs_viewc. simpl. simp rho.
@@ -2674,23 +2690,23 @@ Section Rho.
             { red in i0; unfold negb in i0.
               destruct is_constructor; auto.
             }
-          rewrite H3.
-          rewrite -(map_app (rename r) l [a]) -is_constructor_rename H3 //.
-          rewrite rename_mkApps. clear - h H2 eqargs.
+          rewrite H2.
+          rewrite -(map_app (rename r) l [a]) -is_constructor_rename H2 //.
+          rewrite rename_mkApps. clear - h H1 eqargs.
           f_equal.
           ++ simpl. f_equal.
             autorewrite with len.
             eapply (map_fix_rho_rename mfix i l); eauto.
-            intros. eapply H2. all: eauto.
+            intros. eapply H1. all: eauto.
             cbn. lia.
           ++ apply eqargs.
         -- rewrite rename_mkApps.
-          clear - eqargs h H2.
+          clear - eqargs h H1.
           f_equal; auto.
           2:{ now rewrite -(map_app (rename r) _ [_]). }
           simpl. f_equal. autorewrite with len.
           apply (map_fix_rho_rename mfix i l); eauto.
-          intros; eapply H2; simpl; try lia. auto.
+          intros; eapply H1; simpl; try lia. auto.
 
     (* Lambda abstraction (empty list) *)
     - set (l' := []) in *.
@@ -2751,7 +2767,7 @@ Section Rho.
 
     (* Application *)
     - simp rho. eapply is_not_lhs_rename with (r := r) in Heq0 as e.
-      destruct e as [n' e]. rewrite e.
+      rewrite e.
       simpl. repeat fold_rho.
       pose proof (isFixLambda_app_rename r _ i0) as H3.
       simpl in H3.
@@ -2787,7 +2803,7 @@ Section Rho.
     (* Cofix iota reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       repeat fold_rho.
       destruct inspect as [[f' a'] decapp'].
@@ -2884,7 +2900,7 @@ Section Rho.
     (* Pattern matching *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq0 as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       repeat fold_rho.
       destruct inspect as [[f' a'] decapp'].
@@ -2910,7 +2926,7 @@ Section Rho.
     (* Construct iota reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq0 as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       repeat fold_rho.
       destruct inspect as [[f' a'] decapp'].
@@ -2946,7 +2962,7 @@ Section Rho.
     (* Construct without iota reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq0 as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       repeat fold_rho.
       destruct inspect as [[f' a'] decapp'].
@@ -2973,7 +2989,7 @@ Section Rho.
     (* Proj construct/cofix reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       destruct inspect as [[f' a'] decapp'].
       epose proof (decompose_app_rename (symmetry e)) as e'.
@@ -3032,7 +3048,7 @@ Section Rho.
     (* Proj construct/cofix reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq0 as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       destruct inspect as [[f' a'] decapp'].
       epose proof (decompose_app_rename (symmetry e)) as e'.
@@ -3046,7 +3062,7 @@ Section Rho.
     (* Proj construct/cofix reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       destruct inspect as [[f' a'] decapp'].
       epose proof (decompose_app_rename (symmetry e)) as e'.
@@ -3079,7 +3095,7 @@ Section Rho.
    (* Proj construct/cofix reduction *)
     - simp rho.
       eapply is_not_lhs_rename with (r := r) in Heq as er.
-      destruct er as [n' er]. rewrite er.
+      rewrite er.
       cbn [rename]. simp rho.
       destruct inspect as [[f' a'] decapp'].
       epose proof (decompose_app_rename (symmetry e)) as e'.
@@ -4897,7 +4913,7 @@ Section Triangle.
       rewrite app_context_nil_l in X0.
       eapply X0.
 
-    - simp rho.
+    - simp rho lhs_viewc. rewrite <- !fold_rho.
       eapply (substitution0_let_pred1); simpl in *. 1-2: eauto.
       rewrite app_context_nil_l in X4.
       eapply X4.
@@ -5067,9 +5083,10 @@ Section Triangle.
       + simp rho. todo_triangle.
       + cbn. eapply pred1_refl_gen. assumption.
 
-    - simp rho. destruct lhs_viewc.
+    - simp rho. destruct lhs_viewc eqn:hv.
       2:{
-        exfalso. apply n0. cbn.
+        eapply lhs_viewc_not_lhs in hv. 2,3: cbn ; eauto.
+        exfalso. apply hv. cbn.
         unfold declared_symbol in H.
         unfold lookup_rd.
         eexists k, decl. rewrite H.
@@ -5091,11 +5108,13 @@ Section Triangle.
         destruct h as [? ?].
         eexists. intuition eauto.
       }
+      clear hv.
       simp rho. todo_triangle.
 
-    - simp rho. destruct lhs_viewc.
+    - simp rho. destruct lhs_viewc eqn:hv.
       2:{
-        exfalso. apply n0. cbn.
+        eapply lhs_viewc_not_lhs in hv. 2,3: cbn ; eauto.
+        exfalso. apply hv. cbn.
         unfold declared_symbol in H.
         unfold lookup_rd.
         eexists k, decl. rewrite H.
@@ -5118,6 +5137,7 @@ Section Triangle.
         destruct h as [? ?].
         eexists. intuition eauto.
       }
+      clear hv.
       (* Deal with the above, then copy and adapt *)
       simp rho. todo_triangle.
 
@@ -5149,7 +5169,9 @@ Section Triangle.
       simpl in y. rewrite e0. simpl.
       auto.
 
-    - simpl; simp rho. eapply pred_abs; auto. unfold snoc in *. simpl in X2.
+    - simpl; simp rho lhs_viewc.
+      rewrite <- !fold_rho.
+      eapply pred_abs; auto. unfold snoc in *. simpl in X2.
       rewrite app_context_nil_l in X2. apply X2.
 
     - (** Application *)
@@ -5294,16 +5316,18 @@ Section Triangle.
         * (* No head redex *)
           simpl. constructor; auto.
 
-    - simpl; simp rho; simpl. eapply pred_zeta; eauto.
+    - simpl; simp rho lhs_viewc; rewrite <- !fold_rho. simpl.
+      eapply pred_zeta; eauto.
       now simpl in X4; rewrite app_context_nil_l in X4.
 
     - (* Case reduction *)
       destruct ind.
       (* A pattern-matching may be a lhs *)
-      destruct (lhs_viewc Σ wfΣ None I (tCase (i, n) p0 c0 brs0)) eqn:elhs.
+      destruct (lhs_viewc Σ None (tCase (i, n) p0 c0 brs0)) eqn:elhs.
       + simp rho. rewrite elhs. simp rho.
         todo_triangle.
-      + rewrite rho_app_case. 1: auto.
+      + eapply lhs_viewc_not_lhs in elhs as notlhs. 2,3: cbn ; eauto.
+        rewrite rho_app_case. 1: auto.
         destruct (decompose_app c0) eqn:Heq. simpl.
         destruct (construct_cofix_discr t) eqn:Heq'.
         * {
@@ -5410,10 +5434,11 @@ Section Triangle.
       simpl.
       destruct p as [[ind pars] arg].
       (* A projection may be a lhs *)
-      destruct (lhs_viewc Σ wfΣ None I (tProj (ind, pars, arg) c)) eqn:elhs.
+      destruct (lhs_viewc Σ None (tProj (ind, pars, arg) c)) eqn:elhs.
       + simp rho. rewrite elhs. simp rho.
         todo_triangle.
-      + rewrite rho_app_proj. 1: auto.
+      + eapply lhs_viewc_not_lhs in elhs as notlhs. 2,3: cbn ; eauto.
+        rewrite rho_app_proj. 1: auto.
         destruct decompose_app eqn:Heq.
         destruct (view_construct_cofix t).
         * {
@@ -5510,7 +5535,7 @@ Section Triangle.
       simpl. unfold on_Trel; intuition pcuic.
       rewrite rho_ctx_app in b. now rewrite fix_context_map_fix.
 
-    - simp rho; simpl; econstructor; eauto.
+    - simp rho lhs_viewc; rewrite <- !fold_rho ; simpl; econstructor; eauto.
       simpl in X2. now rewrite !app_context_nil_l in X2.
 
     - simpl in *. simp rho lhs_viewc. constructor. 1: eauto.
