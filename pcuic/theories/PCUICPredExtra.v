@@ -599,3 +599,48 @@ Proof.
     intros ? ? [[? ?] [[? ?] ?]]. unfold on_Trel.
     intuition eauto.
 Qed.
+
+Lemma weakening_env_pred1_extra :
+  ∀ `{cf : checker_flags} Σ Σ' e Γ Δ u v,
+    wf Σ' →
+    PCUICWeakeningEnv.extends Σ Σ' →
+    pred1_extra Σ e Γ Δ u v →
+    pred1_extra Σ' e Γ Δ u v.
+Proof.
+  intros cf Σ Σ' e Γ Δ u v hΣ hx h.
+  set (Pctx :=
+    fun Γ Δ =>
+      pred1_extra_ctx Σ' e Γ Δ
+  ).
+  revert Γ Δ u v h.
+  refine (pred1_extra_ind_all_ctx Σ _ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+  all: try solve [ auto ].
+  all: try solve [ econstructor ; eauto ].
+  all: try solve [
+    intros ;
+    econstructor ; eauto ;
+    solve [ eapply All2_impl ; intuition eauto ; intuition eauto ]
+  ].
+  all: try solve [
+    intros ;
+    unfold on_Trel in * ;
+    econstructor ; eauto ;
+    unfold on_Trel in * ;
+    solve [
+      eapply All2_impl ;
+      intuition eauto ;
+      unfold on_Trel in * ;
+      intuition eauto
+    ]
+  ].
+  - intros. eapply predx_rewrite_rule. all: eauto.
+    + eapply PCUICWeakeningEnv.extends_lookup. all: eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. intuition eauto.
+  - intros. eapply predx_par_rewrite_rule. all: eauto.
+    + eapply PCUICWeakeningEnv.extends_lookup. all: eauto.
+    + eapply All2_impl. 1: eauto.
+      intros ? ? [? ?]. intuition eauto.
+  - intros. econstructor. all: eauto.
+    eapply PCUICWeakeningEnv.extends_lookup. all: eauto.
+Qed.
