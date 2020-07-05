@@ -728,7 +728,6 @@ Definition on_option {A} (P : A -> Type) : option A -> Type :=
 Section Rho.
   Context {cf : checker_flags}.
   Context (Σ : global_env).
-  Context (wfΣ : wf Σ).
 
   #[program] Definition map_fix_rho {t} (rho : context -> forall x, size x < size t -> term) Γ mfixctx (mfix : mfixpoint term)
     (H : mfixpoint_size size mfix < size t) :=
@@ -815,7 +814,6 @@ Section Rho.
 
   (* Potential extra rules, might be redundant *)
   Context (extra : option (kername × rewrite_decl)).
-  Context (on_extra : on_option (fun '(k,rd) => onrd rd) extra).
 
   Lemma all_rewrite_rules_on_rd :
     forall rd,
@@ -835,41 +833,6 @@ Section Rho.
     | _ => None
     end.
 
-  Lemma lookup_rd_onrd :
-    forall k rd,
-      lookup_rd k = Some rd ->
-      onrd rd.
-  Proof.
-    intros k rd h.
-    unfold lookup_rd in h.
-    destruct lookup_env as [[]|] eqn:e. all: try discriminate.
-    noconf h.
-    eapply lookup_on_global_env in wfΣ. 2: eassumption.
-    destruct wfΣ as [Σ' [? hd]].
-    destruct hd as [? [hr [hpr ?]]].
-    unfold onrd. split.
-    - eapply All_impl. 1: exact hr.
-      intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
-      + rewrite map_length in hh. assumption.
-      + assumption.
-      + eapply typecheck_closed in hrhs. 2: auto.
-        destruct hrhs as [_ hrhs].
-        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
-        rewrite app_context_length in hrhs.
-        rewrite map_length in hrhs.
-        assumption.
-    - eapply All_impl. 1: exact hpr.
-      intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
-      + rewrite map_length in hh. assumption.
-      + assumption.
-      + eapply typecheck_closed in hrhs. 2: auto.
-        destruct hrhs as [_ hrhs].
-        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
-        rewrite app_context_length in hrhs.
-        rewrite map_length in hrhs.
-        assumption.
-  Qed.
-
   Definition lookup_rewrite_decl (k : kername) : option rewrite_decl :=
     match extra with
     | Some (kn, rd) =>
@@ -878,20 +841,6 @@ Section Rho.
         else lookup_rd k
     | None => lookup_rd k
     end.
-
-  Lemma lookup_rewrite_decl_onrd :
-    forall k rd,
-      lookup_rewrite_decl k = Some rd ->
-      onrd rd.
-  Proof.
-    intros k rd h.
-    unfold lookup_rewrite_decl in h.
-    destruct extra as [[kn rd']|].
-    - destruct eq_kername.
-      + noconf h. cbn in on_extra. assumption.
-      + eapply lookup_rd_onrd. eassumption.
-    - eapply lookup_rd_onrd. eassumption.
-  Qed.
 
   (* Getting the list of rewrite rules corresponding to a symbol *)
   (* Definition all_rewrite_rules (k : kername) :=
@@ -1039,19 +988,6 @@ Section Rho.
       rewrite hl. assumption.
   Qed.
 
-  Lemma first_match_lookup_sound :
-    forall k rd t ui σ r,
-      lookup_rewrite_decl k = Some rd ->
-      first_match k (all_rewrite_rules rd) t = Some (ui, σ, r) ->
-      let ss := symbols_subst k 0 ui #|rd.(symbols)| in
-      t = subst0 σ (subst ss #|σ| (lhs r)).
-  Proof.
-    intros k rd t ui σ r hrd e.
-    eapply first_match_rd_sound. 2: eassumption.
-    eapply lookup_rewrite_decl_onrd.
-    eassumption.
-  Qed.
-
   (* Get kername corresponding to term *)
   Fixpoint elim_kn t :=
     match t with
@@ -1105,88 +1041,6 @@ Section Rho.
       } ;
     | @exist None e1 := is_not_lhs
     }.
-
-  Lemma lhs_viewc_not_lhs :
-    ∀ t,
-      lhs_viewc t = is_not_lhs →
-      not_lhs t.
-  Proof.
-    intros t.
-    funelim (lhs_viewc t). 3: discriminate.
-    all: intros _ X.
-    - rename e into e1. clear H.
-      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
-      apply lookup_rewrite_decl_onrd in e as hrd.
-      apply first_match_rd_sound in e0 as ?. 2: assumption.
-      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
-      rewrite elim_kn_mkElims in e1.
-      cbn in e1.
-      eapply first_match_subst_length in e0 as hl.
-      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
-      destruct nth_error eqn:e4.
-      2:{
-        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
-        eapply all_rewrite_rules_on_rd in hrd as h'.
-        eapply first_match_rule_list in e0 as hr.
-        destruct hr as [n er].
-        eapply All_nth_error in er. 2: eassumption.
-        destruct er as [? ?].
-        lia.
-      }
-      unfold symbols_subst in e4.
-      apply list_make_nth_error in e4. subst.
-      cbn in e1. noconf e1.
-    - clear H H0.
-      rename e into e1, e0 into e2.
-      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
-      apply lookup_rewrite_decl_onrd in e as hrd.
-      apply first_match_rd_sound in e0 as ?. 2: assumption.
-      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
-      rewrite elim_kn_mkElims in e1.
-      cbn in e1.
-      eapply first_match_subst_length in e0 as hl.
-      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
-      destruct nth_error eqn:e4.
-      2:{
-        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
-        eapply all_rewrite_rules_on_rd in hrd as h'.
-        eapply first_match_rule_list in e0 as hr.
-        destruct hr as [n er].
-        eapply All_nth_error in er. 2: eassumption.
-        destruct er as [? ?].
-        lia.
-      }
-      unfold symbols_subst in e4.
-      apply list_make_nth_error in e4. subst.
-      cbn in e1. noconf e1.
-      rewrite e in e2. noconf e2.
-    - clear H H0 H1.
-      rename e into e1, e0 into e2, e1 into e3.
-      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
-      apply lookup_rewrite_decl_onrd in e as hrd.
-      apply first_match_rd_sound in e0 as ?. 2: assumption.
-      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
-      rewrite elim_kn_mkElims in e1.
-      cbn in e1.
-      eapply first_match_subst_length in e0 as hl.
-      destruct (Nat.leb_spec #|l| (#|r0.(pat_context)| + r0.(head))). 2: lia.
-      destruct nth_error eqn:e4.
-      2:{
-        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
-        eapply all_rewrite_rules_on_rd in hrd as h'.
-        eapply first_match_rule_list in e0 as hr.
-        destruct hr as [n er].
-        eapply All_nth_error in er. 2: eassumption.
-        destruct er as [? ?].
-        lia.
-      }
-      unfold symbols_subst in e4.
-      apply list_make_nth_error in e4. subst.
-      cbn in e1. noconf e1.
-      rewrite e in e2. noconf e2.
-      rewrite e0 in e3.
-      discriminate.
-  Qed.
 
   Lemma first_match_subst_size :
     forall k l t ui σ r,
@@ -1348,6 +1202,153 @@ Section Rho.
     - clear -eqx. eapply symmetry, decompose_app_inv in eqx; subst x.
       abstract (rewrite size_mkApps /=; lia).
   Defined.
+
+  Context (wfΣ : wf Σ).
+  Context (on_extra : on_option (fun '(k,rd) => onrd rd) extra).
+
+  Lemma lookup_rd_onrd :
+    forall k rd,
+      lookup_rd k = Some rd ->
+      onrd rd.
+  Proof.
+    intros k rd h.
+    unfold lookup_rd in h.
+    destruct lookup_env as [[]|] eqn:e. all: try discriminate.
+    noconf h.
+    eapply lookup_on_global_env in wfΣ. 2: eassumption.
+    destruct wfΣ as [Σ' [? hd]].
+    destruct hd as [? [hr [hpr ?]]].
+    unfold onrd. split.
+    - eapply All_impl. 1: exact hr.
+      intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
+      + rewrite map_length in hh. assumption.
+      + assumption.
+      + eapply typecheck_closed in hrhs. 2: auto.
+        destruct hrhs as [_ hrhs].
+        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
+        rewrite app_context_length in hrhs.
+        rewrite map_length in hrhs.
+        assumption.
+    - eapply All_impl. 1: exact hpr.
+      intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
+      + rewrite map_length in hh. assumption.
+      + assumption.
+      + eapply typecheck_closed in hrhs. 2: auto.
+        destruct hrhs as [_ hrhs].
+        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
+        rewrite app_context_length in hrhs.
+        rewrite map_length in hrhs.
+        assumption.
+  Qed.
+
+  Lemma lookup_rewrite_decl_onrd :
+    forall k rd,
+      lookup_rewrite_decl k = Some rd ->
+      onrd rd.
+  Proof.
+    intros k rd h.
+    unfold lookup_rewrite_decl in h.
+    destruct extra as [[kn rd']|].
+    - destruct eq_kername.
+      + noconf h. cbn in on_extra. assumption.
+      + eapply lookup_rd_onrd. eassumption.
+    - eapply lookup_rd_onrd. eassumption.
+  Qed.
+
+  Lemma first_match_lookup_sound :
+    forall k rd t ui σ r,
+      lookup_rewrite_decl k = Some rd ->
+      first_match k (all_rewrite_rules rd) t = Some (ui, σ, r) ->
+      let ss := symbols_subst k 0 ui #|rd.(symbols)| in
+      t = subst0 σ (subst ss #|σ| (lhs r)).
+  Proof.
+    intros k rd t ui σ r hrd e.
+    eapply first_match_rd_sound. 2: eassumption.
+    eapply lookup_rewrite_decl_onrd.
+    eassumption.
+  Qed.
+
+  Lemma lhs_viewc_not_lhs :
+    ∀ t,
+      lhs_viewc t = is_not_lhs →
+      not_lhs t.
+  Proof.
+    intros t.
+    funelim (lhs_viewc t). 3: discriminate.
+    all: intros _ X.
+    - rename e into e1. clear H.
+      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+    - clear H H0.
+      rename e into e1, e0 into e2.
+      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r.(pat_context)| + r.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+      rewrite e in e2. noconf e2.
+    - clear H H0 H1.
+      rename e into e1, e0 into e2, e1 into e3.
+      destruct X as [? [? [[[? ?] ?] [e e0]]]]. cbn in e0.
+      apply lookup_rewrite_decl_onrd in e as hrd.
+      apply first_match_rd_sound in e0 as ?. 2: assumption.
+      subst. unfold lhs in e1. rewrite 2!mkElims_subst in e1.
+      rewrite elim_kn_mkElims in e1.
+      cbn in e1.
+      eapply first_match_subst_length in e0 as hl.
+      destruct (Nat.leb_spec #|l| (#|r0.(pat_context)| + r0.(head))). 2: lia.
+      destruct nth_error eqn:e4.
+      2:{
+        apply nth_error_None in e4. rewrite symbols_subst_length in e4.
+        eapply all_rewrite_rules_on_rd in hrd as h'.
+        eapply first_match_rule_list in e0 as hr.
+        destruct hr as [n er].
+        eapply All_nth_error in er. 2: eassumption.
+        destruct er as [? ?].
+        lia.
+      }
+      unfold symbols_subst in e4.
+      apply list_make_nth_error in e4. subst.
+      cbn in e1. noconf e1.
+      rewrite e in e2. noconf e2.
+      rewrite e0 in e3.
+      discriminate.
+  Qed.
 
   Definition rho_fix_context Γ mfix :=
     fold_fix_context rho Γ [] mfix.
@@ -3595,7 +3596,7 @@ Section Rho.
       + simp rho lhs_viewc; simpl; simp  rho.
         rewrite -fold_fix_context_rho_ctx. constructor; auto.
         * eapply All2_local_env_pred_fix_ctx. apply fctx.
-        * red. clear -wfΣ eqf redr redl.
+        * red. clear - wfΣ on_extra eqf redr redl.
           eapply All2_sym. apply All2_map_left.
           pose proof (All2_mix eqf (All2_mix redr redl)) as X; clear eqf redr redl.
           eapply All2_impl; eauto. clear X.
@@ -3676,7 +3677,7 @@ Section Rho.
       + simp rho lhs_viewc; simpl; simp rho.
         rewrite -fold_fix_context_rho_ctx. constructor; auto.
         * eapply All2_local_env_pred_fix_ctx. apply fctx.
-        * red. clear -wfΣ eqf redr redl.
+        * red. clear - wfΣ on_extra eqf redr redl.
           eapply All2_sym. apply All2_map_left.
           pose proof (All2_mix eqf (All2_mix redr redl)) as X; clear eqf redr redl.
           eapply All2_impl; eauto. clear X.
@@ -4586,34 +4587,33 @@ Section Confluenv.
         triangle_rules Σ e kn nsymb rho rho_ctx rl →
         triangle_rules Σ e kn nsymb rho rho_ctx (rl ++ [r]).
 
-  Definition confl_rew_decl Σ wfΣ kn d :=
+  Definition confl_rew_decl Σ kn d :=
     let l := d.(prules) ++ d.(rules) in
     let extra := Some (kn, d) in
-    ∑ on_extra,
-      triangle_rules
-        Σ extra kn #|d.(symbols)|
-        (rho Σ wfΣ extra on_extra) (rho_ctx Σ wfΣ extra on_extra) l.
+    triangle_rules
+      Σ extra kn #|d.(symbols)|
+      (rho Σ extra) (rho_ctx Σ extra) l.
 
-  Definition confl_decl Σ hΣ kn decl : Type :=
+  Definition confl_decl Σ kn decl : Type :=
     match decl with
-    | RewriteDecl rew => confl_rew_decl Σ hΣ kn rew
+    | RewriteDecl rew => confl_rew_decl Σ kn rew
     | _ => True
     end.
 
   Inductive confluenv : global_env → Type :=
   | confluenv_nil : confluenv []
-  | confluenv_decl Σ hΣ kn d :
+  | confluenv_decl Σ kn d :
       confluenv Σ →
-      confl_decl Σ hΣ kn d →
+      confl_decl Σ kn d →
       confluenv (Σ ,, (kn, d)).
 
   Lemma triangle_rules_weakening :
-    ∀ Σ Σ' hΣ hΣ' k nsymb r e he,
+    ∀ Σ Σ' k nsymb r e,
       PCUICWeakeningEnv.extends Σ Σ' →
-      triangle_rules Σ e k nsymb (rho Σ hΣ e he)(rho_ctx Σ hΣ e he) r →
-      triangle_rules Σ' e k nsymb (rho Σ' hΣ' e he)(rho_ctx Σ' hΣ' e he) r.
+      triangle_rules Σ e k nsymb (rho Σ e)(rho_ctx Σ e) r →
+      triangle_rules Σ' e k nsymb (rho Σ' e)(rho_ctx Σ' e) r.
   Proof.
-    intros Σ Σ' hΣ hΣ' k nsymb r e he hx hr.
+    intros Σ Σ' k nsymb r e hx hr.
     induction hr.
     - constructor.
     - constructor.
@@ -4624,17 +4624,15 @@ Section Confluenv.
   Admitted.
 
   Lemma confl_decl_weakening :
-    ∀ Σ Σ' hΣ hΣ' k d,
+    ∀ Σ Σ' k d,
       PCUICWeakeningEnv.extends Σ Σ' →
       (* confluenv Σ' → *)
-      confl_decl Σ hΣ k d →
-      confl_decl Σ' hΣ' k d.
+      confl_decl Σ k d →
+      confl_decl Σ' k d.
   Proof.
-    intros Σ Σ' hΣ hΣ' k d e (* cΣ' *) hd.
+    intros Σ Σ' k d e (* cΣ' *) hd.
     destruct d. 1,2: constructor.
-    cbn in *. unfold confl_rew_decl in *. cbn in *.
-    destruct hd as [onex h].
-    exists onex.
+    cbn in *. unfold confl_rew_decl in *.
     eapply triangle_rules_weakening. all: eauto.
   Qed.
 
@@ -4642,7 +4640,7 @@ Section Confluenv.
     ∀ Σ k rd,
       confluenv Σ →
       lookup_env Σ k = Some (RewriteDecl rd) →
-      ∑ wfΣ, confl_rew_decl Σ wfΣ k rd.
+      confl_rew_decl Σ k rd.
   Proof.
     intros Σ k rd h e.
     induction h. 1: discriminate.
@@ -4662,6 +4660,16 @@ Section Triangle.
   Context (Σ : global_env).
   Context (wfΣ : wf Σ).
 
+  Lemma on_extra_None :
+    @on_option (kername × rewrite_decl) (fun '(k,rd) => onrd rd) None.
+  Proof.
+    exact I.
+  Defined.
+
+  Existing Class wf.
+  Existing Instance wfΣ.
+
+  Hint Resolve on_extra_None : rho.
   Hint Rewrite map_terms_map : rho.
   Hint Rewrite map_brs_map : rho.
   Hint Rewrite map_fix_rho_map fold_fix_context_wf_fold : rho.
@@ -4880,7 +4888,7 @@ Section Triangle.
   Lemma lookup_criterion :
     ∀ k rd,
       lookup_rewrite_decl Σ None k = Some rd →
-      confl_rew_decl Σ wfΣ k rd.
+      confl_rew_decl Σ k rd.
   Proof.
     intros k rd e.
     unfold lookup_rewrite_decl in e. unfold lookup_rd in e.
@@ -4893,9 +4901,9 @@ Section Triangle.
   Ltac todo_triangle := (exact todo_triangle).
 
   Lemma triangle Γ Δ t u :
-    let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Σ wfΣ None I Γ) in
+    let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Σ None Γ) in
     pred1 Σ Γ Δ t u ->
-    pred1 Σ Δ (rho_ctx Σ wfΣ None I Γ) u (rho Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ) t).
+    pred1 Σ Δ (rho_ctx Σ None Γ) u (rho Σ None (rho_ctx Σ None Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
     refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
@@ -4908,7 +4916,7 @@ Section Triangle.
       all:simpl NoConfusion in *; noconf H; noconf H0; auto.
 
     - simpl.
-      rewrite (rho_app_lambda _ _ _ _ _ _ _ _ _ []).
+      rewrite (rho_app_lambda _ _ _ _ _ _ _ _ _ []). 1,2: cbn ; eauto.
       eapply (substitution0_pred1); simpl in *. 1-2: eauto.
       rewrite app_context_nil_l in X0.
       eapply X0.
@@ -4928,11 +4936,11 @@ Section Triangle.
         eapply nth_error_pred1_ctx_l in H; eauto.
         destruct H. intuition. rewrite a. simp rho.
         rewrite -{1}(firstn_skipn (S i) Γ').
-        rewrite -{1}(firstn_skipn (S i) (rho_ctx _ _ _ _ Γ)).
+        rewrite -{1}(firstn_skipn (S i) (rho_ctx _ _ Γ)).
         pose proof (All2_local_env_length X0).
         assert (S i = #|firstn (S i) Γ'|).
         { rewrite !firstn_length_le; try lia. }
-        assert (S i = #|firstn (S i) (rho_ctx Σ wfΣ None I Γ)|).
+        assert (S i = #|firstn (S i) (rho_ctx Σ None Γ)|).
         { rewrite !firstn_length_le; try lia. }
         rewrite {5}H0 {6}H1.
         eapply weakening_pred1_pred1; eauto.
@@ -4974,7 +4982,7 @@ Section Triangle.
 
     - (* Fix reduction *)
       unfold PCUICTyping.unfold_fix in heq_unfold_fix |- *.
-      rewrite rho_app_fix.
+      rewrite rho_app_fix. 1,2: cbn ; eauto.
       destruct nth_error eqn:Heq; noconf heq_unfold_fix.
       eapply All2_nth_error_Some_right in Heq; eauto.
       destruct Heq as [t' [Hnth Hrel]].
@@ -4996,14 +5004,15 @@ Section Triangle.
         eapply pred_mkApps.
         * rewrite rho_ctx_app in Hreleq1.
           rewrite !subst_inst. simpl_pred.
-          rewrite /rho_fix_context -fold_fix_context_rho_ctx.
+          rewrite /rho_fix_context -fold_fix_context_rho_ctx. 1,2: cbn ; eauto.
           eapply strong_substitutivity; eauto.
           -- apply ctxmap_fix_subst.
-          -- rewrite -rho_fix_subst -{1}fix_context_map_fix.
+          -- rewrite -rho_fix_subst. 1,2: cbn ; eauto.
+             rewrite -{1}fix_context_map_fix. 1,2: cbn ; eauto.
              apply ctxmap_fix_subst.
-          -- rewrite -rho_fix_subst.
+          -- rewrite -rho_fix_subst. 1,2: cbn ; eauto.
              eapply All2_prop2_eq_split in X3.
-             apply pred_subst_rho_fix; intuition auto.
+             apply pred_subst_rho_fix; intuition auto. cbn. auto.
         * eapply All2_sym, All2_map_left, All2_impl; eauto.
           simpl. unfold on_Trel in *.
           intuition eauto.
@@ -5033,16 +5042,16 @@ Section Triangle.
       + eapply pred_mkApps.
         * red in Hrel. destruct Hrel.
           rewrite rho_ctx_app in p2.
-          rewrite - fold_fix_context_rho_ctx.
-          set (rhoΓ := rho_ctx _ _ _ _ Γ ,,, rho_ctx_over _ _ _ _ (rho_ctx _ _ _ _ Γ) (fix_context mfix0)) in *.
+          rewrite - fold_fix_context_rho_ctx. 1,2: cbn ; eauto.
+          set (rhoΓ := rho_ctx _ _ Γ ,,, rho_ctx_over _ _ (rho_ctx _ _ Γ) (fix_context mfix0)) in *.
           rewrite !subst_inst. eapply simpl_pred; try now sigma.
           eapply strong_substitutivity; eauto.
           -- apply ctxmap_cofix_subst.
           -- unfold rhoΓ.
-             rewrite -{1}fix_context_map_fix.
-             rewrite -rho_cofix_subst.
+             rewrite -{1}fix_context_map_fix. 1,2: cbn ; eauto.
+             rewrite -rho_cofix_subst. 1,2 : cbn ; eauto.
              now eapply ctxmap_cofix_subst.
-          -- rewrite -rho_cofix_subst.
+          -- rewrite -rho_cofix_subst. 1,2: cbn ; eauto.
              now eapply pred_subst_rho_cofix; auto.
         * eapply All2_sym, All2_map_left, All2_impl; eauto.
           simpl. intuition eauto.
@@ -5072,10 +5081,10 @@ Section Triangle.
       destruct Heq as [t' [Hnth Hrel]]. destruct Hrel as [[Hty Hrhoty] [[Hreleq0 Hreleq1] Heq]].
       unfold map_fix. rewrite Hnth /=.
       econstructor. eapply pred_mkApps; eauto.
-      + rewrite - fold_fix_context_rho_ctx.
+      + rewrite - fold_fix_context_rho_ctx. 1,2: cbn ; eauto.
         rewrite rho_ctx_app in Hreleq1.
         eapply substitution_pred1; eauto.
-        eapply wf_rho_cofix_subst; eauto.
+        eapply wf_rho_cofix_subst; eauto. 1: cbn ; eauto.
         now eapply All2_length in X3.
       + eapply All2_sym, All2_map_left, All2_impl; eauto; simpl; intuition eauto.
 
@@ -5183,21 +5192,21 @@ Section Triangle.
         * {
           simpl; simp rho; simpl.
           (* Fix at head *)
-          destruct (rho_fix_elim _ wfΣ None I (rho_ctx Σ wfΣ None I Γ) mfix i l).
+          destruct (rho_fix_elim Σ None wfΣ I (rho_ctx Σ None Γ) mfix i l).
           - rewrite /unfold_fix {1}/map_fix nth_error_map e /=.
             eapply (is_constructor_app_ge (rarg d) _ _) in i0 => //.
             rewrite -> i0.
             rewrite map_app - !mkApps_nested.
             eapply (pred_mkApps _ _ _ _ _ [N1]) => //.
             2: repeat constructor; auto.
-            rewrite - fold_fix_context_rho_ctx.
-            rewrite rho_fix_subst. subst fn.
+            rewrite - fold_fix_context_rho_ctx. 1,2: cbn ; eauto.
+            rewrite rho_fix_subst. 1,2: cbn ; eauto.
+            subst fn.
             rewrite /rho_fix_context in X0.
-            rewrite fold_fix_context_rho_ctx.
-            auto.
+            rewrite fold_fix_context_rho_ctx. 1,2: auto with rho.
           - simp rho lhs_viewc in X0.
             simpl in X0. simp rho in X0.
-            destruct (rho_fix_elim Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ) mfix i (l ++ [a])).
+            destruct (rho_fix_elim Σ None wfΣ I (rho_ctx Σ None Γ) mfix i (l ++ [a])).
             (* Shorter application does not reduce *)
             + (* Longer application reduces *)
               rewrite e in i0.
@@ -5256,7 +5265,7 @@ Section Triangle.
                 repeat constructor; auto.
         }
         * { (* Beta at top *)
-          rewrite rho_app_lambda' in X0.
+          rewrite rho_app_lambda' in X0. 1,2: cbn ; eauto.
           destruct l.
           - simpl in X.
             (* Bug with depelim forgetting let bindings *)
@@ -5335,7 +5344,8 @@ Section Triangle.
           - (* Iota *)
             apply decompose_app_inv in Heq.
             subst c0. simpl.
-            simp rho. rewrite <- !fold_rho.
+            simp rho.
+            rewrite <- !fold_rho.
             simpl. simp rho in X2.
             change eq_inductive with (@eqb inductive _).
             destruct (eqb_spec i ind).
@@ -5363,14 +5373,15 @@ Section Triangle.
             eapply All2_prop2_eq_split in a1. intuition.
             unfold unfold_cofix.
             assert (All2 (on_Trel eq dname) mfix'
-                      (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (fold_fix_context (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) [] mfix) mfix)).
+                      (map_fix (rho Σ None) (rho_ctx Σ None Γ) (fold_fix_context (rho Σ None) (rho_ctx Σ None Γ) [] mfix) mfix)).
             { eapply All2_impl; [eapply b0|]; pcuic. }
             pose proof (All2_mix a1 X1).
             eapply pred1_rho_fix_context_2 in X2; pcuic.
-            rewrite - fold_fix_context_rho_ctx in X2.
-            rewrite fix_context_map_fix in X2.
+            rewrite - fold_fix_context_rho_ctx in X2. 1: auto with rho.
+            rewrite fix_context_map_fix in X2. 1: auto with rho.
             eapply rho_All_All2_local_env_inv in X2; pcuic.
             rewrite /rho_fix_context - fold_fix_context_rho_ctx in a1.
+            1: auto with rho.
 
             destruct nth_error eqn:Heq.
             + (* CoFix unfolding *)
@@ -5379,23 +5390,24 @@ Section Triangle.
               eapply All2_nth_error_Some in Heq; eauto.
               destruct Heq; intuition auto.
               eapply pred_cofix_case
-                with (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (rho_ctx_over Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ)
+                with (map_fix (rho Σ None) (rho_ctx Σ None Γ) (rho_ctx_over Σ None (rho_ctx Σ None Γ)
                                                       (fix_context mfix)) mfix)
                                           (rarg d); pcuic.
-              * eapply All2_local_env_pred_fix_ctx; eauto.
+              * eapply All2_local_env_pred_fix_ctx; eauto with rho.
                 eapply All2_prop2_eq_split in a. intuition auto.
                 eapply All2_local_env_sym.
                 pcuic.
               * eapply All2_mix; pcuic.
                 rewrite /rho_fix_context - fold_fix_context_rho_ctx in b1.
+                1: auto with rho.
                 eapply All2_mix. 1: eauto.
                 now rewrite /rho_fix_context - fold_fix_context_rho_ctx in b0.
               * unfold unfold_cofix.
                 rewrite nth_error_map.
                 rewrite H. simpl. f_equal. f_equal.
                 unfold map_fix.
-                rewrite fold_fix_context_rho_ctx.
-                rewrite (map_cofix_subst _ (fun Γ Γ' => rho Σ wfΣ None I (Γ ,,,  Γ'))) //.
+                rewrite fold_fix_context_rho_ctx. 1: auto with rho.
+                rewrite (map_cofix_subst _ (fun Γ Γ' => rho Σ None (Γ ,,,  Γ'))) //.
                 intros. simp rho lhs_viewc; simpl; simp rho. reflexivity.
               * apply All2_sym. eapply All2_map_left. eapply All2_impl; eauto.
                 unfold on_Trel in *.
@@ -5407,12 +5419,14 @@ Section Triangle.
                 - constructor.
                   + pcuic.
                   + rewrite /rho_fix_context - fold_fix_context_rho_ctx.
-                    eapply All2_local_env_pred_fix_ctx.
+                    1: auto with rho.
+                    eapply All2_local_env_pred_fix_ctx. 1,2: auto with rho.
                     eapply All2_prop2_eq_split in a. intuition auto.
                     eapply All2_local_env_sym.
                     pcuic.
                   + eapply All2_mix; pcuic.
                     * rewrite /rho_fix_context - fold_fix_context_rho_ctx in b1.
+                      1: auto with rho.
                       now rewrite /rho_fix_context - fold_fix_context_rho_ctx.
                     * eapply All2_mix; pcuic.
                 - pcuic.
@@ -5422,8 +5436,8 @@ Section Triangle.
                 intros. intuition pcuic.
         }
         * apply decompose_app_inv in Heq. subst c0.
-          assert (All2 (on_Trel_eq (pred1 Σ Γ' (rho_ctx Σ wfΣ None I Γ)) snd fst) brs1
-                      (map (λ x : nat * term, (fst x, rho Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ) (snd x))) brs0)).
+          assert (All2 (on_Trel_eq (pred1 Σ Γ' (rho_ctx Σ None Γ)) snd fst) brs1
+                      (map (λ x : nat * term, (fst x, rho Σ None (rho_ctx Σ None Γ) (snd x))) brs0)).
           { eapply All2_sym, All2_map_left, All2_impl; eauto.
             unfold on_Trel in *.
             intros. intuition pcuic.
@@ -5475,14 +5489,15 @@ Section Triangle.
           unfold unfold_cofix.
           eapply All2_prop2_eq_split in a1. intuition auto.
           assert (All2 (on_Trel eq dname) mfix'
-                      (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (fold_fix_context (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) [] mfix) mfix)).
+                      (map_fix (rho Σ None) (rho_ctx Σ None Γ) (fold_fix_context (rho Σ None) (rho_ctx Σ None Γ) [] mfix) mfix)).
           { eapply All2_impl; [eapply b|]; pcuic. }
           pose proof (All2_mix a1 X0) as X2.
           eapply pred1_rho_fix_context_2 in X2; pcuic.
-          rewrite - fold_fix_context_rho_ctx in X2.
-          rewrite fix_context_map_fix in X2.
+          rewrite - fold_fix_context_rho_ctx in X2. 1: auto with rho.
+          rewrite fix_context_map_fix in X2. 1: auto with rho.
           eapply rho_All_All2_local_env_inv in X2; pcuic.
           rewrite /rho_fix_context - fold_fix_context_rho_ctx in a1.
+          1: auto with rho.
           intuition auto.
           destruct nth_error eqn:Heq.
           (* Proj cofix *)
@@ -5491,25 +5506,25 @@ Section Triangle.
             pose proof Heq.
             eapply All2_nth_error_Some in Heq; eauto. destruct Heq; intuition auto.
 
-            eapply pred_cofix_proj with (map_fix (rho Σ wfΣ None I) (rho_ctx Σ wfΣ None I Γ) (rho_ctx_over Σ wfΣ None I (rho_ctx Σ wfΣ None I Γ)
-                                                                              (fix_context mfix)) mfix)
+            eapply pred_cofix_proj with (map_fix (rho Σ None) (rho_ctx Σ None Γ) (rho_ctx_over Σ None (rho_ctx Σ None Γ) (fix_context mfix)) mfix)
                                         (rarg d); pcuic.
 
-            + eapply All2_local_env_pred_fix_ctx; eauto.
+            + eapply All2_local_env_pred_fix_ctx; eauto with rho.
               eapply All2_prop2_eq_split in a. intuition auto.
               eapply All2_local_env_sym.
               pcuic.
 
             + eapply All2_mix; pcuic.
               rewrite /rho_fix_context - fold_fix_context_rho_ctx in b0.
+              1: auto with rho.
               eapply All2_mix. 1: eauto.
               now rewrite /rho_fix_context - fold_fix_context_rho_ctx in b.
             + unfold unfold_cofix.
               rewrite nth_error_map.
               rewrite H. simpl. f_equal. f_equal.
               unfold map_fix.
-              rewrite fold_fix_context_rho_ctx. auto.
-              rewrite (map_cofix_subst _ (fun Γ Γ' => rho Σ wfΣ None I (Γ ,,,  Γ'))) //.
+              rewrite fold_fix_context_rho_ctx. 1: auto with rho.
+              rewrite (map_cofix_subst _ (fun Γ Γ' => rho Σ None (Γ ,,,  Γ'))) //.
               intros. simp rho lhs_viewc; simpl; simp rho. reflexivity.
 
           - eapply pred_proj_congr; eauto.
@@ -5518,7 +5533,7 @@ Section Triangle.
           destruct t; noconf d; econstructor; eauto.
 
     - simp rho lhs_viewc; simpl; simp rho.
-      rewrite /rho_fix_context - fold_fix_context_rho_ctx.
+      rewrite /rho_fix_context - fold_fix_context_rho_ctx. 1: auto with rho.
       constructor; eauto.
       1: now eapply All2_local_env_pred_fix_ctx.
       red. red in X3.
@@ -5527,7 +5542,7 @@ Section Triangle.
       rewrite rho_ctx_app in b. now rewrite fix_context_map_fix.
 
     - simp rho lhs_viewc; simpl; simp rho.
-      rewrite - fold_fix_context_rho_ctx.
+      rewrite - fold_fix_context_rho_ctx. 1: auto with rho.
       constructor; eauto.
       1: now eapply All2_local_env_pred_fix_ctx.
       red. red in X3.
@@ -5554,8 +5569,8 @@ Corollary pred1_diamond {cf : checker_flags} {Σ : global_env} {Γ Δ Δ' t u v}
     confluenv Σ ->
     pred1 Σ Γ Δ t u ->
     pred1 Σ Γ Δ' t v ->
-    pred1 Σ Δ (rho_ctx Σ hΣ None I Γ) u (rho Σ hΣ None I (rho_ctx Σ hΣ None I Γ) t) *
-    pred1 Σ Δ' (rho_ctx Σ hΣ None I Γ) v (rho Σ hΣ None I (rho_ctx Σ hΣ None I Γ) t).
+    pred1 Σ Δ (rho_ctx Σ None Γ) u (rho Σ None (rho_ctx Σ None Γ) t) *
+    pred1 Σ Δ' (rho_ctx Σ None Γ) v (rho Σ None (rho_ctx Σ None Γ) t).
 Proof.
   intros.
   split; eapply triangle; auto.

@@ -2227,7 +2227,7 @@ Section RedConfluence.
   Proof.
     move=> t u v tu tv.
     destruct (pred1_diamond wfΣ cΣ tu tv).
-    eexists (rho_ctx Σ wfΣ None I (fst t), rho Σ wfΣ None I (rho_ctx Σ wfΣ None I (fst t)) (snd t)).
+    eexists (rho_ctx Σ None (fst t), rho Σ None (rho_ctx Σ None (fst t)) (snd t)).
     split; auto.
   Qed.
 
