@@ -4609,28 +4609,31 @@ Section Confluenv.
 
   Lemma triangle_rules_weakening :
     ∀ Σ Σ' k nsymb r e,
+      wf Σ' →
       PCUICWeakeningEnv.extends Σ Σ' →
       triangle_rules Σ e k nsymb (rho Σ e)(rho_ctx Σ e) r →
       triangle_rules Σ' e k nsymb (rho Σ' e)(rho_ctx Σ' e) r.
   Proof.
-    intros Σ Σ' k nsymb r e hx hr.
+    intros Σ Σ' k nsymb r e hΣ hx hr.
     induction hr.
     - constructor.
     - constructor.
       + intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
-        (* Not really worth doing now, as it will change *)
+        eapply weakening_env_pred1_extra. 1,2: eauto.
+        (* eapply p. *)
+        (* TODO We need to relate rho Σ and rho Σ' *)
         admit.
       + assumption.
   Admitted.
 
   Lemma confl_decl_weakening :
     ∀ Σ Σ' k d,
+      wf Σ' →
       PCUICWeakeningEnv.extends Σ Σ' →
-      (* confluenv Σ' → *)
       confl_decl Σ k d →
       confl_decl Σ' k d.
   Proof.
-    intros Σ Σ' k d e (* cΣ' *) hd.
+    intros Σ Σ' k d hΣ e hd.
     destruct d. 1,2: constructor.
     cbn in *. unfold confl_rew_decl in *.
     eapply triangle_rules_weakening. all: eauto.
