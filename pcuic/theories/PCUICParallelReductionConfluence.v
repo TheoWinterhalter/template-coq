@@ -4621,7 +4621,18 @@ Section Confluenv.
       + intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
         eapply weakening_env_pred1_extra. 1,2: eauto.
         (* eapply p. *)
-        (* TODO We need to relate rho Σ and rho Σ' *)
+        (* TODO We need to relate rho Σ and rho Σ'
+          maybe we need only say the behave the same for pred1_extra in Σ?
+          Or show t => rho u -> t => rho' u ?
+          Or maybe ok because only on patterns, but must include the context
+          then to say it's ok for it as well
+          Maybe since patterns, no reduction so no rho?
+          To show first_match yields pattern substitution when pattern instance
+          perhaps soundness is sufficient because lτ is special when τ
+          is a pattern substitution and l is really an elim pattern.
+
+          At the very least, rho σ is superfluous isn't it?
+        *)
         admit.
       + assumption.
   Admitted.
@@ -4885,6 +4896,60 @@ Section Triangle.
       }
       auto.
   Qed.
+
+  Lemma first_match_pattern_subst :
+    ∀ k r k' n' ui' el ui σ rd npat,
+      All (elim_pattern npat) el →
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      let l := all_rewrite_rules rd in
+      first_match k l (mkElims (tSymb k' n' ui') el) = Some (ui, σ, r) →
+      All (pattern #|r.(pat_context)|) σ.
+  Proof.
+    intros k r k' n' ui' el ui σ rd npat hel hk l e.
+    apply all_rewrite_rules_on_rewrite_rule in hk as hrd.
+    destruct hrd as [Σ' hrd].
+    eapply first_match_rule_list in e as hr. destruct hr as [n hr].
+    eapply All_nth_error in hr. 2: eauto. clear n.
+    destruct hr as [T lT rT hh ll he hΔ].
+    rewrite map_length in hh.
+    eapply first_match_lookup_sound with (extra := None) in e as h. 2: eauto.
+    2: exact I.
+    2:{ unfold lookup_rewrite_decl. unfold lookup_rd. rewrite hk. reflexivity. }
+    unfold lhs in h. rewrite !mkElims_subst in h. cbn in h.
+    eapply first_match_subst_length in e as σl.
+    destruct (Nat.leb_spec0 #|σ| (#|pat_context r| + head r)). 2: lia.
+    replace (#|pat_context r| + head r - #|σ|) with r.(head) in h by lia.
+    unfold symbols_subst at 1 in h.
+    destruct nth_error eqn:e1.
+    2:{
+      apply nth_error_None in e1. rewrite list_make_length in e1. lia.
+    }
+    eapply list_make_nth_error in e1. subst.
+    cbn in h.
+    apply (f_equal decompose_elims) in h.
+    rewrite !mkElims_decompose_elims in h. cbn in h.
+    inversion h. subst. clear h.
+    (* eapply All_impl in he as hc.
+    2: eapply elim_pattern_closedn. *)
+    apply All_map_inv in hel. apply All_map_inv in hel.
+    assert (hel' :
+      All (fun e =>
+        elim_pattern npat (subst_elim σ 0 e)
+      ) r.(elims)
+    ).
+    { eapply All_prod in hel. 2: exact he.
+      eapply All_impl. 1: exact hel.
+      cbn. intros x [? e0].
+      rewrite subst_elim_symbols_subst in e0.
+      1:{ rewrite σl. assumption. }
+      assumption.
+    }
+    clear hel. rewrite <- σl in ll.
+    clear - ll hel' he.
+    unfold linear in ll. destruct linear_mask eqn:e. 2: discriminate.
+    unfold linear_mask in e. destruct monad_map eqn:e1. 2: discriminate.
+    cbn in e.
+  Admitted.
 
   Context (cΣ : confluenv Σ).
 
