@@ -5083,6 +5083,20 @@ Section Triangle.
     apply some_inj in e. subst. reflexivity.
   Qed.
 
+  Lemma rule_assumption_context :
+    ∀ k rd n r,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      assumption_context r.(pat_context).
+  Proof.
+    intros k rd n r h hr.
+    eapply all_rewrite_rules_on_rewrite_rule in h.
+    destruct h as [? h].
+    eapply All_nth_error in h. 2: eauto.
+    destruct h as [].
+    assumption.
+  Qed.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
@@ -5339,9 +5353,19 @@ Section Triangle.
       destruct hf as [? [l' [τ [θ [hf [fm ?]]]]]]. subst.
       eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
       eapply lhs_footprint_pattern in hf as hpl.
-      (* eapply first_match_pattern_subst in fm as hp. 2,3: eauto. *)
+      eapply first_match_pattern_subst in fm as hp. 2,3: eauto.
       rewrite elhs in fm.
       specialize h with (4 := fm).
+      specialize h with (2 := hp).
+      eapply first_match_rule_list in e0 as hr. destruct hr as [m hr].
+      specialize h with (1 := hr).
+      (* TODO It needs to be a context that matches τ *)
+      specialize (h []).
+      forward h.
+      { eapply first_match_subst_length in fm.
+        eapply untyped_subslet_assumption_context. 2: auto.
+        eapply rule_assumption_context. all: eauto.
+      }
       todo_triangle.
 
     - simp rho. destruct lhs_viewc eqn:hv.
