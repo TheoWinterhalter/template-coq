@@ -823,6 +823,81 @@ Proof.
     cbn. constructor.
 Qed.
 
+Lemma elim_footprint_pattern :
+  ∀ t k n ui l τ,
+    elim_footprint t = Some (k,n,ui,l,τ) →
+    All (on_elim (pattern #|τ|)) l.
+Proof.
+  intros t k n ui l τ e.
+  induction t in k, n, ui, l, τ, e |- * using term_forall_list_ind.
+  all: try solve [ cbn in e ; discriminate ].
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    destruct pattern_footprint eqn:e2.
+    inversion e. subst. clear e.
+    epose proof (pattern_footprint_pattern _) as h.
+    erewrite e2 in h.
+    specialize IHt1 with (1 := eq_refl).
+    clear IHt2.
+    constructor.
+    + cbn. rewrite app_length. apply pattern_lift. assumption.
+    + eapply All_impl. 1: eauto.
+      intros ? ?. eapply on_elim_impl. 1: eauto.
+      intros ? ?. eapply pattern_upwards. 1: eauto.
+      rewrite app_length. lia.
+  - cbn in e. inversion e. subst. clear e.
+    constructor.
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    destruct pattern_footprint eqn:e2.
+    destruct fold_right eqn:e3.
+    inversion e. subst. clear e.
+    clear IHt1.
+    specialize IHt2 with (1 := eq_refl).
+    epose proof (pattern_footprint_pattern _) as h.
+    erewrite e2 in h.
+    constructor.
+    2:{
+      eapply All_impl. 1: eauto.
+      intros ? ?. eapply on_elim_impl. 1: eauto.
+      intros ? ?. eapply pattern_upwards. 1: eauto.
+      rewrite app_length. lia.
+    }
+    cbn. split.
+    1:{
+      rewrite app_length. apply pattern_lift.
+      eapply pattern_upwards. 1: eauto.
+      rewrite app_length. lia.
+    }
+    clear - l3 l4 e3 l1 IHt2.
+    induction l0 in l3, l4, e3, l1, IHt2 |- *.
+    + cbn in e3. inversion e3. subst. clear e3.
+      constructor.
+    + cbn in e3. destruct pattern_footprint eqn:e1.
+      destruct fold_right eqn:e2.
+      inversion e3. subst. clear e3.
+      specialize IHl0 with (1 := eq_refl) (2 := IHt2).
+      constructor.
+      * cbn. rewrite !app_length.
+        match goal with
+        | |- context [ ?a + (?b + (?c + ?d)) ] =>
+          replace (a + (b + (c + d))) with ((a + b + c) + d) by lia
+        end.
+        apply pattern_lift.
+        epose proof (pattern_footprint_pattern _) as h.
+        erewrite e1 in h. assumption.
+      * eapply All_impl. 1: eauto.
+        intros []. cbn. intro.
+        eapply pattern_upwards. 1: eauto.
+        rewrite !app_length. lia.
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    inversion e. subst. clear e.
+    specialize IHt with (1 := eq_refl).
+    constructor. 2: auto.
+    cbn. constructor.
+Qed.
+
 Local Notation prelhs k n ui l :=
   (fold_right (fun e t => mkElim t e) (tSymb k n ui) l).
 
