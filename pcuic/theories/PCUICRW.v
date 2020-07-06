@@ -1307,15 +1307,28 @@ Proof.
   apply All_rev. assumption.
 Qed.
 
+Lemma on_elim_elim_pattern :
+  ∀ n e,
+    on_elim (pattern n) e →
+    elim_pattern n e.
+Proof.
+  intros n e h.
+  destruct e.
+  - cbn in h. constructor. assumption.
+  - cbn in h. destruct h. constructor. all: auto.
+  - constructor.
+Qed.
+
 Lemma lhs_footprint_pattern :
   ∀ t k n ui l τ,
     lhs_footprint t = Some (k,n,ui,l,τ) →
-    All (on_elim (pattern #|τ|)) l.
+    All (elim_pattern #|τ|) l.
 Proof.
   intros t k n ui l τ e.
   unfold lhs_footprint in e.
   destruct elim_footprint as [[[[[? ?] ?] ?] ?]|] eqn:e1. 2: discriminate.
   cbn in e. inversion e. subst. clear e.
   eapply elim_footprint_pattern in e1.
-  apply All_rev. assumption.
+  apply All_rev. eapply All_impl. 1: eauto.
+  eapply on_elim_elim_pattern.
 Qed.
