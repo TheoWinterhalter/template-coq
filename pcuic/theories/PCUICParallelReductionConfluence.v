@@ -5354,58 +5354,124 @@ Section Triangle.
         specialize (h r (#|prules decl| + n))
       end.
       eapply lhs_footprint_first_match in e0 as hf. 2: auto.
-      destruct hf as [? [l' [τ [θ [hf [fm ?]]]]]]. subst.
-      subst lhs.
+      destruct hf as [? [l'' [τ' [θ [hf [fm ?]]]]]]. subst.
+      pose proof (match_lhs_complete #|pat_context r| k r.(head) ui r.(elims) s)
+      as hl.
+      eapply lookup_on_global_env in H as hlr. 2: eauto.
+      destruct hlr as [Σ' [_ [_ [hlr _]]]].
+      eapply All_nth_error in hlr. 2: eauto.
+      destruct hlr as [_ _ _ hh ll hep hac]. clear Σ'.
+      forward hl by auto. forward hl by auto.
+      match goal with
+      | u : untyped_subslet _ _ _ |- _ =>
+        apply untyped_subslet_length in u as sl
+      end.
+      rewrite subst_context_length in sl.
+      forward hl by auto.
+      eapply lhs_footprint_match_lhs in hl as ft. 2: auto.
+      destruct ft as [l' [τ [α [fe' [hm ?]]]]].
+      lazymatch goal with
+      | h1 : lhs_footprint _ = Some ?x, h2 : lhs_footprint lhs = Some ?y
+        |- _ =>
+        assert (ee : x = y)
+      end.
+      { apply some_inj. rewrite <- fe'. rewrite <- hf.
+        f_equal. subst lhs. f_equal. unfold lhs.
+        rewrite mkElims_subst. cbn.
+        destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
+        replace (#|pat_context r| + head r - #|s|) with r.(head) by lia.
+        destruct (nth_error ss (head r)) eqn:e3.
+        2:{
+          apply nth_error_None in e3.
+          eapply declared_symbol_head in H. 2,3: eauto.
+          subst ss. rewrite symbols_subst_length in e3. lia.
+        }
+        subst ss. unfold symbols_subst in e3.
+        apply list_make_nth_error in e3. subst.
+        cbn. f_equal. 1: f_equal ; lia.
+        symmetry. apply All_map_id. eapply All_impl. 1: eauto.
+        intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
+      }
+      symmetry in ee. inversion ee. subst. clear ee.
       eapply lhs_footprint_eq in hf as fe.
       rewrite mkElims_subst in fe. cbn in fe.
       unfold lhs in fe.
-      rewrite mkElims_subst in fe. cbn in fe.
-      apply untyped_subslet_length in X2 as sl.
-      rewrite subst_context_length in sl.
-      destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
-      replace (#|pat_context r| + head r - #|s|) with r.(head) in fe by lia.
+      rewrite !mkElims_subst in fe. cbn in fe.
+      destruct (Nat.leb_spec0 #|map (subst0 τ) α| (#|pat_context r| + head r)).
+      2: lia.
+      replace (#|pat_context r| + head r - #|map (subst0 τ) α|)
+      with r.(head) in fe by lia.
       destruct (nth_error ss (head r)) eqn:e2.
       2:{
         apply nth_error_None in e2.
         eapply declared_symbol_head in H. 2,3: eauto.
         subst ss. rewrite symbols_subst_length in e2. lia.
       }
-      subst ss. unfold symbols_subst in e2.
+      subst lhs rhs. cbn.
+      unfold declared_symbol in H. rewrite e1 in H.
+      symmetry in H. inversion H. subst. clear H.
+      match goal with
+      | ss' := ?t |- _ =>
+        subst ss' ;
+        set (ss := t) in *
+      end.
+      unfold ss in e2. unfold symbols_subst in e2.
       apply list_make_nth_error in e2. subst.
-      cbn in fe. rewrite mkElims_subst in fe. cbn in fe.
+      cbn in fe.
       apply (f_equal decompose_elims) in fe.
       rewrite !mkElims_decompose_elims in fe. cbn in fe.
-      replace (head r + 0) with r.(head) in fe by lia.
-      symmetry in fe. inversion fe. subst. clear fe.
+      apply (f_equal snd) in fe. cbn in fe.
       eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
+      (* eapply match_lhs_sound in hm as e2. 2: auto. *)
       eapply lhs_footprint_pattern in hf as hpl.
-      eapply first_match_pattern_subst in fm as hp. 2,3: eauto.
+      (* eapply first_match_pattern_subst in fm as hp. 2,3: eauto. *)
       (* rewrite elhs in fm.
       specialize h with (4 := fm). *)
       (* specialize h with (2 := hp). *)
-      (* TODO It needs to be a context that matches τ *)
-      specialize (h #|s| [] τ ui θ r0).
-      unfold declared_symbol in H. rewrite e1 in H.
-      symmetry in H. inversion H. subst. clear H.
+      (* TODO Find the right stuff to put here *)
+      specialize (h #|τ| [] α ui θ r0).
       forward h.
       { unfold all_rewrite_rules.
         rewrite nth_error_app_ge. 1: lia.
         replace (#|prules rd| + n - #|prules rd|) with n by lia.
         assumption.
       }
-      (* Need to figure out the σ here *)
-      forward h by todo_triangle.
-      forward h by todo_triangle.
-      (* { eapply first_match_subst_length in fm.
+      forward h.
+      { todo_triangle. }
+      forward h.
+      { rewrite map_length in sl.
         eapply untyped_subslet_assumption_context. 2: auto.
-        eapply rule_assumption_context. all: eauto.
-      } *)
+        eapply rule_assumption_context with (n := #|prules rd| + n). 1: eauto.
+        unfold all_rewrite_rules.
+        rewrite nth_error_app_ge. 1: lia.
+        replace (#|prules rd| + n - #|prules rd|) with n by lia.
+        assumption.
+      }
       forward h.
       { rewrite <- fm. f_equal.
         unfold lhs. rewrite !mkElims_subst. cbn.
-        (* Probably not τ here... *)
-        todo_triangle.
+        rewrite map_length in sl.
+        destruct (Nat.leb_spec0 #|α| (#|pat_context r| + head r)). 2: lia.
+        replace (#|pat_context r| + head r - #|α|) with r.(head) by lia.
+        destruct (nth_error _ r.(head)) eqn:e2.
+        2:{
+          apply nth_error_None in e2.
+          rewrite map_length in hh.
+          rewrite symbols_subst_length in e2. lia.
+        }
+        unfold symbols_subst in e2.
+        apply list_make_nth_error in e2. subst.
+        cbn. replace (head r + 0) with r.(head) by lia.
+        eapply match_lhs_sound in hm as e2. 2: auto.
+        rewrite e2. rewrite mkElims_subst. cbn. f_equal. f_equal.
+        apply All_map_id. eapply All_impl. 1: eauto.
+        intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
       }
+      rewrite !map_length.
+      (* Then, what substitutions do I want to use for strong
+        substitutivity? Probably τ and some kind of rho of τ that I would
+        deduce from X1?
+      *)
       todo_triangle.
 
     - simp rho. destruct lhs_viewc eqn:hv.
