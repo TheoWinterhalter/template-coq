@@ -4563,13 +4563,7 @@ Section Confluenv.
 
   Context {cf : checker_flags}.
 
-  (* TODO Maybe take extra as argument here
-    Then no need to take rho/rho_ctx as arguments
-    And then use some pred1_extra that need to be defined
-    as the right extension to pred1
-    for this we show pred1_extra → pred1 when extra = None or extra is included
-    in Σ, and always pred1 → pred1_extra
-  *)
+  (* TODO Am I assuming rhs are normal? *)
   Inductive triangle_rules  Σ e kn nsymb (rho : context → term → term) rho_ctx : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ e kn nsymb rho rho_ctx []
   | triangle_rules_cons :
@@ -4579,8 +4573,8 @@ Section Confluenv.
           untyped_subslet Γ σ r.(pat_context) →
           let ss := symbols_subst kn 0 ui nsymb in
           let tl := subst0 σ (subst ss #|σ| (lhs r)) in
-          let tr := subst0 (map (rho Γ) σ) (subst ss #|σ| (rhs r)) in
-          let tr' := subst0 (map (rho Γ) θ) (subst ss #|θ| (rhs r')) in
+          let tr := subst0 σ (subst ss #|σ| (rhs r)) in
+          let tr' := subst0 θ (subst ss #|θ| (rhs r')) in
           first_match kn rl tl = Some (ui, θ, r') →
           pred1_extra Σ e Γ (rho_ctx Γ) tr tr'
         ) →
@@ -4611,8 +4605,8 @@ Section Confluenv.
     ∀ Σ Σ' k nsymb r e,
       wf Σ' →
       PCUICWeakeningEnv.extends Σ Σ' →
-      triangle_rules Σ e k nsymb (rho Σ e)(rho_ctx Σ e) r →
-      triangle_rules Σ' e k nsymb (rho Σ' e)(rho_ctx Σ' e) r.
+      triangle_rules Σ e k nsymb (rho Σ e) (rho_ctx Σ e) r →
+      triangle_rules Σ' e k nsymb (rho Σ' e) (rho_ctx Σ' e) r.
   Proof.
     intros Σ Σ' k nsymb r e hΣ hx hr.
     induction hr.
@@ -4621,17 +4615,8 @@ Section Confluenv.
       + intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
         eapply weakening_env_pred1_extra. 1,2: eauto.
         (* eapply p. *)
-        (* TODO We need to relate rho Σ and rho Σ'
-          maybe we need only say the behave the same for pred1_extra in Σ?
-          Or show t => rho u -> t => rho' u ?
-          Or maybe ok because only on patterns, but must include the context
-          then to say it's ok for it as well
-          Maybe since patterns, no reduction so no rho?
-          To show first_match yields pattern substitution when pattern instance
-          perhaps soundness is sufficient because lτ is special when τ
-          is a pattern substitution and l is really an elim pattern.
-
-          At the very least, rho σ is superfluous isn't it?
+        (* TODO We need to relate rho_ctx Σ Γ and rho_ctx Σ' Γ
+          But how?
         *)
         admit.
       + assumption.
