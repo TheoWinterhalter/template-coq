@@ -4633,20 +4633,37 @@ Section Confluenv.
   Qed.
 
   Lemma lookup_env_confl_decl :
-    ∀ Σ k rd,
+    ∀ Σ k d,
+      wf Σ →
       confluenv Σ →
-      lookup_env Σ k = Some (RewriteDecl rd) →
-      confl_rew_decl Σ k rd.
+      lookup_env Σ k = Some d →
+      confl_decl Σ k d.
   Proof.
-    intros Σ k rd h e.
+    intros Σ k d hΣ h e.
     induction h. 1: discriminate.
     cbn in e. change (eq_kername k kn) with (eqb k kn) in e.
     destruct (eqb_spec k kn).
     - apply some_inj in e. subst.
-      cbn in c.
-      (* eexists. eauto. intuition eauto. *)
-      (* Need to prove modularity/weakening first *)
-  Abort.
+      eapply confl_decl_weakening. 1,3: eauto.
+      eexists [ _ ]. reflexivity.
+    - eapply confl_decl_weakening.
+      + eauto.
+      + eexists [ _ ]. reflexivity.
+      + eapply IHh. 2: auto.
+        inversion hΣ. assumption.
+  Qed.
+
+  Lemma lookup_env_confl_rew_decl :
+    ∀ Σ k rd,
+      wf Σ →
+      confluenv Σ →
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      confl_rew_decl Σ k rd.
+  Proof.
+    intros Σ k rd hΣ h e.
+    eapply lookup_env_confl_decl in e. 2,3: auto.
+    assumption.
+  Qed.
 
 End Confluenv.
 
