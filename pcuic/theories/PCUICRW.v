@@ -1306,3 +1306,16 @@ Proof.
   eapply elim_footprint_closedn_eq in e1 as [? ?].
   apply All_rev. assumption.
 Qed.
+
+Lemma lhs_footprint_pattern :
+  ∀ t k n ui l τ,
+    lhs_footprint t = Some (k,n,ui,l,τ) →
+    All (on_elim (pattern #|τ|)) l.
+Proof.
+  intros t k n ui l τ e.
+  unfold lhs_footprint in e.
+  destruct elim_footprint as [[[[[? ?] ?] ?] ?]|] eqn:e1. 2: discriminate.
+  cbn in e. inversion e. subst. clear e.
+  eapply elim_footprint_pattern in e1.
+  apply All_rev. assumption.
+Qed.
