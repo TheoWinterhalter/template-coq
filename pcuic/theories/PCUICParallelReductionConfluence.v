@@ -5337,8 +5337,11 @@ Section Triangle.
       unfold triangle_rules' in h.
       eapply lhs_footprint_first_match in e0 as hf. 2: auto.
       destruct hf as [? [l' [τ [θ [hf [fm ?]]]]]]. subst.
-      (* eapply lhs_footprint_pattern *)
-      (* specialize h with (1 := heq_nth_error). *)
+      eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
+      eapply lhs_footprint_pattern in hf as hpl.
+      (* eapply first_match_pattern_subst in fm as hp. 2,3: eauto. *)
+      rewrite elhs in fm.
+      specialize h with (4 := fm).
       todo_triangle.
 
     - simp rho. destruct lhs_viewc eqn:hv.
