@@ -5192,7 +5192,12 @@ Section Triangle.
       + eapply All2_sym, All2_map_left, All2_impl; eauto; simpl; intuition eauto.
 
     - simp rho. destruct lhs_viewc.
-      + simp rho. todo_triangle.
+      + simp rho.
+        unfold lookup_rewrite_decl in e. unfold lookup_rd in e.
+        destruct lookup_env as [[]|] eqn:e1. all: try discriminate.
+        apply some_inj in e. subst.
+        eapply lookup_env_triangle in e1 as h. 2,3: auto.
+        todo_triangle.
       + cbn. eapply pred1_refl_gen. assumption.
 
     - simp rho. destruct lhs_viewc eqn:hv.
