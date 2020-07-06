@@ -5053,18 +5053,37 @@ Section Triangle.
     cbn in e.
   Admitted.
 
-  Context (cΣ : confluenv Σ).
+  Lemma first_match_match_rule :
+    forall k l t ui σ r,
+      first_match k l t = Some (ui, σ, r) ->
+      ∑ n,
+        nth_error l n = Some r ×
+        match_lhs #|pat_context r| k r.(head) r.(elims) t = Some (ui, σ).
+  Proof.
+    intros k l t ui σ r h.
+    induction l in ui, σ, r, h |- *.
+    - cbn in h. discriminate.
+    - cbn - [ match_lhs ] in h.
+      lazymatch type of h with
+      | context [ match ?t with _ => _ end ] =>
+        destruct t as [[ui' σ']|] eqn:e
+      end.
+      + noconf h. exists 0. intuition eauto.
+      + apply IHl in h as [n [? ?]]. exists (S n). auto.
+  Qed.
 
-  Lemma lookup_criterion :
+  Lemma lookup_rewrite_decl_lookup_env :
     ∀ k rd,
       lookup_rewrite_decl Σ None k = Some rd →
-      confl_rew_decl Σ k rd.
+      lookup_env Σ k = Some (RewriteDecl rd).
   Proof.
     intros k rd e.
     unfold lookup_rewrite_decl in e. unfold lookup_rd in e.
     destruct lookup_env as [[]|] eqn:e1. all: try discriminate.
-    apply some_inj in e. subst.
-  Abort.
+    apply some_inj in e. subst. reflexivity.
+  Qed.
+
+  Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
 
@@ -5260,11 +5279,30 @@ Section Triangle.
 
     - simp rho. destruct lhs_viewc.
       + simp rho.
-        unfold lookup_rewrite_decl in e. unfold lookup_rd in e.
-        destruct lookup_env as [[]|] eqn:e1. all: try discriminate.
-        apply some_inj in e. subst.
-        eapply lookup_env_triangle in e1 as h. 2,3: auto.
-        todo_triangle.
+        eapply first_match_match_rule in e0 as h.
+        destruct h as [? [hr h]].
+        unfold all_rewrite_rules in hr.
+        eapply first_match_lookup_sound in e0 as hs. 2,4: eauto. 2: exact I.
+        rewrite hs.
+        eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
+        * eapply pred_par_rewrite_rule. all: eauto.
+          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
+          -- (* We can probably show σ is empty and conclude
+                hoping we don't have similar rules with no handle to conclude
+                this.
+              *)
+              todo_triangle.
+          -- (* Same, follow from σ = [] and thus npat = 0? *)
+             todo_triangle.
+        * eapply pred_rewrite_rule. all: eauto.
+          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
+          -- (* We can probably show σ is empty and conclude
+                hoping we don't have similar rules with no handle to conclude
+                this.
+              *)
+              todo_triangle.
+          -- (* Same, follow from σ = [] and thus npat = 0? *)
+             todo_triangle.
       + cbn. eapply pred1_refl_gen. assumption.
 
     - simp rho. destruct lhs_viewc eqn:hv.
@@ -5293,7 +5331,15 @@ Section Triangle.
         eexists. intuition eauto.
       }
       clear hv.
-      simp rho. todo_triangle.
+      simp rho.
+      eapply lookup_rewrite_decl_lookup_env in e as e1.
+      eapply lookup_env_triangle in e1 as h. 2,3: auto.
+      unfold triangle_rules' in h.
+      eapply lhs_footprint_first_match in e0 as hf. 2: auto.
+      destruct hf as [? [l' [τ [θ [hf [fm ?]]]]]]. subst.
+      (* eapply lhs_footprint_pattern *)
+      (* specialize h with (1 := heq_nth_error). *)
+      todo_triangle.
 
     - simp rho. destruct lhs_viewc eqn:hv.
       2:{
