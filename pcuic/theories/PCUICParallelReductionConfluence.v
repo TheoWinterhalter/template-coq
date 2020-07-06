@@ -4564,8 +4564,8 @@ Section Confluenv.
   Context {cf : checker_flags}.
 
   (* TODO Am I assuming rhs are normal? *)
-  Inductive triangle_rules  Σ e kn nsymb (rho : context → term → term) rho_ctx : list rewrite_rule → Type :=
-  | triangle_rules_nil : triangle_rules Σ e kn nsymb rho rho_ctx []
+  Inductive triangle_rules  Σ e kn nsymb : list rewrite_rule → Type :=
+  | triangle_rules_nil : triangle_rules Σ e kn nsymb []
   | triangle_rules_cons :
       ∀ r rl,
         (∀ npat' Γ σ ui θ r',
@@ -4576,17 +4576,18 @@ Section Confluenv.
           let tr := subst0 σ (subst ss #|σ| (rhs r)) in
           let tr' := subst0 θ (subst ss #|θ| (rhs r')) in
           first_match kn rl tl = Some (ui, θ, r') →
-          pred1_extra Σ e Γ (rho_ctx Γ) tr tr'
+          (* Contexts should be irrelevant here because we're dealing with
+            patterns that do not involve lets or any binder.
+          *)
+          pred1_extra Σ e Γ Γ tr tr'
         ) →
-        triangle_rules Σ e kn nsymb rho rho_ctx rl →
-        triangle_rules Σ e kn nsymb rho rho_ctx (rl ++ [r]).
+        triangle_rules Σ e kn nsymb rl →
+        triangle_rules Σ e kn nsymb (rl ++ [r]).
 
   Definition confl_rew_decl Σ kn d :=
     let l := d.(prules) ++ d.(rules) in
     let extra := Some (kn, d) in
-    triangle_rules
-      Σ extra kn #|d.(symbols)|
-      (rho Σ extra) (rho_ctx Σ extra) l.
+    triangle_rules Σ extra kn #|d.(symbols)| l.
 
   Definition confl_decl Σ kn decl : Type :=
     match decl with
@@ -4605,8 +4606,8 @@ Section Confluenv.
     ∀ Σ Σ' k nsymb r e,
       wf Σ' →
       PCUICWeakeningEnv.extends Σ Σ' →
-      triangle_rules Σ e k nsymb (rho Σ e) (rho_ctx Σ e) r →
-      triangle_rules Σ' e k nsymb (rho Σ' e) (rho_ctx Σ' e) r.
+      triangle_rules Σ e k nsymb r →
+      triangle_rules Σ' e k nsymb r.
   Proof.
     intros Σ Σ' k nsymb r e hΣ hx hr.
     induction hr.
@@ -4614,13 +4615,9 @@ Section Confluenv.
     - constructor.
       + intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
         eapply weakening_env_pred1_extra. 1,2: eauto.
-        (* eapply p. *)
-        (* TODO We need to relate rho_ctx Σ Γ and rho_ctx Σ' Γ
-          But how?
-        *)
-        admit.
+        eapply p. all: eauto.
       + assumption.
-  Admitted.
+  Qed.
 
   Lemma confl_decl_weakening :
     ∀ Σ Σ' k d,
