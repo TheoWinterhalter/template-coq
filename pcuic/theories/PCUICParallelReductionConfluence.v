@@ -4564,7 +4564,22 @@ Section Confluenv.
   Context {cf : checker_flags}.
 
   (* TODO Am I assuming rhs are normal? *)
-  Inductive triangle_rules  Σ e kn nsymb : list rewrite_rule → Type :=
+  Definition triangle_rules Σ e kn nsymb l :=
+    ∀ r n npat' Γ σ ui θ r',
+      nth_error l n = Some r →
+      All (pattern npat') σ →
+      untyped_subslet Γ σ r.(pat_context) →
+      let ss := symbols_subst kn 0 ui nsymb in
+      let tl := subst0 σ (subst ss #|σ| (lhs r)) in
+      let tr := subst0 σ (subst ss #|σ| (rhs r)) in
+      let tr' := subst0 θ (subst ss #|θ| (rhs r')) in
+      first_match kn l tl = Some (ui, θ, r') →
+      (* Contexts should be irrelevant here because we're dealing with
+        patterns that do not involve lets or any binder.
+      *)
+      pred1_extra Σ e Γ Γ tr tr'.
+
+  (* Inductive triangle_rules Σ e kn nsymb : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ e kn nsymb []
   | triangle_rules_cons :
       ∀ r rl,
@@ -4582,7 +4597,7 @@ Section Confluenv.
           pred1_extra Σ e Γ Γ tr tr'
         ) →
         triangle_rules Σ e kn nsymb rl →
-        triangle_rules Σ e kn nsymb (rl ++ [r]).
+        triangle_rules Σ e kn nsymb (rl ++ [r]). *)
 
   Definition confl_rew_decl Σ kn d :=
     let l := d.(prules) ++ d.(rules) in
@@ -4610,13 +4625,10 @@ Section Confluenv.
       triangle_rules Σ' e k nsymb r.
   Proof.
     intros Σ Σ' k nsymb r e hΣ hx hr.
-    induction hr.
-    - constructor.
-    - constructor.
-      + intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
-        eapply weakening_env_pred1_extra. 1,2: eauto.
-        eapply p. all: eauto.
-      + assumption.
+    unfold triangle_rules.
+    intros rr n npat' Γ σ ui θ r' hrr pσ uσ fm.
+    eapply weakening_env_pred1_extra. 1,2: eauto.
+    eapply hr. all: eauto.
   Qed.
 
   Lemma confl_decl_weakening :
@@ -4665,7 +4677,19 @@ Section Confluenv.
     assumption.
   Qed.
 
-  Inductive triangle_rules'  Σ kn nsymb : list rewrite_rule → Type :=
+  Definition triangle_rules' Σ kn nsymb l :=
+    ∀ r n npat' Γ σ ui θ r',
+      nth_error l n = Some r →
+      All (pattern npat') σ →
+      untyped_subslet Γ σ r.(pat_context) →
+      let ss := symbols_subst kn 0 ui nsymb in
+      let tl := subst0 σ (subst ss #|σ| (lhs r)) in
+      let tr := subst0 σ (subst ss #|σ| (rhs r)) in
+      let tr' := subst0 θ (subst ss #|θ| (rhs r')) in
+      first_match kn l tl = Some (ui, θ, r') →
+      pred1 Σ Γ Γ tr tr'.
+
+  (* Inductive triangle_rules'  Σ kn nsymb : list rewrite_rule → Type :=
   | triangle_rules_nil' : triangle_rules' Σ kn nsymb []
   | triangle_rules_cons' :
       ∀ r rl,
@@ -4680,9 +4704,9 @@ Section Confluenv.
           pred1 Σ Γ Γ tr tr'
         ) →
         triangle_rules' Σ kn nsymb rl →
-        triangle_rules' Σ kn nsymb (rl ++ [r]).
+        triangle_rules' Σ kn nsymb (rl ++ [r]). *)
 
-  Lemma lookup_env_triangle' :
+  Lemma lookup_env_triangle :
     ∀ Σ k rd,
       wf Σ →
       confluenv Σ →
@@ -4694,10 +4718,8 @@ Section Confluenv.
     unfold confl_rew_decl in h.
     fold (all_rewrite_rules rd) in h.
     set (l := all_rewrite_rules rd) in *. clearbody l.
-    induction h. 1: constructor.
-    constructor. 2: auto.
-    intros npat' Γ σ ui θ r' pσ uσ ss tl tr tr' fm.
-    eapply pred1_extra_pred1. 2: eapply p ; eauto.
+    intros n rr npat' Γ σ ui θ r' hrr pσ uσ ss tl tr tr' fm.
+    eapply pred1_extra_pred1. 2: eapply h ; eauto.
     cbn. assumption.
   Qed.
 
@@ -4716,7 +4738,7 @@ Section Confluenv.
       + cbn - [match_lhs]. rewrite e. eapply IHl1. assumption.
   Qed.
 
-  Lemma lookup_env_triangle :
+  (* Lemma lookup_env_triangle :
     ∀ Σ k rd,
       wf Σ →
       confluenv Σ →
@@ -4744,7 +4766,7 @@ Section Confluenv.
         * eapply IHh. all: eauto.
         *
         (* Perhaps just assume this directly as a criterion? *)
-  Admitted.
+  Admitted. *)
 
 End Confluenv.
 
