@@ -4682,7 +4682,7 @@ Section Confluenv.
         triangle_rules' Σ kn nsymb rl →
         triangle_rules' Σ kn nsymb (rl ++ [r]).
 
-  Lemma lookup_env_triangle :
+  Lemma lookup_env_triangle' :
     ∀ Σ k rd,
       wf Σ →
       confluenv Σ →
@@ -4700,6 +4700,51 @@ Section Confluenv.
     eapply pred1_extra_pred1. 2: eapply p ; eauto.
     cbn. assumption.
   Qed.
+
+  Lemma first_match_app_dec :
+    ∀ k l1 l2 t ui θ r,
+      first_match k (l1 ++ l2) t = Some (ui, θ, r) →
+      (first_match k l1 t = Some (ui, θ, r)) +
+      (first_match k l2 t = Some (ui, θ, r)).
+  Proof.
+    intros k l1 l2 t ui θ r h.
+    induction l1 in ui, θ, r, h |- *.
+    - right. assumption.
+    - cbn - [match_lhs] in h. destruct match_lhs as [[]|] eqn:e.
+      + inversion h. subst. clear h.
+        left. cbn - [match_lhs]. rewrite e. reflexivity.
+      + cbn - [match_lhs]. rewrite e. eapply IHl1. assumption.
+  Qed.
+
+  Lemma lookup_env_triangle :
+    ∀ Σ k rd,
+      wf Σ →
+      confluenv Σ →
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      let nsymb := #|rd.(symbols)| in
+      ∀ n r npat' Γ σ ui θ r',
+        nth_error (all_rewrite_rules rd) n = Some r →
+        All (pattern npat') σ →
+        untyped_subslet Γ σ r.(pat_context) →
+        let ss := symbols_subst k 0 ui nsymb in
+        let tl := subst0 σ (subst ss #|σ| (lhs r)) in
+        let tr := subst0 σ (subst ss #|σ| (rhs r)) in
+        let tr' := subst0 θ (subst ss #|θ| (rhs r')) in
+        first_match k (all_rewrite_rules rd) tl = Some (ui, θ, r') →
+        pred1 Σ Γ Γ tr tr'.
+  Proof.
+    intros Σ k rd hΣ cΣ e.
+    eapply lookup_env_triangle' in e as h. 2,3: auto.
+    set (l := all_rewrite_rules rd) in *. clearbody l.
+    induction h.
+    - intros ? []. all: discriminate.
+    - intros nsymb n rr npat' Γ σ ui θ r' hrr hσ uσ ss tl tr tr' fm.
+      apply first_match_app_dec in fm as [fm|fm].
+      + apply nth_error_app_dec in hrr as [[? hrr] | [? hrr]].
+        * eapply IHh. all: eauto.
+        *
+        (* Perhaps just assume this directly as a criterion? *)
+  Admitted.
 
 End Confluenv.
 
