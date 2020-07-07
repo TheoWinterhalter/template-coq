@@ -5163,6 +5163,15 @@ Section Triangle.
     cbn in e.
   Admitted.
 
+  Lemma pattern_subst_pred1 :
+    ∀ τ p Γ Δ t,
+      pattern #|τ| p →
+      pred1 Σ Γ Δ (subst0 τ p) t →
+      ∑ τ',
+        t = subst0 τ' p ×
+        All2 (fun x y => pred1 Σ Γ Δ x y) τ τ'.
+  Admitted.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
@@ -5547,8 +5556,22 @@ Section Triangle.
             All2 P τ τ'
         )
       end.
-      { clear - hα hs.
-        (* Do I need some linearity? *)
+      { clear - wfΣ hα hs.
+        apply All2_map_inv_left in hs.
+        assert (h : All2 (fun x y => pred1 Σ Γ Γ' (subst0 τ x) y) α s').
+        { eapply All2_impl. 1: eauto.
+          intros ? ? []. auto.
+        }
+        eapply All2_impl' in h.
+        2:{
+          eapply All_impl. 1: eauto.
+          intros. eapply pattern_subst_pred1. all: eauto.
+        }
+        (* This seems insufficient, and it seems I would actually need some
+          linearity property, but do I have any?
+          It could follow from the footprint. I actually build the new pattern
+          in a linear way.
+        *)
         todo_triangle.
       }
       destruct h' as [τ' [? hτ]]. subst.
