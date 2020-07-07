@@ -5429,7 +5429,8 @@ Section Triangle.
       specialize h with (4 := fm). *)
       (* specialize h with (2 := hp). *)
       (* TODO Find the right stuff to put here *)
-      specialize (h #|τ| [] α ui θ r0).
+      set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
+      specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
       forward h.
       { unfold all_rewrite_rules.
         rewrite nth_error_app_ge. 1: lia.
@@ -5469,13 +5470,12 @@ Section Triangle.
         intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
       }
       rewrite !map_length.
-      (* TODO Maybe I don't need to know the All2 part *)
       lazymatch goal with
       | hh : All2 ?P _ _ |- _ =>
         rename hh into hs ;
         assert (h' :
           ∑ τ',
-            s' = map (subst0 τ) α ×
+            s' = map (subst0 τ') α ×
             All2 P τ τ'
         )
       end.
@@ -5484,11 +5484,34 @@ Section Triangle.
         todo_triangle.
       }
       destruct h' as [τ' [? hτ]]. subst.
-      (* eapply strong_substitutivity in h as h'. *)
-      (* Then, what substitutions do I want to use for strong
-        substitutivity? τ and what? rho τ?
-        How do I know pred1_subst τ (rho τ)?
-      *)
+      lazymatch type of h with
+      | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
+        assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
+      end.
+      { (* True because no lets? We can probably show contexts to be irrelevant on let-free terms *) todo_triangle. }
+      eapply substitution_pred1
+      with (s := τ') (s' := map (rho Σ None (rho_ctx Σ None Γ)) τ)
+      in h'. 2: auto.
+      2:{
+        clear - hτ predΓ' X0. cbn in X0. subst Δ. induction hτ.
+        - constructor.
+        - cbn. constructor.
+          + assumption.
+          + eapply pred1_refl_gen.
+            (* Some pred1_ctx_app *)
+            todo_triangle.
+          + intuition auto.
+      }
+      match goal with
+      | ss' := ?t |- _ =>
+        subst ss' ;
+        set (ss := t) in *
+      end.
+      rewrite subst_subst_compose in h'.
+      { todo_triangle. }
+      rewrite subst_subst_compose in h'.
+      { todo_triangle. }
+      (* Almost there, need that rho pσ = p(rho σ) essentially *)
       todo_triangle.
 
     - simp rho. destruct lhs_viewc eqn:hv.
@@ -5558,7 +5581,35 @@ Section Triangle.
       simp rho.
       (* An application might be a lhs *)
       destruct lhs_viewc.
-      + simp rho. todo_triangle.
+      + simp rho.
+        eapply first_match_match_rule in e0 as h.
+        destruct h as [? [hr h]].
+        unfold all_rewrite_rules in hr.
+        eapply first_match_lookup_sound in e0 as hs. 2,4: eauto. 2: exact I.
+        (* From hs we should deduce that σ reduces to some σ', corresponding
+          to the reductions M0 to M1, N0 to N1.
+        *)
+        (* rewrite hs. *)
+        (* eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
+        * eapply pred_par_rewrite_rule. all: eauto.
+          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
+          -- (* We can probably show σ is empty and conclude
+                hoping we don't have similar rules with no handle to conclude
+                this.
+              *)
+              todo_triangle.
+          -- (* Same, follow from σ = [] and thus npat = 0? *)
+             todo_triangle.
+        * eapply pred_rewrite_rule. all: eauto.
+          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
+          -- (* We can probably show σ is empty and conclude
+                hoping we don't have similar rules with no handle to conclude
+                this.
+              *)
+              todo_triangle.
+          -- (* Same, follow from σ = [] and thus npat = 0? *)
+             todo_triangle. *)
+             todo_triangle.
       + cbn. destruct view_lambda_fix_app.
         * {
           simpl; simp rho; simpl.
