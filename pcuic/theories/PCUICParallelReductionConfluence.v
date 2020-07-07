@@ -5555,8 +5555,11 @@ Section Triangle.
         - cbn. constructor.
           + assumption.
           + eapply pred1_refl_gen.
-            (* Some pred1_ctx_app *)
-            todo_triangle.
+            clear - r X0.
+            induction l.
+            * intuition auto.
+            * cbn. constructor. 1: auto.
+              cbn. apply pred1_refl_gen. auto.
           + intuition auto.
       }
       match goal with
