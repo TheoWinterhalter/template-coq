@@ -5619,7 +5619,10 @@ Section Triangle.
       | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
         assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
       end.
-      { (* True because no lets? We can probably show contexts to be irrelevant on let-free terms *) todo_triangle. }
+      { (* True because no lets? We can probably show contexts to be irrelevant on let-free terms
+      Not necessarily let-free, maybe we can simply state the triangle lemma
+      for any pred1_ctx Γ Γ'?
+      *) todo_triangle. }
       eapply substitution_pred1
       with (s := τ') (s' := map (rho Σ None (rho_ctx Σ None Γ)) τ)
       in h'. 2: auto.
