@@ -4924,6 +4924,23 @@ Section Triangle.
     unfold all_rewrite_rules. apply All_app_inv. all: auto.
   Qed.
 
+  Lemma all_rewrite_rules_on_rewrite_rule' :
+    ∀ k rd,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      let Δ := map (vass nAnon) rd.(symbols) in
+      ∑ Σ',
+        wf Σ'.1 ×
+        All (on_rewrite_rule (lift_typing typing) Σ' Δ) (all_rewrite_rules rd).
+  Proof.
+    intros k rd h Δ.
+    eapply lookup_on_global_env in wfΣ as h'. 2: eauto.
+    destruct h' as [Σ' [? hd]].
+    red in hd. red in hd.
+    destruct hd as [? [? [? ?]]].
+    exists Σ'. intuition auto.
+    unfold all_rewrite_rules. apply All_app_inv. all: auto.
+  Qed.
+
   Lemma lhs_footprint_first_match :
     ∀ k r t ui σ rd,
       lookup_env Σ k = Some (RewriteDecl rd) →
@@ -5094,6 +5111,26 @@ Section Triangle.
     destruct h as [? h].
     eapply All_nth_error in h. 2: eauto.
     destruct h as [].
+    assumption.
+  Qed.
+
+  Lemma rule_closed_rhs :
+    ∀ k rd n r,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      closedn (#|r.(pat_context)| + #|rd.(symbols)|) (rhs r).
+  Proof.
+    intros k rd n r h hr.
+    eapply all_rewrite_rules_on_rewrite_rule' in h.
+    destruct h as [? [? h]].
+    eapply All_nth_error in h. 2: eauto.
+    destruct h as [? ? h].
+    eapply typecheck_closed in h.
+    2: assumption.
+    destruct h as [_ h].
+    apply MCProd.andP in h. destruct h as [h _].
+    rewrite app_context_length in h.
+    rewrite map_length in h.
     assumption.
   Qed.
 
@@ -5528,9 +5565,33 @@ Section Triangle.
         set (ss := t) in *
       end.
       rewrite subst_subst_compose in h'.
-      { todo_triangle. }
+      { rewrite map_length in sl.
+        eapply closed_rule_rhs in heq_nth_error. 2,3: eauto.
+        eapply closedn_subst with (k := 0).
+        - subst ss. unfold symbols_subst.
+          generalize (#|symbols rd| - 0). generalize 0 at 2. clear.
+          intros i n. induction n in i |- *.
+          + reflexivity.
+          + cbn. eauto.
+        - cbn. subst ss. rewrite symbols_subst_length.
+          rewrite sl. replace (#|symbols rd| - 0) with #|symbols rd| by lia.
+          assumption.
+      }
       rewrite subst_subst_compose in h'.
-      { todo_triangle. }
+      { eapply first_match_subst_length in e0 as tl.
+        rewrite map_length in tl. rewrite tl.
+        eapply first_match_rule_list in e0 as [? e0].
+        eapply rule_closed_rhs in e0. 2: eauto.
+        eapply closedn_subst with (k := 0).
+        - subst ss. unfold symbols_subst.
+          generalize (#|symbols rd| - 0). generalize 0 at 2. clear.
+          intros i n. induction n in i |- *.
+          + reflexivity.
+          + cbn. eauto.
+        - cbn. subst ss. rewrite symbols_subst_length.
+          replace (#|symbols rd| - 0) with #|symbols rd| by lia.
+          assumption.
+      }
       rewrite map_rho_subst_pattern. 1: auto.
       assumption.
 
