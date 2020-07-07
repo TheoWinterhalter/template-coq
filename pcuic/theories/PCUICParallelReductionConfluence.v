@@ -5080,6 +5080,35 @@ Section Triangle.
     assumption.
   Qed.
 
+  Lemma rule_linear :
+    ∀ k rd n r,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      linear #|r.(pat_context)| r.(elims).
+  Proof.
+    intros k rd n r h hr.
+    eapply all_rewrite_rules_on_rewrite_rule in h.
+    destruct h as [? h].
+    eapply All_nth_error in h. 2: eauto.
+    destruct h as [].
+    assumption.
+  Qed.
+
+  Lemma rule_head :
+    ∀ k rd n r,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      r.(head) < #|rd.(symbols)|.
+  Proof.
+    intros k rd n r h hr.
+    eapply all_rewrite_rules_on_rewrite_rule in h.
+    destruct h as [? h].
+    eapply All_nth_error in h. 2: eauto.
+    destruct h as [? ? ? h].
+    rewrite map_length in h.
+    assumption.
+  Qed.
+
   Lemma rho_subst_pattern :
     ∀ Γ p τ,
       pattern #|τ| p →
@@ -5373,25 +5402,36 @@ Section Triangle.
         unfold all_rewrite_rules in hr.
         eapply first_match_lookup_sound in e0 as hs. 2,4: eauto. 2: exact I.
         rewrite hs.
+        eapply lookup_rewrite_decl_lookup_env in e as e'.
+        eapply rule_linear in hr as hl. 2: eauto.
+        unfold lhs in hs. rewrite !mkElims_subst in hs. cbn in hs.
+        eapply first_match_subst_length in e0 as σl.
+        destruct (Nat.leb_spec0 #|σ| (#|pat_context r| + head r)). 2: lia.
+        replace (#|pat_context r| + head r - #|σ|) with r.(head) in hs by lia.
+        destruct (nth_error _ r.(head)) eqn:e2.
+        2:{
+          eapply nth_error_None in e2. rewrite symbols_subst_length in e2.
+          eapply rule_head in hr as hh. 2: eauto.
+          lia.
+        }
+        unfold symbols_subst in e2.
+        eapply list_make_nth_error in e2. subst.
+        cbn in hs. apply (f_equal decompose_elims) in hs. cbn in hs.
+        rewrite mkElims_decompose_elims in hs. cbn in hs.
+        apply (f_equal snd) in hs. cbn in hs.
+        symmetry in hs. apply map_eq_nil in hs. apply map_eq_nil in hs.
+        rewrite hs in hl. cbn in hl.
+        destruct #|pat_context r| eqn:e1.
+        2:{ cbn in hl. discriminate. }
+        destruct σ. 2: discriminate.
+        cbn - [match_lhs] in *.
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
         * eapply pred_par_rewrite_rule. all: eauto.
-          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
-          -- (* We can probably show σ is empty and conclude
-                hoping we don't have similar rules with no handle to conclude
-                this.
-              *)
-              todo_triangle.
-          -- (* Same, follow from σ = [] and thus npat = 0? *)
-             todo_triangle.
+          destruct pat_context. 2: discriminate.
+          constructor.
         * eapply pred_rewrite_rule. all: eauto.
-          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
-          -- (* We can probably show σ is empty and conclude
-                hoping we don't have similar rules with no handle to conclude
-                this.
-              *)
-              todo_triangle.
-          -- (* Same, follow from σ = [] and thus npat = 0? *)
-             todo_triangle.
+          destruct pat_context. 2: discriminate.
+          constructor.
       + cbn. eapply pred1_refl_gen. assumption.
 
     - simp rho. destruct lhs_viewc eqn:hv.
