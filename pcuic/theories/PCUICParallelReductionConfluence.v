@@ -5097,6 +5097,24 @@ Section Triangle.
     assumption.
   Qed.
 
+  Lemma rho_subst_pattern :
+    ∀ Γ p τ,
+      pattern #|τ| p →
+      rho Σ None Γ (subst0 τ p) = subst0 (map (rho Σ None Γ) τ) p.
+  Admitted.
+
+  Lemma map_rho_subst_pattern :
+    ∀ Γ τ θ,
+      All (pattern #|τ|) θ →
+      map (rho Σ None Γ) (map (subst0 τ) θ) =
+      map (subst0 (map (rho Σ None Γ) τ)) θ.
+  Proof.
+    intros Γ τ θ hθ.
+    rewrite map_map_compose. apply All_map_eq.
+    eapply All_impl. 1: eauto.
+    intros p hp. eapply rho_subst_pattern. assumption.
+  Qed.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
@@ -5439,6 +5457,8 @@ Section Triangle.
       }
       assert (hα : All (pattern #|τ|) α).
       { todo_triangle. }
+      assert (hθ : All (pattern #|τ|) θ).
+      { todo_triangle. }
       forward h by auto.
       forward h.
       { rewrite map_length in sl.
@@ -5511,8 +5531,8 @@ Section Triangle.
       { todo_triangle. }
       rewrite subst_subst_compose in h'.
       { todo_triangle. }
-      (* Almost there, need that rho pσ = p(rho σ) essentially *)
-      todo_triangle.
+      rewrite map_rho_subst_pattern. 1: auto.
+      assumption.
 
     - simp rho. destruct lhs_viewc eqn:hv.
       2:{
