@@ -5436,8 +5436,9 @@ Section Triangle.
         replace (#|prules rd| + n - #|prules rd|) with n by lia.
         assumption.
       }
-      forward h.
+      assert (hα : All (pattern #|τ|) α).
       { todo_triangle. }
+      forward h by auto.
       forward h.
       { rewrite map_length in sl.
         eapply untyped_subslet_assumption_context. 2: auto.
@@ -5468,9 +5469,25 @@ Section Triangle.
         intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
       }
       rewrite !map_length.
+      (* TODO Maybe I don't need to know the All2 part *)
+      lazymatch goal with
+      | hh : All2 ?P _ _ |- _ =>
+        rename hh into hs ;
+        assert (h' :
+          ∑ τ',
+            s' = map (subst0 τ) α ×
+            All2 P τ τ'
+        )
+      end.
+      { clear - hα hs.
+        (* Do I need some linearity? *)
+        todo_triangle.
+      }
+      destruct h' as [τ' [? hτ]]. subst.
+      (* eapply strong_substitutivity in h as h'. *)
       (* Then, what substitutions do I want to use for strong
-        substitutivity? Probably τ and some kind of rho of τ that I would
-        deduce from X1?
+        substitutivity? τ and what? rho τ?
+        How do I know pred1_subst τ (rho τ)?
       *)
       todo_triangle.
 
