@@ -5240,6 +5240,34 @@ Section Triangle.
       pred1 Σ Γ Γ' u u'.
   Admitted.
 
+  Lemma rule_symbols_subst :
+    ∀ k ui rd r n,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      #|pat_context r| = n →
+      subst
+        (symbols_subst k 0 ui #|symbols rd|) n
+        (tRel (#|pat_context r| + head r))
+      = tSymb k r.(head) ui.
+  Proof.
+    intros k ui rd r ? hrd hr [].
+    cbn.
+    destruct (Nat.leb_spec0 #|pat_context r| (#|pat_context r| + head r)).
+    2: lia.
+    replace (#|pat_context r| + head r - #|pat_context r|)
+    with r.(head) by lia.
+    destruct (nth_error _ r.(head)) eqn:e1.
+    2:{
+      apply nth_error_None in e1. rewrite symbols_subst_length in e1.
+      eapply rule_head in hr. 2: eauto.
+      lia.
+    }
+    unfold symbols_subst in e1.
+
+    eapply list_make_nth_error in e1. subst.
+    cbn. f_equal. lia.
+  Qed.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
