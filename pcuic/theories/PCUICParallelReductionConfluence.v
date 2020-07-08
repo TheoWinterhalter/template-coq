@@ -5127,6 +5127,16 @@ Section Triangle.
     intros p hp. eapply rho_subst_pattern. assumption.
   Qed.
 
+  Definition pattern_list_mask npat l :=
+    m <- monad_map (pattern_mask npat) l ;;
+    PCUICPattern.monad_fold_right lin_merge m (linear_mask_init npat).
+
+  Definition pattern_list_linear npat l :=
+    match pattern_list_mask npat l with
+    | Some m => forallb (λ x, x) m
+    | None => false
+    end.
+
   (* Should be similar to the following,
     or it can be proven directly without linearity and thus imply the second
     one.
@@ -5136,7 +5146,7 @@ Section Triangle.
     ∀ npat npat' k n l l' ui α,
       All (elim_pattern npat') l' →
       match_lhs npat k n l (mkElims (tSymb k n ui) l') = Some (ui, α) →
-      All (pattern npat') α (* × linear npat' α *).
+      All (pattern npat') α × pattern_list_linear npat' α.
   Admitted.
 
   Lemma first_match_pattern_subst :
@@ -5145,7 +5155,7 @@ Section Triangle.
       lookup_env Σ k = Some (RewriteDecl rd) →
       let l := all_rewrite_rules rd in
       first_match k l (mkElims (tSymb k' n' ui') el) = Some (ui, σ, r) →
-      All (pattern npat) σ.
+      All (pattern npat) σ × pattern_list_linear npat σ.
   Proof.
     intros k r k' n' ui' el ui σ rd npat hel hk l e.
     apply all_rewrite_rules_on_rewrite_rule in hk as hrd.
@@ -5550,13 +5560,7 @@ Section Triangle.
       rewrite !mkElims_decompose_elims in fe. cbn in fe.
       apply (f_equal snd) in fe. cbn in fe.
       eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
-      (* eapply match_lhs_sound in hm as e2. 2: auto. *)
       eapply lhs_footprint_pattern in hf as hpl.
-      (* eapply first_match_pattern_subst in fm as hp. 2,3: eauto. *)
-      (* rewrite elhs in fm.
-      specialize h with (4 := fm). *)
-      (* specialize h with (2 := hp). *)
-      (* TODO Find the right stuff to put here *)
       set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
       specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
       forward h.
@@ -5565,10 +5569,12 @@ Section Triangle.
         replace (#|prules rd| + n - #|prules rd|) with n by lia.
         assumption.
       }
-      assert (hα : All (pattern #|τ|) α).
+      assert (hα : All (pattern #|τ|) α × pattern_list_linear #|τ| α).
       { eapply match_lhs_pattern_subst. all: eauto. }
-      assert (hθ : All (pattern #|τ|) θ).
+      assert (hθ : All (pattern #|τ|) θ × pattern_list_linear #|τ| θ).
       { eapply first_match_pattern_subst in hpl. all: eauto. }
+      destruct hα as [hα lα].
+      destruct hθ as [hθ lθ].
       forward h by auto.
       forward h.
       { rewrite map_length in sl.
