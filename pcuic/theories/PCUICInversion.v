@@ -13,6 +13,7 @@ Section Inversion.
   Context `{checker_flags}.
   Context (Σ : global_env_ext).
   Context (wfΣ : wf Σ).
+  Context (cΣ : PCUICParallelReductionConfluence.confluenv Σ).
 
   Ltac insum :=
     match goal with

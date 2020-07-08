@@ -147,7 +147,7 @@ Section Alpha.
     - f_equal. all: auto.
   Qed.
 
-  Lemma decompose_app_upto {Re Rle x y hd tl} : 
+  Lemma decompose_app_upto {Re Rle x y hd tl} :
     eq_term_upto_univ Re Rle x y ->
     decompose_app x = (hd, tl) ->
     ∑ hd' tl', (y = mkApps hd' tl') *
@@ -175,20 +175,20 @@ Proof.
   - inversion 1; subst. constructor; eauto.
 Qed.
 
-  Lemma decompose_prod_assum_upto_names' ctx ctx' x y : 
-    eq_context_upto eq ctx ctx' -> upto_names' x y -> 
-    let (ctx0, x0) := decompose_prod_assum ctx x in 
+  Lemma decompose_prod_assum_upto_names' ctx ctx' x y :
+    eq_context_upto eq ctx ctx' -> upto_names' x y ->
+    let (ctx0, x0) := decompose_prod_assum ctx x in
     let (ctx1, x1) := decompose_prod_assum ctx' y in
     eq_context_upto eq ctx0 ctx1 * upto_names' x0 x1.
   Proof.
-    induction x in ctx, ctx', y |- *; intros eqctx eqt; inv eqt; simpl; 
+    induction x in ctx, ctx', y |- *; intros eqctx eqt; inv eqt; simpl;
       try split; auto; try constructor; auto.
     - specialize (IHx2 (ctx,, vass na x1) (ctx',,vass na' a') b').
       apply IHx2; auto. constructor; auto.
-    - apply IHx3; auto. constructor; auto. 
+    - apply IHx3; auto. constructor; auto.
   Qed.
 
-  Lemma destInd_spec t : 
+  Lemma destInd_spec t :
     match destInd t with
     | Some (ind, u) => t = tInd ind u
     | None => forall ind u, t <> tInd ind u
@@ -197,7 +197,7 @@ Qed.
     destruct t; congruence.
   Qed.
 
-  Lemma upto_names_destInd Re Rle t u : 
+  Lemma upto_names_destInd Re Rle t u :
     eq_term_upto_univ Re Rle t u ->
     rel_option (fun '(ind, u) '(ind', u') => (ind = ind') * R_universe_instance Re u u')%type (destInd t) (destInd u).
   Proof.
@@ -267,7 +267,7 @@ Qed.
       Σ ;;; Γ |- u : A ->
       eq_term_upto_univ eq eq u v ->
       Σ ;;; Γ |- v : A.
-  Proof.
+  (* Proof.
     assert (tm :
       env_prop (fun Σ Γ u A =>
                   forall v,
@@ -402,7 +402,7 @@ Qed.
                       × Σ;;; Γ |- bty.2 : tSort ps)
                      × (forall v : term, upto_names' bty.2 v -> Σ;;; Γ |- v : tSort ps)).
         * clear. intros x y z X; rdest; cbn in *.
-          congruence. 2: eauto. econstructor; tea. 
+          congruence. 2: eauto. econstructor; tea.
           right. exists ps. eauto. constructor.
           now eapply upto_names_impl_leq_term.
         * eapply All2_trans'; [..|eassumption].
@@ -453,7 +453,7 @@ Qed.
         exists s; apply IH; eauto. }
       assert (convctx : conv_context Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix')).
       { eapply eq_context_upto_univ_conv_context.
-        eapply (eq_context_impl eq). intros x y eqx. subst. reflexivity. 
+        eapply (eq_context_impl eq). intros x y eqx. subst. reflexivity.
         change (fix_context mfix) with (fix_context_gen 0 mfix).
         change (fix_context mfix') with (fix_context_gen 0 mfix').
         eapply eq_context_upto_cat.
@@ -469,7 +469,7 @@ Qed.
             now eapply eq_term_upto_univ_lift.
           + apply IHX. }
       assert(#|fix_context mfix| = #|fix_context mfix'|).
-      { now rewrite !fix_context_length, (All2_length _ _ X). } 
+      { now rewrite !fix_context_length, (All2_length _ _ X). }
       eapply type_Cumul.
       + econstructor.
         * eapply (fix_guard_eq_term _ _ n); eauto.
@@ -524,7 +524,7 @@ Qed.
       exists s; apply IH; eauto. }
     assert (convctx : conv_context Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix')).
     { eapply eq_context_upto_univ_conv_context.
-      eapply (eq_context_impl eq). intros x y eqx. subst. reflexivity. 
+      eapply (eq_context_impl eq). intros x y eqx. subst. reflexivity.
       change (fix_context mfix) with (fix_context_gen 0 mfix).
       change (fix_context mfix') with (fix_context_gen 0 mfix').
       eapply eq_context_upto_cat.
@@ -540,7 +540,7 @@ Qed.
           now eapply eq_term_upto_univ_lift.
         + apply IHX. }
     assert(#|fix_context mfix| = #|fix_context mfix'|).
-    { now rewrite !fix_context_length, (All2_length _ _ X). } 
+    { now rewrite !fix_context_length, (All2_length _ _ X). }
     eapply type_Cumul.
     + econstructor.
       * eapply (cofix_guard_eq_term _ _ n) ; eauto.
@@ -587,7 +587,8 @@ Qed.
     - rename wfΣ into Γ, wfΓ into v, Γ into u.
       intros A hΣ hu e.
       eapply tm ; eauto.
-  Qed.
+  Qed. *)
+  Admitted.
 
   Local Ltac inv H := inversion H; subst; clear H.
 
@@ -595,7 +596,7 @@ Qed.
     : eq_term_upto_univ Re Rle t u ->
       forall t' u', t ≡ t' -> u ≡ u' ->
                eq_term_upto_univ Re Rle t' u'.
-  Proof.
+  (* Proof.
     revert t u Rle. fix aux 4.
     destruct 1; cbn; intros t'' u'' H' H0';
       inv H'; inv H0'; try econstructor; eauto.
@@ -636,7 +637,8 @@ Qed.
       + inv H1; inv H2. constructor; eauto.
         destruct X as [[? ?] ?], X1 as [[? ?] ?], r as [[? ?] ?].
         repeat split; eauto. congruence.
-  Qed.
+  Qed. *)
+  Admitted.
 
   Lemma upto_names_leq_term φ t u t' u'
     : t ≡ t' -> u ≡ u' -> leq_term φ t u -> leq_term φ t' u'.
@@ -691,7 +693,7 @@ Qed.
 
   Lemma wf_local_alpha Σ Γ Γ' :
     wf Σ.1 -> wf_local Σ Γ -> Γ ≡Γ Γ' -> wf_local Σ Γ'.
-  Proof.
+  (* Proof.
     intro hΣ. induction 1 in Γ' |- *.
     - intro Y; inv Y; constructor.
     - intro Y; inv Y. constructor. auto.
@@ -712,7 +714,8 @@ Qed.
           eapply context_conversion'; tea. auto.
           now apply upto_names_conv_context.
         * constructor; now apply upto_names_impl_leq_term.
-  Qed.
+  Qed. *)
+  Admitted.
 
 
   Lemma isWfArity_alpha Σ Γ u v :

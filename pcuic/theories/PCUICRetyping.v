@@ -228,7 +228,7 @@ Section TypeOf.
     - go eq. split.
       + econstructor ; try eassumption ; try ih ; try cih.
       + eapply congr_cumul_prod; auto.
-        * ih.
+        (* * ih.
     - go eq. split.
       + econstructor ; try eassumption ; try ih ; try cih.
       + eapply congr_cumul_letin. all: try eapply cumul_refl'.
@@ -250,7 +250,7 @@ Section TypeOf.
     - admit.
     - split.
       + ih.
-      + eapply cumul_trans ; try eassumption.
+      + eapply cumul_trans ; try eassumption. *)
   Admitted.
 
 

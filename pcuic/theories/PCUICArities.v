@@ -34,16 +34,17 @@ Qed.
 
 Lemma invert_cumul_arity_l {cf:checker_flags} Σ (Γ : context) (C : term) T :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   Σ;;; Γ |- C <= T ->
   match destArity [] C with
   | Some (ctx, s) =>
-    ∑ T' ctx' s', red Σ.1 Γ T T' * (destArity [] T' = Some (ctx', s')) * 
+    ∑ T' ctx' s', red Σ.1 Γ T T' * (destArity [] T' = Some (ctx', s')) *
        conv_context Σ (Γ ,,, smash_context [] ctx) (Γ ,,, ctx') * leq_universe
        (global_ext_constraints Σ) s s'
   | None => unit
   end.
 Proof.
-intros wfΣ CT.
+intros wfΣ cΣ CT.
 generalize (destArity_spec [] C). destruct destArity as [[ctx p]|].
 simpl. intros ->. 2:intros _; exact tt.
 revert Γ T CT.
@@ -56,7 +57,7 @@ induction n; intros ctx Hlen Γ T HT.
   reflexivity.
 - destruct ctx using rev_ind.
   * eapply invert_cumul_sort_l in HT as [u' [redT leqT]].
-    exists (tSort u'), [], u'; intuition auto.  
+    exists (tSort u'), [], u'; intuition auto.
     reflexivity.
   * rewrite it_mkProd_or_LetIn_app in HT; simpl in HT.
     destruct x as [na [b|] ty]; unfold mkProd_or_LetIn in HT; simpl in *.
@@ -70,7 +71,7 @@ induction n; intros ctx Hlen Γ T HT.
       exists T', ctx', s'. intuition auto.
       rewrite smash_context_app. simpl.
       now rewrite -smash_context_subst_empty.
-    + eapply invert_cumul_prod_l in HT; auto. 
+    + eapply invert_cumul_prod_l in HT; auto.
       rewrite -> app_length in Hlen.
       rewrite Nat.add_1_r in Hlen.
       destruct HT as [na' [A' [B' [[redT convT] HT]]]].
@@ -99,7 +100,7 @@ induction n; intros ctx Hlen Γ T HT.
         constructor; pcuic. constructor; pcuic. now symmetry.
         apply context_relation_refl. intros.
         destruct x as [na'' [b'|] ty']; constructor; reflexivity.
-        constructor; pcuic. 
+        constructor; pcuic.
         eapply conv_conv_ctx; eauto.
         eapply context_relation_app_inv. constructor; pcuic.
         constructor; pcuic. constructor; pcuic. now symmetry.
@@ -129,6 +130,7 @@ Proof.
 Qed.
 
 Lemma isWAT_tProd {cf:checker_flags} {Σ : global_env_ext} (HΣ' : wf Σ)
+  (cΣ : confluenv Σ)
       {Γ} (HΓ : wf_local Σ Γ) {na A B}
   : isWfArity_or_Type Σ Γ (tProd na A B)
     <~> (isType Σ Γ A × isWfArity_or_Type Σ (Γ,, vass na A) B).
@@ -155,7 +157,7 @@ Defined.
 Lemma isWAT_subst {cf:checker_flags} {Σ : global_env_ext} (HΣ' : wf Σ)
       {Γ Δ} (HΓ : wf_local Σ (Γ ,,, Δ)) {A} s :
     subslet Σ Γ s Δ ->
-    isWfArity_or_Type Σ (Γ ,,, Δ) A -> 
+    isWfArity_or_Type Σ (Γ ,,, Δ) A ->
     isWfArity_or_Type Σ Γ (subst0 s A).
 Proof.
   intros sub WAT.
@@ -173,12 +175,13 @@ Proof.
 Qed.
 
 
-Lemma typing_spine_letin_inv {cf:checker_flags} {Σ Γ na b B T args S} : 
+Lemma typing_spine_letin_inv {cf:checker_flags} {Σ Γ na b B T args S} :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   typing_spine Σ Γ (tLetIn na b B T) args S ->
   typing_spine Σ Γ (T {0 := b}) args S.
 Proof.
-  intros wfΣ Hsp.
+  intros wfΣ cΣ Hsp.
   depelim Hsp.
   constructor. auto.
   now eapply invert_cumul_letin_l in c.
@@ -186,12 +189,13 @@ Proof.
   now eapply invert_cumul_letin_l in c.
 Qed.
 
-Lemma typing_spine_letin {cf:checker_flags} {Σ Γ na b B T args S} : 
+Lemma typing_spine_letin {cf:checker_flags} {Σ Γ na b B T args S} :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   typing_spine Σ Γ (T {0 := b}) args S ->
   typing_spine Σ Γ (tLetIn na b B T) args S.
 Proof.
-  intros wfΣ Hsp.
+  intros wfΣ cΣ Hsp.
   depelim Hsp.
   constructor. auto.
   etransitivity. eapply red_cumul. eapply red1_red, red_zeta. auto.
@@ -199,28 +203,30 @@ Proof.
   etransitivity. eapply red_cumul. eapply red1_red, red_zeta. auto.
 Qed.
 
-Lemma typing_spine_weaken_concl {cf:checker_flags} {Σ Γ T args S S'} : 
+Lemma typing_spine_weaken_concl {cf:checker_flags} {Σ Γ T args S S'} :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   typing_spine Σ Γ T args S ->
   Σ ;;; Γ |- S <= S' ->
   isWfArity_or_Type Σ Γ S' ->
   typing_spine Σ Γ T args S'.
 Proof.
-  intros wfΣ.  
+  intros wfΣ cΣ.
   induction 1 in S' => cum.
   constructor; auto. now transitivity ty'.
   intros isWAT.
   econstructor; eauto.
 Qed.
 
-Lemma typing_spine_prod {cf:checker_flags} {Σ Γ na b B T args S} : 
+Lemma typing_spine_prod {cf:checker_flags} {Σ Γ na b B T args S} :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   typing_spine Σ Γ (T {0 := b}) args S ->
   isWfArity_or_Type Σ Γ (tProd na B T) ->
   Σ ;;; Γ |- b : B ->
   typing_spine Σ Γ (tProd na B T) (b :: args) S.
 Proof.
-  intros wfΣ Hsp.
+  intros wfΣ cΣ Hsp.
   depelim Hsp.
   econstructor; eauto. reflexivity.
   constructor; auto with pcuic.
@@ -236,7 +242,7 @@ Proof.
   - econstructor; eauto.
 Qed.
 
-Lemma typing_spine_WAT_concl {cf:checker_flags} {Σ Γ T args S} : 
+Lemma typing_spine_WAT_concl {cf:checker_flags} {Σ Γ T args S} :
   typing_spine Σ Γ T args S ->
   isWfArity_or_Type Σ Γ S.
 Proof.
@@ -244,16 +250,17 @@ Proof.
 Qed.
 
 
-Lemma type_mkProd_or_LetIn {cf:checker_flags} Σ Γ d u t s : 
+Lemma type_mkProd_or_LetIn {cf:checker_flags} Σ Γ d u t s :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   Σ ;;; Γ |- decl_type d : tSort u ->
   Σ ;;; Γ ,, d |- t : tSort s ->
-  match decl_body d return Type with 
+  match decl_body d return Type with
   | Some b => Σ ;;; Γ |- mkProd_or_LetIn d t : tSort s
   | None => Σ ;;; Γ |- mkProd_or_LetIn d t : tSort (Universe.sort_of_product u s)
   end.
 Proof.
-  intros wfΣ. destruct d as [na [b|] dty] => [Hd Ht|Hd Ht]; rewrite /mkProd_or_LetIn /=.
+  intros wfΣ cΣ. destruct d as [na [b|] dty] => [Hd Ht|Hd Ht]; rewrite /mkProd_or_LetIn /=.
   - have wf := typing_wf_local Ht.
     depelim wf; simpl in H; noconf H. clear l.
     eapply type_Cumul. econstructor; eauto.
@@ -268,14 +275,15 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma type_it_mkProd_or_LetIn {cf:checker_flags} Σ Γ Γ' u t s : 
+Lemma type_it_mkProd_or_LetIn {cf:checker_flags} Σ Γ Γ' u t s :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   type_local_ctx (lift_typing typing) Σ Γ Γ' u ->
   Σ ;;; Γ ,,, Γ' |- t : tSort s ->
   Σ ;;; Γ |- it_mkProd_or_LetIn Γ' t : tSort (Universe.sort_of_product u s).
 Proof.
   revert Γ u s t.
-  induction Γ'; simpl; auto; move=> Γ u s t wfΣ equ Ht.
+  induction Γ'; simpl; auto; move=> Γ u s t wfΣ cΣ equ Ht.
   - eapply type_Cumul; eauto.
     left. eexists [], _; intuition eauto.
     eapply typing_wf_local; eauto.
@@ -302,15 +310,15 @@ Qed.
 
 Lemma isWAT_wf_local {cf:checker_flags} {Σ Γ T} : isWfArity_or_Type Σ Γ T -> wf_local Σ Γ.
 Proof.
-  move=> [[ctx [s [_ Hs]]]|[s Hs]]. 
+  move=> [[ctx [s [_ Hs]]]|[s Hs]].
   - eapply All_local_env_app in Hs.
     intuition eauto with pcuic.
   - now eapply typing_wf_local.
-Qed.  
+Qed.
 
 
-  (* 
-Lemma typing_spine_prod {cf:checker_flags} Σ Γ na b B T args S : 
+  (*
+Lemma typing_spine_prod {cf:checker_flags} Σ Γ na b B T args S :
   wf Σ.1 ->
   typing_spine Σ Γ (tProd na b B T) args S ->
   typing_spine Σ Γ (T {0 := b}) args S.
@@ -332,7 +340,7 @@ Hint Extern 4 (_ ;;; _ |- _ <= _) => reflexivity : pcuic.
 Ltac pcuic := eauto 5 with pcuic.
 
 
-Lemma subslet_app_closed {cf:checker_flags} Σ Γ s s' Δ Δ' : 
+Lemma subslet_app_closed {cf:checker_flags} Σ Γ s s' Δ Δ' :
   subslet Σ Γ s Δ ->
   subslet Σ Γ s' Δ' ->
   closed_ctx Δ ->
@@ -354,9 +362,9 @@ Qed.
 
 Hint Constructors subslet : core pcuic.
 
-Lemma subslet_app_inv {cf:checker_flags} Σ Γ Δ Δ' s : 
+Lemma subslet_app_inv {cf:checker_flags} Σ Γ Δ Δ' s :
   subslet Σ Γ s (Δ ,,, Δ') ->
-  subslet Σ Γ (skipn #|Δ'| s) Δ * 
+  subslet Σ Γ (skipn #|Δ'| s) Δ *
   subslet Σ Γ (firstn #|Δ'| s) (subst_context (skipn #|Δ'| s) 0 Δ').
 Proof.
   intros sub. split.
@@ -377,12 +385,12 @@ Proof.
       rewrite skipn_S Nat.add_0_r /=.
       rewrite /subst_decl /map_decl /=.
       specialize (IHΔ' _ _ sub).
-      epose proof (cons_let_def _ _ _ _ _ (subst (skipn #|Δ'| s0) #|Δ'| t0) 
+      epose proof (cons_let_def _ _ _ _ _ (subst (skipn #|Δ'| s0) #|Δ'| t0)
       (subst (skipn #|Δ'| s0) #|Δ'| T) IHΔ').
       assert(#|Δ'| = #|firstn #|Δ'| s0|).
       { pose proof (subslet_length sub).
         rewrite app_context_length in H.
-        rewrite firstn_length_le; lia. }      
+        rewrite firstn_length_le; lia. }
       rewrite {3 6}H in X.
       rewrite - !subst_app_simpl in X.
       rewrite !firstn_skipn in X.
@@ -418,7 +426,7 @@ Lemma subslet_inds_gen {cf:checker_flags} Σ ind mdecl idecl :
 Proof.
   intros wfΣ isdecl u.
   unfold inds.
-  pose proof (proj1 isdecl) as declm'. 
+  pose proof (proj1 isdecl) as declm'.
   apply PCUICWeakeningEnv.on_declared_minductive in declm' as [oind oc]; auto.
   clear oc.
   assert (Alli (fun i x =>
@@ -439,7 +447,7 @@ Proof.
   induction l using rev_ind; simpl; first constructor.
   rewrite /subst_instance_context /= /map_context.
   simpl. rewrite /arities_context rev_map_spec /=.
-  rewrite map_app /= rev_app_distr /=. 
+  rewrite map_app /= rev_app_distr /=.
   rewrite /= app_length /= Nat.add_1_r.
   constructor.
   - rewrite -rev_map_spec. apply IHl; try lia.
@@ -447,7 +455,7 @@ Proof.
   - eapply Alli_app in X as [oind Hx].
     depelim Hx. clear Hx.
     rewrite Nat.add_0_r in t.
-    rewrite subst_closedn; auto. 
+    rewrite subst_closedn; auto.
     + eapply typecheck_closed in t as [? ?]; auto.
 Qed.
 
@@ -464,7 +472,7 @@ Proof.
   pose proof declm as declm'.
   apply PCUICWeakeningEnv.on_declared_minductive in declm' as [oind oc]; auto.
   clear oc.
-  assert (Alli (fun i x => Σ ;;; [] |- tInd {| inductive_mind := inductive_mind ind; inductive_ind := i |} u : subst_instance_constr u (ind_type x)) 0 (ind_bodies mdecl)). 
+  assert (Alli (fun i x => Σ ;;; [] |- tInd {| inductive_mind := inductive_mind ind; inductive_ind := i |} u : subst_instance_constr u (ind_type x)) 0 (ind_bodies mdecl)).
   { apply forall_nth_error_Alli.
     econstructor; eauto. split; eauto. }
   clear oind.
@@ -474,7 +482,7 @@ Proof.
   induction l using rev_ind; simpl; first constructor.
   rewrite /subst_instance_context /= /map_context.
   simpl. rewrite /arities_context rev_map_spec /=.
-  rewrite map_app /= rev_app_distr /=. 
+  rewrite map_app /= rev_app_distr /=.
   rewrite {1}/map_decl /= app_length /= Nat.add_1_r.
   constructor.
   - rewrite -rev_map_spec. apply IHl; try lia.
@@ -482,13 +490,13 @@ Proof.
   - eapply Alli_app in X as [oind Hx].
     depelim Hx. clear Hx.
     rewrite Nat.add_0_r in t.
-    rewrite subst_closedn; auto. 
+    rewrite subst_closedn; auto.
     + eapply typecheck_closed in t as [? ?]; auto.
 Qed.
 
 Lemma weaken_subslet {cf:checker_flags} Σ s Δ Γ :
   wf Σ.1 ->
-  wf_local Σ Γ -> 
+  wf_local Σ Γ ->
   subslet Σ [] s Δ -> subslet Σ Γ s Δ.
 Proof.
   intros wfΣ wfΔ.
@@ -501,15 +509,16 @@ Qed.
 
 Set Default Goal Selector "1".
 
-Lemma substitution_it_mkProd_or_LetIn {cf:checker_flags} Σ Γ Δ T s : 
+Lemma substitution_it_mkProd_or_LetIn {cf:checker_flags} Σ Γ Δ T s :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   subslet Σ Γ s Δ ->
   isType Σ Γ (it_mkProd_or_LetIn Δ T) ->
   isType Σ Γ (subst0 s T).
 Proof.
-  intros wfΣ sub [s' Hs].
+  intros wfΣ cΣ sub [s' Hs].
   exists s'.
-  revert Γ s sub Hs. 
+  revert Γ s sub Hs.
   generalize (le_n #|Δ|).
   generalize #|Δ| at 2.
   induction n in Δ, T |- *.
@@ -524,7 +533,7 @@ Proof.
     { rewrite firstn_length_le; lia. }
     destruct x as [na [b|] ty] => /=;
     rewrite it_mkProd_or_LetIn_app /= /mkProd_or_LetIn /=.
-    
+
     intros Hs.
     eapply inversion_LetIn in Hs as [? [? [? [? [? ?]]]]]; auto.
     eapply substitution_let in t1; auto.
@@ -540,7 +549,7 @@ Proof.
     eapply type_Cumul. eapply t1. left; exists [], s'; intuition eauto using typing_wf_local.
     eapply c. rewrite {2}Hl in IHn.
     now rewrite -subst_app_simpl -H0 firstn_skipn in IHn.
-    
+
     intros Hs.
     eapply inversion_Prod in Hs as [? [? [? [? ?]]]]; auto.
     pose proof (subslet_app_inv _ _ _ _ _ sub) as [subl subr].
@@ -562,13 +571,14 @@ Proof.
     now rewrite -subst_app_simpl -H0 firstn_skipn in IHn.
 Qed.
 
-Lemma isWAT_it_mkProd_or_LetIn_app {cf:checker_flags} Σ Γ Δ T s : 
+Lemma isWAT_it_mkProd_or_LetIn_app {cf:checker_flags} Σ Γ Δ T s :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   subslet Σ Γ s Δ ->
   isWfArity_or_Type Σ Γ (it_mkProd_or_LetIn Δ T) ->
   isWfArity_or_Type Σ Γ (subst0 s T).
 Proof.
-  intros wfΣ sub iswat.
+  intros wfΣ cΣ sub iswat.
   destruct iswat as [[ctx [s' [Hs wf]]]|].
   left.
   rewrite destArity_it_mkProd_or_LetIn in Hs.
@@ -586,6 +596,7 @@ Proof.
 Qed.
 
 Lemma isWAT_tLetIn_red {cf:checker_flags} {Σ : global_env_ext} (HΣ' : wf Σ)
+  (cΣ : confluenv Σ.1)
       {Γ} (HΓ : wf_local Σ Γ) {na t A B}
   : isWfArity_or_Type Σ Γ (tLetIn na t A B) -> isWfArity_or_Type Σ Γ (B {0:=t}).
 Proof.
@@ -594,16 +605,16 @@ Proof.
   + cbn in H1. apply destArity_app_Some in H1.
     destruct H1 as [ctx' [H1 HH]]; subst ctx.
     rewrite app_context_assoc in H2.
-    left. 
+    left.
     generalize (subst_destArity [] B [t] 0). rewrite H1.
     simpl. move=> H. do 2 eexists; intuition eauto.
     unfold snoc in H2.
     eapply substitution_wf_local. eauto. 2:eauto.
     eapply All_local_env_app in H2 as [wf _].
-    inv wf. red in X1. 
+    inv wf. red in X1.
     epose proof (cons_let_def _ _ _ [] _ _ _ (emptyslet _ _)).
     rewrite !subst_empty in X2. eapply (X2 X1).
-  + right. exists s. 
+  + right. exists s.
     apply inversion_LetIn in H; tas. destruct H as [s1 [A' [HA [Ht [HB H]]]]].
     eapply type_Cumul with (A' {0 := t}). eapply substitution_let in HB; eauto.
     * left. apply cumul_Sort_r_inv in H.
@@ -619,6 +630,7 @@ Proof.
 Qed.
 
 Lemma isWAT_tLetIn_dom {cf:checker_flags} {Σ : global_env_ext} (HΣ' : wf Σ)
+  (cΣ : confluenv Σ.1)
       {Γ} (HΓ : wf_local Σ Γ) {na t A B}
   : isWfArity_or_Type Σ Γ (tLetIn na t A B) -> Σ ;;; Γ |- t : A.
 Proof.
@@ -644,11 +656,12 @@ Proof.
   now apply onParams in H.
 Qed.
 
-Lemma it_mkProd_or_LetIn_wf_local {cf:checker_flags} Σ Γ Δ T U : 
+Lemma it_mkProd_or_LetIn_wf_local {cf:checker_flags} Σ Γ Δ T U :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   Σ ;;; Γ |- it_mkProd_or_LetIn Δ T : U -> wf_local Σ (Γ ,,, Δ).
 Proof.
-  move=> wfΣ; move: Γ T U.
+  move=> wfΣ cΣ; move: Γ T U.
   induction Δ using rev_ind => Γ T U.
   + simpl. intros. now eapply typing_wf_local in X.
   + rewrite it_mkProd_or_LetIn_app.
@@ -669,11 +682,12 @@ Proof.
       now rewrite app_context_assoc.
 Qed.
 
-Lemma isWAT_it_mkProd_or_LetIn_wf_local {cf:checker_flags} Σ Γ Δ T : 
+Lemma isWAT_it_mkProd_or_LetIn_wf_local {cf:checker_flags} Σ Γ Δ T :
   wf Σ.1 ->
+  confluenv Σ.1 ->
   isWfArity_or_Type Σ Γ (it_mkProd_or_LetIn Δ T) -> wf_local Σ (Γ ,,, Δ).
 Proof.
-  move=> wfΣ [[ctx [s [Hs Hwf]]]|[s Hs]].
+  move=> wfΣ cΣ [[ctx [s [Hs Hwf]]]|[s Hs]].
   - rewrite destArity_it_mkProd_or_LetIn app_context_nil_l in Hs.
     eapply destArity_app_Some in Hs as [ctx' [? eq]]. subst ctx.
     rewrite app_context_assoc in Hwf.
@@ -699,7 +713,7 @@ Proof.
 Qed.
 
 Lemma subst_telescope_subst_instance_constr u s k Γ :
-  subst_telescope (map (subst_instance_constr u) s) k 
+  subst_telescope (map (subst_instance_constr u) s) k
     (subst_instance_context u Γ) =
   subst_instance_context u (subst_telescope s k Γ).
 Proof.
@@ -723,7 +737,7 @@ Section CheckerFlags.
     exists (subst_instance_univ u s).
     eapply (typing_subst_instance_decl _ _ _ (tSort _)); eauto.
   Qed.
-  
+
   Lemma isWfArity_subst_instance_decl {Σ Γ T c decl u} :
     wf Σ.1 ->
     lookup_env Σ.1 c = Some decl ->
@@ -734,10 +748,10 @@ Section CheckerFlags.
     destruct Σ as [Σ φ]. intros X X0 [ctx [s [eq wf]]] X1.
     exists (subst_instance_context u ctx), (subst_instance_univ u s).
     rewrite (subst_instance_destArity []) eq. intuition auto.
-    rewrite -subst_instance_context_app.  
-    eapply wf_local_subst_instance_decl; eauto.  
+    rewrite -subst_instance_context_app.
+    eapply wf_local_subst_instance_decl; eauto.
   Qed.
-  
+
   Lemma isWAT_subst_instance_decl {Σ Γ T c decl u} :
     wf Σ.1 ->
     lookup_env Σ.1 c = Some decl ->
