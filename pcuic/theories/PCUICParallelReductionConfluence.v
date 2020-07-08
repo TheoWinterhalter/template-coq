@@ -4563,6 +4563,29 @@ Section Confluenv.
 
   Context {cf : checker_flags}.
 
+  Fixpoint match_prelhs_prefix npat k n l t :=
+    match match_prelhs npat k n l t with
+    | Some (ui, σ) => Some (ui, σ)
+    | None =>
+      match l with
+      | [] => None
+      | r :: l => match_prelhs_prefix npat k n l t
+      end
+    end.
+
+  Definition match_lhs_prefix npat k n l t :=
+    match_prelhs_prefix npat k n (List.rev l) t.
+
+  Fixpoint first_match_prefix k (l : list rewrite_rule) (t : term) :=
+    match l with
+    | [] => None
+    | r :: l =>
+      match match_lhs_prefix #|r.(pat_context)| k r.(head) r.(elims) t with
+      | Some (ui, σ) => Some (ui, σ, r)
+      | None => first_match_prefix k l t
+      end
+    end.
+
   (* TODO Am I assuming rhs are normal? *)
   Definition triangle_rules Σ e kn nsymb l :=
     ∀ r n npat' Γ σ ui θ r',
