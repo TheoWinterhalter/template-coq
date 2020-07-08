@@ -5241,16 +5241,16 @@ Section Triangle.
   Admitted.
 
   Lemma rule_symbols_subst :
-    ∀ k ui rd r n,
+    ∀ k ui rd r n m,
       lookup_env Σ k = Some (RewriteDecl rd) →
       nth_error (all_rewrite_rules rd) n = Some r →
-      #|pat_context r| = n →
+      #|pat_context r| = m →
       subst
-        (symbols_subst k 0 ui #|symbols rd|) n
+        (symbols_subst k 0 ui #|symbols rd|) m
         (tRel (#|pat_context r| + head r))
       = tSymb k r.(head) ui.
   Proof.
-    intros k ui rd r ? hrd hr [].
+    intros k ui rd r n ? hrd hr [].
     cbn.
     destruct (Nat.leb_spec0 #|pat_context r| (#|pat_context r| + head r)).
     2: lia.
@@ -5263,10 +5263,18 @@ Section Triangle.
       lia.
     }
     unfold symbols_subst in e1.
-
     eapply list_make_nth_error in e1. subst.
     cbn. f_equal. lia.
   Qed.
+
+  Lemma linear_mask_app_inv :
+    ∀ n l1 l2 m,
+      linear_mask n (l1 ++ l2) = Some m →
+      ∑ m1 m2,
+        linear_mask n l1 = Some m1 ×
+        linear_mask n l2 = Some m2 ×
+        lin_merge m1 m2 = Some m.
+  Admitted.
 
   Context (cΣ : confluenv Σ).
 
@@ -5981,10 +5989,45 @@ Section Triangle.
         destruct h as [? [hr h]].
         unfold all_rewrite_rules in hr.
         eapply first_match_lookup_sound in e0 as hs. 2,4: eauto. 2: exact I.
-        (* From hs we should deduce that σ reduces to some σ', corresponding
-          to the reductions M0 to M1, N0 to N1.
+        unfold lhs in hs. rewrite !mkElims_subst in hs.
+        eapply lookup_rewrite_decl_lookup_env in e as e'.
+        eapply first_match_subst_length in e0 as σl.
+        erewrite rule_symbols_subst in hs. 2-4: eauto.
+        cbn in hs.
+        destruct (elims r) as [| [] l _] eqn:e1 using list_rect_rev.
+        1: discriminate.
+        2:{
+          rewrite !map_app in hs. rewrite mkElims_app in hs.
+          cbn in hs. discriminate.
+        }
+        2:{
+          rewrite !map_app in hs. rewrite mkElims_app in hs.
+          cbn in hs. discriminate.
+        }
+        rewrite !map_app in hs. rewrite mkElims_app in hs.
+        cbn in hs. inversion hs.
+        eapply rule_linear in hr as ll. 2: eauto.
+        rewrite e1 in ll. unfold linear in ll.
+        destruct linear_mask as [m|] eqn:hl. 2: discriminate.
+        eapply linear_mask_app_inv in hl as [m1 [m2 [hm1 [hm2 hm]]]].
+        cbn in hm2. destruct pattern_mask eqn:pm2. 2: discriminate.
+        cbn in hm2. apply lin_merge_linear_mask_init_eq in hm2.
+        (* match type of hm2 with
+        | ?x = _ => subst x
+        end. *)
+        cbn. set (ss := symbols_subst k 0 ui #|symbols rd|) in *.
+        subst.
+        (* From X1 we get that σ reduced on m2
+          We should get something similar on m1 from X.
+          We should know that rho commutes on patterns, so X2 is fine.
+          The problem is exploiting X0 as it is not clear that rho will not
+          reduce using another rewrite rule of the block.
+          We're actually missing somehting aren't we? Something I had forgotten
+          regarding prefixes of rewrite rules being rewrite rules as well.
+          This is not dealt with by the current criterion.
         *)
-        (* rewrite hs. *)
+
+
         (* eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
         * eapply pred_par_rewrite_rule. all: eauto.
           -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
@@ -6004,7 +6047,7 @@ Section Triangle.
               todo_triangle.
           -- (* Same, follow from σ = [] and thus npat = 0? *)
              todo_triangle. *)
-             todo_triangle.
+        todo_triangle.
       + cbn. destruct view_lambda_fix_app.
         * {
           simpl; simp rho; simpl.
