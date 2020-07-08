@@ -5130,12 +5130,13 @@ Section Triangle.
   (* Should be similar to the following,
     or it can be proven directly without linearity and thus imply the second
     one.
+    Not clear if linearity should be proven at the same time or even instead.
   *)
   Lemma match_lhs_pattern_subst :
     ∀ npat npat' k n l l' ui α,
       All (elim_pattern npat') l' →
       match_lhs npat k n l (mkElims (tSymb k n ui) l') = Some (ui, α) →
-      All (pattern npat') α.
+      All (pattern npat') α (* × linear npat' α *).
   Admitted.
 
   Lemma first_match_pattern_subst :
@@ -5199,6 +5200,18 @@ Section Triangle.
       ∑ τ',
         t = subst0 τ' p ×
         All2 (fun x y => pred1 Σ Γ Δ x y) τ τ'.
+  Admitted.
+
+  (* True only if we modify a bit pred1 to allow taking the left def
+    and not just the right.
+
+    Or forbid letins on the left.
+  *)
+  Lemma pred1_ctx_pred1 :
+    ∀ Γ Γ' u u',
+      pred1 Σ Γ Γ u u' →
+      pred1_ctx Σ Γ Γ' →
+      pred1 Σ Γ Γ' u u'.
   Admitted.
 
   Context (cΣ : confluenv Σ).
@@ -5619,10 +5632,13 @@ Section Triangle.
       | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
         assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
       end.
-      { (* True because no lets? We can probably show contexts to be irrelevant on let-free terms
-      Not necessarily let-free, maybe we can simply state the triangle lemma
-      for any pred1_ctx Γ Γ'?
-      *) todo_triangle. }
+      { eapply pred1_ctx_pred1. 1: auto.
+        clear - X0. cbn in X0. subst Δ.
+        induction τ.
+        - auto.
+        - cbn. constructor. 1: auto.
+          cbn. apply pred1_refl_gen. auto.
+      }
       eapply substitution_pred1
       with (s := τ') (s' := map (rho Σ None (rho_ctx Σ None Γ)) τ)
       in h'. 2: auto.
