@@ -5109,6 +5109,20 @@ Section Triangle.
     assumption.
   Qed.
 
+  Lemma rule_elim_pattern :
+    ∀ k rd n r,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      All (elim_pattern #|pat_context r|) r.(elims).
+  Proof.
+    intros k rd n r h hr.
+    eapply all_rewrite_rules_on_rewrite_rule in h.
+    destruct h as [? h].
+    eapply All_nth_error in h. 2: eauto.
+    destruct h as [].
+    assumption.
+  Qed.
+
   Lemma rho_subst_pattern :
     ∀ Γ p τ,
       pattern #|τ| p →
@@ -5276,7 +5290,8 @@ Section Triangle.
         lin_merge m1 m2 = Some m.
   Admitted.
 
-  Lemma pred1_pattern_mask :
+  (* Already proven as pattern_reduct *)
+  (* Lemma pred1_pattern_mask :
     ∀ npat p m Γ Γ' t σ,
       pattern npat p →
       pattern_mask npat p = Some m →
@@ -5286,7 +5301,16 @@ Section Triangle.
           subs_complete σ' σ'' →
           t = subst0 σ'' p ×
           All2_mask_subst (pred1 Σ Γ Γ') m σ σ'.
-  Admitted.
+  Admitted. *)
+
+  Lemma All_cons_inv :
+    ∀ A P x l,
+      @All A P (x :: l) →
+      P x × All P l.
+  Proof.
+    intros A P x l h. inversion h.
+    intuition auto.
+  Qed.
 
   Context (cΣ : confluenv Σ).
 
@@ -6029,6 +6053,15 @@ Section Triangle.
         end. *)
         cbn. set (ss := symbols_subst k 0 ui #|symbols rd|) in *.
         subst.
+        eapply rule_elim_pattern in hr as hp. 2: eauto.
+        rewrite e1 in hp. apply All_app in hp as [hpl hpp].
+        eapply All_cons_inv in hpp as [hpp _].
+        inversion hpp. subst.
+        (* eapply pattern_reduct in pm2 as hr2. 2-5: eauto. *)
+        (* Maybe not worth all this trouble as we have already
+          lhs_elim_reduct (and it's fully proven!)
+        *)
+
         (* From X1 we get that σ reduced on m2
           We should get something similar on m1 from X.
           We should know that rho commutes on patterns, so X2 is fine.
