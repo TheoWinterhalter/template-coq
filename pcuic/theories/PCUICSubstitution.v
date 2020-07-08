@@ -2375,10 +2375,10 @@ Proof.
     eapply red_cumul_cumul; eauto.
   - eapply substitution_untyped_let_red in r. 3:eauto. all:eauto with wf.
     eapply red_cumul_cumul_inv; eauto.
-  - eapply cumul_eta_l. 2: eassumption.
+  (* - eapply cumul_eta_l. 2: eassumption.
     eapply eta_expands_subst. assumption.
   - eapply cumul_eta_r. 1: eassumption.
-    eapply eta_expands_subst. assumption.
+    eapply eta_expands_subst. assumption. *)
 Qed.
 
 Lemma substitution_cumul0 {cf:checker_flags} Σ Γ na t u u' a : wf Σ.1 ->
@@ -2417,10 +2417,10 @@ Proof.
     eapply red_cumul_cumul; eauto.
   - eapply substitution_let_red in r. 4:eauto. all:eauto with wf.
     eapply red_cumul_cumul_inv; eauto.
-  - eapply cumul_eta_l. 2: eassumption.
+  (* - eapply cumul_eta_l. 2: eassumption.
     eapply eta_expands_subst. assumption.
   - eapply cumul_eta_r. 1: eassumption.
-    eapply eta_expands_subst. assumption.
+    eapply eta_expands_subst. assumption. *)
 Qed.
 
 (** Old substitution lemma without lets *)

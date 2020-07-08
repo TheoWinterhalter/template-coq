@@ -1147,10 +1147,10 @@ Proof.
     eapply leq_term_subst_instance; tea.
   - econstructor 2. 1: eapply red1_subst_instance; cbn; eauto. eauto.
   - econstructor 3. 1: eauto. eapply red1_subst_instance; cbn; eauto.
-  - eapply cumul_eta_l. 2: eauto.
+  (* - eapply cumul_eta_l. 2: eauto.
     eapply eta_expands_subst_instance_constr. assumption.
   - eapply cumul_eta_r. 1: eauto.
-    eapply eta_expands_subst_instance_constr. assumption.
+    eapply eta_expands_subst_instance_constr. assumption. *)
 Qed.
 
 Global Instance eq_decl_subst_instance : SubstUnivPreserved eq_decl.

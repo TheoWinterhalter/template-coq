@@ -1037,10 +1037,10 @@ Proof.
     econstructor 2; eauto.
   - eapply weakening_red1 in r; auto.
     econstructor 3; eauto.
-  - eapply cumul_eta_l. 2: eauto.
+  (* - eapply cumul_eta_l. 2: eauto.
     eapply weakening_eta_expands. assumption.
   - eapply cumul_eta_r. 1: eauto.
-    eapply weakening_eta_expands. assumption.
+    eapply weakening_eta_expands. assumption. *)
 Qed.
 
 Lemma destArity_it_mkProd_or_LetIn ctx ctx' t :
@@ -1428,10 +1428,10 @@ Proof.
     econstructor 2 ; eauto.
   - eapply weakening_red1 in r ; auto.
     econstructor 3 ; eauto.
-  - eapply conv_eta_l. 2: eassumption.
+  (* - eapply conv_eta_l. 2: eassumption.
     eapply weakening_eta_expands. assumption.
   - eapply conv_eta_r. 1: eassumption.
-    eapply weakening_eta_expands. assumption.
+    eapply weakening_eta_expands. assumption. *)
 Qed.
 
 Lemma weaken_wf_local {cf:checker_flags} {Σ Γ } Δ :

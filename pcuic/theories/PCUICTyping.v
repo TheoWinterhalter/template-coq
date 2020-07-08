@@ -577,8 +577,8 @@ Inductive cumul `{checker_flags} (Σ : global_env_ext) (Γ : context) : term -> 
 | cumul_refl t u : leq_term (global_ext_constraints Σ) t u -> Σ ;;; Γ |- t <= u
 | cumul_red_l t u v : red1 Σ.1 Γ t v -> Σ ;;; Γ |- v <= u -> Σ ;;; Γ |- t <= u
 | cumul_red_r t u v : Σ ;;; Γ |- t <= v -> red1 Σ.1 Γ u v -> Σ ;;; Γ |- t <= u
-| cumul_eta_l t u v : eta_expands t v -> Σ ;;; Γ |- v <= u -> Σ ;;; Γ |- t <= u
-| cumul_eta_r t u v : Σ ;;; Γ |- t <= v -> eta_expands u v -> Σ ;;; Γ |- t <= u
+(* | cumul_eta_l t u v : eta_expands t v -> Σ ;;; Γ |- v <= u -> Σ ;;; Γ |- t <= u
+| cumul_eta_r t u v : Σ ;;; Γ |- t <= v -> eta_expands u v -> Σ ;;; Γ |- t <= u *)
 
 where " Σ ;;; Γ |- t <= u " := (cumul Σ Γ t u) : type_scope.
 
@@ -592,8 +592,8 @@ Inductive conv `{checker_flags} (Σ : global_env_ext) (Γ : context) : term -> t
 | conv_refl t u : eq_term (global_ext_constraints Σ) t u -> Σ ;;; Γ |- t = u
 | conv_red_l t u v : red1 Σ Γ t v -> Σ ;;; Γ |- v = u -> Σ ;;; Γ |- t = u
 | conv_red_r t u v : Σ ;;; Γ |- t = v -> red1 (fst Σ) Γ u v -> Σ ;;; Γ |- t = u
-| conv_eta_l t u v : eta_expands t v -> Σ ;;; Γ |- v = u -> Σ ;;; Γ |- t = u
-| conv_eta_r t u v : Σ ;;; Γ |- t = v -> eta_expands u v -> Σ ;;; Γ |- t = u
+(* | conv_eta_l t u v : eta_expands t v -> Σ ;;; Γ |- v = u -> Σ ;;; Γ |- t = u
+| conv_eta_r t u v : Σ ;;; Γ |- t = v -> eta_expands u v -> Σ ;;; Γ |- t = u *)
 where " Σ ;;; Γ |- t = u " := (@conv _ Σ Γ t u) : type_scope.
 
 Hint Resolve cumul_refl conv_refl : pcuic.

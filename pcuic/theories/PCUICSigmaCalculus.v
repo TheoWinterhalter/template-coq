@@ -1604,8 +1604,8 @@ Proof.
   - eapply cumul_red_r.
     + eassumption.
     + eapply red1_rename. all: try eassumption.
-  - todoeta. (* eapply cumul_eta_l. *)
-  - todoeta.
+  (* - todoeta. (* eapply cumul_eta_l. *)
+  - todoeta. *)
 Qed.
 
 Lemma typing_rename_prop : env_prop

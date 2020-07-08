@@ -987,10 +987,10 @@ Proof.
     destruct Σ. apply nl_red1. assumption.
   - eapply cumul_red_r. 1: eassumption.
     destruct Σ. apply nl_red1. assumption.
-  - eapply cumul_eta_l. 2: eassumption.
+  (* - eapply cumul_eta_l. 2: eassumption.
     eapply eta_expands_nl. assumption.
   - eapply cumul_eta_r. 1: eassumption.
-    eapply eta_expands_nl. assumption.
+    eapply eta_expands_nl. assumption. *)
 Qed.
 
 Lemma nl_destArity :

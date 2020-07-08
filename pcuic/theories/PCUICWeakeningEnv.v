@@ -232,8 +232,8 @@ Proof.
     + assumption.
   - econstructor 2; eauto. eapply weakening_env_red1; eauto. exists Σ''; eauto.
   - econstructor 3; eauto. eapply weakening_env_red1; eauto. exists Σ''; eauto.
-  - eapply cumul_eta_l. all: eassumption.
-  - eapply cumul_eta_r. all: eassumption.
+  (* - eapply cumul_eta_l. all: eassumption.
+  - eapply cumul_eta_r. all: eassumption. *)
 Qed.
 
 Lemma weakening_env_declared_symbol `{CF:checker_flags}:
