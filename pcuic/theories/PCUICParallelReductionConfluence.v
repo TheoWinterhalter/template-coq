@@ -5718,8 +5718,198 @@ Section Triangle.
         eexists. intuition eauto.
       }
       clear hv.
-      (* Deal with the above, then copy and adapt *)
-      simp rho. todo_triangle.
+      (* Copy of the above case *)
+      simp rho.
+      eapply lookup_rewrite_decl_lookup_env in e as e1.
+      eapply lookup_env_triangle in e1 as h. 2,3: auto.
+      unfold triangle_rules' in h.
+      match goal with
+      | _ : nth_error (prules ?decl) ?n = Some ?r |- _ =>
+        specialize (h r n)
+      end.
+      eapply lhs_footprint_first_match in e0 as hf. 2: auto.
+      destruct hf as [? [l'' [τ' [θ [hf [fm ?]]]]]]. subst.
+      pose proof (match_lhs_complete #|pat_context r| k r.(head) ui r.(elims) s)
+      as hl.
+      eapply lookup_on_global_env in H as hlr. 2: eauto.
+      destruct hlr as [Σ' [_ [_ [_ [hlr _]]]]].
+      eapply All_nth_error in hlr. 2: eauto.
+      destruct hlr as [_ _ _ hh ll hep hac]. clear Σ'.
+      forward hl by auto. forward hl by auto.
+      match goal with
+      | u : untyped_subslet _ _ _ |- _ =>
+        apply untyped_subslet_length in u as sl
+      end.
+      rewrite subst_context_length in sl.
+      forward hl by auto.
+      eapply lhs_footprint_match_lhs in hl as ft. 2: auto.
+      destruct ft as [l' [τ [α [fe' [hm ?]]]]].
+      lazymatch goal with
+      | h1 : lhs_footprint _ = Some ?x, h2 : lhs_footprint lhs = Some ?y
+        |- _ =>
+        assert (ee : x = y)
+      end.
+      { apply some_inj. rewrite <- fe'. rewrite <- hf.
+        f_equal. subst lhs. f_equal. unfold lhs.
+        rewrite mkElims_subst. cbn.
+        destruct (Nat.leb_spec0 #|s| (#|pat_context r| + head r)). 2: lia.
+        replace (#|pat_context r| + head r - #|s|) with r.(head) by lia.
+        destruct (nth_error ss (head r)) eqn:e3.
+        2:{
+          apply nth_error_None in e3.
+          eapply declared_symbol_par_head in H. 2,3: eauto.
+          subst ss. rewrite symbols_subst_length in e3. lia.
+        }
+        subst ss. unfold symbols_subst in e3.
+        apply list_make_nth_error in e3. subst.
+        cbn. f_equal. 1: f_equal ; lia.
+        symmetry. apply All_map_id. eapply All_impl. 1: eauto.
+        intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
+      }
+      symmetry in ee. inversion ee. subst. clear ee.
+      eapply lhs_footprint_eq in hf as fe.
+      rewrite mkElims_subst in fe. cbn in fe.
+      unfold lhs in fe.
+      rewrite !mkElims_subst in fe. cbn in fe.
+      destruct (Nat.leb_spec0 #|map (subst0 τ) α| (#|pat_context r| + head r)).
+      2: lia.
+      replace (#|pat_context r| + head r - #|map (subst0 τ) α|)
+      with r.(head) in fe by lia.
+      destruct (nth_error ss (head r)) eqn:e2.
+      2:{
+        apply nth_error_None in e2.
+        eapply declared_symbol_par_head in H. 2,3: eauto.
+        subst ss. rewrite symbols_subst_length in e2. lia.
+      }
+      subst lhs rhs. cbn.
+      unfold declared_symbol in H. rewrite e1 in H.
+      symmetry in H. inversion H. subst. clear H.
+      match goal with
+      | ss' := ?t |- _ =>
+        subst ss' ;
+        set (ss := t) in *
+      end.
+      unfold ss in e2. unfold symbols_subst in e2.
+      apply list_make_nth_error in e2. subst.
+      cbn in fe.
+      apply (f_equal decompose_elims) in fe.
+      rewrite !mkElims_decompose_elims in fe. cbn in fe.
+      apply (f_equal snd) in fe. cbn in fe.
+      eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
+      eapply lhs_footprint_pattern in hf as hpl.
+      set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
+      specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
+      forward h.
+      { unfold all_rewrite_rules.
+        rewrite nth_error_app_lt.
+        1:{ eapply nth_error_Some_length. eassumption. }
+        assumption.
+      }
+      assert (hα : All (pattern #|τ|) α × pattern_list_linear #|τ| α).
+      { eapply match_lhs_pattern_subst. all: eauto. }
+      assert (hθ : All (pattern #|τ|) θ × pattern_list_linear #|τ| θ).
+      { eapply first_match_pattern_subst in hpl. all: eauto. }
+      destruct hα as [hα lα].
+      destruct hθ as [hθ lθ].
+      forward h by auto.
+      forward h.
+      { rewrite map_length in sl.
+        eapply untyped_subslet_assumption_context. 2: auto.
+        eapply rule_assumption_context with (n := n). 1: eauto.
+        unfold all_rewrite_rules.
+        rewrite nth_error_app_lt.
+        1:{ eapply nth_error_Some_length. eauto. }
+        assumption.
+      }
+      forward h.
+      { rewrite <- fm. f_equal.
+        unfold lhs. rewrite !mkElims_subst. cbn.
+        rewrite map_length in sl.
+        destruct (Nat.leb_spec0 #|α| (#|pat_context r| + head r)). 2: lia.
+        replace (#|pat_context r| + head r - #|α|) with r.(head) by lia.
+        destruct (nth_error _ r.(head)) eqn:e2.
+        2:{
+          apply nth_error_None in e2.
+          rewrite map_length in hh.
+          rewrite symbols_subst_length in e2. lia.
+        }
+        unfold symbols_subst in e2.
+        apply list_make_nth_error in e2. subst.
+        cbn. replace (head r + 0) with r.(head) by lia.
+        eapply match_lhs_sound in hm as e2. 2: auto.
+        rewrite e2. rewrite mkElims_subst. cbn. f_equal. f_equal.
+        apply All_map_id. eapply All_impl. 1: eauto.
+        intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
+      }
+      rewrite !map_length.
+      lazymatch goal with
+      | hh : All2 ?P _ _ |- _ =>
+        rename hh into hs
+      end.
+      eapply subst_factorisation in hs as hτ. 2,3: auto.
+      destruct hτ as [τ' [? hτ]]. subst.
+      lazymatch type of h with
+      | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
+        assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
+      end.
+      { eapply pred1_ctx_pred1. 1: auto.
+        clear - X0. cbn in X0. subst Δ.
+        induction τ.
+        - auto.
+        - cbn. constructor. 1: auto.
+          cbn. apply pred1_refl_gen. auto.
+      }
+      eapply substitution_pred1
+      with (s := τ') (s' := map (rho Σ None (rho_ctx Σ None Γ)) τ)
+      in h'. 2: auto.
+      2:{
+        clear - hτ predΓ' X0. cbn in X0. subst Δ. induction hτ.
+        - constructor.
+        - cbn. constructor.
+          + assumption.
+          + eapply pred1_refl_gen.
+            clear - r X0.
+            induction l.
+            * intuition auto.
+            * cbn. constructor. 1: auto.
+              cbn. apply pred1_refl_gen. auto.
+          + intuition auto.
+      }
+      match goal with
+      | ss' := ?t |- _ =>
+        subst ss' ;
+        set (ss := t) in *
+      end.
+      rewrite subst_subst_compose in h'.
+      { rewrite map_length in sl.
+        eapply closed_prule_rhs in heq_nth_error. 2,3: eauto.
+        eapply closedn_subst with (k := 0).
+        - subst ss. unfold symbols_subst.
+          generalize (#|symbols rd| - 0). generalize 0 at 2. clear.
+          intros i n. induction n in i |- *.
+          + reflexivity.
+          + cbn. eauto.
+        - cbn. subst ss. rewrite symbols_subst_length.
+          rewrite sl. replace (#|symbols rd| - 0) with #|symbols rd| by lia.
+          assumption.
+      }
+      rewrite subst_subst_compose in h'.
+      { eapply first_match_subst_length in e0 as tl.
+        rewrite map_length in tl. rewrite tl.
+        eapply first_match_rule_list in e0 as [? e0].
+        eapply rule_closed_rhs in e0. 2: eauto.
+        eapply closedn_subst with (k := 0).
+        - subst ss. unfold symbols_subst.
+          generalize (#|symbols rd| - 0). generalize 0 at 2. clear.
+          intros i n. induction n in i |- *.
+          + reflexivity.
+          + cbn. eauto.
+        - cbn. subst ss. rewrite symbols_subst_length.
+          replace (#|symbols rd| - 0) with #|symbols rd| by lia.
+          assumption.
+      }
+      rewrite map_rho_subst_pattern. 1: auto.
+      assumption.
 
     - simpl; simp rho lhs_viewc; simpl.
       simpl in X0. red in H. rewrite H /= heq_cst_body /=.
