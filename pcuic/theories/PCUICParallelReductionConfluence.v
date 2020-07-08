@@ -5276,6 +5276,18 @@ Section Triangle.
         lin_merge m1 m2 = Some m.
   Admitted.
 
+  Lemma pred1_pattern_mask :
+    ∀ npat p m Γ Γ' t σ,
+      pattern npat p →
+      pattern_mask npat p = Some m →
+      pred1 Σ Γ Γ' (subst0 σ p) t →
+      ∑ σ',
+        ∀ σ'',
+          subs_complete σ' σ'' →
+          t = subst0 σ'' p ×
+          All2_mask_subst (pred1 Σ Γ Γ') m σ σ'.
+  Admitted.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
