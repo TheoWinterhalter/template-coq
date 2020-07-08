@@ -5203,13 +5203,29 @@ Section Triangle.
     cbn in e.
   Admitted.
 
-  Lemma pattern_subst_pred1 :
+  (* Lemma pattern_subst_pred1 :
     ∀ τ p Γ Δ t,
       pattern #|τ| p →
       pred1 Σ Γ Δ (subst0 τ p) t →
       ∑ τ',
         t = subst0 τ' p ×
         All2 (fun x y => pred1 Σ Γ Δ x y) τ τ'.
+  Admitted. *)
+
+  Lemma subst_factorisation :
+    ∀ Γ Γ' τ α σ,
+      All2 (λ x y,
+        pred1 Σ Γ Γ' x y ×
+        pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
+      ) (map (subst0 τ) α) σ →
+      All (pattern #|τ|) α →
+      pattern_list_linear #|τ| α →
+      ∑ τ',
+        σ = map (subst0 τ') α ×
+        All2 (λ x y,
+          pred1 Σ Γ Γ' x y ×
+          pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
+        ) τ τ'.
   Admitted.
 
   (* True only if we modify a bit pred1 to allow taking the left def
@@ -5608,32 +5624,10 @@ Section Triangle.
       rewrite !map_length.
       lazymatch goal with
       | hh : All2 ?P _ _ |- _ =>
-        rename hh into hs ;
-        assert (h' :
-          ∑ τ',
-            s' = map (subst0 τ') α ×
-            All2 P τ τ'
-        )
+        rename hh into hs
       end.
-      { clear - wfΣ hα hs.
-        apply All2_map_inv_left in hs.
-        assert (h : All2 (fun x y => pred1 Σ Γ Γ' (subst0 τ x) y) α s').
-        { eapply All2_impl. 1: eauto.
-          intros ? ? []. auto.
-        }
-        eapply All2_impl' in h.
-        2:{
-          eapply All_impl. 1: eauto.
-          intros. eapply pattern_subst_pred1. all: eauto.
-        }
-        (* This seems insufficient, and it seems I would actually need some
-          linearity property, but do I have any?
-          It could follow from the footprint. I actually build the new pattern
-          in a linear way.
-        *)
-        todo_triangle.
-      }
-      destruct h' as [τ' [? hτ]]. subst.
+      eapply subst_factorisation in hs as hτ. 2,3: auto.
+      destruct hτ as [τ' [? hτ]]. subst.
       lazymatch type of h with
       | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
         assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
