@@ -4776,6 +4776,13 @@ Section Confluenv.
         triangle_rules' Σ kn nsymb rl →
         triangle_rules' Σ kn nsymb (rl ++ [r]). *)
 
+  Definition nosubmatch' Σ kn l :=
+    ∀ n r σ el ui,
+      nth_error l n = Some r →
+      (* Or prefix of elim σ? *)
+      strict_prefix el r.(elims) →
+      not_lhs Σ None (mkElims (tSymb kn r.(head) ui) (map (subst_elim σ 0) el)).
+
   Lemma lookup_env_triangle :
     ∀ Σ k rd,
       wf Σ →
@@ -4791,6 +4798,22 @@ Section Confluenv.
     intros n rr npat' Γ σ ui θ r' hrr pσ uσ ss tl tr tr' fm.
     eapply pred1_extra_pred1. 2: eapply h ; eauto.
     cbn. assumption.
+  Qed.
+
+  Lemma lookup_env_nosubmatch :
+    ∀ Σ k rd,
+      wf Σ →
+      confluenv Σ →
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nosubmatch' Σ k (all_rewrite_rules rd).
+  Proof.
+    intros Σ k rd hΣ cΣ e.
+    eapply lookup_env_confl_rew_decl in e as h. 2,3: auto.
+    unfold confl_rew_decl in h. destruct h as [_ h].
+    intros n r σ el ui hr hpx. eapply loc_not_lhs_not_lhs. all: eauto.
+    - exact I.
+    - cbn. unfold lookup_rd. rewrite e. reflexivity.
+    - rewrite elim_kn_mkElims. reflexivity.
   Qed.
 
   Lemma first_match_app_dec :
