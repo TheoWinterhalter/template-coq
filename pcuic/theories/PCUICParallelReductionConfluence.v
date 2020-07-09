@@ -4602,6 +4602,23 @@ Section Confluenv.
       *)
       pred1_extra Σ e Γ Γ tr tr'.
 
+  Definition prefix {A} (l l' : list A) :=
+    ∑ l'', l' = l ++ l''.
+
+  Definition strict_prefix {A} (l l' : list A) :=
+    prefix l l' × #|l| < #|l'|.
+
+  (* Criterion that essentially enforces rules on the same symbol
+    to have the same arity.
+    Prefixes of lhs are no longer lhs.
+  *)
+  Definition nosubmatch Σ ex kn l :=
+    ∀ n r σ el ui,
+      nth_error l n = Some r →
+      (* Or prefix of elim σ? *)
+      strict_prefix el r.(elims) →
+      not_lhs Σ ex (mkElims (tSymb kn r.(head) ui) (map (subst_elim σ 0) el)).
+
   (* Inductive triangle_rules Σ e kn nsymb : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ e kn nsymb []
   | triangle_rules_cons :
@@ -4625,7 +4642,8 @@ Section Confluenv.
   Definition confl_rew_decl Σ kn d :=
     let l := d.(prules) ++ d.(rules) in
     let extra := Some (kn, d) in
-    triangle_rules Σ extra kn #|d.(symbols)| l.
+    triangle_rules Σ extra kn #|d.(symbols)| l ×
+    nosubmatch Σ extra kn l.
 
   Definition confl_decl Σ kn decl : Type :=
     match decl with
@@ -4654,6 +4672,25 @@ Section Confluenv.
     eapply hr. all: eauto.
   Qed.
 
+  Lemma nosubmatch_weakening :
+    ∀ Σ Σ' k l e,
+      wf Σ' →
+      PCUICWeakeningEnv.extends Σ Σ' →
+      nosubmatch Σ e k l →
+      nosubmatch Σ' e k l.
+  Proof.
+    intros Σ Σ' k l e hΣ hx h.
+    intros n r σ el ui hn hpx.
+    specialize (h n r σ el ui hn hpx).
+    intros [k' [rd [[[ui' σ'] r'] [hrd e']]]].
+    apply h.
+    (* Perhaps it would better to design some local not_lhs
+      that I would then prove to imply not_lhs?
+      One without the lookup, that is already specialised to the given k
+      and the given decl.
+    *)
+  Admitted.
+
   Lemma confl_decl_weakening :
     ∀ Σ Σ' k d,
       wf Σ' →
@@ -4664,7 +4701,9 @@ Section Confluenv.
     intros Σ Σ' k d hΣ e hd.
     destruct d. 1,2: constructor.
     cbn in *. unfold confl_rew_decl in *.
-    eapply triangle_rules_weakening. all: eauto.
+    intuition auto.
+    - eapply triangle_rules_weakening. all: eauto.
+    - eapply nosubmatch_weakening. all: eauto.
   Qed.
 
   Lemma lookup_env_confl_decl :
@@ -6076,6 +6115,21 @@ Section Triangle.
         end. *)
         cbn. set (ss := symbols_subst k 0 ui #|symbols rd|) in *.
         subst.
+        (* I should use lhs_elim_reduct directly actually!
+          To do it I have to use the criterion to say that in X,
+          only the substitution can reduce.
+          So now, how do I state the criterion so that it's easy?
+          For this, I should try and prove this inversion lemma (made to produce
+          the hyp for lhs_reducts) and infer the criterion.
+          Something like mkElim (symb) l => t implies l => l' and t = elim s l'
+          Maybe using not_lhs?
+          Like we want not_lhs for all prefixes of l.
+          So it sounds like the criterion should be something along those lines.
+          For the criterion it will be strict prefix, and for the lemma, just
+          regular prefixes.
+          prefix l l' := ∑ l'', l' = l ++ l''
+          sprefix l l' := prefix l l' × #|l| < #|l'| (many ways to do it)
+        *)
         eapply rule_elim_pattern in hr as hp. 2: eauto.
         rewrite e1 in hp. apply All_app in hp as [hpl hpp].
         eapply All_cons_inv in hpp as [hpp _].
@@ -6093,6 +6147,8 @@ Section Triangle.
           We're actually missing somehting aren't we? Something I had forgotten
           regarding prefixes of rewrite rules being rewrite rules as well.
           This is not dealt with by the current criterion.
+
+          The new criterion should allow us to conclude something here.
         *)
 
 
