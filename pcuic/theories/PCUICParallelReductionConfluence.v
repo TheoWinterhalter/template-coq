@@ -5552,6 +5552,15 @@ Section Triangle.
     inversion e. intuition eauto.
   Qed.
 
+  Lemma map_subst_elim_inj :
+    ∀ σ θ npat l,
+      linear npat l →
+      #|σ| = npat →
+      #|θ| = npat →
+      map (subst_elim σ 0) l = map (subst_elim θ 0) l →
+      σ = θ.
+  Admitted.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
@@ -6443,14 +6452,17 @@ Section Triangle.
             rewrite lσ. f_equal. f_equal. auto.
           }
           rewrite <- e1 in h'.
-          (* rewrite map_rho_subst_elim in h'. *)
-          (* rewrite map_rho_subst_pattern in h'. *)
-          (* Need some equivalent of map_rho_subst_pattern for elim *)
-
-          (* Then we can use some lemma to say that equality lσ = lσ' implies
-            σ = σ' when l is a proper lhs (linear).
-          *)
-          todo_triangle.
+          rewrite subst_elims_symbols_subst in h'.
+          { rewrite <- lσ. rewrite σl. eapply rule_elim_pattern. all: eauto. }
+          rewrite subst_elims_symbols_subst in h'.
+          { rewrite σl. eapply rule_elim_pattern. all: eauto. }
+          rewrite map_rho_subst_elim in h'.
+          { rewrite σl. eapply rule_elim_pattern. all: eauto. }
+          eapply map_subst_elim_inj in h'.
+          2:{ eapply rule_linear. all: eauto. }
+          2:{ rewrite map_length. auto. }
+          2:{ apply All2_length in rρσ. lia. }
+          subst. auto.
         }
         (* TODO Remove useless linearity stuff I derived *)
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
