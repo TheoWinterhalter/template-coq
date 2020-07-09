@@ -6291,15 +6291,6 @@ Section Triangle.
         }
         rewrite !map_app in hs. rewrite mkElims_app in hs.
         cbn in hs. inversion hs.
-        (* eapply rule_linear in hr as ll. 2: eauto.
-        rewrite e1 in ll. unfold linear in ll.
-        destruct linear_mask as [m|] eqn:hl. 2: discriminate.
-        eapply linear_mask_app_inv in hl as [m1 [m2 [hm1 [hm2 hm]]]].
-        cbn in hm2. destruct pattern_mask eqn:pm2. 2: discriminate.
-        cbn in hm2. apply lin_merge_linear_mask_init_eq in hm2. *)
-        (* match type of hm2 with
-        | ?x = _ => subst x
-        end. *)
         cbn. set (ss := symbols_subst k 0 ui #|symbols rd|) in *.
         subst.
         apply pred1_elim_not_lhs_inv in X.
@@ -6405,39 +6396,6 @@ Section Triangle.
             rewrite e1. rewrite !map_app.
             eapply prefix_strict_prefix_append. eassumption.
           }
-          (* simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
-          1:{
-            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
-            unfold nosubmatch' in h'.
-            eapply first_match_lookup_sound in fme as et. 2-4: eauto.
-            2: exact I.
-            unfold lhs in et. rewrite !mkElims_subst in et.
-            eapply lookup_rewrite_decl_lookup_env in hk as hk'.
-            eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
-            eapply first_match_subst_length in fme as hl.
-            erewrite rule_symbols_subst in et. 2-4: eauto.
-            cbn in et. apply (f_equal decompose_elims) in et.
-            rewrite !mkElims_decompose_elims in et. cbn in et.
-            symmetry in et. inversion et. subst.
-            rewrite hk' in e'. inversion e'. subst. clear e'.
-            specialize h' with (1 := hr).
-            exfalso. eapply h'.
-            2:{
-              eexists k, rd, _. intuition eauto.
-            }
-            rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
-            exists []. rewrite app_nil_r. reflexivity.
-          }
-          simp rho in e3. *)
-          (* lazymatch type of e3 with
-          | mkElims ?a (map ?f (map ?g (map ?h ?b))) = mkElims ?c (map ?i (map ?k ?d)) =>
-            assert (h' :
-              mkElims a (map f (map g (map h (b ++ [eApp p])))) = mkElims c (map i (map k (d ++ [eApp p])))
-            )
-          end.
-          { rewrite !map_app. rewrite !mkElims_app. cbn. f_equal. 1: auto.
-            rewrite lσ. auto.
-          } *)
           apply (f_equal decompose_elims) in e3.
           rewrite !mkElims_decompose_elims in e3. cbn in e3.
           apply (f_equal snd) in e3. cbn in e3.
