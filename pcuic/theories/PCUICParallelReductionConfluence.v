@@ -5492,6 +5492,46 @@ Section Triangle.
     inversion e. intuition eauto.
   Qed.
 
+  Definition rho_elimi Γ e :=
+    match e with
+    | eApp p => eApp (rho Σ None Γ p)
+    | eCase ind p brs =>
+      eCase ind (rho Σ None Γ p) (map (on_snd (rho Σ None Γ)) brs)
+    | eProj p => eProj p
+    end.
+
+  Lemma rho_mkElims_not_lhs :
+    ∀ Γ k n ui el,
+      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
+      rho Σ None Γ (mkElims (tSymb k n ui) el) =
+      mkElims (tSymb k n ui) (map (rho_elimi Γ) el).
+  (* Extract of proof I wrote *)
+  (* simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
+          1:{
+            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            eapply first_match_lookup_sound in fme as et. 2-4: eauto.
+            2: exact I.
+            unfold lhs in et. rewrite !mkElims_subst in et.
+            eapply lookup_rewrite_decl_lookup_env in hk as hk'.
+            eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
+            eapply first_match_subst_length in fme as hl.
+            erewrite rule_symbols_subst in et. 2-4: eauto.
+            cbn in et. apply (f_equal decompose_elims) in et.
+            rewrite !mkElims_decompose_elims in et. cbn in et.
+            symmetry in et. inversion et. subst.
+            rewrite hk' in e'. inversion e'. subst. clear e'.
+            specialize h' with (1 := hr).
+            exfalso. eapply h'.
+            2:{
+              eexists k, rd, _. intuition eauto.
+            }
+            rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
+            exists []. rewrite app_nil_r. reflexivity.
+          }
+          simp rho in e3. *)
+  Admitted.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
@@ -6328,7 +6368,15 @@ Section Triangle.
           cbn in e2. eapply cons_inv in e2 as [e2 e4].
           apply (f_equal rev) in e4. rewrite !rev_invol in e4. subst.
           inversion e2. subst. clear e2.
-          simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
+          rewrite rho_mkElims_not_lhs in e3.
+          { eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            specialize h' with (1 := hr).
+            intros el' hx. eapply h'.
+            rewrite e1. rewrite !map_app.
+            eapply prefix_strict_prefix_append. eassumption.
+          }
+          (* simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
           1:{
             eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
             unfold nosubmatch' in h'.
@@ -6351,14 +6399,39 @@ Section Triangle.
             rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
             exists []. rewrite app_nil_r. reflexivity.
           }
-          simp rho in e3.
-          (* TODO In fact I need to prove some lemma about rho_mkElims
-            when it can't be lhs.
-            Then we can use some lemma to say that equality lσ = lσ' implies
+          simp rho in e3. *)
+          (* lazymatch type of e3 with
+          | mkElims ?a (map ?f (map ?g (map ?h ?b))) = mkElims ?c (map ?i (map ?k ?d)) =>
+            assert (h' :
+              mkElims a (map f (map g (map h (b ++ [eApp p])))) = mkElims c (map i (map k (d ++ [eApp p])))
+            )
+          end.
+          { rewrite !map_app. rewrite !mkElims_app. cbn. f_equal. 1: auto.
+            rewrite lσ. auto.
+          } *)
+          apply (f_equal decompose_elims) in e3.
+          rewrite !mkElims_decompose_elims in e3. cbn in e3.
+          apply (f_equal snd) in e3. cbn in e3.
+          lazymatch type of e3 with
+          | (map ?f (map ?g (map ?h ?b))) = (map ?i (map ?k ?d)) =>
+            assert (h' :
+              map f (map g (map h (b ++ [eApp p]))) =
+              map i (map k (d ++ [eApp p]))
+            )
+          end.
+          { rewrite !map_app. cbn. f_equal. 1: auto.
+            rewrite lσ. f_equal. f_equal. auto.
+          }
+          rewrite <- e1 in h'.
+          (* rewrite map_rho_subst_pattern in h'. *)
+          (* Need some equivalent of map_rho_subst_pattern for elim *)
+
+          (* Then we can use some lemma to say that equality lσ = lσ' implies
             σ = σ' when l is a proper lhs (linear).
           *)
           todo_triangle.
         }
+        (* TODO Remove useless linearity stuff I derived *)
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
         * {
           eapply pred_par_rewrite_rule. all: eauto.
