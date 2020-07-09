@@ -5230,84 +5230,6 @@ Section Triangle.
     - left. eexists. eauto.
   Qed.
 
-  Definition rho_elimi Γ e :=
-    match e with
-    | eApp p => eApp (rho Σ None Γ p)
-    | eCase ind p brs =>
-      eCase ind (rho Σ None Γ p) (map (on_snd (rho Σ None Γ)) brs)
-    | eProj p => eProj p
-    end.
-
-  Lemma rho_mkElims_not_lhs :
-    ∀ Γ k n ui el,
-      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
-      rho Σ None Γ (mkElims (tSymb k n ui) el) =
-      mkElims (tSymb k n ui) (map (rho_elimi Γ) el).
-  (* Extract of proof I wrote *)
-  (* simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
-          1:{
-            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
-            unfold nosubmatch' in h'.
-            eapply first_match_lookup_sound in fme as et. 2-4: eauto.
-            2: exact I.
-            unfold lhs in et. rewrite !mkElims_subst in et.
-            eapply lookup_rewrite_decl_lookup_env in hk as hk'.
-            eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
-            eapply first_match_subst_length in fme as hl.
-            erewrite rule_symbols_subst in et. 2-4: eauto.
-            cbn in et. apply (f_equal decompose_elims) in et.
-            rewrite !mkElims_decompose_elims in et. cbn in et.
-            symmetry in et. inversion et. subst.
-            rewrite hk' in e'. inversion e'. subst. clear e'.
-            specialize h' with (1 := hr).
-            exfalso. eapply h'.
-            2:{
-              eexists k, rd, _. intuition eauto.
-            }
-            rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
-            exists []. rewrite app_nil_r. reflexivity.
-          }
-          simp rho in e3. *)
-  Admitted.
-
-  Lemma rho_subst_pattern :
-    ∀ Γ p τ,
-      pattern #|τ| p →
-      rho Σ None Γ (subst0 τ p) = subst0 (map (rho Σ None Γ) τ) p.
-  Admitted.
-
-  Lemma map_rho_subst_pattern :
-    ∀ Γ τ θ,
-      All (pattern #|τ|) θ →
-      map (rho Σ None Γ) (map (subst0 τ) θ) =
-      map (subst0 (map (rho Σ None Γ) τ)) θ.
-  Proof.
-    intros Γ τ θ hθ.
-    rewrite map_map_compose. apply All_map_eq.
-    eapply All_impl. 1: eauto.
-    intros p hp. eapply rho_subst_pattern. assumption.
-  Qed.
-
-  Lemma map_rho_subst_elim :
-    ∀ Γ τ l,
-      All (elim_pattern #|τ|) l →
-      map (rho_elimi Γ) (map (subst_elim τ 0) l) =
-      map (subst_elim (map (rho Σ None Γ) τ) 0) l.
-  Proof.
-    intros Γ τ l hl.
-    rewrite map_map_compose. eapply All_map_eq.
-    eapply All_impl. 1: eauto.
-    intros ? [].
-    - cbn. f_equal. apply rho_subst_pattern. assumption.
-    - cbn. f_equal.
-      + apply rho_subst_pattern. assumption.
-      + rewrite map_map_compose. eapply All_map_eq.
-        eapply All_impl. 1: eauto.
-        intros [? ?]. unfold on_snd. cbn. intro.
-        f_equal. apply rho_subst_pattern. assumption.
-    - cbn. reflexivity.
-  Qed.
-
   Definition pattern_list_mask npat l :=
     m <- monad_map (pattern_mask npat) l ;;
     PCUICPattern.monad_fold_right lin_merge m (linear_mask_init npat).
@@ -5448,45 +5370,81 @@ Section Triangle.
     cbn. f_equal. lia.
   Qed.
 
-  Lemma linear_mask_app_inv :
-    ∀ n l1 l2 m,
-      linear_mask n (l1 ++ l2) = Some m →
-      ∑ m1 m2,
-        linear_mask n l1 = Some m1 ×
-        linear_mask n l2 = Some m2 ×
-        lin_merge m1 m2 = Some m.
+  Definition rho_elimi Γ e :=
+    match e with
+    | eApp p => eApp (rho Σ None Γ p)
+    | eCase ind p brs =>
+      eCase ind (rho Σ None Γ p) (map (on_snd (rho Σ None Γ)) brs)
+    | eProj p => eProj p
+    end.
+
+  Lemma rho_subst_pattern :
+    ∀ Γ p τ,
+      pattern #|τ| p →
+      rho Σ None Γ (subst0 τ p) = subst0 (map (rho Σ None Γ) τ) p.
   Admitted.
 
-  (* Already proven as pattern_reduct *)
-  (* Lemma pred1_pattern_mask :
-    ∀ npat p m Γ Γ' t σ,
-      pattern npat p →
-      pattern_mask npat p = Some m →
-      pred1 Σ Γ Γ' (subst0 σ p) t →
-      ∑ σ',
-        ∀ σ'',
-          subs_complete σ' σ'' →
-          t = subst0 σ'' p ×
-          All2_mask_subst (pred1 Σ Γ Γ') m σ σ'.
-  Admitted. *)
-
-  Lemma All_cons_inv :
-    ∀ A P x l,
-      @All A P (x :: l) →
-      P x × All P l.
+  Lemma map_rho_subst_pattern :
+    ∀ Γ τ θ,
+      All (pattern #|τ|) θ →
+      map (rho Σ None Γ) (map (subst0 τ) θ) =
+      map (subst0 (map (rho Σ None Γ) τ)) θ.
   Proof.
-    intros A P x l h. inversion h.
-    intuition auto.
+    intros Γ τ θ hθ.
+    rewrite map_map_compose. apply All_map_eq.
+    eapply All_impl. 1: eauto.
+    intros p hp. eapply rho_subst_pattern. assumption.
   Qed.
 
-  Lemma pred1_elim_not_lhs_inv :
-    ∀ Γ Γ' k n ui el t,
-      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
-      pred1 Σ Γ Γ' (mkElims (tSymb k n ui) el) t →
-      ∑ el',
-        All2 (pred1_elim Σ Γ Γ') el el' ×
-        t = mkElims (tSymb k n ui) el'.
-  Admitted.
+  Lemma map_rho_subst_elim :
+    ∀ Γ τ l,
+      All (elim_pattern #|τ|) l →
+      map (rho_elimi Γ) (map (subst_elim τ 0) l) =
+      map (subst_elim (map (rho Σ None Γ) τ) 0) l.
+  Proof.
+    intros Γ τ l hl.
+    rewrite map_map_compose. eapply All_map_eq.
+    eapply All_impl. 1: eauto.
+    intros ? [].
+    - cbn. f_equal. apply rho_subst_pattern. assumption.
+    - cbn. f_equal.
+      + apply rho_subst_pattern. assumption.
+      + rewrite map_map_compose. eapply All_map_eq.
+        eapply All_impl. 1: eauto.
+        intros [? ?]. unfold on_snd. cbn. intro.
+        f_equal. apply rho_subst_pattern. assumption.
+    - cbn. reflexivity.
+  Qed.
+
+  Lemma mkElims_subst_isnotFixLambda :
+    ∀ k n ui l,
+      ~~ isFixLambda (mkElims (tSymb k n ui) l).
+  Proof.
+    intros k n ui l.
+    induction l as [| [] l ih] in k, n, ui |- * using list_rect_rev.
+    - cbn. reflexivity.
+    - rewrite mkElims_app. cbn. reflexivity.
+    - rewrite mkElims_app. cbn. reflexivity.
+    - rewrite mkElims_app. cbn. reflexivity.
+  Qed.
+
+  Lemma mkElims_subst_isnotFixLambda_app :
+    ∀ k n ui l,
+      ~~ isFixLambda_app (mkElims (tSymb k n ui) l).
+  Proof.
+    intros k n ui l.
+    induction l as [| [] l ih] in k, n, ui |- * using list_rect_rev.
+    - cbn. reflexivity.
+    - rewrite mkElims_app. cbn.
+      destruct mkElims eqn:e. all: try reflexivity.
+      + apply (f_equal isFixLambda) in e. cbn in e.
+        rewrite <- e. apply mkElims_subst_isnotFixLambda.
+      + rewrite <- e. apply ih.
+      + apply (f_equal isFixLambda) in e. cbn in e.
+        rewrite <- e. apply mkElims_subst_isnotFixLambda.
+    - rewrite mkElims_app. cbn. reflexivity.
+    - rewrite mkElims_app. cbn. reflexivity.
+  Qed.
 
   Lemma prefix_app :
     ∀ {A} (a b c : list A),
@@ -5526,6 +5484,153 @@ Section Triangle.
     intros A a b x h.
     apply prefix_strict_prefix_app. all: auto.
   Qed.
+
+  Lemma rho_mkElims_not_lhs :
+    ∀ Γ k n ui el,
+      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
+      rho Σ None Γ (mkElims (tSymb k n ui) el) =
+      mkElims (tSymb k n ui) (map (rho_elimi Γ) el).
+  Proof.
+    intros Γ k n ui el h.
+    induction el in Γ, k, n, ui, h |- * using list_rect_rev.
+    - cbn. simp rho.
+      destruct lhs_viewc as [? ? ? ? ? hk fme |].
+      1:{
+        specialize (h []).
+        forward h.
+        { exists []. auto. }
+        cbn in h.
+        exfalso. apply h.
+        eexists _,_,_. intuition eauto.
+      }
+      cbn. reflexivity.
+    - simp rho.
+      destruct lhs_viewc as [? ? ? ? ? hk fme |].
+      1:{
+        eapply first_match_lookup_sound in fme as et. 2-4: eauto.
+        2: exact I.
+        unfold lhs in et. rewrite !mkElims_subst in et.
+        eapply lookup_rewrite_decl_lookup_env in hk as hk'.
+        eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
+        eapply first_match_subst_length in fme as hl.
+        erewrite rule_symbols_subst in et. 2-4: eauto.
+        cbn in et. apply (f_equal decompose_elims) in et.
+        rewrite !mkElims_decompose_elims in et. cbn in et.
+        symmetry in et. inversion et. subst.
+        exfalso. eapply h.
+        2:{
+          eexists k, rd, _. intuition eauto.
+        }
+        exists []. rewrite app_nil_r. reflexivity.
+      }
+      rewrite map_app. rewrite !mkElims_app. cbn.
+      destruct a as [| []| [[] ?]].
+      + cbn. rewrite view_lambda_fix_app_other.
+        2:{
+          replace (tApp (mkElims (tSymb k n ui) el) p)
+          with (mkElims (tSymb k n ui) (el ++ [eApp p])).
+          2:{
+            rewrite mkElims_app. reflexivity.
+          }
+          apply mkElims_subst_isnotFixLambda_app.
+        }
+        intro. cbn. f_equal.
+        eapply IHel.
+        intros el' hx. eapply h.
+        apply prefix_app. auto.
+      + simp rho.
+        set (app := inspect _).
+        destruct app as [[f l] eqapp].
+        autorewrite with rho.
+        assert (h' : ∑ h, view_construct_cofix f = construct_cofix_other f h).
+        { clear - eqapp. unfold decompose_app in eqapp.
+          revert eqapp. generalize (@nil term).
+          intros l' e.
+          induction el as [| [] el ih] in f, l, l', e |- * using list_rect_rev.
+          - cbn in e. inversion e. cbn.
+            simp view_construct_cofix. eexists. reflexivity.
+          - rewrite mkElims_app in e. cbn in e.
+            eapply ih in e. auto.
+          - rewrite mkElims_app in e. cbn in e.
+            inversion e. cbn.
+            simp view_construct_cofix. eexists. reflexivity.
+          - rewrite mkElims_app in e. cbn in e.
+            inversion e. cbn.
+            simp view_construct_cofix. eexists. reflexivity.
+        }
+        destruct h' as [? e].
+        rewrite e. simp rho.
+        cbn. rewrite <- !fold_rho. f_equal.
+        eapply IHel.
+        intros el' hx. eapply h.
+        apply prefix_app. auto.
+      + simp rho.
+        set (app := inspect _).
+        destruct app as [[f l] eqapp].
+        autorewrite with rho.
+        assert (h' : ∑ h, view_construct_cofix f = construct_cofix_other f h).
+        { clear - eqapp. unfold decompose_app in eqapp.
+          revert eqapp. generalize (@nil term).
+          intros l' e.
+          induction el as [| [] el ih] in f, l, l', e |- * using list_rect_rev.
+          - cbn in e. inversion e. cbn.
+            simp view_construct_cofix. eexists. reflexivity.
+          - rewrite mkElims_app in e. cbn in e.
+            eapply ih in e. auto.
+          - rewrite mkElims_app in e. cbn in e.
+            inversion e. cbn.
+            simp view_construct_cofix. eexists. reflexivity.
+          - rewrite mkElims_app in e. cbn in e.
+            inversion e. cbn.
+            simp view_construct_cofix. eexists. reflexivity.
+        }
+        destruct h' as [? e].
+        rewrite e. simp rho.
+        cbn. rewrite <- !fold_rho. f_equal.
+        eapply IHel.
+        intros el' hx. eapply h.
+        apply prefix_app. auto.
+  Qed.
+
+  Lemma linear_mask_app_inv :
+    ∀ n l1 l2 m,
+      linear_mask n (l1 ++ l2) = Some m →
+      ∑ m1 m2,
+        linear_mask n l1 = Some m1 ×
+        linear_mask n l2 = Some m2 ×
+        lin_merge m1 m2 = Some m.
+  Admitted.
+
+  (* Already proven as pattern_reduct *)
+  (* Lemma pred1_pattern_mask :
+    ∀ npat p m Γ Γ' t σ,
+      pattern npat p →
+      pattern_mask npat p = Some m →
+      pred1 Σ Γ Γ' (subst0 σ p) t →
+      ∑ σ',
+        ∀ σ'',
+          subs_complete σ' σ'' →
+          t = subst0 σ'' p ×
+          All2_mask_subst (pred1 Σ Γ Γ') m σ σ'.
+  Admitted. *)
+
+  Lemma All_cons_inv :
+    ∀ A P x l,
+      @All A P (x :: l) →
+      P x × All P l.
+  Proof.
+    intros A P x l h. inversion h.
+    intuition auto.
+  Qed.
+
+  Lemma pred1_elim_not_lhs_inv :
+    ∀ Γ Γ' k n ui el t,
+      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
+      pred1 Σ Γ Γ' (mkElims (tSymb k n ui) el) t →
+      ∑ el',
+        All2 (pred1_elim Σ Γ Γ') el el' ×
+        t = mkElims (tSymb k n ui) el'.
+  Admitted.
 
   Lemma assumption_context_subst_context :
     ∀ Γ s n,
