@@ -4642,10 +4642,9 @@ Section Confluenv.
   Definition nosubmatch kn rd l :=
     ∀ n r σ el ui,
       nth_error l n = Some r →
-      (* Or prefix of elim σ? *)
-      strict_prefix el r.(elims) →
+      strict_prefix el (map (subst_elim σ 0) r.(elims)) →
       loc_not_lhs
-        kn rd (mkElims (tSymb kn r.(head) ui) (map (subst_elim σ 0) el)).
+        kn rd (mkElims (tSymb kn r.(head) ui) el).
 
   (* Inductive triangle_rules Σ e kn nsymb : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ e kn nsymb []
@@ -4779,9 +4778,8 @@ Section Confluenv.
   Definition nosubmatch' Σ kn l :=
     ∀ n r σ el ui,
       nth_error l n = Some r →
-      (* Or prefix of elim σ? *)
-      strict_prefix el r.(elims) →
-      not_lhs Σ None (mkElims (tSymb kn r.(head) ui) (map (subst_elim σ 0) el)).
+      strict_prefix el (map (subst_elim σ 0) r.(elims)) →
+      not_lhs Σ None (mkElims (tSymb kn r.(head) ui) el).
 
   Lemma lookup_env_triangle :
     ∀ Σ k rd,
