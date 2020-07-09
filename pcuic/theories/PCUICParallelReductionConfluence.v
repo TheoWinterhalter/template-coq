@@ -5483,6 +5483,15 @@ Section Triangle.
       eapply IHh.
   Qed.
 
+  Lemma cons_inv :
+    ∀ {A} (x y : A) l l',
+      x :: l = y :: l' →
+      x = y × l = l'.
+  Proof.
+    intros A x y l l' e.
+    inversion e. intuition eauto.
+  Qed.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
@@ -6277,7 +6286,58 @@ Section Triangle.
             σ'
             (map (rho Σ None (rho_ctx Σ None Γ)) σ)
         ).
-        { todo_triangle. }
+        { rewrite e1 in e2. rewrite !map_app in e2.
+          apply (f_equal rev) in e2. rewrite !rev_app in e2.
+          cbn in e2. eapply cons_inv in e2 as [e2 e3].
+          apply (f_equal rev) in e3. rewrite !rev_invol in e3. subst.
+          inversion e2. subst. clear e2.
+          apply pred1_elim_not_lhs_inv in X0.
+          2:{
+            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            specialize h' with (1 := hr).
+            intros ? hx. rewrite lσ in hx. eapply h'.
+            rewrite e1. rewrite !map_app.
+            eapply prefix_strict_prefix_append. eassumption.
+          }
+          destruct X0 as [elρ [relρ e3]].
+          match type of relρ with
+          | All2 ?P (map ?f (map ?g ?l)) ?l' =>
+            match type of X2 with
+            | pred1 _ _ _ _ ?p =>
+              assert (h' : All2 P (map f (map g (elims r))) (l' ++ [eApp p]))
+            end
+          end.
+          { rewrite e1. rewrite !map_app.
+            apply All2_app.
+            - assumption.
+            - constructor. 2: constructor.
+              cbn. constructor. assumption.
+          }
+          rewrite lσ in h'.
+          eapply lhs_elim_reduct in h'. 2: auto.
+          2:{ eapply rule_is_rewrite_rule. all: eauto. }
+          2:{
+            eapply untyped_subslet_assumption_context.
+            - apply assumption_context_subst_context. auto.
+            - rewrite subst_context_length. lia.
+          }
+          destruct h' as [ρσ [rρσ e2]].
+          (* Two options here,
+            - Either I use some kind of linear inversion to get equality of
+            substitutions (as I kinda start with the following script though
+            it will require inversion of e3)
+            - Or I prove a stronger version of lhs_reducts which is aware of the
+            substitution on the right.
+            Not clear which is the easiest.
+          *)
+          rewrite e1 in e2. rewrite !map_app in e2.
+          apply (f_equal rev) in e2. rewrite !rev_app in e2.
+          cbn in e2. eapply cons_inv in e2 as [e2 e4].
+          apply (f_equal rev) in e4. rewrite !rev_invol in e4. subst.
+          inversion e2. subst. clear e2.
+          todo_triangle.
+        }
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
         * {
           eapply pred_par_rewrite_rule. all: eauto.
