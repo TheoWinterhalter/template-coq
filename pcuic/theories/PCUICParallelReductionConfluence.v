@@ -5563,10 +5563,6 @@ Section Triangle.
 
   Context (cΣ : confluenv Σ).
 
-  Axiom todo_triangle : forall {A}, A.
-
-  Ltac todo_triangle := (exact todo_triangle).
-
   Lemma triangle Γ Δ t u :
     let Pctx := fun (Γ Δ : context) => pred1_ctx Σ Δ (rho_ctx Σ None Γ) in
     pred1 Σ Γ Δ t u ->
@@ -6583,7 +6579,184 @@ Section Triangle.
       (* A pattern-matching may be a lhs *)
       destruct (lhs_viewc Σ None (tCase (i, n) p0 c0 brs0)) eqn:elhs.
       + simp rho. rewrite elhs. simp rho.
-        todo_triangle.
+        simp rho.
+        eapply first_match_match_rule in e0 as h.
+        destruct h as [? [hr h]].
+        unfold all_rewrite_rules in hr.
+        eapply first_match_lookup_sound in e0 as hs. 2,4: eauto. 2: exact I.
+        unfold lhs in hs. rewrite !mkElims_subst in hs.
+        eapply lookup_rewrite_decl_lookup_env in e as e'.
+        eapply first_match_subst_length in e0 as σl.
+        erewrite rule_symbols_subst in hs. 2-4: eauto.
+        cbn in hs.
+        destruct (elims r) as [| [] l _] eqn:e1 using list_rect_rev.
+        1: discriminate.
+        1:{
+          rewrite !map_app in hs. rewrite mkElims_app in hs.
+          cbn in hs. discriminate.
+        }
+        2:{
+          rewrite !map_app in hs. rewrite mkElims_app in hs.
+          cbn in hs. discriminate.
+        }
+        rewrite !map_app in hs. rewrite mkElims_app in hs.
+        cbn in hs. inversion hs. clear hs.
+        cbn. set (ss := symbols_subst k 0 ui #|symbols rd|) in *.
+        subst.
+        apply pred1_elim_not_lhs_inv in X1.
+        2:{
+          eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+          unfold nosubmatch' in h'.
+          specialize h' with (1 := hr).
+          intros el' hx. eapply h'.
+          rewrite e1. rewrite !map_app.
+          eapply prefix_strict_prefix_append. eassumption.
+        }
+        destruct X1 as [el' [rel ?]]. subst.
+        assert (assumption_context (pat_context r)).
+        { eapply rule_assumption_context. all: eauto. }
+        match type of rel with
+        | All2 ?P (map ?f (map ?g ?l)) ?l' =>
+          assert (h' : All2 P (map f (map g (elims r))) (l' ++ [eCase (i, n) p1 brs1]))
+        end.
+        { rewrite e1. rewrite !map_app.
+          apply All2_app.
+          - assumption.
+          - constructor. 2: constructor.
+            cbn. constructor.
+            + assumption.
+            + eapply All2_impl. 1: eauto.
+              intros [] []. cbn. intros. intuition eauto.
+        }
+        eapply lhs_elim_reduct in h'. 2: auto.
+        2:{ eapply rule_is_rewrite_rule. all: eauto. }
+        2:{
+          eapply untyped_subslet_assumption_context.
+          - apply assumption_context_subst_context. auto.
+          - rewrite subst_context_length. auto.
+        }
+        destruct h' as [σ' [rσ e2]].
+        match goal with
+        | |- pred1 _ _ _ ?t _ =>
+          replace t with (mkElims (tSymb k r.(head) ui) (el' ++ [eCase (i, n) p1 brs1]))
+        end.
+        2:{
+          rewrite mkElims_app. cbn. reflexivity.
+        }
+        rewrite e2.
+        eapply All2_length in rσ as lσ. rewrite lσ.
+        match goal with
+        | |- pred1 _ _ _ ?t _ =>
+          replace t with (subst0 σ' (subst ss #|σ'| (lhs r)))
+        end.
+        2:{
+          unfold lhs. rewrite !mkElims_subst.
+          erewrite rule_symbols_subst. 2-3: eauto. 2: lia.
+          reflexivity.
+        }
+        assert (
+          All2 (pred1 Σ Γ' (rho_ctx Σ None Γ))
+            σ'
+            (map (rho Σ None (rho_ctx Σ None Γ)) σ)
+        ).
+        { rewrite e1 in e2. rewrite !map_app in e2.
+          apply (f_equal rev) in e2. rewrite !rev_app in e2.
+          cbn in e2. eapply cons_inv in e2 as [e2 e3].
+          apply (f_equal rev) in e3. rewrite !rev_invol in e3. subst.
+          inversion e2. subst. clear e2.
+          apply pred1_elim_not_lhs_inv in X2.
+          2:{
+            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            specialize h' with (1 := hr).
+            intros ? hx. rewrite lσ in hx. eapply h'.
+            rewrite e1. rewrite !map_app.
+            eapply prefix_strict_prefix_append. eassumption.
+          }
+          destruct X2 as [elρ [relρ e3]].
+          match type of relρ with
+          | All2 ?P (map ?f (map ?g ?l)) ?l' =>
+            match type of X0 with
+            | pred1 _ _ _ _ ?p =>
+              match type of X3 with
+              | All2_prop_eq _ _ _ _ _ ?brs _ =>
+                assert (h' : All2 P (map f (map g (elims r))) (l' ++ [eCase (i,n) p (map (on_snd (rho Σ None (rho_ctx Σ None Γ))) brs)]))
+              end
+            end
+          end.
+          { rewrite e1. rewrite !map_app.
+            apply All2_app.
+            - assumption.
+            - constructor. 2: constructor.
+              cbn. constructor.
+              + assumption.
+              + apply All2_map_right. apply All2_sym in X3.
+                eapply All2_impl. 1: eauto.
+                intros [] []. cbn. intros. intuition eauto.
+          }
+          rewrite lσ in h'.
+          eapply lhs_elim_reduct in h'. 2: auto.
+          2:{ eapply rule_is_rewrite_rule. all: eauto. }
+          2:{
+            eapply untyped_subslet_assumption_context.
+            - apply assumption_context_subst_context. auto.
+            - rewrite subst_context_length. lia.
+          }
+          destruct h' as [ρσ [rρσ e2]].
+          rewrite e1 in e2. rewrite !map_app in e2.
+          apply (f_equal rev) in e2. rewrite !rev_app in e2.
+          cbn in e2. eapply cons_inv in e2 as [e2 e4].
+          apply (f_equal rev) in e4. rewrite !rev_invol in e4. subst.
+          inversion e2. subst. clear e2.
+          rewrite rho_mkElims_not_lhs in e3.
+          { eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            specialize h' with (1 := hr).
+            intros el' hx. eapply h'.
+            rewrite e1. rewrite !map_app.
+            eapply prefix_strict_prefix_append. eassumption.
+          }
+          apply (f_equal decompose_elims) in e3.
+          rewrite !mkElims_decompose_elims in e3. cbn in e3.
+          apply (f_equal snd) in e3. cbn in e3.
+          lazymatch type of e3 with
+          | (map ?f (map ?g (map ?h ?b))) = (map ?j (map ?k ?d)) =>
+            assert (h' :
+              map f (map g (map h (b ++ [eCase (i, n) p brs]))) =
+              map j (map k (d ++ [eCase (i, n) p brs]))
+            )
+          end.
+          { rewrite !map_app. cbn. f_equal. 1: auto.
+            rewrite lσ. f_equal. f_equal. all: auto.
+          }
+          rewrite <- e1 in h'.
+          rewrite subst_elims_symbols_subst in h'.
+          { rewrite <- lσ. rewrite σl. eapply rule_elim_pattern. all: eauto. }
+          rewrite subst_elims_symbols_subst in h'.
+          { rewrite σl. eapply rule_elim_pattern. all: eauto. }
+          rewrite map_rho_subst_elim in h'.
+          { rewrite σl. eapply rule_elim_pattern. all: eauto. }
+          eapply map_subst_elim_inj in h'.
+          2:{ eapply rule_linear. all: eauto. }
+          2:{ rewrite map_length. auto. }
+          2:{ apply All2_length in rρσ. lia. }
+          subst. auto.
+        }
+        eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
+        * {
+          eapply pred_par_rewrite_rule. all: eauto.
+          - eapply pred1_pred1_ctx. eauto.
+          - apply untyped_subslet_assumption_context.
+            + apply assumption_context_subst_context. auto.
+            + rewrite subst_context_length. lia.
+        }
+        * {
+          eapply pred_rewrite_rule. all: eauto.
+          - eapply pred1_pred1_ctx. eauto.
+          - apply untyped_subslet_assumption_context.
+            + apply assumption_context_subst_context. auto.
+            + rewrite subst_context_length. lia.
+        }
       + eapply lhs_viewc_not_lhs in elhs as notlhs. 2,3: cbn ; eauto.
         rewrite rho_app_case. 1: auto.
         destruct (decompose_app c0) eqn:Heq. simpl.
