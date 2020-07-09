@@ -5405,6 +5405,15 @@ Section Triangle.
     intuition auto.
   Qed.
 
+  Lemma pred1_elim_not_lhs_inv :
+    ∀ Γ Γ' k n ui el t,
+      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
+      pred1 Σ Γ Γ' (mkElims (tSymb k n ui) el) t →
+      ∑ el',
+        All2 (pred1_elim Σ Γ Γ') el el' ×
+        t = mkElims (tSymb k n ui) el'.
+  Admitted.
+
   Context (cΣ : confluenv Σ).
 
   Axiom todo_triangle : forall {A}, A.
