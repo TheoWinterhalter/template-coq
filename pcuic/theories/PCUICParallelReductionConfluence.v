@@ -4642,7 +4642,8 @@ Section Confluenv.
   Definition nosubmatch kn rd l :=
     ∀ n r σ el ui,
       nth_error l n = Some r →
-      strict_prefix el (map (subst_elim σ 0) r.(elims)) →
+      let ss := symbols_subst kn 0 ui #|symbols rd| in
+      strict_prefix el (map (subst_elim σ 0) (map (subst_elim ss #|σ|) r.(elims))) →
       loc_not_lhs
         kn rd (mkElims (tSymb kn r.(head) ui) el).
 
@@ -4775,10 +4776,11 @@ Section Confluenv.
         triangle_rules' Σ kn nsymb rl →
         triangle_rules' Σ kn nsymb (rl ++ [r]). *)
 
-  Definition nosubmatch' Σ kn l :=
+  Definition nosubmatch' Σ kn nsymb l :=
     ∀ n r σ el ui,
       nth_error l n = Some r →
-      strict_prefix el (map (subst_elim σ 0) r.(elims)) →
+      let ss := symbols_subst kn 0 ui nsymb in
+      strict_prefix el (map (subst_elim σ 0) (map (subst_elim ss #|σ|) r.(elims))) →
       not_lhs Σ None (mkElims (tSymb kn r.(head) ui) el).
 
   Lemma lookup_env_triangle :
@@ -4803,12 +4805,12 @@ Section Confluenv.
       wf Σ →
       confluenv Σ →
       lookup_env Σ k = Some (RewriteDecl rd) →
-      nosubmatch' Σ k (all_rewrite_rules rd).
+      nosubmatch' Σ k #|rd.(symbols)| (all_rewrite_rules rd).
   Proof.
     intros Σ k rd hΣ cΣ e.
     eapply lookup_env_confl_rew_decl in e as h. 2,3: auto.
     unfold confl_rew_decl in h. destruct h as [_ h].
-    intros n r σ el ui hr hpx. eapply loc_not_lhs_not_lhs. all: eauto.
+    intros n r σ el ui hr ss hpx. eapply loc_not_lhs_not_lhs. all: eauto.
     - exact I.
     - cbn. unfold lookup_rd. rewrite e. reflexivity.
     - rewrite elim_kn_mkElims. reflexivity.
@@ -5214,6 +5216,20 @@ Section Triangle.
     assumption.
   Qed.
 
+  Lemma rule_is_rewrite_rule :
+    ∀ k rd n r,
+      lookup_env Σ k = Some (RewriteDecl rd) →
+      nth_error (all_rewrite_rules rd) n = Some r →
+      is_rewrite_rule Σ k rd r.
+  Proof.
+    intros k rd n r h hr.
+    unfold is_rewrite_rule. intuition eauto.
+    unfold all_rewrite_rules in hr.
+    apply nth_error_app_dec in hr as [[]|[]].
+    - right. eexists. eauto.
+    - left. eexists. eauto.
+  Qed.
+
   Lemma rho_subst_pattern :
     ∀ Γ p τ,
       pattern #|τ| p →
@@ -5411,6 +5427,61 @@ Section Triangle.
         All2 (pred1_elim Σ Γ Γ') el el' ×
         t = mkElims (tSymb k n ui) el'.
   Admitted.
+
+  Lemma prefix_app :
+    ∀ {A} (a b c : list A),
+      prefix a b →
+      prefix a (b ++ c).
+  Proof.
+    intros A a b c [d e]. subst.
+    exists (d ++ c). rewrite app_assoc. reflexivity.
+  Qed.
+
+  Lemma prefix_length :
+    ∀ {A} (a b : list A),
+      prefix a b →
+      #|a| ≤ #|b|.
+  Proof.
+    intros A a b [c e]. subst.
+    rewrite app_length. lia.
+  Qed.
+
+  Lemma prefix_strict_prefix_app :
+    ∀ {A} (a b c : list A),
+      prefix a b →
+      #|c| > 0 →
+      strict_prefix a (b ++ c).
+  Proof.
+    intros A a b c p h.
+    split.
+    - apply prefix_app. assumption.
+    - apply prefix_length in p. rewrite app_length. lia.
+  Qed.
+
+  Lemma prefix_strict_prefix_append :
+    ∀ {A} (a b : list A) x,
+      prefix a b →
+      strict_prefix a (b ++ [x]).
+  Proof.
+    intros A a b x h.
+    apply prefix_strict_prefix_app. all: auto.
+  Qed.
+
+  Lemma assumption_context_subst_context :
+    ∀ Γ s n,
+      assumption_context Γ →
+      assumption_context (subst_context s n Γ).
+  Proof.
+    intros Γ s n h.
+    induction h in s, n |- *.
+    - constructor.
+    - match goal with
+      | |- context [ ?x :: ?l ] =>
+        change (x :: l) with (l ,,, [x])
+      end.
+      rewrite subst_context_app. cbn. constructor.
+      eapply IHh.
+  Qed.
 
   Context (cΣ : confluenv Σ).
 
@@ -6158,67 +6229,70 @@ Section Triangle.
           eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
           unfold nosubmatch' in h'.
           specialize h' with (1 := hr).
-          intros el' hx.
-          (* We want to have the substitution in the prefix *)
-          admit.
+          intros el' hx. eapply h'.
+          rewrite e1. rewrite !map_app.
+          eapply prefix_strict_prefix_append. eassumption.
         }
-        (* I should use lhs_elim_reduct directly actually!
-          To do it I have to use the criterion to say that in X,
-          only the substitution can reduce.
-          So now, how do I state the criterion so that it's easy?
-          For this, I should try and prove this inversion lemma (made to produce
-          the hyp for lhs_reducts) and infer the criterion.
-          Something like mkElim (symb) l => t implies l => l' and t = elim s l'
-          Maybe using not_lhs?
-          Like we want not_lhs for all prefixes of l.
-          So it sounds like the criterion should be something along those lines.
-          For the criterion it will be strict prefix, and for the lemma, just
-          regular prefixes.
-          prefix l l' := ∑ l'', l' = l ++ l''
-          sprefix l l' := prefix l l' × #|l| < #|l'| (many ways to do it)
-        *)
-        eapply rule_elim_pattern in hr as hp. 2: eauto.
-        rewrite e1 in hp. apply All_app in hp as [hpl hpp].
-        eapply All_cons_inv in hpp as [hpp _].
-        inversion hpp. subst.
-        (* eapply pattern_reduct in pm2 as hr2. 2-5: eauto. *)
-        (* Maybe not worth all this trouble as we have already
-          lhs_elim_reduct (and it's fully proven!)
-        *)
-
-        (* From X1 we get that σ reduced on m2
-          We should get something similar on m1 from X.
-          We should know that rho commutes on patterns, so X2 is fine.
-          The problem is exploiting X0 as it is not clear that rho will not
-          reduce using another rewrite rule of the block.
-          We're actually missing somehting aren't we? Something I had forgotten
-          regarding prefixes of rewrite rules being rewrite rules as well.
-          This is not dealt with by the current criterion.
-
-          The new criterion should allow us to conclude something here.
-        *)
-
-
-        (* eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
-        * eapply pred_par_rewrite_rule. all: eauto.
-          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
-          -- (* We can probably show σ is empty and conclude
-                hoping we don't have similar rules with no handle to conclude
-                this.
-              *)
-              todo_triangle.
-          -- (* Same, follow from σ = [] and thus npat = 0? *)
-             todo_triangle.
-        * eapply pred_rewrite_rule. all: eauto.
-          -- unfold declared_symbol. apply lookup_rewrite_decl_lookup_env. auto.
-          -- (* We can probably show σ is empty and conclude
-                hoping we don't have similar rules with no handle to conclude
-                this.
-              *)
-              todo_triangle.
-          -- (* Same, follow from σ = [] and thus npat = 0? *)
-             todo_triangle. *)
-        todo_triangle.
+        destruct X as [el' [rel ?]]. subst.
+        assert (assumption_context (pat_context r)).
+        { eapply rule_assumption_context. all: eauto. }
+        match type of rel with
+        | All2 ?P (map ?f (map ?g ?l)) ?l' =>
+          assert (h' : All2 P (map f (map g (elims r))) (l' ++ [eApp N1]))
+        end.
+        { rewrite e1. rewrite !map_app.
+          apply All2_app.
+          - assumption.
+          - constructor. 2: constructor.
+            cbn. constructor. assumption.
+        }
+        eapply lhs_elim_reduct in h'. 2: auto.
+        2:{ eapply rule_is_rewrite_rule. all: eauto. }
+        2:{
+          eapply untyped_subslet_assumption_context.
+          - apply assumption_context_subst_context. auto.
+          - rewrite subst_context_length. auto.
+        }
+        destruct h' as [σ' [rσ e2]].
+        match goal with
+        | |- pred1 _ _ _ ?t _ =>
+          replace t with (mkElims (tSymb k r.(head) ui) (el' ++ [eApp N1]))
+        end.
+        2:{
+          rewrite mkElims_app. cbn. reflexivity.
+        }
+        rewrite e2.
+        eapply All2_length in rσ as lσ. rewrite lσ.
+        match goal with
+        | |- pred1 _ _ _ ?t _ =>
+          replace t with (subst0 σ' (subst ss #|σ'| (lhs r)))
+        end.
+        2:{
+          unfold lhs. rewrite !mkElims_subst.
+          erewrite rule_symbols_subst. 2-3: eauto. 2: lia.
+          reflexivity.
+        }
+        assert (
+          All2 (pred1 Σ Γ' (rho_ctx Σ None Γ))
+            σ'
+            (map (rho Σ None (rho_ctx Σ None Γ)) σ)
+        ).
+        { todo_triangle. }
+        eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
+        * {
+          eapply pred_par_rewrite_rule. all: eauto.
+          - (* How to recover it? *) todo_triangle.
+          - apply untyped_subslet_assumption_context.
+            + apply assumption_context_subst_context. auto.
+            + rewrite subst_context_length. lia.
+        }
+        * {
+          eapply pred_rewrite_rule. all: eauto.
+          - (* How to recover it? *) todo_triangle.
+          - apply untyped_subslet_assumption_context.
+            + apply assumption_context_subst_context. auto.
+            + rewrite subst_context_length. lia.
+        }
       + cbn. destruct view_lambda_fix_app.
         * {
           simpl; simp rho; simpl.
