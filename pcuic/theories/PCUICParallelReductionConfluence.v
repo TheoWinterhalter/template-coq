@@ -6323,19 +6323,40 @@ Section Triangle.
             - rewrite subst_context_length. lia.
           }
           destruct h' as [ρσ [rρσ e2]].
-          (* Two options here,
-            - Either I use some kind of linear inversion to get equality of
-            substitutions (as I kinda start with the following script though
-            it will require inversion of e3)
-            - Or I prove a stronger version of lhs_reducts which is aware of the
-            substitution on the right.
-            Not clear which is the easiest.
-          *)
           rewrite e1 in e2. rewrite !map_app in e2.
           apply (f_equal rev) in e2. rewrite !rev_app in e2.
           cbn in e2. eapply cons_inv in e2 as [e2 e4].
           apply (f_equal rev) in e4. rewrite !rev_invol in e4. subst.
           inversion e2. subst. clear e2.
+          simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
+          1:{
+            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            eapply first_match_lookup_sound in fme as et. 2-4: eauto.
+            2: exact I.
+            unfold lhs in et. rewrite !mkElims_subst in et.
+            eapply lookup_rewrite_decl_lookup_env in hk as hk'.
+            eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
+            eapply first_match_subst_length in fme as hl.
+            erewrite rule_symbols_subst in et. 2-4: eauto.
+            cbn in et. apply (f_equal decompose_elims) in et.
+            rewrite !mkElims_decompose_elims in et. cbn in et.
+            symmetry in et. inversion et. subst.
+            rewrite hk' in e'. inversion e'. subst. clear e'.
+            specialize h' with (1 := hr).
+            exfalso. eapply h'.
+            2:{
+              eexists k, rd, _. intuition eauto.
+            }
+            rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
+            exists []. rewrite app_nil_r. reflexivity.
+          }
+          simp rho in e3.
+          (* TODO In fact I need to prove some lemma about rho_mkElims
+            when it can't be lhs.
+            Then we can use some lemma to say that equality lσ = lσ' implies
+            σ = σ' when l is a proper lhs (linear).
+          *)
           todo_triangle.
         }
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
