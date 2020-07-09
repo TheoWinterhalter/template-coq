@@ -5230,6 +5230,46 @@ Section Triangle.
     - left. eexists. eauto.
   Qed.
 
+  Definition rho_elimi Γ e :=
+    match e with
+    | eApp p => eApp (rho Σ None Γ p)
+    | eCase ind p brs =>
+      eCase ind (rho Σ None Γ p) (map (on_snd (rho Σ None Γ)) brs)
+    | eProj p => eProj p
+    end.
+
+  Lemma rho_mkElims_not_lhs :
+    ∀ Γ k n ui el,
+      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
+      rho Σ None Γ (mkElims (tSymb k n ui) el) =
+      mkElims (tSymb k n ui) (map (rho_elimi Γ) el).
+  (* Extract of proof I wrote *)
+  (* simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
+          1:{
+            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+            unfold nosubmatch' in h'.
+            eapply first_match_lookup_sound in fme as et. 2-4: eauto.
+            2: exact I.
+            unfold lhs in et. rewrite !mkElims_subst in et.
+            eapply lookup_rewrite_decl_lookup_env in hk as hk'.
+            eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
+            eapply first_match_subst_length in fme as hl.
+            erewrite rule_symbols_subst in et. 2-4: eauto.
+            cbn in et. apply (f_equal decompose_elims) in et.
+            rewrite !mkElims_decompose_elims in et. cbn in et.
+            symmetry in et. inversion et. subst.
+            rewrite hk' in e'. inversion e'. subst. clear e'.
+            specialize h' with (1 := hr).
+            exfalso. eapply h'.
+            2:{
+              eexists k, rd, _. intuition eauto.
+            }
+            rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
+            exists []. rewrite app_nil_r. reflexivity.
+          }
+          simp rho in e3. *)
+  Admitted.
+
   Lemma rho_subst_pattern :
     ∀ Γ p τ,
       pattern #|τ| p →
@@ -5246,6 +5286,26 @@ Section Triangle.
     rewrite map_map_compose. apply All_map_eq.
     eapply All_impl. 1: eauto.
     intros p hp. eapply rho_subst_pattern. assumption.
+  Qed.
+
+  Lemma map_rho_subst_elim :
+    ∀ Γ τ l,
+      All (elim_pattern #|τ|) l →
+      map (rho_elimi Γ) (map (subst_elim τ 0) l) =
+      map (subst_elim (map (rho Σ None Γ) τ) 0) l.
+  Proof.
+    intros Γ τ l hl.
+    rewrite map_map_compose. eapply All_map_eq.
+    eapply All_impl. 1: eauto.
+    intros ? [].
+    - cbn. f_equal. apply rho_subst_pattern. assumption.
+    - cbn. f_equal.
+      + apply rho_subst_pattern. assumption.
+      + rewrite map_map_compose. eapply All_map_eq.
+        eapply All_impl. 1: eauto.
+        intros [? ?]. unfold on_snd. cbn. intro.
+        f_equal. apply rho_subst_pattern. assumption.
+    - cbn. reflexivity.
   Qed.
 
   Definition pattern_list_mask npat l :=
@@ -5491,46 +5551,6 @@ Section Triangle.
     intros A x y l l' e.
     inversion e. intuition eauto.
   Qed.
-
-  Definition rho_elimi Γ e :=
-    match e with
-    | eApp p => eApp (rho Σ None Γ p)
-    | eCase ind p brs =>
-      eCase ind (rho Σ None Γ p) (map (on_snd (rho Σ None Γ)) brs)
-    | eProj p => eProj p
-    end.
-
-  Lemma rho_mkElims_not_lhs :
-    ∀ Γ k n ui el,
-      (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
-      rho Σ None Γ (mkElims (tSymb k n ui) el) =
-      mkElims (tSymb k n ui) (map (rho_elimi Γ) el).
-  (* Extract of proof I wrote *)
-  (* simp rho in e3. destruct lhs_viewc as [? ? ? ? ? hk fme |].
-          1:{
-            eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
-            unfold nosubmatch' in h'.
-            eapply first_match_lookup_sound in fme as et. 2-4: eauto.
-            2: exact I.
-            unfold lhs in et. rewrite !mkElims_subst in et.
-            eapply lookup_rewrite_decl_lookup_env in hk as hk'.
-            eapply first_match_rule_list in fme as hr'. destruct hr' as [? hr'].
-            eapply first_match_subst_length in fme as hl.
-            erewrite rule_symbols_subst in et. 2-4: eauto.
-            cbn in et. apply (f_equal decompose_elims) in et.
-            rewrite !mkElims_decompose_elims in et. cbn in et.
-            symmetry in et. inversion et. subst.
-            rewrite hk' in e'. inversion e'. subst. clear e'.
-            specialize h' with (1 := hr).
-            exfalso. eapply h'.
-            2:{
-              eexists k, rd, _. intuition eauto.
-            }
-            rewrite e1. rewrite !map_app. eapply prefix_strict_prefix_append.
-            exists []. rewrite app_nil_r. reflexivity.
-          }
-          simp rho in e3. *)
-  Admitted.
 
   Context (cΣ : confluenv Σ).
 
@@ -6423,6 +6443,7 @@ Section Triangle.
             rewrite lσ. f_equal. f_equal. auto.
           }
           rewrite <- e1 in h'.
+          (* rewrite map_rho_subst_elim in h'. *)
           (* rewrite map_rho_subst_pattern in h'. *)
           (* Need some equivalent of map_rho_subst_pattern for elim *)
 
