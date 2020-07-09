@@ -6155,6 +6155,15 @@ Section Triangle.
         end. *)
         cbn. set (ss := symbols_subst k 0 ui #|symbols rd|) in *.
         subst.
+        apply pred1_elim_not_lhs_inv in X.
+        2:{
+          eapply lookup_env_nosubmatch in e' as h'. 2-3: eauto.
+          unfold nosubmatch' in h'.
+          specialize h' with (1 := hr).
+          intros el' hx.
+          (* We want to have the substitution in the prefix *)
+          admit.
+        }
         (* I should use lhs_elim_reduct directly actually!
           To do it I have to use the criterion to say that in X,
           only the substitution can reduce.
