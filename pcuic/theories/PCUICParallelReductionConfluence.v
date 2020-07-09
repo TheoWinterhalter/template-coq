@@ -5640,6 +5640,19 @@ Section Triangle.
     intuition auto.
   Qed.
 
+  Lemma pred_atom_mkElims :
+    ∀ t l,
+      pred_atom (mkElims t l) →
+      pred_atom t ∧ l = [].
+  Proof.
+    intros t l h.
+    destruct l as [| [] l] using list_rect_rev.
+    - intuition eauto.
+    - rewrite mkElims_app in h. cbn in h. discriminate.
+    - rewrite mkElims_app in h. cbn in h. discriminate.
+    - rewrite mkElims_app in h. cbn in h. discriminate.
+  Qed.
+
   Lemma pred1_elim_not_lhs_inv :
     ∀ Γ Γ' k n ui el t,
       (∀ el', prefix el' el → not_lhs Σ None (mkElims (tSymb k n ui) el')) →
@@ -5647,7 +5660,159 @@ Section Triangle.
       ∑ el',
         All2 (pred1_elim Σ Γ Γ') el el' ×
         t = mkElims (tSymb k n ui) el'.
-  Admitted.
+  Proof.
+    intros Γ Γ' k n ui el t notlhs h.
+    remember (mkElims (tSymb k n ui) el) as u eqn:e.
+    revert Γ Γ' u t h k n ui el notlhs e.
+    pose (Pctx := fun (Γ Δ : context) => True).
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+    all: subst Pctx.
+    all: intros.
+    all: try solve [
+      apply (f_equal elim_kn) in e ; rewrite elim_kn_mkElims in e ;
+      cbn in e ; discriminate
+    ].
+    all: try solve [
+      apply (f_equal elim_kn) in e ; rewrite elim_kn_mkElims in e ;
+      cbn in e ; rewrite elim_kn_mkApps in e ; cbn in e ; discriminate
+    ].
+    - cbn. auto.
+    - apply (f_equal decompose_elims) in e.
+      rewrite mkElims_decompose_elims in e. cbn in e.
+      inversion e. subst.
+      exists []. intuition auto.
+    - specialize (notlhs el).
+      forward notlhs.
+      { exists []. rewrite app_nil_r. auto. }
+      rewrite <- e in notlhs.
+      exfalso. apply notlhs.
+      pose proof (match_lhs_complete #|r.(pat_context)| k0 r.(head) ui0 r.(elims) s) as h.
+      forward h.
+      { eapply declared_symbol_pattern. all: eauto. }
+      forward h.
+      { eapply declared_symbol_linear. all: eauto. }
+      apply untyped_subslet_length in X1. rewrite subst_context_length in X1.
+      forward h by auto.
+      eapply match_lhs_first_match with (l := all_rewrite_rules decl) (n := #|decl.(prules)| + n) in h.
+      2:{
+        rewrite nth_error_app_ge. 1: lia.
+        rewrite <- H1. f_equal. lia.
+      }
+      destruct h as [? h].
+      subst lhs. unfold lhs in e.
+      rewrite !mkElims_subst in e. erewrite rule_symbols_subst with (n := #|decl.(prules)| + n) in e. all: eauto.
+      2:{
+        rewrite nth_error_app_ge. 1: lia.
+        rewrite <- H1. f_equal. lia.
+      }
+      cbn in e. apply (f_equal decompose_elims) in e.
+      rewrite !mkElims_decompose_elims in e. cbn in e. inversion e. subst.
+      unfold declared_symbol in H0.
+      unfold lookup_rewrite_decl. unfold lookup_rd.
+      rewrite mkElims_subst in h. cbn in h.
+      eexists _,_,_. split.
+      + erewrite H0. reflexivity.
+      + unfold lhs.
+        rewrite !mkElims_subst. erewrite rule_symbols_subst with (n := #|decl.(prules)| + n).
+        all: eauto.
+        2:{
+          rewrite nth_error_app_ge. 1: lia.
+          rewrite <- H1. f_equal. lia.
+        }
+        cbn. rewrite subst_elims_symbols_subst.
+        { rewrite X1. eapply declared_symbol_pattern. all: eauto. }
+        eauto.
+    - specialize (notlhs el).
+      forward notlhs.
+      { exists []. rewrite app_nil_r. auto. }
+      rewrite <- e in notlhs.
+      exfalso. apply notlhs.
+      pose proof (match_lhs_complete #|r.(pat_context)| k0 r.(head) ui0 r.(elims) s) as h.
+      forward h.
+      { eapply declared_symbol_par_pattern. all: eauto. }
+      forward h.
+      { eapply declared_symbol_par_linear. all: eauto. }
+      apply untyped_subslet_length in X1. rewrite subst_context_length in X1.
+      forward h by auto.
+      eapply match_lhs_first_match with (l := all_rewrite_rules decl) (n := n) in h.
+      2:{ apply nth_error_app_left. auto. }
+      destruct h as [? h].
+      subst lhs. unfold lhs in e.
+      rewrite !mkElims_subst in e. erewrite rule_symbols_subst with (n := n) in e. all: eauto.
+      2:{ apply nth_error_app_left. auto. }
+      cbn in e. apply (f_equal decompose_elims) in e.
+      rewrite !mkElims_decompose_elims in e. cbn in e. inversion e. subst.
+      unfold declared_symbol in H0.
+      unfold lookup_rewrite_decl. unfold lookup_rd.
+      rewrite mkElims_subst in h. cbn in h.
+      eexists _,_,_. split.
+      + erewrite H0. reflexivity.
+      + unfold lhs.
+        rewrite !mkElims_subst. erewrite rule_symbols_subst with (n := n).
+        all: eauto.
+        2:{ apply nth_error_app_left. auto. }
+        cbn. rewrite subst_elims_symbols_subst.
+        { rewrite X1. eapply declared_symbol_par_pattern. all: eauto. }
+        eauto.
+    - destruct el as [| [] el] using list_rect_rev.
+      1: discriminate.
+      2:{ rewrite mkElims_app in e. cbn in e. discriminate. }
+      2:{ rewrite mkElims_app in e. cbn in e. discriminate. }
+      rewrite mkElims_app in e. cbn in e. inversion e. subst. clear e.
+      clear IHel.
+      specialize X0 with (2 := eq_refl).
+      forward X0.
+      { intros el' hx. apply notlhs.
+        eapply prefix_app. auto.
+      }
+      destruct X0 as [el' [he ?]]. subst.
+      eexists (el' ++ [ eApp _ ]).
+      split.
+      + apply All2_app. 1: auto.
+        constructor. 2: constructor.
+        constructor. eauto.
+      + rewrite mkElims_app. cbn. reflexivity.
+    - destruct el as [| [] el] using list_rect_rev.
+      1: discriminate.
+      1:{ rewrite mkElims_app in e. cbn in e. discriminate. }
+      2:{ rewrite mkElims_app in e. cbn in e. discriminate. }
+      rewrite mkElims_app in e. cbn in e. inversion e. subst. clear e.
+      clear IHel.
+      specialize X2 with (2 := eq_refl).
+      forward X2.
+      { intros el' hx. apply notlhs.
+        eapply prefix_app. auto.
+      }
+      destruct X2 as [el' [he ?]]. subst.
+      eexists (el' ++ [ eCase _ _ _ ]).
+      split.
+      + apply All2_app. 1: auto.
+        constructor. 2: constructor.
+        constructor. 1: eauto.
+        eapply All2_impl. 1: eauto.
+        intros [] []. cbn. intros. intuition eauto.
+      + rewrite mkElims_app. cbn. reflexivity.
+    - destruct el as [| [] el] using list_rect_rev.
+      1: discriminate.
+      1:{ rewrite mkElims_app in e. cbn in e. discriminate. }
+      1:{ rewrite mkElims_app in e. cbn in e. discriminate. }
+      rewrite mkElims_app in e. cbn in e. inversion e. subst. clear e.
+      clear IHel.
+      specialize X0 with (2 := eq_refl).
+      forward X0.
+      { intros el' hx. apply notlhs.
+        eapply prefix_app. auto.
+      }
+      destruct X0 as [el' [he ?]]. subst.
+      eexists (el' ++ [ eProj _ ]).
+      split.
+      + apply All2_app. 1: auto.
+        constructor. 2: constructor.
+        constructor.
+      + rewrite mkElims_app. cbn. reflexivity.
+    - subst. apply pred_atom_mkElims in H0 as [e ?].
+      cbn in e. discriminate.
+  Qed.
 
   Lemma assumption_context_subst_context :
     ∀ Γ s n,
