@@ -6281,14 +6281,14 @@ Section Triangle.
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
         * {
           eapply pred_par_rewrite_rule. all: eauto.
-          - (* How to recover it? *) todo_triangle.
+          - eapply pred1_pred1_ctx. eauto.
           - apply untyped_subslet_assumption_context.
             + apply assumption_context_subst_context. auto.
             + rewrite subst_context_length. lia.
         }
         * {
           eapply pred_rewrite_rule. all: eauto.
-          - (* How to recover it? *) todo_triangle.
+          - eapply pred1_pred1_ctx. eauto.
           - apply untyped_subslet_assumption_context.
             + apply assumption_context_subst_context. auto.
             + rewrite subst_context_length. lia.
