@@ -6291,12 +6291,12 @@ Section Triangle.
         }
         rewrite !map_app in hs. rewrite mkElims_app in hs.
         cbn in hs. inversion hs.
-        eapply rule_linear in hr as ll. 2: eauto.
+        (* eapply rule_linear in hr as ll. 2: eauto.
         rewrite e1 in ll. unfold linear in ll.
         destruct linear_mask as [m|] eqn:hl. 2: discriminate.
         eapply linear_mask_app_inv in hl as [m1 [m2 [hm1 [hm2 hm]]]].
         cbn in hm2. destruct pattern_mask eqn:pm2. 2: discriminate.
-        cbn in hm2. apply lin_merge_linear_mask_init_eq in hm2.
+        cbn in hm2. apply lin_merge_linear_mask_init_eq in hm2. *)
         (* match type of hm2 with
         | ?x = _ => subst x
         end. *)
@@ -6464,7 +6464,6 @@ Section Triangle.
           2:{ apply All2_length in rρσ. lia. }
           subst. auto.
         }
-        (* TODO Remove useless linearity stuff I derived *)
         eapply nth_error_app_dec in hr as [[? hr] | [? hr]].
         * {
           eapply pred_par_rewrite_rule. all: eauto.
