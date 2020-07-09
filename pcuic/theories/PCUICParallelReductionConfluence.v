@@ -4608,16 +4608,44 @@ Section Confluenv.
   Definition strict_prefix {A} (l l' : list A) :=
     prefix l l' × #|l| < #|l'|.
 
+  (* Local version of not_lhs *)
+  Definition loc_not_lhs k rd t :=
+    first_match k (all_rewrite_rules rd) t = None.
+
+  Lemma loc_not_lhs_not_lhs :
+    ∀ Σ extra k rd t,
+      wf Σ →
+      on_option (fun '(_, d) => onrd d) extra →
+      lookup_rewrite_decl Σ extra k = Some rd →
+      elim_kn t = Some k →
+      loc_not_lhs k rd t →
+      not_lhs Σ extra t.
+  Proof.
+    intros Σ extra k rd t hΣ hex hrd hk h.
+    intros [k' [rd' [[[ui' σ'] r'] [hrd' e]]]].
+    unfold loc_not_lhs in h.
+    cbn in e. eapply first_match_lookup_sound in e as ?. all: eauto.
+    subst.
+    apply first_match_subst_length in e as σl.
+    rewrite σl in hk.
+    eapply first_match_rule_list in e as hr. destruct hr as [n ?].
+    subst. erewrite elim_kn_lhs in hk. 2-5: eauto.
+    apply some_inj in hk. subst.
+    rewrite hrd' in hrd. apply some_inj in hrd. subst.
+    rewrite h in e. discriminate.
+  Qed.
+
   (* Criterion that essentially enforces rules on the same symbol
     to have the same arity.
     Prefixes of lhs are no longer lhs.
   *)
-  Definition nosubmatch Σ ex kn l :=
+  Definition nosubmatch kn rd l :=
     ∀ n r σ el ui,
       nth_error l n = Some r →
       (* Or prefix of elim σ? *)
       strict_prefix el r.(elims) →
-      not_lhs Σ ex (mkElims (tSymb kn r.(head) ui) (map (subst_elim σ 0) el)).
+      loc_not_lhs
+        kn rd (mkElims (tSymb kn r.(head) ui) (map (subst_elim σ 0) el)).
 
   (* Inductive triangle_rules Σ e kn nsymb : list rewrite_rule → Type :=
   | triangle_rules_nil : triangle_rules Σ e kn nsymb []
@@ -4643,7 +4671,7 @@ Section Confluenv.
     let l := d.(prules) ++ d.(rules) in
     let extra := Some (kn, d) in
     triangle_rules Σ extra kn #|d.(symbols)| l ×
-    nosubmatch Σ extra kn l.
+    nosubmatch kn d l.
 
   Definition confl_decl Σ kn decl : Type :=
     match decl with
@@ -4672,25 +4700,6 @@ Section Confluenv.
     eapply hr. all: eauto.
   Qed.
 
-  Lemma nosubmatch_weakening :
-    ∀ Σ Σ' k l e,
-      wf Σ' →
-      PCUICWeakeningEnv.extends Σ Σ' →
-      nosubmatch Σ e k l →
-      nosubmatch Σ' e k l.
-  Proof.
-    intros Σ Σ' k l e hΣ hx h.
-    intros n r σ el ui hn hpx.
-    specialize (h n r σ el ui hn hpx).
-    intros [k' [rd [[[ui' σ'] r'] [hrd e']]]].
-    apply h.
-    (* Perhaps it would better to design some local not_lhs
-      that I would then prove to imply not_lhs?
-      One without the lookup, that is already specialised to the given k
-      and the given decl.
-    *)
-  Admitted.
-
   Lemma confl_decl_weakening :
     ∀ Σ Σ' k d,
       wf Σ' →
@@ -4702,8 +4711,7 @@ Section Confluenv.
     destruct d. 1,2: constructor.
     cbn in *. unfold confl_rew_decl in *.
     intuition auto.
-    - eapply triangle_rules_weakening. all: eauto.
-    - eapply nosubmatch_weakening. all: eauto.
+    eapply triangle_rules_weakening. all: eauto.
   Qed.
 
   Lemma lookup_env_confl_decl :
