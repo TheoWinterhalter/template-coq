@@ -5382,7 +5382,23 @@ Section Triangle.
     ∀ Γ p τ,
       pattern #|τ| p →
       rho Σ None Γ (subst0 τ p) = subst0 (map (rho Σ None Γ) τ) p.
-  Admitted.
+  Proof.
+    intros Γ p τ hp.
+    induction hp
+    as [n hn | ind n ui args ha ih]
+    in Γ |- *
+    using pattern_all_rect.
+    - cbn. rewrite nth_error_map.
+      destruct nth_error eqn:e.
+      2:{
+        eapply nth_error_None in e. lia.
+      }
+      cbn. rewrite !lift0_id. reflexivity.
+    - rewrite !subst_mkApps. cbn. simp rho. f_equal.
+      rewrite !map_map_compose. apply All_map_eq.
+      eapply All_impl. 1: eauto.
+      cbn. intros. auto.
+  Qed.
 
   Lemma map_rho_subst_pattern :
     ∀ Γ τ θ,
