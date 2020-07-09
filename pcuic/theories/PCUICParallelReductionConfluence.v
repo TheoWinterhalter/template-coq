@@ -5330,6 +5330,7 @@ Section Triangle.
           pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
         ) τ τ'.
   Admitted.
+  (* Proof similar to lhs_elim_reducts? *)
 
   (* True only if we modify a bit pred1 to allow taking the left def
     and not just the right.
@@ -5673,14 +5674,233 @@ Section Triangle.
     inversion e. intuition eauto.
   Qed.
 
+  Inductive All2_mask (P : term -> term -> Type) :
+    list bool -> list term -> list term -> Type :=
+  | All2_mask_nil : All2_mask P [] [] []
+  | All2_mask_true :
+      forall t u m l s,
+        P t u ->
+        All2_mask P m l s ->
+        All2_mask P (true :: m) (t :: l) (u :: s)
+  | All2_mask_psubst_false :
+      forall t u m l s,
+        All2_mask P m l s ->
+        All2_mask P (false :: m) (t :: l) (u :: s).
+
+  Lemma All2_mask_linear_mask_init :
+    ∀ P n σ ρ,
+      #|σ| = n →
+      #|ρ| = n →
+      All2_mask P (linear_mask_init n) σ ρ.
+  Proof.
+    intros P n σ ρ e1 e2.
+    induction n in σ, ρ, e1, e2 |- *.
+    - cbn.
+      destruct σ. 2: discriminate.
+      destruct ρ. 2: discriminate.
+      constructor.
+    - destruct σ. 1: discriminate.
+      destruct ρ. 1: discriminate.
+      cbn. constructor.
+      cbn in e1. cbn in e2.
+      eapply IHn. all: lia.
+  Qed.
+
+  Lemma All2_mask_lin_set :
+    ∀ P n m m' σ x θ y,
+      lin_set n m = Some m' →
+      nth_error σ n = Some x →
+      nth_error θ n = Some y →
+      P x y →
+      All2_mask P m σ θ →
+      All2_mask P m' σ θ.
+  Proof.
+    intros P n m m' σ x θ y hm hσ hθ h1 h2.
+    induction h2 in n, m', hm, x, hσ, y, hθ, h1 |- *.
+    - destruct n. all: discriminate.
+    - destruct n. 1: discriminate.
+      cbn in hm. destruct lin_set eqn:hm'. 2: discriminate.
+      apply some_inj in hm. subst.
+      cbn in hσ. cbn in hθ.
+      constructor. 1: auto.
+      eapply IHh2. all: eauto.
+    - destruct n.
+      + cbn in hm. apply some_inj in hm. subst.
+        cbn in hσ. cbn in hθ.
+        apply some_inj in hσ. apply some_inj in hθ. subst.
+        constructor. all: auto.
+      + cbn in hm. destruct lin_set eqn:hm'. 2: discriminate.
+        apply some_inj in hm. subst.
+        cbn in hσ. cbn in hθ.
+        constructor.
+        eapply IHh2. all: eauto.
+  Qed.
+
+  Lemma All2_mask_lin_merge :
+    ∀ P m1 m2 m σ θ,
+      lin_merge m1 m2 = Some m →
+      All2_mask P m1 σ θ →
+      All2_mask P m2 σ θ →
+      All2_mask P m σ θ.
+  Proof.
+    intros P m1 m2 m σ θ hm h1 h2.
+    induction h1 in m2, h2, m, hm |- *.
+    - destruct m2. 2: discriminate.
+      cbn in hm. apply some_inj in hm. subst.
+      constructor.
+    - destruct m2 as [| []]. 1,2: discriminate.
+      cbn in hm. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in hm. subst.
+      inversion h2. subst.
+      constructor. 1: auto.
+      eapply IHh1. all: eauto.
+    - destruct m2. 1: discriminate.
+      cbn in hm. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in hm. subst.
+      destruct b.
+      + inversion h2. subst.
+        constructor. 1: auto.
+        eapply IHh1. all: eauto.
+      + inversion h2. subst.
+        constructor.
+        eapply IHh1. all: eauto.
+  Qed.
+
+  Lemma pattern_mask_subst_inj :
+    ∀ σ θ p npat m,
+      pattern npat p →
+      pattern_mask npat p = Some m →
+      #|σ| = npat →
+      #|θ| = npat →
+      subst0 σ p = subst0 θ p →
+      All2_mask eq m σ θ.
+  Proof.
+    intros σ θ p npat m hp hm eσ eθ e.
+    induction hp
+    as [n hn | ind n ui args ha ih]
+    in σ, θ, m, hm, eσ, eθ, e |- *
+    using pattern_all_rect.
+    - cbn in hm. cbn in e.
+      destruct (nth_error σ) eqn:e1.
+      2:{ apply nth_error_None in e1. lia. }
+      destruct (nth_error θ) eqn:e2.
+      2:{ apply nth_error_None in e2. lia. }
+      rewrite !lift0_id in e.
+      replace (n - 0) with n in e1 by lia.
+      replace (n - 0) with n in e2 by lia.
+      eapply All2_mask_lin_set. all: eauto.
+      apply All2_mask_linear_mask_init. all: auto.
+    - rewrite !subst_mkApps in e. cbn in e.
+      apply (f_equal decompose_app) in e.
+      rewrite !decompose_app_mkApps in e. 1,2: auto.
+      apply (f_equal snd) in e. cbn in e.
+      eapply All_prod in ih. 2: exact ha.
+      clear ha.
+      induction ih
+      as [| p args [hp ihp] _ ih]
+      in σ, θ, m, hm, eσ, eθ, e |- *
+      using All_rev_rect.
+      + cbn in hm. apply some_inj in hm. subst.
+        apply All2_mask_linear_mask_init. all: auto.
+      + rewrite <- mkApps_nested in hm. cbn in hm.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        move hm at top.
+        destruct pattern_mask eqn:e2. 2: discriminate.
+        rewrite !map_app in e. cbn in e.
+        apply (f_equal rev) in e. rewrite !rev_app in e.
+        cbn in e. apply cons_inv in e as [e3 e4].
+        apply (f_equal rev) in e4. rewrite !rev_invol in e4.
+        eapply All2_mask_lin_merge. all: eauto.
+  Qed.
+
+  Lemma map_subst_elim_inj_mask :
+    ∀ σ θ npat l m,
+      All (elim_pattern npat) l →
+      linear_mask npat l = Some m →
+      #|σ| = npat →
+      #|θ| = npat →
+      map (subst_elim σ 0) l = map (subst_elim θ 0) l →
+      All2_mask eq m σ θ.
+  Proof.
+    intros σ θ npat l m hl hm e1 e2 e.
+    induction hl as [| ? l [] hl ih ] in σ, θ, m, hm, e1, e2, e |- *.
+    - cbn in hm. apply some_inj in hm. subst.
+      apply All2_mask_linear_mask_init. all: auto.
+    - cbn in hm. destruct pattern_mask eqn:e3. 2: discriminate.
+      destruct monad_map eqn:e4. 2: discriminate.
+      cbn in hm. destruct PCUICPattern.monad_fold_right eqn:e5. 2: discriminate.
+      cbn in e. apply cons_inv in e as [e6 e7].
+      inversion e6.
+      eapply pattern_mask_subst_inj in e3. 5: eassumption. 2-4: eauto.
+      eapply All2_mask_lin_merge. all: eauto.
+      eapply ih. all: eauto.
+      unfold linear_mask. rewrite e4. cbn. auto.
+    - cbn in hm. destruct pattern_mask eqn:e3. 2: discriminate.
+      destruct monad_map eqn:e4. 2: discriminate.
+      destruct PCUICPattern.monad_fold_right eqn:e5. 2: discriminate.
+      destruct lin_merge eqn:e6. 2: discriminate.
+      move hm at top.
+      destruct monad_map eqn:e7. 2: discriminate.
+      cbn in hm.
+      destruct PCUICPattern.monad_fold_right eqn:e8. 2: discriminate.
+      cbn in e. apply cons_inv in e as [e9 e10].
+      inversion e9.
+      eapply pattern_mask_subst_inj in e3. 5: eassumption. 2-4: eauto.
+      eapply ih in e10. 3-4: auto.
+      2:{ unfold linear_mask. rewrite e7. cbn. eauto. }
+      eapply All2_mask_lin_merge. all: eauto.
+      eapply All2_mask_lin_merge. all: eauto.
+      clear - a l1 e4 l2 e5 e1 e2 H1.
+      induction a in l1, e4, l2, e5, H1 |- *.
+      + cbn in e4. apply some_inj in e4. subst.
+        cbn in e5. apply some_inj in e5. subst.
+        apply All2_mask_linear_mask_init. all: auto.
+      + cbn in e4. destruct pattern_mask eqn:e3. 2: discriminate.
+        destruct monad_map eqn:e6. 2: discriminate.
+        apply some_inj in e4. subst.
+        cbn in e5.
+        destruct PCUICPattern.monad_fold_right eqn:e7. 2: discriminate.
+        cbn in H1. destruct x. cbn in *.
+        inversion H1.
+        eapply pattern_mask_subst_inj in e3. 5: eassumption. 2-4: eauto.
+        eapply All2_mask_lin_merge. all: eauto.
+    - cbn in hm. destruct monad_map eqn:e3. 2: discriminate.
+      cbn in hm. destruct PCUICPattern.monad_fold_right eqn:e4. 2: discriminate.
+      cbn in e. inversion e.
+      eapply ih. all: auto.
+      unfold linear_mask. rewrite e3. cbn.
+      eapply lin_merge_sym in hm.
+      eapply lin_merge_linear_mask_init_eq in hm. subst.
+      auto.
+  Qed.
+
+  Lemma All2_mask_all :
+    ∀ P σ θ m,
+      forallb (fun x => x) m →
+      All2_mask P m σ θ →
+      All2 P σ θ.
+  Proof.
+    intros P σ θ m hm h.
+    induction h in hm |- *.
+    - constructor.
+    - cbn in hm. constructor. all: auto.
+    - cbn in hm. discriminate.
+  Qed.
+
   Lemma map_subst_elim_inj :
     ∀ σ θ npat l,
+      All (elim_pattern npat) l →
       linear npat l →
       #|σ| = npat →
       #|θ| = npat →
       map (subst_elim σ 0) l = map (subst_elim θ 0) l →
       σ = θ.
-  Admitted.
+  Proof.
+    intros σ θ npat l hl ll eσ eθ e.
+    unfold linear in ll. destruct linear_mask as [m|] eqn:hm. 2: discriminate.
+    eapply All2_eq. eapply All2_mask_all. 1: eauto.
+    eapply map_subst_elim_inj_mask. all: eauto.
+  Qed.
 
   Context (cΣ : confluenv Σ).
 
@@ -6534,6 +6754,7 @@ Section Triangle.
           rewrite map_rho_subst_elim in h'.
           { rewrite σl. eapply rule_elim_pattern. all: eauto. }
           eapply map_subst_elim_inj in h'.
+          2:{ eapply rule_elim_pattern. all: eauto. }
           2:{ eapply rule_linear. all: eauto. }
           2:{ rewrite map_length. auto. }
           2:{ apply All2_length in rρσ. lia. }
@@ -6858,6 +7079,7 @@ Section Triangle.
           rewrite map_rho_subst_elim in h'.
           { rewrite σl. eapply rule_elim_pattern. all: eauto. }
           eapply map_subst_elim_inj in h'.
+          2:{ eapply rule_elim_pattern. all: eauto. }
           2:{ eapply rule_linear. all: eauto. }
           2:{ rewrite map_length. auto. }
           2:{ apply All2_length in rρσ. lia. }
@@ -7135,6 +7357,7 @@ Section Triangle.
           rewrite map_rho_subst_elim in h'.
           { rewrite σl. eapply rule_elim_pattern. all: eauto. }
           eapply map_subst_elim_inj in h'.
+          2:{ eapply rule_elim_pattern. all: eauto. }
           2:{ eapply rule_linear. all: eauto. }
           2:{ rewrite map_length. auto. }
           2:{ apply All2_length in rρσ. lia. }
