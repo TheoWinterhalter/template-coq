@@ -5240,6 +5240,15 @@ Section Triangle.
     | None => false
     end.
 
+  Lemma linear_linear_pattern :
+    ∀ l σ n,
+      All (elim_pattern #|σ|) l →
+      linear #|σ| l →
+      All (elim_pattern n) (map (subst_elim σ 0) l) →
+      linear n (map (subst_elim σ 0) l) →
+      All (pattern n) σ × pattern_list_linear n σ.
+  Admitted.
+
   (* Should be similar to the following,
     or it can be proven directly without linearity and thus imply the second
     one.
@@ -5306,11 +5315,10 @@ Section Triangle.
     { rewrite σl. auto. }
     rewrite <- σl in ll.
     eapply first_match_subst_length in e. rewrite <- e in he.
-    clear - ll hel he hll.
-    (* unfold linear in ll. destruct linear_mask eqn:e. 2: discriminate.
-    unfold linear_mask in e. destruct monad_map eqn:e1. 2: discriminate.
-    cbn in e. *)
-  Admitted.
+    clear - cf wfΣ ll hel he hll.
+    eapply linear_linear_pattern. all: eauto.
+    apply All_map. auto.
+  Qed.
 
   (* Lemma pattern_subst_pred1 :
     ∀ τ p Γ Δ t,
