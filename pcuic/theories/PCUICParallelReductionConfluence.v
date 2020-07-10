@@ -5249,18 +5249,24 @@ Section Triangle.
       All (pattern n) σ × pattern_list_linear n σ.
   Admitted.
 
-  (* Should be similar to the following,
-    or it can be proven directly without linearity and thus imply the second
-    one.
-    Not clear if linearity should be proven at the same time or even instead.
-  *)
   Lemma match_lhs_pattern_subst :
     ∀ npat npat' k n l l' ui α,
+      All (elim_pattern npat) l →
+      linear npat l →
       All (elim_pattern npat') l' →
       linear npat' l' →
       match_lhs npat k n l (mkElims (tSymb k n ui) l') = Some (ui, α) →
       All (pattern npat') α × pattern_list_linear npat' α.
-  Admitted.
+  Proof.
+    intros npat npat' k n l l' ui α hel hll hel' hll' e.
+    eapply match_lhs_sound in e as et. 2: auto.
+    rewrite mkElims_subst in et. cbn in et.
+    apply (f_equal decompose_elims) in et.
+    rewrite !mkElims_decompose_elims in et. cbn in et.
+    apply (f_equal snd) in et. cbn in et. subst.
+    eapply match_lhs_subst_length in e as αl. subst.
+    eapply linear_linear_pattern. all: eauto.
+  Qed.
 
   Lemma first_match_pattern_subst :
     ∀ k r k' n' ui' el ui σ rd npat,
@@ -6424,7 +6430,7 @@ Section Triangle.
         assumption.
       }
       assert (hα : All (pattern #|τ|) α × pattern_list_linear #|τ| α).
-      { eapply match_lhs_pattern_subst. all: eauto. }
+      { eapply match_lhs_pattern_subst. 5: eauto. all: eauto. }
       assert (hθ : All (pattern #|τ|) θ × pattern_list_linear #|τ| θ).
       { eapply first_match_pattern_subst in hpl. all: eauto. }
       destruct hα as [hα lα].
@@ -6645,7 +6651,7 @@ Section Triangle.
         assumption.
       }
       assert (hα : All (pattern #|τ|) α × pattern_list_linear #|τ| α).
-      { eapply match_lhs_pattern_subst. all: eauto. }
+      { eapply match_lhs_pattern_subst. 5: eauto. all: eauto. }
       assert (hθ : All (pattern #|τ|) θ × pattern_list_linear #|τ| θ).
       { eapply first_match_pattern_subst in hpl. all: eauto. }
       destruct hα as [hα lα].
