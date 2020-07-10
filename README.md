@@ -1,7 +1,7 @@
 MetaCoq with Rewrite Rules
 =======
 
-Supplemnetary material for POPL submission:
+Supplementary material for POPL submission:
 The Taming of the Rew: A Type Theory with Computational Assumptions.
 -----------
 
