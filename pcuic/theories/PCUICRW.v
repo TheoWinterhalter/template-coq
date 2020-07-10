@@ -1332,3 +1332,335 @@ Proof.
   apply All_rev. eapply All_impl. 1: eauto.
   eapply on_elim_elim_pattern.
 Qed.
+
+(* Lemma pattern_mask_mkApps :
+  ∀ npat t l,
+    pattern_mask npat (mkApps t l) =
+    (
+      m <- pattern_mask npat t ;;
+      l' <- monad_map (pattern_mask npat) l ;;
+      PCUICPattern.monad_fold_right lin_merge l' m
+    ).
+Proof.
+  intros npat t l.
+  induction l in t |- * using list_rect_rev.
+  - cbn. destruct pattern_mask. all: reflexivity.
+  - cbn. rewrite <- mkApps_nested. cbn. rewrite IHl. cbn.
+    destruct pattern_mask eqn:e1. 2: auto.
+    rewrite option_monad_map_app. cbn. clear IHl.
+    destruct monad_map eqn:e2. 2: auto.
+    destruct (pattern_mask _ a) eqn:e3.
+    2:{
+       destruct PCUICPattern.monad_fold_right. all: reflexivity.
+    }
+    rewrite option_monad_fold_right_app. cbn.
+    destruct lin_merge eqn:e4.
+    2:{
+      destruct PCUICPattern.monad_fold_right eqn:e5. 2: auto.
+    }
+
+    destruct PCUICPattern.monad_fold_right eqn:e3.
+      * rewrite option_monad_fold_right_app. cbn.
+        eapply pattern_mask_length in e2 as ?. subst.
+        rewrite lin_merge_linear_mask_init. *)
+
+Lemma pattern_mask_lift :
+  ∀ npat p m k,
+    pattern_mask npat p = Some m →
+    pattern_mask (k + npat) (lift0 k p) = Some (linear_mask_init k ++ m).
+Proof.
+  intros npat p m k hm.
+  induction p in m, k, hm |- *. all: try discriminate.
+  - cbn in hm. cbn.
+    rewrite lin_set_eq in hm.
+    rewrite lin_set_eq.
+    rewrite linear_mask_init_add.
+    rewrite nth_error_app_ge.
+    { rewrite linear_mask_init_length. lia. }
+    rewrite linear_mask_init_length.
+    replace (k + n - k) with n by lia.
+    destruct nth_error as [[]|] eqn:e1. 1,3: discriminate.
+    apply some_inj in hm. subst. f_equal.
+    replace k with #|linear_mask_init k| at 1.
+    2:{ apply linear_mask_init_length. }
+    rewrite firstn_app_2.
+    replace (S (k + n)) with (#|linear_mask_init k| + S n).
+    2:{ rewrite linear_mask_init_length. lia. }
+    rewrite skipn_skipn. rewrite skipn_all_app.
+    rewrite !app_assoc. reflexivity.
+  - cbn in hm. destruct pattern_mask eqn:e1. 2: discriminate.
+    move hm at top.
+    destruct pattern_mask eqn:e2. 2: discriminate.
+    specialize IHp1 with (1 := eq_refl).
+    specialize IHp2 with (1 := eq_refl).
+    cbn. rewrite IHp1. rewrite IHp2.
+    eapply PCUICParallelReduction.lin_merge_app. 2: auto.
+    replace k with #|linear_mask_init k| at 1.
+    2:{ apply linear_mask_init_length. }
+    rewrite lin_merge_linear_mask_init.
+    reflexivity.
+  - cbn in hm. apply some_inj in hm. subst.
+    cbn. f_equal. rewrite linear_mask_init_add. reflexivity.
+Qed.
+
+Lemma lin_merge_linear_mask_init' :
+  ∀ m n,
+    #|m| = n →
+    lin_merge (linear_mask_init n) m = Some m.
+Proof.
+  intros m n []. apply lin_merge_linear_mask_init.
+Qed.
+
+Lemma pattern_footprint_linear :
+  forall t,
+    let '(p, τ) := pattern_footprint t in
+    pattern_mask #|τ| p = Some (list_init true #|τ|).
+Proof.
+  intros t.
+  funelim (pattern_footprint t).
+  - cbn. auto.
+  - clear H. rewrite map_terms_map in e0.
+    rewrite <- pattern_list_footprint_unfold in e0.
+    induction l in l0, l1, e0, Hind |- * using list_rect_rev.
+    + cbn in e0. inversion e0. cbn. reflexivity.
+    + rewrite pattern_list_footprint_atend_eq in e0.
+      destruct pattern_footprint eqn:e1.
+      cbn in e0.
+      destruct pattern_list_footprint eqn:e2. cbn in e0.
+      inversion e0. subst. clear e0.
+      specialize IHl with (2 := eq_refl).
+      forward IHl.
+      { intros x hx. eapply Hind. rewrite size_mkApps. cbn.
+        rewrite list_size_app. cbn.
+        rewrite size_mkApps in hx. cbn in hx. lia.
+      }
+      specialize (Hind a). forward Hind.
+      { rewrite size_mkApps. cbn. rewrite list_size_app. cbn. lia. }
+      rewrite e1 in Hind.
+      rewrite <- mkApps_nested. cbn.
+      rewrite app_length.
+      eapply pattern_mask_lift in IHl. rewrite lift_mkApps in IHl.
+      erewrite IHl.
+      eapply pattern_mask_right in Hind.
+      rewrite plus_comm in Hind. erewrite Hind.
+      rewrite list_init_add.
+      eapply PCUICParallelReduction.lin_merge_app.
+      * eapply lin_merge_linear_mask_init'. apply list_init_length.
+      * apply lin_merge_sym. eapply lin_merge_linear_mask_init'.
+        apply list_init_length.
+Qed.
+
+Lemma linear_mask_cons :
+  ∀ npat e el,
+    linear_mask npat (e :: el) = (
+      m <- elim_mask npat e ;;
+      m' <- linear_mask npat el ;;
+      lin_merge m' m
+    ).
+Proof.
+  intros npat e el.
+  cbn. destruct elim_mask eqn:e1. 2: auto.
+  destruct monad_map eqn:e2. 2: auto.
+  cbn. reflexivity.
+Qed.
+
+Lemma elim_mask_right :
+  ∀ k npat e m,
+    elim_mask npat e = Some m →
+    elim_mask (npat + k) e = Some (m ++ linear_mask_init k).
+Proof.
+  intros k npat e m hm.
+  destruct e.
+  - cbn in *. eapply pattern_mask_right in hm.
+    rewrite <- hm. f_equal. lia.
+  - cbn in hm.
+    destruct pattern_mask eqn:e1. 2: discriminate.
+    destruct monad_map eqn:e2. 2: discriminate.
+    destruct PCUICPattern.monad_fold_right eqn:e3. 2: discriminate.
+    cbn. eapply pattern_mask_right in e1.
+    rewrite plus_comm in e1. erewrite e1.
+    assert (hb :
+      monad_map (λ p0 : nat × term, pattern_mask (npat + k) p0.2) brs =
+      Some (map (fun x => x ++ linear_mask_init k) l0)
+    ).
+    { clear - e2.
+      induction brs in l0, e2 |- *.
+      - cbn in e2. apply some_inj in e2. subst.
+        cbn. reflexivity.
+      - cbn in e2. destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct monad_map eqn:e3. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn. eapply pattern_mask_right in e1.
+        rewrite plus_comm in e1. erewrite e1.
+        specialize IHbrs with (1 := eq_refl).
+        rewrite IHbrs. reflexivity.
+    }
+    rewrite hb.
+    replace (PCUICPattern.monad_fold_right lin_merge
+    (map (λ x : list bool, x ++ linear_mask_init k) l0)
+    (linear_mask_init (npat + k)))
+    with (Some (l1 ++ linear_mask_init k)).
+    2:{
+      clear - e3. induction l0 in l1, e3 |- *.
+      - cbn in e3. apply some_inj in e3. subst.
+        cbn. rewrite linear_mask_init_add. reflexivity.
+      - cbn in e3. destruct PCUICPattern.monad_fold_right eqn:e1.
+        2: discriminate.
+        specialize IHl0 with (1 := eq_refl).
+        cbn. rewrite <- IHl0. symmetry.
+        eapply PCUICParallelReduction.lin_merge_app. 1: auto.
+        apply lin_merge_linear_mask_init'.
+        apply linear_mask_init_length.
+    }
+    eapply PCUICParallelReduction.lin_merge_app. 1: auto.
+    apply lin_merge_linear_mask_init'.
+    apply linear_mask_init_length.
+  - cbn in hm. apply some_inj in hm. subst.
+    cbn. rewrite linear_mask_init_add. reflexivity.
+Qed.
+
+Lemma linear_mask_right :
+  ∀ k npat l m,
+    linear_mask npat l = Some m →
+    linear_mask (npat + k) l = Some (m ++ linear_mask_init k).
+Proof.
+  intros k npat l m hm.
+  induction l in k, npat, m, hm |- *.
+  - cbn in hm. apply some_inj in hm. subst.
+    cbn. rewrite linear_mask_init_add. reflexivity.
+  - rewrite linear_mask_cons in hm.
+    destruct elim_mask eqn:e1. 2: discriminate.
+    cbn - [linear_mask] in hm. destruct linear_mask eqn:e2. 2: discriminate.
+    rewrite linear_mask_cons. eapply elim_mask_right in e1.
+    erewrite e1. cbn - [linear_mask].
+    eapply IHl in e2. erewrite e2.
+    eapply PCUICParallelReduction.lin_merge_app. 1: auto.
+    apply lin_merge_linear_mask_init'.
+    apply linear_mask_init_length.
+Qed.
+
+Lemma linear_mask_length :
+  ∀ npat l m,
+    linear_mask npat l = Some m →
+    npat = #|m|.
+Proof.
+  intros npat l m hm.
+  induction l in npat, m, hm |- *.
+  - cbn in hm. apply some_inj in hm. subst.
+    rewrite linear_mask_init_length. reflexivity.
+  - rewrite linear_mask_cons in hm.
+    destruct elim_mask eqn:e1. 2: discriminate.
+    cbn - [linear_mask] in hm. destruct linear_mask eqn:e2. 2: discriminate.
+    eapply IHl in e2. apply lin_merge_length in hm.
+    intuition auto. lia.
+Qed.
+
+Lemma forallb_list_init_true :
+  ∀ n,
+    forallb (fun x => x) (list_init true n).
+Proof.
+  intros n.
+  induction n.
+  - reflexivity.
+  - cbn. auto.
+Qed.
+
+Lemma elim_footprint_linear :
+  ∀ t k n ui l τ,
+    elim_footprint t = Some (k,n,ui,l,τ) →
+    linear #|τ| l.
+Proof.
+  intros t k n ui l τ e.
+  induction t in k, n, ui, l, τ, e |- * using term_forall_list_ind.
+  all: try solve [ cbn in e ; discriminate ].
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    destruct pattern_footprint eqn:e2.
+    inversion e. subst. clear e.
+    epose proof (pattern_footprint_linear _) as h.
+    erewrite e2 in h.
+    specialize IHt1 with (1 := eq_refl).
+    clear IHt2.
+    unfold linear. rewrite linear_mask_cons. cbn - [ linear_mask ].
+    rewrite app_length.
+    eapply pattern_mask_lift in h. erewrite h.
+    unfold linear in IHt1. destruct linear_mask eqn:e3. 2: discriminate.
+    eapply linear_mask_length in e3 as ?.
+    eapply linear_mask_right in e3. erewrite e3.
+    erewrite PCUICParallelReduction.lin_merge_app.
+    3:{ eapply lin_merge_linear_mask_init'. apply list_init_length. }
+    2:{
+      apply lin_merge_sym. eapply lin_merge_linear_mask_init'.
+      auto.
+    }
+    rewrite forallb_app. rewrite IHt1. cbn.
+    apply forallb_list_init_true.
+  - cbn in e. inversion e. subst. clear e.
+    constructor.
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    destruct pattern_footprint eqn:e2.
+    destruct fold_right eqn:e3.
+    inversion e. subst. clear e.
+    clear IHt1.
+    specialize IHt2 with (1 := eq_refl).
+    epose proof (pattern_footprint_linear _) as h.
+    erewrite e2 in h.
+    unfold linear. rewrite linear_mask_cons. cbn - [ linear_mask ].
+    (* constructor.
+    2:{
+      eapply All_impl. 1: eauto.
+      intros ? ?. eapply on_elim_impl. 1: eauto.
+      intros ? ?. eapply pattern_upwards. 1: eauto.
+      rewrite app_length. lia.
+    }
+    cbn. split.
+    1:{
+      rewrite app_length. apply pattern_lift.
+      eapply pattern_upwards. 1: eauto.
+      rewrite app_length. lia.
+    }
+    clear - l3 l4 e3 l1 IHt2.
+    induction l0 in l3, l4, e3, l1, IHt2 |- *.
+    + cbn in e3. inversion e3. subst. clear e3.
+      constructor.
+    + cbn in e3. destruct pattern_footprint eqn:e1.
+      destruct fold_right eqn:e2.
+      inversion e3. subst. clear e3.
+      specialize IHl0 with (1 := eq_refl) (2 := IHt2).
+      constructor.
+      * cbn. rewrite !app_length.
+        match goal with
+        | |- context [ ?a + (?b + (?c + ?d)) ] =>
+          replace (a + (b + (c + d))) with ((a + b + c) + d) by lia
+        end.
+        apply pattern_lift.
+        epose proof (pattern_footprint_pattern _) as h.
+        erewrite e1 in h. assumption.
+      * eapply All_impl. 1: eauto.
+        intros []. cbn. intro.
+        eapply pattern_upwards. 1: eauto.
+        rewrite !app_length. lia.
+  - cbn in e.
+    destruct elim_footprint as [[[[[? ?] ?] l1] τ1]|] eqn:e1. 2: discriminate.
+    inversion e. subst. clear e.
+    specialize IHt with (1 := eq_refl).
+    constructor. 2: auto.
+    cbn. constructor.
+Qed. *)
+Admitted.
+
+Lemma lhs_footprint_linear :
+  ∀ t k n ui l τ,
+    lhs_footprint t = Some (k,n,ui,l,τ) →
+    linear #|τ| l.
+Proof.
+  intros t k n ui l τ e.
+  unfold lhs_footprint in e.
+  destruct elim_footprint as [[[[[? ?] ?] ?] ?]|] eqn:e1. 2: discriminate.
+  cbn in e. inversion e. subst. clear e.
+  eapply elim_footprint_linear in e1.
+  unfold linear in *.
+  destruct linear_mask eqn:e2. 2: discriminate.
+  apply linear_mask_rev in e2. rewrite e2. auto.
+Qed.

@@ -5248,6 +5248,7 @@ Section Triangle.
   Lemma match_lhs_pattern_subst :
     ∀ npat npat' k n l l' ui α,
       All (elim_pattern npat') l' →
+      linear npat' l' →
       match_lhs npat k n l (mkElims (tSymb k n ui) l') = Some (ui, α) →
       All (pattern npat') α × pattern_list_linear npat' α.
   Admitted.
@@ -5255,12 +5256,13 @@ Section Triangle.
   Lemma first_match_pattern_subst :
     ∀ k r k' n' ui' el ui σ rd npat,
       All (elim_pattern npat) el →
+      linear npat el →
       lookup_env Σ k = Some (RewriteDecl rd) →
       let l := all_rewrite_rules rd in
       first_match k l (mkElims (tSymb k' n' ui') el) = Some (ui, σ, r) →
       All (pattern npat) σ × pattern_list_linear npat σ.
   Proof.
-    intros k r k' n' ui' el ui σ rd npat hel hk l e.
+    intros k r k' n' ui' el ui σ rd npat hel hll hk l e.
     apply all_rewrite_rules_on_rewrite_rule in hk as hrd.
     destruct hrd as [Σ' hrd].
     eapply first_match_rule_list in e as hr. destruct hr as [n hr].
@@ -5299,11 +5301,15 @@ Section Triangle.
       1:{ rewrite σl. assumption. }
       assumption.
     }
-    clear hel. rewrite <- σl in ll.
-    clear - ll hel' he.
-    unfold linear in ll. destruct linear_mask eqn:e. 2: discriminate.
+    clear hel. rename hel' into hel.
+    rewrite subst_elims_symbols_subst in hll.
+    { rewrite σl. auto. }
+    rewrite <- σl in ll.
+    eapply first_match_subst_length in e. rewrite <- e in he.
+    clear - ll hel he hll.
+    (* unfold linear in ll. destruct linear_mask eqn:e. 2: discriminate.
     unfold linear_mask in e. destruct monad_map eqn:e1. 2: discriminate.
-    cbn in e.
+    cbn in e. *)
   Admitted.
 
   (* Lemma pattern_subst_pred1 :
@@ -6400,6 +6406,7 @@ Section Triangle.
       apply (f_equal snd) in fe. cbn in fe.
       eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
       eapply lhs_footprint_pattern in hf as hpl.
+      eapply lhs_footprint_linear in hf as hll.
       set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
       specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
       forward h.
@@ -6620,6 +6627,7 @@ Section Triangle.
       apply (f_equal snd) in fe. cbn in fe.
       eapply first_match_lookup_sound in fm as elhs. 2,4: eauto. 2: exact I.
       eapply lhs_footprint_pattern in hf as hpl.
+      eapply lhs_footprint_linear in hf as hll.
       set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
       specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
       forward h.
