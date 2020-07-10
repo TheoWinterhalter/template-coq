@@ -1,13 +1,17 @@
 MetaCoq with Rewrite Rules
 =======
 
+Supplemnetary material for POPL submission:
+The Taming of the Rew: A Type Theory with Computational Assumptions.
+-----------
+
 As this work is built upon the MetaCoq project, we leave the README of the
 MetaCoq project below.
 
 The contents of our formalization are added in the `template-coq/theories`
 and `pcuic/theories` directories. Unrelated parts have been removed.
 
-To build the project you can use the following:
+To build the project you can use the following at the root of the directory:
 
 ```sh
 ./configure local
