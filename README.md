@@ -1,5 +1,21 @@
-MetaCoq
+MetaCoq with Rewrite Rules
 =======
+
+As this work is built upon the MetaCoq project, we leave the README of the
+MetaCoq project below.
+
+The contents of our formalization are added in the `template-coq/theories`
+and `pcuic/theories` directories. Unrelated parts have been removed.
+
+To build the project you can use the following:
+
+```sh
+./configure local
+make pcuic -j4
+```
+
+MetaCoq Usual README
+=====
 
 <img src="https://raw.githubusercontent.com/MetaCoq/metacoq.github.io/master/assets/LOGO.png" alt="MetaCoq" width="50px"/>
 
@@ -35,13 +51,13 @@ Branches and compatibility
 Coq's kernel API is not stable yet, and changes there are reflected in MetaCoq's reified structures,
 so we do not ensure any compatibility from version to version.
 
-The [master](https://github.com/MetaCoq/metacoq/tree/master) branch is following Coq's master 
-branch and gets regular updates from the the main development branch which follows the latest 
+The [master](https://github.com/MetaCoq/metacoq/tree/master) branch is following Coq's master
+branch and gets regular updates from the the main development branch which follows the latest
 stable release of Coq.
 
 Currently, the [coq-8.11](https://github.com/MetaCoq/metacoq/tree/coq-8.11) branch is the main stable branch.
-The branch [coq-8.10](https://github.com/MetaCoq/metacoq/tree/coq-8.10) 
-gets backports from `coq-8.11` when possible. Both `coq-8.11` and `coq-8.10` have associated 
+The branch [coq-8.10](https://github.com/MetaCoq/metacoq/tree/coq-8.10)
+gets backports from `coq-8.11` when possible. Both `coq-8.11` and `coq-8.10` have associated
 "alpha"-quality `opam` packages.
 
 The branches [coq-8.6](https://github.com/MetaCoq/metacoq/tree/coq-8.6),
@@ -76,7 +92,7 @@ Once in the right switch, you can install `Coq` and the `Equations` package usin
 
 Pinning the packages prevents opam from trying to upgrade it afterwards, in
 this switch. If the commands are successful you should have `coq`
-available (check with `coqc -v`). 
+available (check with `coqc -v`).
 
 Installing from GitHub repository (for developers)
 ------------------------------
@@ -103,7 +119,7 @@ Requirements
 
 To compile the library, you need:
 
-- The `Coq` version corrsponding to your branch (you can use the `coq.dev` package 
+- The `Coq` version corrsponding to your branch (you can use the `coq.dev` package
   for the `master` branch).
 - `OCaml` (tested with `4.06.1` and `4.07.1`, beware that `OCaml 4.06.0`
   can produce linking errors on some platforms)
