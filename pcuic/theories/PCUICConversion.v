@@ -1248,44 +1248,67 @@ Lemma cumul_Prod_inv {cf:checker_flags} Σ Γ na na' A B A' B' :
   wf_local Σ Γ ->
   Σ ;;; Γ |- tProd na A B <= tProd na' A' B' ->
    ((Σ ;;; Γ |- A = A') * (Σ ;;; Γ ,, vass na' A' |- B <= B'))%type.
-(* Proof.
+Proof.
   intros wfΣ cΣ wfΓ H; depind H.
   - depelim l.
     split; auto.
     all: now constructor.
 
-  - depelim r.
-    + solve_discr.
-    + specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
+  - (* depelim r. *)
+    (* Equations bug *)
+    generalize_by_eqs_vars r. destruct r.
+    all: try solve [ simplify_dep_elim ].
+
+    + simplify_dep_elim. solve_discr.
+    + subst lhs rhs. simplify_dep_elim.
+      apply (f_equal PCUICParallelReduction.isElimSymb) in H0. cbn in H0.
+      rewrite PCUICParallelReduction.isElimSymb_subst in H0.
+      { apply untyped_subslet_length in u. rewrite u.
+        rewrite subst_context_length.
+        apply PCUICParallelReduction.isElimSymb_lhs.
+        eapply PCUICParallelReduction.declared_symbol_head in d. all: eauto.
+      }
+      discriminate.
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
       intuition auto.
       econstructor 2; eauto.
-    + specialize (IHcumul _ _ _ _ _ _ wfΣ wfΓ eq_refl).
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
       intuition auto. apply cumul_trans with N2.
+      * auto.
       * auto.
       * eapply cumul_conv_ctx; eauto.
         -- econstructor 2. 1: eauto.
            constructor. reflexivity.
         -- constructor. 1: now apply conv_ctx_refl.
            constructor; auto.
-      * auto.
+      * simplify_dep_elim. auto.
 
-  - depelim r.
-    + solve_discr.
-    + specialize (IHcumul _ _ _ _ _ _ wfΣ wfΓ eq_refl).
+  - (* depelim r. *)
+    (* Equations bug *)
+    generalize_by_eqs_vars r. destruct r.
+    all: try solve [ simplify_dep_elim ].
+    + simplify_dep_elim. solve_discr.
+    + subst lhs rhs. simplify_dep_elim.
+      apply (f_equal PCUICParallelReduction.isElimSymb) in H0. cbn in H0.
+      rewrite PCUICParallelReduction.isElimSymb_subst in H0.
+      { apply untyped_subslet_length in u. rewrite u.
+        rewrite subst_context_length.
+        apply PCUICParallelReduction.isElimSymb_lhs.
+        eapply PCUICParallelReduction.declared_symbol_head in d. all: eauto.
+      }
+      discriminate.
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
       intuition auto.
       * econstructor 3. 2:eauto. auto.
-      * eapply cumul_conv_ctx in b. 1: eauto. 1: auto.
+      * eapply cumul_conv_ctx in b. 1: eauto. 1: auto. 1: auto.
         constructor. 1: eapply conv_ctx_refl.
         constructor. eapply conv_sym; auto.
-    + specialize (IHcumul _ _ _ _ _ _ wfΣ wfΓ eq_refl).
-      intuition auto. apply cumul_trans with N2. 1-2: auto.
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
+      intuition auto. apply cumul_trans with N2. 1-3: auto.
       eapply cumul_red_r; eauto. reflexivity.
+Qed.
 
-  - todoeta.
-  - todoeta.
-
-Qed. *)
-Admitted.
+Print Assumptions cumul_Prod_inv.
 
 Lemma tProd_it_mkProd_or_LetIn na A B ctx s :
   tProd na A B = it_mkProd_or_LetIn ctx (tSort s) ->
