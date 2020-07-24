@@ -6051,6 +6051,19 @@ Section Triangle.
         eapply IHh1. all: eauto.
   Qed.
 
+  Lemma All_mask_true_All :
+    ∀ P m σ,
+      All_mask P m σ →
+      forallb (λ x, x) m →
+      All P σ.
+  Proof.
+    intros P m σ h1 h2.
+    induction h1.
+    - constructor.
+    - cbn in h2. constructor. all: auto.
+    - cbn in h2. discriminate.
+  Qed.
+
   Fixpoint mask_filter {A} (m : list bool) (l : list A) :=
     match m, l with
     | true :: m, x :: l => x :: mask_filter m l
@@ -6068,6 +6081,23 @@ Section Triangle.
     - cbn. destruct l.
       + reflexivity.
       + apply IHn.
+  Qed.
+
+  Lemma mask_filter_all_true :
+    ∀ {A} (l : list A) m,
+      forallb (λ x, x) m →
+      #|l| = #|m| →
+      mask_filter m l = l.
+  Proof.
+    intros A l m h e.
+    induction m as [| [] m ih] in l, h, e |- *.
+    - cbn. destruct l. 2: discriminate.
+      reflexivity.
+    - cbn in *. destruct l. 1: discriminate.
+      cbn in e. f_equal. eapply ih.
+      + auto.
+      + lia.
+    - cbn in h. discriminate.
   Qed.
 
   Lemma option_map_mask_filter_lin_merge :
@@ -6176,6 +6206,23 @@ Section Triangle.
     eapply lin_merge_app. all: eauto.
   Qed.
 
+  Lemma linear_elim_mask :
+    ∀ σ e n m m',
+      elim_pattern #|σ| e →
+      elim_pattern n (subst_elim σ 0 e) →
+      elim_mask #|σ| e = Some m →
+      elim_mask n (subst_elim σ 0 e) = Some m' →
+      All_mask (pattern n) m σ ×
+      pattern_list_mask n (mask_filter m σ) = Some m'.
+  Proof.
+    intros σ e n m m' hp1 hp2 hm1 hm2.
+    induction hp1 in n, hp2, m, hm1, m', hm2 |- *.
+    - cbn in hp2, hm1, hm2. inversion hp2. subst.
+      admit.
+    - admit.
+    - admit.
+  Admitted.
+
   Lemma linear_linear_mask_pattern :
     ∀ l σ n m1 m2,
       All (elim_pattern #|σ|) l →
@@ -6201,14 +6248,13 @@ Section Triangle.
       cbn in p2. apply All_cons_inv in p2 as [ph p2].
       specialize IHp1 with (1 := eq_refl) (3 := eq_refl).
       forward IHp1 by auto.
-      destruct IHp1 as [hp hm]. split.
+      destruct IHp1 as [hp hm].
+      eapply linear_elim_mask in em2 as h. 2-4: eauto.
+      destruct h.
+      split.
       + eapply All_mask_lin_merge. all: eauto.
-        (* All_mask (pattern n) l0 σ *)
-        admit.
       + eapply pattern_list_mask_filter_lin_merge. all: eauto.
-        (* pattern_list_mask n (mask_filter l0 σ) = Some l1 *)
-        admit.
-  Admitted.
+  Qed.
 
   Lemma linear_linear_pattern :
     ∀ l σ n,
@@ -6222,7 +6268,15 @@ Section Triangle.
     unfold linear in *.
     destruct linear_mask eqn:e1. 2: discriminate.
     destruct (linear_mask _ (map _ _)) eqn:e2. 2: discriminate.
-  Admitted.
+    eapply linear_linear_mask_pattern in e2 as h. 2-4: eauto.
+    destruct h. split.
+    - eapply All_mask_true_All. all: eauto.
+    - unfold pattern_list_linear.
+      erewrite mask_filter_all_true in e.
+      2: auto.
+      2:{ eapply linear_mask_length. eauto. }
+      rewrite e. auto.
+  Qed.
 
   Lemma match_lhs_pattern_subst :
     ∀ npat npat' k n l l' ui α,
