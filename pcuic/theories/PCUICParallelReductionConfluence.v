@@ -1,7 +1,8 @@
 (* Distributed under the terms of the MIT license.   *)
 Set Warnings "-notation-overridden".
 Require Import ssreflect ssrbool.
-From Coq Require Import Bool List Utf8 ZArith Lia Morphisms String.
+From Coq Require Import Bool List Utf8 ZArith Lia Morphisms String
+  Sorting.Permutation.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICAstUtils PCUICSize
   PCUICLiftSubst PCUICSigmaCalculus PCUICUnivSubst PCUICTyping PCUICReduction
@@ -6069,6 +6070,112 @@ Section Triangle.
       + apply IHn.
   Qed.
 
+  Lemma option_map_mask_filter_lin_merge :
+    ∀ {A B} m1 m2 m (f : A → option B) l1 l2 l,
+      lin_merge m1 m2 = Some m →
+      monad_map f (mask_filter m1 l) = Some l1 →
+      monad_map f (mask_filter m2 l) = Some l2 →
+      ∑ l',
+        Permutation (l1 ++ l2) l' ×
+        monad_map f (mask_filter m l) = Some l'.
+  Proof.
+    intros A B m1 m2 m f l1 l2 l hm h1 h2.
+    induction m1 as [| [] m1 ih] in m2, m, hm, l, l1, h1, l2, h2 |- *.
+    - destruct m2. 2: discriminate.
+      cbn in hm. apply some_inj in hm. subst.
+      cbn in h1. apply some_inj in h1. subst.
+      cbn in h2. apply some_inj in h2. subst.
+      cbn. exists []. intuition auto.
+    - destruct m2 as [| [] m2]. 1,2: discriminate.
+      cbn in hm. destruct lin_merge eqn:hm'. 2: discriminate.
+      apply some_inj in hm. subst.
+      cbn in h1. cbn in h2.
+      destruct l.
+      + cbn in h1. apply some_inj in h1. subst.
+        cbn in h2. apply some_inj in h2. subst.
+        cbn. exists []. intuition auto.
+      + cbn in h1. destruct f eqn:e1. 2: discriminate.
+        destruct monad_map eqn:e2. 2: discriminate.
+        apply some_inj in h1. subst.
+        cbn. rewrite e1.
+        specialize ih with (1 := hm').
+        specialize ih with (1 := e2) (2 := h2).
+        destruct ih as [l' [hp e]].
+        rewrite e.
+        eexists. split. 2: reflexivity.
+        constructor. assumption.
+    - destruct m2 as [| b m2]. 1: discriminate.
+      cbn in hm. destruct lin_merge eqn:hm'. 2: discriminate.
+      apply some_inj in hm. subst.
+      cbn in h1. cbn in h2.
+      destruct l.
+      + cbn in h1. apply some_inj in h1. subst.
+        rewrite if_same in h2.
+        cbn in h2. apply some_inj in h2. subst.
+        cbn. rewrite if_same. exists []. intuition auto.
+      + destruct b.
+        * cbn in h2. destruct f eqn:e1. 2: discriminate.
+          destruct (monad_map _ (mask_filter m2 _)) eqn:e2. 2: discriminate.
+          apply some_inj in h2. subst.
+          cbn. rewrite e1.
+          specialize ih with (1 := hm').
+          specialize ih with (1 := h1) (2 := e2).
+          destruct ih as [l' [hp e]].
+          rewrite e.
+          eexists. split. 2: reflexivity.
+          etransitivity.
+          1: symmetry.
+          1: eapply Permutation_middle.
+          constructor. assumption.
+        * cbn.
+          specialize ih with (1 := hm').
+          specialize ih with (1 := h1) (2 := h2).
+          destruct ih as [l' [hp e]].
+          rewrite e.
+          eexists. split. 2: reflexivity.
+          assumption.
+  Qed.
+
+  Lemma lin_merge_permutation :
+    ∀ n l l' m,
+      PCUICPattern.monad_fold_right lin_merge l (linear_mask_init n) = Some m →
+      Permutation l l' →
+      PCUICPattern.monad_fold_right lin_merge l' (linear_mask_init n) = Some m.
+  Proof.
+    intros n l l' m hm hp.
+    induction hp in m, hm |- *.
+    - assumption.
+    - cbn in hm. destruct PCUICPattern.monad_fold_right eqn:e1. 2: discriminate.
+      specialize IHhp with (1 := eq_refl).
+      cbn. rewrite IHhp. assumption.
+    - cbn in hm. destruct PCUICPattern.monad_fold_right eqn:e1. 2: discriminate.
+      destruct lin_merge eqn:e2. 2: discriminate.
+      cbn. rewrite e1.
+      pose proof (lin_merge_assoc _ _ _ _ _ e2 hm) as h.
+      destruct h as [m' [e3 e4]]. rewrite e3. assumption.
+    - eapply IHhp2. eapply IHhp1. assumption.
+  Qed.
+
+  Lemma pattern_list_mask_filter_lin_merge :
+    ∀ n m1 m2 m m1' m2' m' σ,
+      lin_merge m1 m2 = Some m →
+      lin_merge m1' m2' = Some m' →
+      pattern_list_mask n (mask_filter m1 σ) = Some m1' →
+      pattern_list_mask n (mask_filter m2 σ) = Some m2' →
+      pattern_list_mask n (mask_filter m σ) = Some m'.
+  Proof.
+    intros n m1 m2 m m1' m2' m' σ hm hm' h1 h2.
+    unfold pattern_list_mask in *.
+    destruct monad_map eqn:e1. 2: discriminate.
+    destruct (monad_map _ (mask_filter m2 _)) eqn:e2. 2: discriminate.
+    cbn in h1. cbn in h2.
+    eapply option_map_mask_filter_lin_merge in hm as h. 2,3: eauto.
+    destruct h as [l' [pm e]].
+    rewrite e. cbn.
+    eapply lin_merge_permutation. 2: eauto.
+    eapply lin_merge_app. all: eauto.
+  Qed.
+
   Lemma linear_linear_mask_pattern :
     ∀ l σ n m1 m2,
       All (elim_pattern #|σ|) l →
@@ -6094,7 +6201,13 @@ Section Triangle.
       cbn in p2. apply All_cons_inv in p2 as [ph p2].
       specialize IHp1 with (1 := eq_refl) (3 := eq_refl).
       forward IHp1 by auto.
-      destruct IHp1 as [hp hm].
+      destruct IHp1 as [hp hm]. split.
+      + eapply All_mask_lin_merge. all: eauto.
+        (* All_mask (pattern n) l0 σ *)
+        admit.
+      + eapply pattern_list_mask_filter_lin_merge. all: eauto.
+        (* pattern_list_mask n (mask_filter l0 σ) = Some l1 *)
+        admit.
   Admitted.
 
   Lemma linear_linear_pattern :
