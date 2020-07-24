@@ -5240,6 +5240,137 @@ Section Triangle.
     | None => false
     end.
 
+  Inductive All_mask (P : term → Type) : list bool → list term → Type :=
+  | All_mask_nil : All_mask P [] []
+  | All_mask_true :
+      ∀ t m l,
+        P t →
+        All_mask P m l →
+        All_mask P (true :: m) (t :: l)
+  | All2_mask_psubst_false :
+      ∀ t m l,
+        All_mask P m l →
+        All_mask P (false :: m) (t :: l).
+
+  Lemma All_mask_linear_mask_init :
+    ∀ P n σ,
+      #|σ| = n →
+      All_mask P (linear_mask_init n) σ.
+  Proof.
+    intros P n σ e.
+    induction n in σ, e |- *.
+    - cbn.
+      destruct σ. 2: discriminate.
+      constructor.
+    - destruct σ. 1: discriminate.
+      cbn. constructor.
+      cbn in e.
+      eapply IHn. lia.
+  Qed.
+
+  Lemma All_mask_lin_set :
+    ∀ P n m m' σ x,
+      lin_set n m = Some m' →
+      nth_error σ n = Some x →
+      P x →
+      All_mask P m σ →
+      All_mask P m' σ.
+  Proof.
+    intros P n m m' σ x hm hσ h1 h2.
+    induction h2 in n, m', hm, x, hσ, h1 |- *.
+    - destruct n. all: discriminate.
+    - destruct n. 1: discriminate.
+      cbn in hm. destruct lin_set eqn:hm'. 2: discriminate.
+      apply some_inj in hm. subst.
+      cbn in hσ.
+      constructor. 1: auto.
+      eapply IHh2. all: eauto.
+    - destruct n.
+      + cbn in hm. apply some_inj in hm. subst.
+        cbn in hσ.
+        apply some_inj in hσ. subst.
+        constructor. all: auto.
+      + cbn in hm. destruct lin_set eqn:hm'. 2: discriminate.
+        apply some_inj in hm. subst.
+        cbn in hσ.
+        constructor.
+        eapply IHh2. all: eauto.
+  Qed.
+
+  Lemma All_mask_lin_merge :
+    ∀ P m1 m2 m σ,
+      lin_merge m1 m2 = Some m →
+      All_mask P m1 σ →
+      All_mask P m2 σ →
+      All_mask P m σ.
+  Proof.
+    intros P m1 m2 m σ hm h1 h2.
+    induction h1 in m2, h2, m, hm |- *.
+    - destruct m2. 2: discriminate.
+      cbn in hm. apply some_inj in hm. subst.
+      constructor.
+    - destruct m2 as [| []]. 1,2: discriminate.
+      cbn in hm. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in hm. subst.
+      inversion h2. subst.
+      constructor. 1: auto.
+      eapply IHh1. all: eauto.
+    - destruct m2. 1: discriminate.
+      cbn in hm. destruct lin_merge eqn:e1. 2: discriminate.
+      apply some_inj in hm. subst.
+      destruct b.
+      + inversion h2. subst.
+        constructor. 1: auto.
+        eapply IHh1. all: eauto.
+      + inversion h2. subst.
+        constructor.
+        eapply IHh1. all: eauto.
+  Qed.
+
+  Fixpoint mask_filter {A} (m : list bool) (l : list A) :=
+    match m, l with
+    | true :: m, x :: l => x :: mask_filter m l
+    | false :: m, x :: l => mask_filter m l
+    | _, _ => []
+    end.
+
+  Lemma mask_filter_linear_mask_init :
+    ∀ {A} n (l : list A),
+      mask_filter (linear_mask_init n) l = [].
+  Proof.
+    intros A n l.
+    induction n in l |- *.
+    - cbn. reflexivity.
+    - cbn. destruct l.
+      + reflexivity.
+      + apply IHn.
+  Qed.
+
+  Lemma linear_linear_mask_pattern :
+    ∀ l σ n m1 m2,
+      All (elim_pattern #|σ|) l →
+      linear_mask #|σ| l = Some m1 →
+      All (elim_pattern n) (map (subst_elim σ 0) l) →
+      linear_mask n (map (subst_elim σ 0) l) = Some m2 →
+      All_mask (pattern n) m1 σ ×
+      pattern_list_mask n (mask_filter m1 σ) = Some m2.
+  Proof.
+    intros l σ n m1 m2 p1 hm1 p2 hm2.
+    induction p1 in m1, hm1, p2, hm2 |- *.
+    - cbn in hm1. apply some_inj in hm1. subst.
+      cbn in hm2. rewrite mask_filter_linear_mask_init.
+      cbn. intuition auto.
+      apply All_mask_linear_mask_init. reflexivity.
+    - rewrite linear_mask_cons in hm1.
+      cbn - [linear_mask] in hm2. rewrite linear_mask_cons in hm2.
+      destruct elim_mask eqn:em1. 2: discriminate.
+      destruct (elim_mask _ (subst_elim _ _ _)) eqn:em2. 2: discriminate.
+      destruct linear_mask eqn:lm1. 2: discriminate.
+      destruct (linear_mask _ (map _ _)) eqn:lm2. 2: discriminate.
+      cbn in hm1. cbn in hm2.
+      cbn in p2. (* apply All_cons_inv in p2. *)
+  Admitted.
+
   Lemma linear_linear_pattern :
     ∀ l σ n,
       All (elim_pattern #|σ|) l →
@@ -5247,6 +5378,11 @@ Section Triangle.
       All (elim_pattern n) (map (subst_elim σ 0) l) →
       linear n (map (subst_elim σ 0) l) →
       All (pattern n) σ × pattern_list_linear n σ.
+  Proof.
+    intros l σ n pl ll pm lm.
+    unfold linear in *.
+    destruct linear_mask eqn:e1. 2: discriminate.
+    destruct (linear_mask _ (map _ _)) eqn:e2. 2: discriminate.
   Admitted.
 
   Lemma match_lhs_pattern_subst :
