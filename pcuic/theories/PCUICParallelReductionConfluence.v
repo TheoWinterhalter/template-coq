@@ -5964,6 +5964,20 @@ Section Triangle.
     | None => false
     end.
 
+  Lemma pattern_list_mask_cons :
+    ∀ npat x l,
+      pattern_list_mask npat (x :: l) = (
+        m1 <- pattern_mask npat x ;;
+        m2 <- pattern_list_mask npat l ;;
+        lin_merge m2 m1
+      ).
+  Proof.
+    intros npat x l.
+    cbn. destruct pattern_mask eqn:e1. 2: auto.
+    destruct monad_map eqn:e2. 2: auto.
+    cbn. reflexivity.
+  Qed.
+
   Inductive All_mask (P : term → Type) : list bool → list term → Type :=
   | All_mask_nil : All_mask P [] []
   | All_mask_true :
@@ -6205,6 +6219,75 @@ Section Triangle.
     eapply lin_merge_permutation. 2: eauto.
     eapply lin_merge_app. all: eauto.
   Qed.
+
+  Lemma pattern_list_mask_lin_set :
+    ∀ x m1 m2 σ t m3 m4 n m',
+      lin_set x m1 = Some m2 →
+      nth_error σ x = Some t →
+      pattern_mask n t = Some m3 →
+      pattern_list_mask n (mask_filter m1 σ) = Some m4 →
+      lin_merge m4 m3 = Some m' →
+      pattern_list_mask n (mask_filter m2 σ) = Some m'.
+  Proof.
+    intros x m1 m2 σ t m3 m4 n m' h1 h2 h3 h4 h5.
+    induction m1 as [| b m1 ih]
+    in x, m2, h1, σ, t, h2, n, m3, h3, m4, h4, m', h5 |- *.
+    - destruct x. all: discriminate.
+    - destruct x.
+      + cbn in h1. destruct b. 1: discriminate.
+        apply some_inj in h1. subst.
+        destruct σ. 1: discriminate.
+        cbn in h2. apply some_inj in h2. subst.
+        cbn [ mask_filter ] in h4.
+        cbn [ mask_filter ]. rewrite pattern_list_mask_cons.
+        rewrite h3. rewrite h4. cbn. assumption.
+      + cbn in h1. destruct lin_set eqn:e1. 2: discriminate.
+        apply some_inj in h1. subst.
+        destruct σ. 1: discriminate.
+        cbn in h2.
+        destruct b.
+        * cbn [ mask_filter ] in h4. rewrite pattern_list_mask_cons in h4.
+          move h4 at top. destruct pattern_mask eqn:e2. 2: discriminate.
+          destruct pattern_list_mask eqn:e3. 2: discriminate.
+          cbn in h4.
+          cbn [ mask_filter ]. rewrite pattern_list_mask_cons.
+          rewrite e2.
+          eapply lin_merge_assoc in h5 as h. 2: eauto.
+          destruct h as [m5 [h6 h7]].
+          erewrite ih. 2-6: eauto.
+          cbn. assumption.
+        * cbn [ mask_filter ] in h4. cbn [ mask_filter ].
+          eapply ih. all: eauto.
+  Qed.
+
+  Lemma linear_pattern_mask :
+    ∀ σ p m m' n,
+      pattern #|σ| p →
+      pattern n (subst0 σ p) →
+      pattern_mask #|σ| p = Some m →
+      pattern_mask n (subst0 σ p) = Some m' →
+      All_mask (pattern n) m σ ×
+      pattern_list_mask n (mask_filter m σ) = Some m'.
+  Proof.
+    intros σ p m m' n hp1 hp2 hm1 hm2.
+    induction hp1
+    as [x hx | ind i ui args ha ih]
+    in n, hp2, m, hm1, m', hm2 |- *
+    using pattern_all_rect.
+    - cbn in hm1.
+      cbn in hp2, hm2. destruct nth_error eqn:e1.
+      2:{ apply nth_error_None in e1. lia. }
+      rewrite lift0_id in hp2. rewrite lift0_id in hm2.
+      replace (x - 0) with x in e1 by lia.
+      split.
+      + eapply All_mask_lin_set. all: eauto.
+        apply All_mask_linear_mask_init. reflexivity.
+      + eapply pattern_list_mask_lin_set. all: eauto.
+        2: eapply lin_merge_linear_mask_init.
+        rewrite mask_filter_linear_mask_init.
+        cbn. f_equal. f_equal. apply pattern_mask_length in hm2. auto.
+    -
+  Admitted.
 
   Lemma linear_elim_mask :
     ∀ σ e n m m',
