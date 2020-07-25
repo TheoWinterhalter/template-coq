@@ -6260,6 +6260,22 @@ Section Triangle.
           eapply ih. all: eauto.
   Qed.
 
+  (* This gives something much weaker but sometimes sufficient *)
+  Lemma pattern_app_inv :
+    ∀ n u v,
+      pattern n (tApp u v) →
+      pattern n u ×
+      pattern n v.
+  Proof.
+    intros n u v h.
+    inversion h.
+    destruct args as [| x args _] using list_rect_rev. 1: discriminate.
+    rewrite <- mkApps_nested in H0. cbn in H0. inversion H0. subst.
+    apply All_app in X as [? hv]. inversion hv. subst.
+    intuition auto.
+    constructor. auto.
+  Qed.
+
   Lemma linear_pattern_mask :
     ∀ σ p m m' n,
       pattern #|σ| p →
@@ -6270,15 +6286,15 @@ Section Triangle.
       pattern_list_mask n (mask_filter m σ) = Some m'.
   Proof.
     intros σ p m m' n hp1 hp2 hm1 hm2.
-    induction hp1
-    as [x hx | ind i ui args ha ih]
-    in n, hp2, m, hm1, m', hm2 |- *
-    using pattern_all_rect.
-    - cbn in hm1.
+    induction p in σ, n, hp1, hp2, m, hm1, m', hm2 |- *.
+    all: try discriminate.
+    - inversion hp1. 2: solve_discr.
+      subst.
+      cbn in hm1.
       cbn in hp2, hm2. destruct nth_error eqn:e1.
       2:{ apply nth_error_None in e1. lia. }
       rewrite lift0_id in hp2. rewrite lift0_id in hm2.
-      replace (x - 0) with x in e1 by lia.
+      replace (n0 - 0) with n0 in e1 by lia.
       split.
       + eapply All_mask_lin_set. all: eauto.
         apply All_mask_linear_mask_init. reflexivity.
@@ -6286,8 +6302,29 @@ Section Triangle.
         2: eapply lin_merge_linear_mask_init.
         rewrite mask_filter_linear_mask_init.
         cbn. f_equal. f_equal. apply pattern_mask_length in hm2. auto.
-    -
-  Admitted.
+    - cbn in hm1. destruct pattern_mask eqn:e1. 2: discriminate.
+      move hm1 at top.
+      destruct pattern_mask eqn:e2. 2: discriminate.
+      cbn in hm2. move hm2 at top.
+      destruct pattern_mask eqn:e3. 2: discriminate.
+      move hm2 at top.
+      destruct pattern_mask eqn:e4. 2: discriminate.
+      cbn in hp2. apply pattern_app_inv in hp1 as hp1'.
+      destruct hp1' as [].
+      apply pattern_app_inv in hp2 as hp2'. destruct hp2' as [].
+      specialize IHp1 with (3 := e1) (4 := e3).
+      repeat forward IHp1 by auto. destruct IHp1.
+      specialize IHp2 with (3 := e2) (4 := e4).
+      repeat forward IHp2 by auto. destruct IHp2.
+      split.
+      + eapply All_mask_lin_merge. all: eauto.
+      + eapply pattern_list_mask_filter_lin_merge. all: eauto.
+    - cbn in hm1. apply some_inj in hm1. subst.
+      cbn in hm2. apply some_inj in hm2. subst.
+      split.
+      + apply All_mask_linear_mask_init. reflexivity.
+      + rewrite mask_filter_linear_mask_init. cbn. reflexivity.
+  Qed.
 
   Lemma linear_elim_mask :
     ∀ σ e n m m',
