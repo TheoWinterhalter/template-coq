@@ -6338,9 +6338,13 @@ Section Triangle.
     intros σ e n m m' hp1 hp2 hm1 hm2.
     induction hp1 in n, hp2, m, hm1, m', hm2 |- *.
     - cbn in hp2, hm1, hm2. inversion hp2. subst.
-      admit.
+      eapply linear_pattern_mask. all: eauto.
     - admit.
-    - admit.
+    - cbn in hm1, hp2, hm2.
+      apply some_inj in hm1. apply some_inj in hm2. subst.
+      split.
+      + apply All_mask_linear_mask_init. reflexivity.
+      + rewrite mask_filter_linear_mask_init. cbn. reflexivity.
   Admitted.
 
   Lemma linear_linear_mask_pattern :
