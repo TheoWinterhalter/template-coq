@@ -6556,6 +6556,17 @@ Section Triangle.
           pred1 Σ Γ Γ' x y ×
           pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
         ) τ τ'.
+  Proof.
+    intros Γ Γ' τ α σ h pα lα.
+    apply All2_map_inv_left in h.
+    eapply All2_All_mix_left in h. 2: eauto.
+    clear pα.
+    unfold pattern_list_linear in lα.
+    destruct pattern_list_mask as [m|] eqn:e. 2: discriminate.
+    (* Should prove a version with a mask as a separate lemma instead *)
+    (* induction h in lα |- *.
+    -
+    - *)
   Admitted.
   (* Proof similar to lhs_elim_reducts? *)
 
