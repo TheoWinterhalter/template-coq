@@ -6542,6 +6542,36 @@ Section Triangle.
         All2 (fun x y => pred1 Σ Γ Δ x y) τ τ'.
   Admitted. *)
 
+  Lemma subst_factorisation_mask :
+    ∀ Γ Γ' τ α σ m,
+      All2 (λ x y,
+        pred1 Σ Γ Γ' x y ×
+        pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
+      ) (map (subst0 τ) α) σ →
+      All (pattern #|τ|) α →
+      pattern_list_mask #|τ| α = Some m →
+      ∑ τ',
+        (∀ τ'',
+          subs_complete τ' τ'' →
+          σ = map (subst0 τ'') α) ×
+        All2_mask_subst (λ x y,
+          pred1 Σ Γ Γ' x y ×
+          pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
+        ) m τ τ'.
+  Proof.
+    intros Γ Γ' τ α σ m h pα lα.
+    apply All2_map_inv_left in h.
+    eapply All2_All_mix_left in h. 2: eauto.
+    clear pα.
+    induction h as [| u v α σ [? [? ?]] h ih ] in lα |- *.
+    - cbn in lα. apply some_inj in lα. subst.
+      cbn.
+      eexists. split.
+      + intros. reflexivity.
+      + eapply All2_mask_subst_linear_mask_init. reflexivity.
+    - rewrite pattern_list_mask_cons in lα.
+  Admitted.
+
   Lemma subst_factorisation :
     ∀ Γ Γ' τ α σ,
       All2 (λ x y,
@@ -6558,17 +6588,10 @@ Section Triangle.
         ) τ τ'.
   Proof.
     intros Γ Γ' τ α σ h pα lα.
-    apply All2_map_inv_left in h.
-    eapply All2_All_mix_left in h. 2: eauto.
-    clear pα.
     unfold pattern_list_linear in lα.
     destruct pattern_list_mask as [m|] eqn:e. 2: discriminate.
-    (* Should prove a version with a mask as a separate lemma instead *)
-    (* induction h in lα |- *.
-    -
-    - *)
   Admitted.
-  (* Proof similar to lhs_elim_reducts? *)
+  (* Proof similar to lhs_elim_reduct? *)
 
   (* True only if we modify a bit pred1 to allow taking the left def
     and not just the right.
