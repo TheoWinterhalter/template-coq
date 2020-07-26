@@ -6336,16 +6336,70 @@ Section Triangle.
       pattern_list_mask n (mask_filter m σ) = Some m'.
   Proof.
     intros σ e n m m' hp1 hp2 hm1 hm2.
-    induction hp1 in n, hp2, m, hm1, m', hm2 |- *.
+    induction hp1 as [| indn p brs hp hbrs |] in n, hp2, m, hm1, m', hm2 |- *.
     - cbn in hp2, hm1, hm2. inversion hp2. subst.
       eapply linear_pattern_mask. all: eauto.
-    - admit.
+    - cbn in hm1, hp2, hm2.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      destruct monad_map as [l2|] eqn:e2. 2: discriminate.
+      destruct PCUICPattern.monad_fold_right as [l3|] eqn:e3. 2: discriminate.
+      move hm2 at top.
+      destruct pattern_mask eqn:e4. 2: discriminate.
+      destruct monad_map as [l5|] eqn:e5. 2: discriminate.
+      destruct PCUICPattern.monad_fold_right as [l6|] eqn:e6. 2: discriminate.
+      inversion hp2. subst.
+      eapply linear_pattern_mask in e1 as h1. 2-4: eauto.
+      destruct h1.
+      cut (
+        All_mask (pattern n) l3 σ ×
+        pattern_list_mask n (mask_filter l3 σ) = Some l6
+      ).
+      { intros []. split.
+        - eapply All_mask_lin_merge. all: eauto.
+        - eapply pattern_list_mask_filter_lin_merge. all: eauto.
+      }
+      match goal with
+      | h : All _ (map _ _) |- _ =>
+        rename h into hbrs'
+      end.
+      clear - e2 e3 e5 e6 hbrs hbrs'.
+      apply All_map_inv in hbrs'.
+      eapply All_prod in hbrs. 2: eauto.
+      cbn in hbrs. clear hbrs'.
+      induction hbrs as [| [] brs [] hbrs ih]
+      in l5, e5, l6, e6, l2, e2, l3, e3 |- *.
+      + cbn in e2. apply some_inj in e2. subst.
+        cbn in e5. apply some_inj in e5. subst.
+        cbn in e3. apply some_inj in e3. subst.
+        cbn in e6. apply some_inj in e6. subst.
+        split.
+        * apply All_mask_linear_mask_init. reflexivity.
+        * rewrite mask_filter_linear_mask_init. cbn. reflexivity.
+      + cbn - [pattern_list_mask] in *.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct monad_map eqn:e4. 2: discriminate.
+        apply some_inj in e5. subst.
+        move e2 at top.
+        destruct pattern_mask eqn:e5. 2: discriminate.
+        destruct monad_map eqn:e7. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn in e3. cbn in e6.
+        destruct PCUICPattern.monad_fold_right eqn:e2. 2: discriminate.
+        move e3 at top.
+        destruct PCUICPattern.monad_fold_right eqn:e8. 2: discriminate.
+        specialize ih with (1 := eq_refl) (2 := e2) (3 := eq_refl) (4 := e8).
+        destruct ih.
+        eapply linear_pattern_mask in e1 as h. 2-4: eauto.
+        destruct h.
+        split.
+        * eapply All_mask_lin_merge. all: eauto.
+        * eapply pattern_list_mask_filter_lin_merge. all: eauto.
     - cbn in hm1, hp2, hm2.
       apply some_inj in hm1. apply some_inj in hm2. subst.
       split.
       + apply All_mask_linear_mask_init. reflexivity.
       + rewrite mask_filter_linear_mask_init. cbn. reflexivity.
-  Admitted.
+  Qed.
 
   Lemma linear_linear_mask_pattern :
     ∀ l σ n m1 m2,
