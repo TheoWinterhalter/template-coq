@@ -6631,8 +6631,14 @@ Section Triangle.
     intros Γ Γ' τ α σ h pα lα.
     unfold pattern_list_linear in lα.
     destruct pattern_list_mask as [m|] eqn:e. 2: discriminate.
-  Admitted.
-  (* Proof similar to lhs_elim_reduct? *)
+    eapply subst_factorisation_mask in e as h'. 2-3: eauto.
+    destruct h' as [τ' [h1 h2]].
+    eapply All2_mask_subst_all in h2. 2: auto.
+    destruct h2 as [τ'' [e2 h2]].
+    exists τ''. split.
+    - eapply h1. apply map_option_out_subs_complete. assumption.
+    - assumption.
+  Qed.
 
   (* True only if we modify a bit pred1 to allow taking the left def
     and not just the right.
