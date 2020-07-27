@@ -6542,6 +6542,29 @@ Section Triangle.
         All2 (fun x y => pred1 Σ Γ Δ x y) τ τ'.
   Admitted. *)
 
+  Lemma subst_pattern_factorisation_mask :
+    ∀ Γ Γ' τ p t m,
+      pred1 Σ Γ Γ' (subst0 τ p) t →
+      pred1 Σ Γ' (rho_ctx Σ None Γ)
+        t (rho Σ None (rho_ctx Σ None Γ) (subst0 τ p)) →
+      pattern #|τ| p →
+      pattern_mask #|τ| p = Some m →
+      ∑ τ',
+        (∀ τ'',
+          subs_complete τ' τ'' →
+          t = subst0 τ'' p) ×
+        All2_mask_subst (λ x y,
+          pred1 Σ Γ Γ' x y ×
+          pred1 Σ Γ' (rho_ctx Σ None Γ) y (rho Σ None (rho_ctx Σ None Γ) x)
+        ) m τ τ'.
+  Proof.
+    intros Γ Γ' τ p t m h1 h2 hp hm.
+    (* Perhaps we can use pattern_reduct
+      and maybe some lemma about rho of a pattern (which?).
+      If not, copying the proofs might be the best bet.
+    *)
+  Admitted.
+
   Lemma subst_factorisation_mask :
     ∀ Γ Γ' τ α σ m,
       All2 (λ x y,
@@ -6576,11 +6599,19 @@ Section Triangle.
       specialize ih with (1 := eq_refl).
       destruct ih as [τ1 [h1 h2]].
       cbn.
-      (* Now we need the same lemma but for a pattern
-        Probably similar to pattern_reduct
-        Then we can merge the two substitutions.
-      *)
-  Admitted.
+      eapply subst_pattern_factorisation_mask in e1 as h3. 2-4: eauto.
+      destruct h3 as [τ2 [h3 h4]].
+      eapply All2_mask_subst_lin_merge in lα as h'. 2-3: eauto.
+      destruct h' as [τ' [? ?]].
+      exists τ'. split.
+      + intros τ'' hc.
+        eapply subs_merge_complete in hc as h'. 2: eauto.
+        destruct h'.
+        f_equal.
+        * eapply h3. assumption.
+        * eapply h1. assumption.
+      + assumption.
+  Qed.
 
   Lemma subst_factorisation :
     ∀ Γ Γ' τ α σ,
