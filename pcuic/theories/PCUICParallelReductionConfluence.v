@@ -6563,13 +6563,23 @@ Section Triangle.
     apply All2_map_inv_left in h.
     eapply All2_All_mix_left in h. 2: eauto.
     clear pα.
-    induction h as [| u v α σ [? [? ?]] h ih ] in lα |- *.
+    induction h as [| u v α σ [? [? ?]] h ih ] in m, lα |- *.
     - cbn in lα. apply some_inj in lα. subst.
       cbn.
       eexists. split.
       + intros. reflexivity.
       + eapply All2_mask_subst_linear_mask_init. reflexivity.
     - rewrite pattern_list_mask_cons in lα.
+      destruct pattern_mask eqn:e1. 2: discriminate.
+      destruct pattern_list_mask eqn:e2. 2: discriminate.
+      cbn in lα.
+      specialize ih with (1 := eq_refl).
+      destruct ih as [τ1 [h1 h2]].
+      cbn.
+      (* Now we need the same lemma but for a pattern
+        Probably similar to pattern_reduct
+        Then we can merge the two substitutions.
+      *)
   Admitted.
 
   Lemma subst_factorisation :
