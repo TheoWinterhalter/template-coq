@@ -6559,6 +6559,389 @@ Section Triangle.
         ) m τ τ'.
   Proof.
     intros Γ Γ' τ p t m h1 h2 hp hm.
+    rewrite rho_subst_pattern in h2. 1: auto.
+    (* eapply pattern_reduct in h1 as h. 2-5: eauto. *)
+    (* Maybe inline the proof instead *)
+    remember (subst0 τ p) as u eqn:e.
+    induction h1 in p, τ, e, hp, m, hm, h2 |- *.
+    2:{
+      destruct p ; try discriminate ;
+      try (
+        inversion hp ;
+        lazymatch goal with
+        | h : _ = _ |- _ => rewrite <- h in e
+        end ;
+        rewrite subst_mkApps in e ; cbn in e ;
+        apply (f_equal isAppConstruct) in e ;
+        rewrite 2!isAppConstruct_mkApps in e ;
+        cbn in e ; discriminate
+      ) ;
+      cbn in hm ;
+      inversion hp ; [|
+        lazymatch goal with
+        | h : _ = _ |- _ =>
+          apply (f_equal isAppRel) in h ; cbn in h ;
+          rewrite isAppRel_mkApps in h ; cbn in h ; discriminate
+        end
+      ] ; subst ;
+      cbn ; cbn in e ;
+      let e1 := fresh "e1" in
+      destruct nth_error eqn:e1 ; [|
+        try discriminate ;
+        apply nth_error_None in e1 ;
+        apply untyped_subslet_length in hσ ;
+        rewrite subst_context_length in hσ ;
+        exfalso ; lia
+      ].
+      rewrite lift0_id in e ; subst.
+      match type of hp with
+      | pattern _ (tRel ?n) =>
+        replace (n - 0) with n in e1 by lia ;
+        (* apply untyped_subslet_length in hσ as eσ ;
+        rewrite subst_context_length in eσ ; *)
+        eexists ; split ; [
+          intros θ' hθ ;
+          replace (n - 0) with n by lia ;
+          apply subs_complete_spec in hθ as hh ; destruct hh as [? hθ'] ;
+          (* erewrite hθ' ; [
+            rewrite lift0_id ; reflexivity
+          | rewrite nth_error_app_ge ; [
+              rewrite list_init_length ; auto
+            | rewrite list_init_length ;
+              match goal with
+              | |- nth_error _ ?n = _ =>
+                replace n with 0 by lia
+              end ;
+              cbn ; reflexivity
+            ]
+          ] *)
+          idtac
+        | (* eapply All2_mask_subst_lin_set ; eauto ; [
+            apply subs_add_empty ; eassumption
+          | econstructor ; eassumption
+          | eapply All2_mask_subst_linear_mask_init ; assumption
+          ] *)
+          idtac
+        ]
+      end.
+      (* Reorder the conclusion to make it simpler *)
+      2:{
+        eapply All2_mask_subst_lin_set. all: eauto.
+        - apply subs_add_empty. all: eassumption.
+        - split.
+          + econstructor. all: eassumption.
+          + cbn in h2. rewrite nth_error_map in h2.
+            replace (n - 0) with n in h2 by lia.
+            rewrite e1 in h2. cbn in h2.
+            rewrite lift0_id in h2.
+            assumption.
+        - eapply All2_mask_subst_linear_mask_init. reflexivity.
+      }
+      erewrite hθ'.
+      - rewrite lift0_id. reflexivity.
+      - rewrite nth_error_app_ge ; [
+        rewrite list_init_length ; auto
+      | rewrite list_init_length ;
+        match goal with
+        | |- nth_error _ ?n = _ =>
+          replace n with 0 by lia
+        end ;
+        cbn ; reflexivity
+      ].
+    }
+    (* Maybe destruct pattern first *)
+    (* all: try solve [
+      destruct p ; try discriminate ;
+      try (
+        inversion hp ;
+        lazymatch goal with
+        | h : _ = _ |- _ => rewrite <- h in e
+        end ;
+        rewrite subst_mkApps in e ; cbn in e ;
+        apply (f_equal isAppConstruct) in e ;
+        rewrite 2!isAppConstruct_mkApps in e ;
+        cbn in e ; discriminate
+      ) ;
+      cbn in hm ;
+      inversion hp ; [|
+        lazymatch goal with
+        | h : _ = _ |- _ =>
+          apply (f_equal isAppRel) in h ; cbn in h ;
+          rewrite isAppRel_mkApps in h ; cbn in h ; discriminate
+        end
+      ] ; subst ;
+      cbn ; cbn in e ;
+      let e1 := fresh "e1" in
+      destruct nth_error eqn:e1 ; [|
+        try discriminate ;
+        apply nth_error_None in e1 ;
+        apply untyped_subslet_length in hσ ;
+        rewrite subst_context_length in hσ ;
+        exfalso ; lia
+      ] ;
+      rewrite lift0_id in e ; subst ;
+      match type of hp with
+      | pattern _ (tRel ?n) =>
+        replace (n - 0) with n in e1 by lia ;
+        apply untyped_subslet_length in hσ as eσ ;
+        rewrite subst_context_length in eσ ;
+        eexists ; split ; [
+          eapply All2_mask_subst_lin_set ; eauto ; [
+            apply subs_add_empty ; eassumption
+          | econstructor ; eassumption
+          | eapply All2_mask_subst_linear_mask_init ; assumption
+          ]
+        | intros θ' hθ ;
+          replace (n - 0) with n by lia ;
+          apply subs_complete_spec in hθ as hh ; destruct hh as [? hθ'] ;
+          erewrite hθ' ; [
+            rewrite lift0_id ; reflexivity
+          | rewrite nth_error_app_ge ; [
+              rewrite list_init_length ; auto
+            | rewrite list_init_length ;
+              match goal with
+              | |- nth_error _ ?n = _ =>
+                replace n with 0 by lia
+              end ;
+              cbn ; reflexivity
+            ]
+          ]
+        ]
+      end
+    ].
+    - destruct p.
+      all: cbn in hm. all: try discriminate.
+      2:{
+        cbn in e. inversion e. subst.
+        destruct p1. all: try discriminate.
+        inversion hp.
+        apply (f_equal isAppRel) in H1. cbn in H1.
+        rewrite isAppRel_mkApps in H1. cbn in H1. discriminate.
+      }
+      clear IHh1 IHh2 IHh3.
+      inversion hp.
+      2:{
+        apply (f_equal isAppRel) in H0. cbn in H0.
+        rewrite isAppRel_mkApps in H0. cbn in H0. discriminate.
+      } subst.
+      cbn. cbn in e.
+      destruct nth_error eqn:e1. 2: discriminate.
+      rewrite lift0_id in e. subst.
+      replace (n - 0) with n in e1 by lia.
+      apply untyped_subslet_length in hσ as eσ.
+      rewrite subst_context_length in eσ.
+      eexists. split.
+      + eapply All2_mask_subst_lin_set. all: eauto.
+        2:{
+          eapply pred_beta.
+          all: eassumption.
+        }
+        * apply subs_add_empty. eassumption.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
+      + intros θ' hθ.
+        replace (n - 0) with n by lia.
+        apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+        erewrite hθ'.
+        2:{
+          rewrite nth_error_app_ge.
+          1:{ rewrite list_init_length. auto. }
+          rewrite list_init_length.
+          match goal with
+          | |- nth_error _ ?n = _ =>
+          replace n with 0 by lia
+          end.
+          cbn. reflexivity.
+        }
+        rewrite lift0_id. reflexivity.
+    - inversion hp.
+      2:{
+        subst. rewrite subst_mkApps in e. cbn in e.
+        apply (f_equal isElimSymb) in e.
+        rewrite isElimSymb_mkApps in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_head in d. all: eauto.
+        }
+        discriminate.
+      } subst.
+      cbn in hm. cbn. cbn in e.
+      destruct nth_error eqn:e1.
+      2:{
+        apply nth_error_None in e1.
+        apply untyped_subslet_length in hσ.
+        rewrite subst_context_length in hσ.
+        exfalso. lia.
+      }
+      rewrite lift0_id in e. subst.
+      replace (n0 - 0) with n0 in e1 by lia.
+      apply untyped_subslet_length in hσ as eσ.
+      rewrite subst_context_length in eσ.
+      eexists. split.
+      + eapply All2_mask_subst_lin_set. all: eauto.
+        * apply subs_add_empty. eassumption.
+        * eapply pred_rewrite_rule. all: eassumption.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
+      + intros θ' hθ.
+        replace (n0 - 0) with n0 by lia.
+        apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+        erewrite hθ'.
+        2:{
+          rewrite nth_error_app_ge.
+          1:{ rewrite list_init_length. auto. }
+          rewrite list_init_length.
+          match goal with
+          | |- nth_error _ ?n = _ =>
+          replace n with 0 by lia
+          end.
+          cbn. reflexivity.
+        }
+        rewrite lift0_id. reflexivity.
+    - inversion hp.
+      2:{
+        subst. rewrite subst_mkApps in e. cbn in e.
+        apply (f_equal isElimSymb) in e.
+        rewrite isElimSymb_mkApps in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_par_head in d. all: eauto.
+        }
+        discriminate.
+      } subst.
+      cbn in hm. cbn. cbn in e.
+      destruct nth_error eqn:e1.
+      2:{
+        apply nth_error_None in e1.
+        apply untyped_subslet_length in hσ.
+        rewrite subst_context_length in hσ.
+        exfalso. lia.
+      }
+      rewrite lift0_id in e. subst.
+      replace (n0 - 0) with n0 in e1 by lia.
+      apply untyped_subslet_length in hσ as eσ.
+      rewrite subst_context_length in eσ.
+      eexists. split.
+      + eapply All2_mask_subst_lin_set. all: eauto.
+        * apply subs_add_empty. eassumption.
+        * eapply pred_par_rewrite_rule. all: eassumption.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
+      + intros θ' hθ.
+        replace (n0 - 0) with n0 by lia.
+        apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+        erewrite hθ'.
+        2:{
+          rewrite nth_error_app_ge.
+          1:{ rewrite list_init_length. auto. }
+          rewrite list_init_length.
+          match goal with
+          | |- nth_error _ ?n = _ =>
+          replace n with 0 by lia
+          end.
+          cbn. reflexivity.
+        }
+        rewrite lift0_id. reflexivity.
+    - destruct p. all: try discriminate.
+      + cbn in hm. cbn. cbn in e.
+        inversion hp.
+        2:{
+          apply (f_equal isAppRel) in H0. cbn in H0.
+          rewrite isAppRel_mkApps in H0. cbn in H0. discriminate.
+        } subst.
+        destruct nth_error eqn:e1. 2: discriminate.
+        rewrite lift0_id in e. subst.
+        replace (n - 0) with n in e1 by lia.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_lin_set. all: eauto.
+          -- apply subs_add_empty. eassumption.
+          -- econstructor. all: eassumption.
+          -- eapply All2_mask_subst_linear_mask_init. assumption.
+        * intros θ' hθ.
+          replace (n - 0) with n by lia.
+          apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+          erewrite hθ'.
+          2:{
+            rewrite nth_error_app_ge.
+            1:{ rewrite list_init_length. auto. }
+            rewrite list_init_length.
+            match goal with
+            | |- nth_error _ ?n = _ =>
+            replace n with 0 by lia
+            end.
+            cbn. reflexivity.
+          }
+          rewrite lift0_id. reflexivity.
+      + cbn in e. inversion e. subst. clear e.
+        inversion hp.
+        destruct args as [| p args _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in H0. cbn in H0. inversion H0. subst.
+        apply All_app in X as [ha hp2]. inversion hp2. subst.
+        cbn in hm.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+        specialize IHh1 with (2 := e1) (4 := eq_refl).
+        forward IHh1 by (constructor ; auto).
+        forward IHh1 by auto.
+        destruct IHh1 as [θ1 [hm1 hθ1]].
+        specialize IHh2 with (2 := e2) (4 := eq_refl).
+        forward IHh2 by auto.
+        forward IHh2 by auto.
+        destruct IHh2 as [θ2 [hm2 hθ2]].
+        eapply All2_mask_subst_lin_merge in hm. all: eauto.
+        destruct hm as [θ [eθ hθ]].
+        exists θ. split. 1: assumption.
+        intros θ' hθ'.
+        rewrite <- mkApps_nested. cbn.
+        rewrite subst_mkApps. cbn.
+        eapply subs_merge_complete in eθ as h. 2: eauto.
+        destruct h as [? ?].
+        erewrite hθ1. 2: eassumption.
+        erewrite hθ2. 2: eassumption.
+        rewrite subst_mkApps. cbn. reflexivity.
+    - inversion hp.
+      + subst.
+        cbn in hm. cbn. cbn in i.
+        destruct nth_error eqn:e1. 2: discriminate.
+        rewrite lift0_id in i.
+        replace (n - 0) with n in e1 by lia.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_lin_set. all: eauto.
+          -- apply subs_add_empty. eassumption.
+          -- econstructor. all: eassumption.
+          -- eapply All2_mask_subst_linear_mask_init. assumption.
+        * intros θ' hθ.
+          replace (n - 0) with n by lia.
+          apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+          erewrite hθ'.
+          2:{
+            rewrite nth_error_app_ge.
+            1:{ rewrite list_init_length. auto. }
+            rewrite list_init_length.
+            match goal with
+            | |- nth_error _ ?n = _ =>
+            replace n with 0 by lia
+            end.
+            cbn. reflexivity.
+          }
+          rewrite lift0_id. reflexivity.
+      + subst. rewrite subst_mkApps in i. cbn in i.
+        destruct args using list_rect_rev.
+        2:{
+          rewrite map_app in i. rewrite <- mkApps_nested in i.
+          cbn in i. discriminate.
+        }
+        cbn in *. apply some_inj in hm. subst.
+        apply untyped_subslet_length in hσ as eσ.
+        rewrite subst_context_length in eσ.
+        eexists. split.
+        * eapply All2_mask_subst_linear_mask_init. assumption.
+        * intros θ' hθ'. reflexivity. *)
     (* Perhaps we can use pattern_reduct
       and maybe some lemma about rho of a pattern (which?).
       If not, copying the proofs might be the best bet.
