@@ -6609,13 +6609,45 @@ Section Triangle.
           eapply declared_symbol_par_head in d. all: eauto.
         }
         discriminate.
-      + destruct args as [| v args _] using list_rect_rev. 1: discriminate.
+      + eapply All_prod in ih. 2: exact pa.
+        clear pa.
+        match type of e with
+        | tApp ?x ?y = _ =>
+          rename x into u, y into v
+        end.
+        match goal with
+        | h : pred1 _ _ _ u ?x |- _ =>
+          rename x into u' ;
+          rename h into hu
+        end.
+        match goal with
+        | h : pred1 _ _ _ v ?x |- _ =>
+          rename x into v' ;
+          rename h into hv
+        end.
+        induction ih as [| p l [pp h] hl ih]
+        in u, v, u', v', hu, hv, m, hm, e, h2 |- *
+        using All_rev_rect.
+        1: discriminate.
         rewrite map_app in e. rewrite <- mkApps_nested in e. cbn in e.
         inversion e. subst. clear e.
-        apply All_app in pa as [pa pv].
-        apply All_cons_inv in pv as [pv _].
-        (* Need to do it by induction on ih instead of destruct args?
-          Or maybe induction on h1 rather than destruct is even better?
+        rewrite <- mkApps_nested in hm. cbn in hm.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct (pattern_mask _ p) eqn:e2. 2: discriminate.
+        specialize h with (2 := eq_refl).
+        specialize h with (1 := hv).
+        specialize ih with (3 := eq_refl).
+        (* rewrite subst_mkApps in h2. cbn in h2.
+        rewrite map_app in h2. rewrite <- mkApps_nested in h2. cbn in h2.
+        match type of h2 with
+        | pred1 _ _ _ ?t1 ?t2 =>
+          remember t1 as u eqn:eu ;
+          remember t2 as v eqn:ev
+        end.
+        destruct h2. all: try solve_discr. *)
+        (* This is the wrong induction, ih is unusable as it requires
+          to always have an application.
+          Maybe do induction on h1 instead?
         *)
         admit.
       + destruct args as [| ? ? _] using list_rect_rev.
