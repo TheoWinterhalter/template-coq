@@ -6609,7 +6609,15 @@ Section Triangle.
           eapply declared_symbol_par_head in d. all: eauto.
         }
         discriminate.
-      + admit.
+      + destruct args as [| v args _] using list_rect_rev. 1: discriminate.
+        rewrite map_app in e. rewrite <- mkApps_nested in e. cbn in e.
+        inversion e. subst. clear e.
+        apply All_app in pa as [pa pv].
+        apply All_cons_inv in pv as [pv _].
+        (* Need to do it by induction on ih instead of destruct args?
+          Or maybe induction on h1 rather than destruct is even better?
+        *)
+        admit.
       + destruct args as [| ? ? _] using list_rect_rev.
         2:{
           rewrite map_app in e. rewrite <- mkApps_nested in e.
