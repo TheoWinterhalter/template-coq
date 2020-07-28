@@ -6560,9 +6560,11 @@ Section Triangle.
   Proof.
     intros Γ Γ' τ p t m h1 h2 hp hm.
     rewrite rho_subst_pattern in h2. 1: auto.
-    induction hp as [n hn | ind n ui args pa ih]
-    in t, h1, m, hm, h2 |- * using pattern_all_rect.
-    - cbn in h1. replace (n - 0) with n in h1 by lia.
+    induction p in t, τ, h1, hp, m, hm, h2 |- *.
+    all: try solve [ discriminate ].
+    - inversion hp. 2:solve_discr.
+      subst.
+      cbn in h1. replace (n - 0) with n in h1 by lia.
       destruct nth_error eqn:e1.
       2:{ apply nth_error_None in e1. lia. }
       rewrite lift0_id in h1.
@@ -6587,11 +6589,35 @@ Section Triangle.
           rewrite list_init_length.
           replace (n - n) with 0 by lia.
           cbn. reflexivity.
-    - remember (subst0 τ (mkApps (tConstruct ind n ui) args)) as u eqn:e.
-      rewrite subst_mkApps in e. cbn in e.
-      destruct h1 in τ, ind, n, ui, args, e, pa, ih, m, hm, h2 |- *.
-      all: try solve_discr.
-      + apply (f_equal isElimSymb) in e.
+    - match type of h1 with
+      | pred1 _ _ _ ?x _ =>
+        remember x as u eqn:e
+      end.
+      cbn in e.
+      destruct h1.
+      all: try discriminate.
+      + inversion e. subst.
+        inversion hp.
+        destruct args as [| ? ? _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in H1. cbn in H1. inversion H1.
+        subst. rewrite subst_mkApps in e. cbn in e.
+        inversion e.
+        solve_discr.
+      + inversion e.
+        inversion hp.
+        destruct args as [| ? ? _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in H1. cbn in H1. inversion H1.
+        subst. rewrite subst_mkApps in e. cbn in e.
+        destruct args0 as [| ? ? _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in e. cbn in e. inversion e.
+        solve_discr.
+      + match type of e with
+        | ?l = tApp (subst0 ?τ ?p1) (subst0 _ ?p2) =>
+          change (l = subst0 τ (tApp p1 p2)) in e
+        end.
+        apply (f_equal isElimSymb) in e.
+        inversion hp. rewrite <- H0 in e.
+        rewrite subst_mkApps in e. cbn in e.
         rewrite isElimSymb_mkApps in e. cbn in e.
         rewrite isElimSymb_subst in e.
         { apply untyped_subslet_length in u.
@@ -6600,7 +6626,13 @@ Section Triangle.
           eapply declared_symbol_head in d. all: eauto.
         }
         discriminate.
-      + apply (f_equal isElimSymb) in e.
+      + match type of e with
+        | ?l = tApp (subst0 ?τ ?p1) (subst0 _ ?p2) =>
+          change (l = subst0 τ (tApp p1 p2)) in e
+        end.
+        apply (f_equal isElimSymb) in e.
+        inversion hp. rewrite <- H0 in e.
+        rewrite subst_mkApps in e. cbn in e.
         rewrite isElimSymb_mkApps in e. cbn in e.
         rewrite isElimSymb_subst in e.
         { apply untyped_subslet_length in u.
@@ -6609,7 +6641,7 @@ Section Triangle.
           eapply declared_symbol_par_head in d. all: eauto.
         }
         discriminate.
-      + eapply All_prod in ih. 2: exact pa.
+      + (* eapply All_prod in ih. 2: exact pa.
         clear pa.
         match type of e with
         | tApp ?x ?y = _ =>
@@ -6636,7 +6668,7 @@ Section Triangle.
         destruct (pattern_mask _ p) eqn:e2. 2: discriminate.
         specialize h with (2 := eq_refl).
         specialize h with (1 := hv).
-        specialize ih with (3 := eq_refl).
+        specialize ih with (3 := eq_refl). *)
         (* rewrite subst_mkApps in h2. cbn in h2.
         rewrite map_app in h2. rewrite <- mkApps_nested in h2. cbn in h2.
         match type of h2 with
@@ -6650,12 +6682,32 @@ Section Triangle.
           Maybe do induction on h1 instead?
         *)
         admit.
-      + destruct args as [| ? ? _] using list_rect_rev.
-        2:{
-          rewrite map_app in e. rewrite <- mkApps_nested in e.
-          cbn in e. subst. discriminate.
+      + subst. discriminate.
+    - cbn in h1.
+      match type of h1 with
+      | pred1 _ _ _ ?x _ =>
+        remember x as u eqn:e
+      end.
+      destruct h1.
+      all: try discriminate.
+      all: try solve [ solve_discr ].
+      + apply (f_equal isElimSymb) in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_head in d. all: eauto.
         }
-        cbn in *. apply some_inj in hm. subst.
+        discriminate.
+      + apply (f_equal isElimSymb) in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_par_head in d. all: eauto.
+        }
+        discriminate.
+      + subst. cbn in *. apply some_inj in hm. subst.
         eexists. split ; revgoals.
         * eapply All2_mask_subst_linear_mask_init. reflexivity.
         * intros θ' hθ'. reflexivity.
