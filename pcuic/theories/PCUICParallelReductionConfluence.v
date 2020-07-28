@@ -6692,6 +6692,15 @@ Section Triangle.
         * intros θ' hθ'. reflexivity.
   Qed.
 
+  Lemma All2_mask_subst_length :
+    ∀ P m σ θ,
+      All2_mask_subst P m σ θ →
+      #|m| = #|σ| ∧ #|σ| = #|θ|.
+  Proof.
+    intros P m σ θ h.
+    induction h. all: cbn in *. all: intuition auto.
+  Qed.
+
   Lemma subst_pattern_factorisation_mask :
     ∀ Γ Γ' τ p t m,
       pred1 Σ Γ Γ' (subst0 τ p) t →
@@ -6713,6 +6722,17 @@ Section Triangle.
     eapply pattern_reduct_alt in h1 as h1'. 2,3: eauto.
     destruct h1' as [τ1 [e1 c1]].
     exists τ1. split. 1: auto.
+    pose proof (subs_flatten_default_complete τ1) as hc.
+    specialize c1 with (1 := hc) as e.
+    rewrite e in h2.
+    eapply subs_complete_length in hc.
+    eapply All2_mask_subst_length in e1 as l.
+    destruct l as [l1 l2].
+    eapply pattern_reduct_alt in h2 as h2'.
+    2,3: rewrite <- hc.
+    2,3: rewrite <- l2.
+    2,3: eauto.
+    destruct h2' as [τ2 [e2 c2]].
     (*
       From c1 we know that t is some pσ and thus from h2 we get
       that p(ρ τ) = pσ' for some σ ⇒ σ' (on mask m)
