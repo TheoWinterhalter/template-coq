@@ -6641,23 +6641,33 @@ Section Triangle.
           eapply declared_symbol_par_head in d. all: eauto.
         }
         discriminate.
-      + (* eapply All_prod in ih. 2: exact pa.
-        clear pa.
-        match type of e with
-        | tApp ?x ?y = _ =>
-          rename x into u, y into v
-        end.
+      + inversion e. subst. clear e.
         match goal with
-        | h : pred1 _ _ _ u ?x |- _ =>
-          rename x into u' ;
+        | h : pred1 _ _ _ (subst0 _ p1) ?x |- _ =>
+          rename x into u ;
           rename h into hu
         end.
         match goal with
-        | h : pred1 _ _ _ v ?x |- _ =>
-          rename x into v' ;
+        | h : pred1 _ _ _ (subst0 _ p2) ?x |- _ =>
+          rename x into v ;
           rename h into hv
         end.
-        induction ih as [| p l [pp h] hl ih]
+        cbn in hm.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+        apply pattern_app_inv in hp as [hp1 hp2].
+        specialize IHp1 with (2 := hp1) (3 := e1).
+        specialize IHp2 with (2 := hp2) (3 := e2).
+        specialize IHp1 with (1 := hu).
+        specialize IHp2 with (1 := hv).
+        (* Should I prove first something like pattern_reduct in the end?
+          Except with the current assumptions.
+          Otherwise I don't know anything about u.
+          The other option is to still prove both at the same time, but
+          reordering hyps so that I get the τ first.
+        *)
+
+        (* induction ih as [| p l [pp h] hl ih]
         in u, v, u', v', hu, hv, m, hm, e, h2 |- *
         using All_rev_rect.
         1: discriminate.
