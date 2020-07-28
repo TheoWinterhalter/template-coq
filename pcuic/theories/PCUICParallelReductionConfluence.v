@@ -6722,6 +6722,46 @@ Section Triangle.
       eapply IHhm. inversion hc. auto.
   Qed.
 
+  Lemma All2_mask_subst_masks :
+    ∀ P m σ θ,
+      All2_mask_subst P m σ θ →
+      masks m θ.
+  Proof.
+    intros P m σ θ h.
+    induction h.
+    - constructor.
+    - constructor. assumption.
+    - constructor. assumption.
+  Qed.
+
+  Lemma All2_mask_subst_eq_replace_left :
+    ∀ P m σ τ θ,
+      All2_mask_subst P m σ τ →
+      All2_mask eq m θ σ →
+      All2_mask_subst P m θ τ.
+  Admitted.
+
+  Lemma All2_mask_subst_sym_eq :
+    ∀ P m σ τ σ' τ',
+      All2_mask_subst P m σ τ →
+      All2_mask_subst eq m σ σ' →
+      All2_mask_subst eq m τ' τ →
+      All2_mask_subst (fun x y => P y x) m τ' σ'.
+  Admitted.
+
+  Lemma All2_mask_subst_left_map_inv :
+    ∀ P m σ θ f,
+      All2_mask_subst P m (map f σ) θ →
+      All2_mask_subst (fun x y => P (f x) y) m σ θ.
+  Admitted.
+
+  Lemma All2_mask_subst_prod :
+    ∀ P Q m σ θ,
+      All2_mask_subst P m σ θ →
+      All2_mask_subst Q m σ θ →
+      All2_mask_subst (fun x y => P x y × Q x y) m σ θ.
+  Admitted.
+
   Lemma subst_pattern_factorisation_mask :
     ∀ Γ Γ' τ p t m,
       pred1 Σ Γ Γ' (subst0 τ p) t →
@@ -6746,11 +6786,11 @@ Section Triangle.
     pose proof (subs_flatten_default_complete τ1) as hc.
     specialize c1 with (1 := hc) as e.
     rewrite e in h2.
-    eapply subs_complete_length in hc.
+    eapply subs_complete_length in hc as hcl.
     eapply All2_mask_subst_length in e1 as l.
     destruct l as [l1 l2].
     eapply pattern_reduct_alt in h2 as h2'.
-    2,3: rewrite <- hc.
+    2,3: rewrite <- hcl.
     2,3: rewrite <- l2.
     2,3: eauto.
     destruct h2' as [τ2 [e2 c2]].
@@ -6763,13 +6803,15 @@ Section Triangle.
       apply All2_mask_subst_length in e2. destruct e2 as [el1 el2].
       lia.
     }
-    (*
-      From c1 we know that t is some pσ and thus from h2 we get
-      that p(ρ τ) = pσ' for some σ ⇒ σ' (on mask m)
-      We should thus get that σ' = ρ τ on the mask m and thus that
-      σ ⇒ ρ τ on mask m as wanted.
-    *)
-  Admitted.
+    eapply All2_mask_subst_masks in e2 as hm2.
+    eapply subs_complete_mask_eq in hc2 as e3. 2: eauto.
+    eapply All2_mask_subst_eq_replace_left in e3. 2: eauto.
+    eapply All2_mask_subst_masks in e1 as hm1.
+    eapply subs_complete_mask_eq in hc as e4. 2: eauto.
+    eapply All2_mask_subst_sym_eq in e2. 2,3: eauto.
+    apply All2_mask_subst_left_map_inv in e2.
+    eapply All2_mask_subst_prod. all: eauto.
+  Qed.
 
   Lemma subst_factorisation_mask :
     ∀ Γ Γ' τ α σ m,
