@@ -6542,6 +6542,156 @@ Section Triangle.
         All2 (fun x y => pred1 Σ Γ Δ x y) τ τ'.
   Admitted. *)
 
+  (* Another version of pattern_reduct *)
+  Lemma pattern_reduct_alt :
+    ∀ Γ Γ' τ p t m,
+      pred1 Σ Γ Γ' (subst0 τ p) t →
+      pattern #|τ| p →
+      pattern_mask #|τ| p = Some m →
+      ∑ τ',
+        All2_mask_subst (pred1 Σ Γ Γ') m τ τ' ×
+        (∀ τ'',
+          subs_complete τ' τ'' →
+          t = subst0 τ'' p).
+  Proof.
+    intros Γ Γ' τ p t m h hp hm.
+    induction p in t, τ, h, hp, m, hm |- *.
+    all: try solve [ discriminate ].
+    - inversion hp. 2:solve_discr.
+      subst.
+      cbn in h. replace (n - 0) with n in h by lia.
+      destruct nth_error eqn:e1.
+      2:{ apply nth_error_None in e1. lia. }
+      rewrite lift0_id in h.
+      cbn in hm.
+      eexists. split.
+      + eapply All2_mask_subst_lin_set. all: eauto.
+        * apply subs_add_empty. eassumption.
+        * eapply All2_mask_subst_linear_mask_init. reflexivity.
+      + intros θ hθ. cbn.
+        replace (n - 0) with n by lia.
+        apply subs_complete_spec in hθ as hh. destruct hh as [? hθ'].
+        erewrite hθ'.
+        * rewrite lift0_id. reflexivity.
+        * rewrite nth_error_app_ge.
+          { rewrite list_init_length. auto. }
+          rewrite list_init_length.
+          replace (n - n) with 0 by lia.
+          cbn. reflexivity.
+    - match type of h with
+      | pred1 _ _ _ ?x _ =>
+        remember x as u eqn:e
+      end.
+      cbn in e.
+      destruct h.
+      all: try discriminate.
+      + inversion e. subst.
+        inversion hp.
+        destruct args as [| ? ? _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in H1. cbn in H1. inversion H1.
+        subst. rewrite subst_mkApps in e. cbn in e.
+        inversion e.
+        solve_discr.
+      + inversion e.
+        inversion hp.
+        destruct args as [| ? ? _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in H1. cbn in H1. inversion H1.
+        subst. rewrite subst_mkApps in e. cbn in e.
+        destruct args0 as [| ? ? _] using list_rect_rev. 1: discriminate.
+        rewrite <- mkApps_nested in e. cbn in e. inversion e.
+        solve_discr.
+      + match type of e with
+        | ?l = tApp (subst0 ?τ ?p1) (subst0 _ ?p2) =>
+          change (l = subst0 τ (tApp p1 p2)) in e
+        end.
+        apply (f_equal isElimSymb) in e.
+        inversion hp. rewrite <- H0 in e.
+        rewrite subst_mkApps in e. cbn in e.
+        rewrite isElimSymb_mkApps in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_head in d. all: eauto.
+        }
+        discriminate.
+      + match type of e with
+        | ?l = tApp (subst0 ?τ ?p1) (subst0 _ ?p2) =>
+          change (l = subst0 τ (tApp p1 p2)) in e
+        end.
+        apply (f_equal isElimSymb) in e.
+        inversion hp. rewrite <- H0 in e.
+        rewrite subst_mkApps in e. cbn in e.
+        rewrite isElimSymb_mkApps in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_par_head in d. all: eauto.
+        }
+        discriminate.
+      + inversion e. subst. clear e.
+        match goal with
+        | h : pred1 _ _ _ (subst0 _ p1) ?x |- _ =>
+          rename x into u ;
+          rename h into hu
+        end.
+        match goal with
+        | h : pred1 _ _ _ (subst0 _ p2) ?x |- _ =>
+          rename x into v ;
+          rename h into hv
+        end.
+        cbn in hm.
+        destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct (pattern_mask _ p2) eqn:e2. 2: discriminate.
+        apply pattern_app_inv in hp as [hp1 hp2].
+        specialize IHp1 with (2 := hp1) (3 := e1).
+        specialize IHp2 with (2 := hp2) (3 := e2).
+        specialize IHp1 with (1 := hu).
+        specialize IHp2 with (1 := hv).
+        destruct IHp1 as [τ1 [? h1]].
+        destruct IHp2 as [τ2 [? h2]].
+        eapply All2_mask_subst_lin_merge in hm as h. 2-3: eauto.
+        destruct h as [τ' []].
+        eexists. split.
+        * eassumption.
+        * intros τ'' hc.
+          eapply subs_merge_complete in hc as h'. 2: eauto.
+          destruct h'.
+          cbn. erewrite h1. 2: eauto.
+          erewrite h2. 2: eauto.
+          reflexivity.
+      + subst. discriminate.
+    - cbn in h.
+      match type of h with
+      | pred1 _ _ _ ?x _ =>
+        remember x as u eqn:e
+      end.
+      destruct h.
+      all: try discriminate.
+      all: try solve [ solve_discr ].
+      + apply (f_equal isElimSymb) in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_head in d. all: eauto.
+        }
+        discriminate.
+      + apply (f_equal isElimSymb) in e. cbn in e.
+        rewrite isElimSymb_subst in e.
+        { apply untyped_subslet_length in u.
+          rewrite subst_context_length in u. rewrite u.
+          eapply isElimSymb_lhs.
+          eapply declared_symbol_par_head in d. all: eauto.
+        }
+        discriminate.
+      + subst. cbn in *. apply some_inj in hm. subst.
+        eexists. split.
+        * eapply All2_mask_subst_linear_mask_init. reflexivity.
+        * intros θ' hθ'. reflexivity.
+  Qed.
+
   Lemma subst_pattern_factorisation_mask :
     ∀ Γ Γ' τ p t m,
       pred1 Σ Γ Γ' (subst0 τ p) t →
@@ -6665,6 +6815,10 @@ Section Triangle.
           Otherwise I don't know anything about u.
           The other option is to still prove both at the same time, but
           reordering hyps so that I get the τ first.
+
+          Ok, first option is best, one separate lemma, then use it twice in a
+          row!
+          And also use a lemma saying pσ = pθ → σ = θ on the linear mask of p
         *)
 
         (* induction ih as [| p l [pp h] hl ih]
