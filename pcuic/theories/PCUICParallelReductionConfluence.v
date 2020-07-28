@@ -6739,7 +6739,16 @@ Section Triangle.
       All2_mask_subst P m σ τ →
       All2_mask eq m θ σ →
       All2_mask_subst P m θ τ.
-  Admitted.
+  Proof.
+    intros P m σ τ θ h e.
+    induction h in θ, e |- *.
+    - inversion e. constructor.
+    - inversion e. subst. constructor.
+      + auto.
+      + eapply IHh. assumption.
+    - inversion e. subst. constructor.
+      eapply IHh. assumption.
+  Qed.
 
   Lemma All2_mask_subst_sym_eq :
     ∀ P m σ τ σ' τ',
@@ -6747,20 +6756,53 @@ Section Triangle.
       All2_mask_subst eq m σ σ' →
       All2_mask_subst eq m τ' τ →
       All2_mask_subst (fun x y => P y x) m τ' σ'.
-  Admitted.
+  Proof.
+    intros P m σ τ σ' τ' h e1 e2.
+    induction h in σ', τ', e1, e2 |- *.
+    - inversion e1. inversion e2. constructor.
+    - inversion e1. inversion e2. subst. constructor.
+      + auto.
+      + eapply IHh. all: auto.
+    - inversion e1. inversion e2. subst. constructor.
+      eapply IHh. all: auto.
+  Qed.
 
   Lemma All2_mask_subst_left_map_inv :
     ∀ P m σ θ f,
       All2_mask_subst P m (map f σ) θ →
       All2_mask_subst (fun x y => P (f x) y) m σ θ.
-  Admitted.
+  Proof.
+    intros P m σ θ f h.
+    remember (map f σ) as τ eqn:e.
+    induction h in σ, e |- *.
+    - destruct σ. 2: discriminate.
+      constructor.
+    - destruct σ. 1: discriminate.
+      inversion e.
+      constructor.
+      + subst. auto.
+      + eapply IHh. auto.
+    - destruct σ. 1: discriminate.
+      inversion e.
+      constructor.
+      eapply IHh. auto.
+  Qed.
 
   Lemma All2_mask_subst_prod :
     ∀ P Q m σ θ,
       All2_mask_subst P m σ θ →
       All2_mask_subst Q m σ θ →
       All2_mask_subst (fun x y => P x y × Q x y) m σ θ.
-  Admitted.
+  Proof.
+    intros P Q m σ θ h1 h2.
+    induction h1 in h2 |- *.
+    - constructor.
+    - inversion h2. constructor.
+      + split. all: auto.
+      + eapply IHh1. auto.
+    - inversion h2. constructor.
+      eapply IHh1. auto.
+  Qed.
 
   Lemma subst_pattern_factorisation_mask :
     ∀ Γ Γ' τ p t m,
