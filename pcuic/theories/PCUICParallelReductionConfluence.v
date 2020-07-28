@@ -6701,6 +6701,27 @@ Section Triangle.
     induction h. all: cbn in *. all: intuition auto.
   Qed.
 
+  Lemma subs_complete_mask_eq :
+    ∀ m σ θ,
+      masks m σ →
+      subs_complete σ θ →
+      All2_mask_subst eq m θ σ.
+  Proof.
+    intros m σ θ hm hc.
+    induction hm in θ, hc |- *.
+    - assert (θ = []).
+      { inversion hc. reflexivity. }
+      subst.
+      constructor.
+    - destruct θ. 1: exfalso ; inversion hc.
+      constructor.
+      + inversion hc. auto.
+      + eapply IHhm. inversion hc. auto.
+    - destruct θ. 1: exfalso ; inversion hc.
+      constructor.
+      eapply IHhm. inversion hc. auto.
+  Qed.
+
   Lemma subst_pattern_factorisation_mask :
     ∀ Γ Γ' τ p t m,
       pred1 Σ Γ Γ' (subst0 τ p) t →
@@ -6733,6 +6754,15 @@ Section Triangle.
     2,3: rewrite <- l2.
     2,3: eauto.
     destruct h2' as [τ2 [e2 c2]].
+    pose proof (subs_flatten_default_complete τ2) as hc2.
+    specialize c2 with (1 := hc2) as e'.
+    eapply pattern_mask_subst_inj in e'. 2-5: eauto.
+    2:{ rewrite map_length. reflexivity. }
+    2:{
+      apply subs_complete_length in hc2.
+      apply All2_mask_subst_length in e2. destruct e2 as [el1 el2].
+      lia.
+    }
     (*
       From c1 we know that t is some pσ and thus from h2 we get
       that p(ρ τ) = pσ' for some σ ⇒ σ' (on mask m)
