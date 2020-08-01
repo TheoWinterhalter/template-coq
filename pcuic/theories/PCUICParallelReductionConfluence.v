@@ -4601,7 +4601,7 @@ Section Confluenv.
       (* Contexts should be irrelevant here because we're dealing with
         patterns that do not involve lets or any binder.
       *)
-      pred1_extra Σ e Γ Γ tr tr'.
+      pred1_extra Σ e Γ tr tr'.
 
   Definition prefix {A} (l l' : list A) :=
     ∑ l'', l' = l ++ l''.
@@ -4749,7 +4749,7 @@ Section Confluenv.
   Qed.
 
   Definition triangle_rules' Σ kn nsymb l :=
-    ∀ r n npat' Γ σ ui θ r',
+    ∀ r n npat' Γ Γ' σ ui θ r',
       nth_error l n = Some r →
       All (pattern npat') σ →
       untyped_subslet Γ σ r.(pat_context) →
@@ -4758,7 +4758,8 @@ Section Confluenv.
       let tr := subst0 σ (subst ss #|σ| (rhs r)) in
       let tr' := subst0 θ (subst ss #|θ| (rhs r')) in
       first_match kn l tl = Some (ui, θ, r') →
-      pred1 Σ Γ Γ tr tr'.
+      pred1_ctx Σ Γ Γ' →
+      pred1 Σ Γ Γ' tr tr'.
 
   (* Inductive triangle_rules'  Σ kn nsymb : list rewrite_rule → Type :=
   | triangle_rules_nil' : triangle_rules' Σ kn nsymb []
@@ -4796,8 +4797,8 @@ Section Confluenv.
     unfold confl_rew_decl in h.
     fold (all_rewrite_rules rd) in h.
     set (l := all_rewrite_rules rd) in *. clearbody l.
-    intros n rr npat' Γ σ ui θ r' hrr pσ uσ ss tl tr tr' fm.
-    eapply pred1_extra_pred1. 2: eapply h ; eauto.
+    intros n rr npat' Γ Γ' σ ui θ r' hrr pσ uσ ss tl tr tr' fm hctx.
+    eapply pred1_extra_pred1. 2: eapply h ; eauto. 2: auto.
     cbn. assumption.
   Qed.
 
@@ -6930,18 +6931,6 @@ Section Triangle.
     - assumption.
   Qed.
 
-  (* True only if we modify a bit pred1 to allow taking the left def
-    and not just the right.
-
-    Or forbid letins on the left.
-  *)
-  Lemma pred1_ctx_pred1 :
-    ∀ Γ Γ' u u',
-      pred1 Σ Γ Γ u u' →
-      pred1_ctx Σ Γ Γ' →
-      pred1 Σ Γ Γ' u u'.
-  Admitted.
-
   Context (cΣ : confluenv Σ).
 
   Lemma triangle Γ Δ t u :
@@ -7277,7 +7266,7 @@ Section Triangle.
       eapply lhs_footprint_pattern in hf as hpl.
       eapply lhs_footprint_linear in hf as hll.
       set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
-      specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
+      specialize (h #|τ| (Γ' ,,, Δ) (rho_ctx Σ None Γ ,,, Δ) α ui θ r0).
       forward h.
       { unfold all_rewrite_rules.
         rewrite nth_error_app_ge. 1: lia.
@@ -7320,6 +7309,13 @@ Section Triangle.
         apply All_map_id. eapply All_impl. 1: eauto.
         intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
       }
+      forward h.
+      { clear - X0. cbn in X0. subst Δ.
+        induction τ.
+        - auto.
+        - cbn. constructor. 1: auto.
+          cbn. apply pred1_refl_gen. auto.
+      }
       rewrite !map_length.
       lazymatch goal with
       | hh : All2 ?P _ _ |- _ =>
@@ -7327,20 +7323,9 @@ Section Triangle.
       end.
       eapply subst_factorisation in hs as hτ. 2,3: auto.
       destruct hτ as [τ' [? hτ]]. subst.
-      lazymatch type of h with
-      | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
-        assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
-      end.
-      { eapply pred1_ctx_pred1. 1: auto.
-        clear - X0. cbn in X0. subst Δ.
-        induction τ.
-        - auto.
-        - cbn. constructor. 1: auto.
-          cbn. apply pred1_refl_gen. auto.
-      }
       eapply substitution_pred1
       with (s := τ') (s' := map (rho Σ None (rho_ctx Σ None Γ)) τ)
-      in h'. 2: auto.
+      in h. 2: auto.
       2:{
         clear - hτ predΓ' X0. cbn in X0. subst Δ. induction hτ.
         - constructor.
@@ -7359,7 +7344,7 @@ Section Triangle.
         subst ss' ;
         set (ss := t) in *
       end.
-      rewrite subst_subst_compose in h'.
+      rewrite subst_subst_compose in h.
       { rewrite map_length in sl.
         eapply closed_rule_rhs in heq_nth_error. 2,3: eauto.
         eapply closedn_subst with (k := 0).
@@ -7372,7 +7357,7 @@ Section Triangle.
           rewrite sl. replace (#|symbols rd| - 0) with #|symbols rd| by lia.
           assumption.
       }
-      rewrite subst_subst_compose in h'.
+      rewrite subst_subst_compose in h.
       { eapply first_match_subst_length in e0 as tl.
         rewrite map_length in tl. rewrite tl.
         eapply first_match_rule_list in e0 as [? e0].
@@ -7498,7 +7483,7 @@ Section Triangle.
       eapply lhs_footprint_pattern in hf as hpl.
       eapply lhs_footprint_linear in hf as hll.
       set (Δ := map (vass nAnon) (list_init (tRel 0) #|τ|)).
-      specialize (h #|τ| (Γ' ,,, Δ) α ui θ r0).
+      specialize (h #|τ| (Γ' ,,, Δ) (rho_ctx Σ None Γ ,,, Δ) α ui θ r0).
       forward h.
       { unfold all_rewrite_rules.
         rewrite nth_error_app_lt.
@@ -7541,6 +7526,13 @@ Section Triangle.
         apply All_map_id. eapply All_impl. 1: eauto.
         intros ? ?. apply subst_elim_symbols_subst. rewrite sl. assumption.
       }
+      forward h.
+      { clear - X0. cbn in X0. subst Δ.
+        induction τ.
+        - auto.
+        - cbn. constructor. 1: auto.
+          cbn. apply pred1_refl_gen. auto.
+      }
       rewrite !map_length.
       lazymatch goal with
       | hh : All2 ?P _ _ |- _ =>
@@ -7548,20 +7540,9 @@ Section Triangle.
       end.
       eapply subst_factorisation in hs as hτ. 2,3: auto.
       destruct hτ as [τ' [? hτ]]. subst.
-      lazymatch type of h with
-      | pred1 ?S ?A (?B ,,, ?C) ?D ?E =>
-        assert (h' : pred1 S A (rho_ctx Σ None Γ ,,, C) D E)
-      end.
-      { eapply pred1_ctx_pred1. 1: auto.
-        clear - X0. cbn in X0. subst Δ.
-        induction τ.
-        - auto.
-        - cbn. constructor. 1: auto.
-          cbn. apply pred1_refl_gen. auto.
-      }
       eapply substitution_pred1
       with (s := τ') (s' := map (rho Σ None (rho_ctx Σ None Γ)) τ)
-      in h'. 2: auto.
+      in h. 2: auto.
       2:{
         clear - hτ predΓ' X0. cbn in X0. subst Δ. induction hτ.
         - constructor.
@@ -7580,7 +7561,7 @@ Section Triangle.
         subst ss' ;
         set (ss := t) in *
       end.
-      rewrite subst_subst_compose in h'.
+      rewrite subst_subst_compose in h.
       { rewrite map_length in sl.
         eapply closed_prule_rhs in heq_nth_error. 2,3: eauto.
         eapply closedn_subst with (k := 0).
@@ -7593,7 +7574,7 @@ Section Triangle.
           rewrite sl. replace (#|symbols rd| - 0) with #|symbols rd| by lia.
           assumption.
       }
-      rewrite subst_subst_compose in h'.
+      rewrite subst_subst_compose in h.
       { eapply first_match_subst_length in e0 as tl.
         rewrite map_length in tl. rewrite tl.
         eapply first_match_rule_list in e0 as [? e0].
