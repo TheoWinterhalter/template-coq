@@ -639,7 +639,12 @@ Proof.
     + induction X. 1: constructor.
       (* HOW? *)
       admit.
-    + (* Need to generalise over fix_context or have better principles *)
+    + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
+      cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
+      unfold on_Trel. cbn.
+      intuition auto.
+      eapply h.
+      (* Similar to the above! *)
       admit.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
