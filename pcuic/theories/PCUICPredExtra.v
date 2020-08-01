@@ -69,7 +69,7 @@ Section ParallelReductionExtra.
       All2 (fun x y =>
         pred1_extra Γ x.(dtype) y.(dtype) ×
         pred1_extra (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-        x.(rarg) = y.(rarg)
+        (dname x, rarg x) = (dname y, rarg y)
       ) mfix0 mfix1 ->
       unfold_fix mfix1 idx = Some (narg, fn) ->
       is_constructor narg args0 = true ->
@@ -81,7 +81,7 @@ Section ParallelReductionExtra.
       All2 (fun x y =>
         pred1_extra Γ x.(dtype) y.(dtype) ×
         pred1_extra (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-        x.(rarg) = y.(rarg)
+        (dname x, rarg x) = (dname y, rarg y)
       ) mfix0 mfix1 ->
       unfold_cofix mfix1 idx = Some (narg, fn) ->
       All2 (pred1_extra Γ) args0 args1 ->
@@ -96,7 +96,7 @@ Section ParallelReductionExtra.
       All2 (fun x y =>
         pred1_extra Γ x.(dtype) y.(dtype) ×
         pred1_extra (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-        x.(rarg) = y.(rarg)
+        (dname x, rarg x) = (dname y, rarg y)
       ) mfix0 mfix1 ->
       unfold_cofix mfix1 idx = Some (narg, fn) ->
       All2 (pred1_extra Γ) args0 args1 ->
@@ -187,7 +187,7 @@ Section ParallelReductionExtra.
       All2 (fun x y =>
         pred1_extra Γ x.(dtype) y.(dtype) ×
         pred1_extra (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-        x.(rarg) = y.(rarg)
+        (dname x, rarg x) = (dname y, rarg y)
       ) mfix0 mfix1 ->
       pred1_extra Γ (tFix mfix0 idx) (tFix mfix1 idx)
 
@@ -195,7 +195,7 @@ Section ParallelReductionExtra.
       All2 (fun x y =>
         pred1_extra Γ x.(dtype) y.(dtype) ×
         pred1_extra (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-        x.(rarg) = y.(rarg)
+        (dname x, rarg x) = (dname y, rarg y)
       ) mfix0 mfix1 ->
       pred1_extra Γ (tCoFix mfix0 idx) (tCoFix mfix1 idx)
 
@@ -265,7 +265,7 @@ Section ParallelReductionExtra.
           All2 (fun x y =>
             P' Γ x.(dtype) y.(dtype) ×
             P' (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-            x.(rarg) = y.(rarg)
+            (dname x, rarg x) = (dname y, rarg y)
           ) mfix0 mfix1 ->
           unfold_fix mfix1 idx = Some (narg, fn) ->
           is_constructor narg args0 = true ->
@@ -279,7 +279,7 @@ Section ParallelReductionExtra.
           All2 (fun x y =>
             P' Γ x.(dtype) y.(dtype) ×
             P' (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-            x.(rarg) = y.(rarg)
+            (dname x, rarg x) = (dname y, rarg y)
           ) mfix0 mfix1 ->
           unfold_cofix mfix1 idx = Some (narg, fn) ->
           All2 (P' Γ) args0 args1 ->
@@ -296,7 +296,7 @@ Section ParallelReductionExtra.
           All2 (fun x y =>
             P' Γ x.(dtype) y.(dtype) ×
             P' (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-            x.(rarg) = y.(rarg)
+            (dname x, rarg x) = (dname y, rarg y)
           ) mfix0 mfix1 ->
           unfold_cofix mfix1 idx = Some (narg, fn) ->
           All2 (P' Γ) args0 args1 ->
@@ -393,7 +393,7 @@ Section ParallelReductionExtra.
           All2 (fun x y =>
             P' Γ x.(dtype) y.(dtype) ×
             P' (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-            x.(rarg) = y.(rarg)
+            (dname x, rarg x) = (dname y, rarg y)
           ) mfix0 mfix1 ->
           P Γ (tFix mfix0 idx) (tFix mfix1 idx)
       ) ->
@@ -402,7 +402,7 @@ Section ParallelReductionExtra.
           All2 (fun x y =>
             P' Γ x.(dtype) y.(dtype) ×
             P' (Γ ,,, fix_context mfix0) x.(dbody) y.(dbody) ×
-            x.(rarg) = y.(rarg)
+            (dname x, rarg x) = (dname y, rarg y)
           ) mfix0 mfix1 ->
           P Γ (tCoFix mfix0 idx) (tCoFix mfix1 idx)
       ) ->
@@ -639,7 +639,8 @@ Proof.
     + induction X. 1: constructor.
       (* HOW? *)
       admit.
-    + admit.
+    + (* Need to generalise over fix_context or have better principles *)
+      admit.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
   - econstructor. all: eauto.
