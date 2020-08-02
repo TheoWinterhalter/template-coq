@@ -713,15 +713,33 @@ Proof.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
   - econstructor. all: eauto.
-    + admit.
-    + admit.
+    + eapply pred1_extra_pred1_fix_context. all: eauto.
+    + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
+      cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
+      unfold on_Trel. cbn.
+      intuition auto.
+      eapply h.
+      eapply pred1_extra_pred1_fix_context in X. 2,3: eauto.
+      clear - X hctx. induction X.
+      * auto.
+      * cbn. constructor. all: auto.
+      * cbn. constructor. all: auto.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
   - econstructor. all: eauto.
-    + admit.
-    + admit.
+    + eapply pred1_extra_pred1_fix_context. all: eauto.
+    + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
+      cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
+      unfold on_Trel. cbn.
+      intuition auto.
+      eapply h.
+      eapply pred1_extra_pred1_fix_context in X. 2,3: eauto.
+      clear - X hctx. induction X.
+      * auto.
+      * cbn. constructor. all: auto.
+      * cbn. constructor. all: auto.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
   - subst. cbn in he.
@@ -737,11 +755,29 @@ Proof.
       eapply All2_impl. 1: eauto.
       intros ? ? [? ?]. auto.
   - econstructor. 1: auto.
-    + admit.
-    + admit.
+    + eapply pred1_extra_pred1_fix_context. all: eauto.
+    + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
+      cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
+      unfold on_Trel. cbn.
+      intuition auto.
+      eapply h.
+      eapply pred1_extra_pred1_fix_context in X. 2,3: eauto.
+      clear - X hctx. induction X.
+      * auto.
+      * cbn. constructor. all: auto.
+      * cbn. constructor. all: auto.
   - econstructor. 1: auto.
-    + admit.
-    + admit.
+    + eapply pred1_extra_pred1_fix_context. all: eauto.
+    + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
+      cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
+      unfold on_Trel. cbn.
+      intuition auto.
+      eapply h.
+      eapply pred1_extra_pred1_fix_context in X. 2,3: eauto.
+      clear - X hctx. induction X.
+      * auto.
+      * cbn. constructor. all: auto.
+      * cbn. constructor. all: auto.
 Admitted.
 
 Lemma weakening_env_pred1_extra :
