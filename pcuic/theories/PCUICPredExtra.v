@@ -599,6 +599,19 @@ Proof.
     intuition eauto.
 Qed. *)
 
+Lemma weakening_pred1_pred1_eq :
+  ∀ (cf : checker_flags) Σ Γ Δ Γ' Δ' u v k1 k2,
+    wf Σ →
+    All2_local_env_over (pred1 Σ) Γ Δ Γ' Δ' →
+    pred1 Σ Γ Δ u v →
+    k1 = #|Γ'| →
+    k2 = #|Δ'| →
+    pred1 Σ (Γ ,,, Γ') (Δ ,,, Δ') (lift0 k1 u) (lift0 k2 v).
+Proof.
+  intros. subst.
+  eapply weakening_pred1_pred1. all: auto.
+Qed.
+
 Lemma pred1_extra_pred1 :
   ∀ Σ Γ Δ u v e,
     on_Some (fun '(k, rd) =>
@@ -636,9 +649,25 @@ Proof.
     (* NEED extra constructor for pred1 *)
     give_up.
   - econstructor. all: eauto.
-    + induction X. 1: constructor.
-      (* HOW? *)
-      admit.
+    + rewrite 2!PCUICPosition.fix_context_fix_context_alt.
+      unfold PCUICPosition.fix_context_alt.
+      apply All2_rev in X.
+      rewrite 2!rev_mapi.
+      rewrite <- 2!map_rev.
+      revert X. generalize (List.rev mfix0). generalize (List.rev mfix1).
+      intros m0 m1 h.
+      unfold mapi. generalize 0 at 2 4.
+      intros n.
+      induction h as [| ? ? ? ? [[? hp] ?] h ih] in n |- *. 1: constructor.
+      cbn. constructor.
+      * eapply ih.
+      * cbn. unfold on_decl_over.
+        eapply weakening_pred1_pred1_eq.
+        4,5: rewrite mapi_rec_length.
+        4,5: rewrite !map_length.
+        (* NEED to conclude something about #|l| and #|l'| *)
+        3: eapply hp ; auto.
+        all: admit.
     + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
       cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
       unfold on_Trel. cbn.
