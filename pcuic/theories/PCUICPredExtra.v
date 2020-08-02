@@ -612,8 +612,9 @@ Proof.
   eapply weakening_pred1_pred1. all: auto.
 Qed.
 
-Lemma pred1_extra_pred1 :
+Lemma pred1_extra_pred1 `{cf : checker_flags} :
   ∀ Σ Γ Δ u v e,
+    wf Σ →
     on_Some (fun '(k, rd) =>
       lookup_env Σ k = Some (RewriteDecl rd)
     ) e →
@@ -621,7 +622,7 @@ Lemma pred1_extra_pred1 :
     pred1_ctx Σ Γ Δ →
     pred1 Σ Γ Δ u v.
 Proof.
-  intros Σ Γ Δ u v e he h hctx.
+  intros Σ Γ Δ u v e hΣ he h hctx.
   revert Γ u v h Δ hctx.
   refine (pred1_extra_ind_all_ctx Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
   all: try solve [ econstructor ; eauto ].
@@ -671,13 +672,12 @@ Proof.
       constructor.
       * eapply ih. all: lia.
       * cbn. unfold on_decl_over.
-        eapply weakening_pred1_pred1_eq.
-        4,5: rewrite mapi_rec_length.
-        4,5: rewrite !map_length.
-        4,5: lia.
-        3: eapply hp ; auto.
-        2: eapply ih ; lia.
-        all: admit.
+        eapply weakening_pred1_pred1_eq. 1: auto.
+        3,4: rewrite mapi_rec_length.
+        3,4: rewrite !map_length.
+        3,4: lia.
+        -- eapply ih. all: lia.
+        -- eapply hp. auto.
     + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
       cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
       unfold on_Trel. cbn.

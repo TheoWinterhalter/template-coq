@@ -4798,7 +4798,7 @@ Section Confluenv.
     fold (all_rewrite_rules rd) in h.
     set (l := all_rewrite_rules rd) in *. clearbody l.
     intros n rr npat' Γ Γ' σ ui θ r' hrr pσ uσ ss tl tr tr' fm hctx.
-    eapply pred1_extra_pred1. 2: eapply h ; eauto. 2: auto.
+    eapply pred1_extra_pred1. 1: auto. 2: eapply h ; eauto. 2: auto.
     cbn. assumption.
   Qed.
 
