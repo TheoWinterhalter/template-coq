@@ -4129,7 +4129,7 @@ Section Rho.
     revert Δ Δ' σ τ.
     revert Γ Γ' s t redst.
     set (P' := fun Γ Γ' => pred1_ctx Σ Γ Γ').
-    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); subst P';
+    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); subst P';
       try (intros until Δ; intros Δ' σ τ Hσ Hτ Hrel); trivial.
 
     (* induction redst using ; sigma; intros Δ Δ' σ τ Hσ Hτ Hrel. *)
@@ -4168,6 +4168,28 @@ Section Rho.
         eapply refine_pred.
         - now rewrite -ren_shiftk -Hb''.
         - rewrite Hi eqi'. rewrite -lift0_inst. constructor. all: auto.
+    }
+
+    (** Let-in delta case (left) *)
+    2:{ rewrite lift_rename rename_inst.
+        simpl. rewrite lift_renaming_0. clear X0.
+        (* destruct (nth_error_pred1_ctx _ _ X H) as [bodyΓ [? ?]]; eauto.
+        move e after H.
+        pose proof (pred1_pred1_ctx _ (fst (Hrel i))).
+        destruct (nth_error Γ' i) eqn:HΓ'i; noconf H. hnf in H.
+        destruct (nth_error Γ i) eqn:HΓi; noconf e. hnf in H.
+        pose proof (Hσ _ _ HΓi) as Hc. rewrite H in Hc.
+        destruct Hc as [σi [b' [eqi' [Hnth Hb']]]].
+        pose proof (Hτ _ _ HΓ'i) as Hc'. rewrite H0 in Hc'.
+        destruct Hc' as [τi [b'' [eqi'' [Hnth' Hb'']]]].
+        destruct (nth_error_pred1_ctx _ _ X0 Hnth') as [bodyΔ [? ?]].
+        destruct (Hrel i) as [_ Hi]. rewrite HΓi in Hi. simpl in Hi. rewrite H in Hi.
+        rewrite Hi in eqi'. rewrite eqi' in eqi''. noconf eqi''.
+        simpl_pred.
+        eapply refine_pred.
+        - now rewrite -ren_shiftk -Hb''.
+        - rewrite Hi eqi'. rewrite -lift0_inst. constructor. all: auto. *)
+      admit.
     }
 
     (** Zeta *)
@@ -4554,7 +4576,7 @@ Section Rho.
     - sigma. simpl. constructor; auto with pcuic. solve_all.
 
     - rewrite !pred_atom_inst; auto. eapply pred1_refl_gen; auto with pcuic.
-  Qed.
+  Admitted.
 
 End Rho.
 
@@ -5553,7 +5575,7 @@ Section Triangle.
     remember (mkElims (tSymb k n ui) el) as u eqn:e.
     revert Γ Γ' u t h k n ui el notlhs e.
     pose (Pctx := fun (Γ Δ : context) => True).
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
     all: subst Pctx.
     all: intros.
     all: try solve [
@@ -6939,7 +6961,7 @@ Section Triangle.
     pred1 Σ Δ (rho_ctx Σ None Γ) u (rho Σ None (rho_ctx Σ None Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
       subst Pctx; intros *.
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;
@@ -6979,6 +7001,28 @@ Section Triangle.
         eapply weakening_pred1_pred1; eauto.
         eapply All2_local_env_over_firstn_skipn. auto.
       + noconf heq_option_map.
+
+    - (* simp rho lhs_viewc.
+      destruct nth_error eqn:Heq.
+      + simpl in X0.
+        pose proof Heq. apply nth_error_Some_length in Heq.
+        destruct c as [na [?|] ?]; noconf heq_option_map.
+        simpl in X0.
+        eapply (f_equal (option_map decl_body)) in H.
+        eapply nth_error_pred1_ctx_l in H; eauto.
+        destruct H. intuition. rewrite a. simp rho.
+        rewrite -{1}(firstn_skipn (S i) Γ').
+        rewrite -{1}(firstn_skipn (S i) (rho_ctx _ _ Γ)).
+        pose proof (All2_local_env_length X0).
+        assert (S i = #|firstn (S i) Γ'|).
+        { rewrite !firstn_length_le; try lia. }
+        assert (S i = #|firstn (S i) (rho_ctx Σ None Γ)|).
+        { rewrite !firstn_length_le; try lia. }
+        rewrite {5}H0 {6}H1.
+        eapply weakening_pred1_pred1; eauto.
+        eapply All2_local_env_over_firstn_skipn. auto.
+      + noconf heq_option_map. *)
+      admit.
 
     - simp rho lhs_viewc. simpl in *.
       destruct option_map eqn:Heq.
@@ -7039,6 +7083,7 @@ Section Triangle.
           rewrite !subst_inst. simpl_pred.
           rewrite /rho_fix_context -fold_fix_context_rho_ctx. 1,2: cbn ; eauto.
           eapply strong_substitutivity; eauto.
+          { (* TODO Will go away *) instantiate (1 := None). cbn. auto. }
           -- apply ctxmap_fix_subst.
           -- rewrite -rho_fix_subst. 1,2: cbn ; eauto.
              rewrite -{1}fix_context_map_fix. 1,2: cbn ; eauto.
@@ -7079,6 +7124,7 @@ Section Triangle.
           set (rhoΓ := rho_ctx _ _ Γ ,,, rho_ctx_over _ _ (rho_ctx _ _ Γ) (fix_context mfix0)) in *.
           rewrite !subst_inst. eapply simpl_pred; try now sigma.
           eapply strong_substitutivity; eauto.
+          { (* TODO Will go away *) instantiate (1 := None). cbn. auto. }
           -- apply ctxmap_cofix_subst.
           -- unfold rhoΓ.
              rewrite -{1}fix_context_map_fix. 1,2: cbn ; eauto.
@@ -8508,7 +8554,7 @@ Section Triangle.
       intros. simpl in X. intuition.
 
     - destruct t; noconf H; simpl; constructor; eauto.
-  Qed.
+  Admitted.
 
 End Triangle.
 

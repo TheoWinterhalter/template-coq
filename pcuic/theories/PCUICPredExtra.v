@@ -695,9 +695,6 @@ Proof.
     ]
   ].
   all: intros.
-  - econstructor. 1: auto.
-    (* NEED extra constructor for pred1 *)
-    give_up.
   - econstructor. all: eauto.
     + eapply pred1_extra_pred1_fix_context. all: eauto.
     + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
@@ -778,7 +775,7 @@ Proof.
       * auto.
       * cbn. constructor. all: auto.
       * cbn. constructor. all: auto.
-Admitted.
+Qed.
 
 Lemma weakening_env_pred1_extra :
   ∀ `{cf : checker_flags} Σ Σ' e Γ u v,
