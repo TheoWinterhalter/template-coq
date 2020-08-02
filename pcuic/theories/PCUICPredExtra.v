@@ -612,6 +612,55 @@ Proof.
   eapply weakening_pred1_pred1. all: auto.
 Qed.
 
+Lemma pred1_extra_pred1_fix_context `{cf : checker_flags} :
+  ∀ Σ e Γ Δ mfix0 mfix1,
+    wf Σ →
+    pred1_ctx Σ Γ Δ →
+    All2 (λ x y,
+      (pred1_extra Σ e Γ (dtype x) (dtype y) ×
+      (∀ Δ, pred1_ctx Σ Γ Δ → pred1 Σ Γ Δ (dtype x) (dtype y))) ×
+      (pred1_extra Σ e (Γ ,,, fix_context mfix0) (dbody x) (dbody y) ×
+      (∀ Δ,
+        pred1_ctx Σ (Γ ,,, fix_context mfix0) Δ →
+        pred1 Σ (Γ ,,, fix_context mfix0) Δ (dbody x) (dbody y))
+      ) ×
+      (dname x, rarg x) = (dname y, rarg y)
+    ) mfix0 mfix1 →
+    All2_local_env (on_decl (on_decl_over (pred1 Σ) Γ Δ))
+      (fix_context mfix0) (fix_context mfix1).
+Proof.
+  intros Σ e Γ Δ mfix0 mfix1 hΣ hctx h.
+  rewrite 2!PCUICPosition.fix_context_fix_context_alt.
+  unfold PCUICPosition.fix_context_alt.
+  apply All2_rev in h.
+  rewrite 2!rev_mapi.
+  rewrite <- 2!map_rev.
+  assert (e0 : #|List.rev mfix0| = #|mfix0| - 0).
+  { rewrite List.rev_length. lia. }
+  assert (e1 : #|List.rev mfix1| = #|mfix1| - 0).
+  { rewrite List.rev_length. lia. }
+  revert e0 e1 h.
+  generalize (List.rev mfix0). generalize (List.rev mfix1).
+  intros m1 m0 e0 e1 h.
+  unfold mapi.
+  revert e0 e1.
+  generalize 0 at 1 2 4 6.
+  intros n e0 e1.
+  induction h as [| ? ? ? ? [[? hp] ?] h ih] in n, e0, e1 |- *.
+  1: constructor.
+  cbn. cbn in e0, e1.
+  constructor.
+  - eapply ih. all: lia.
+  - cbn. unfold on_decl_over.
+    eapply weakening_pred1_pred1_eq.
+    1: auto.
+    3,4: rewrite mapi_rec_length.
+    3,4: rewrite !map_length.
+    3,4: lia.
+    + eapply ih. all: lia.
+    + eapply hp. auto.
+Qed.
+
 Lemma pred1_extra_pred1 `{cf : checker_flags} :
   ∀ Σ Γ Δ u v e,
     wf Σ →
@@ -650,41 +699,17 @@ Proof.
     (* NEED extra constructor for pred1 *)
     give_up.
   - econstructor. all: eauto.
-    + rewrite 2!PCUICPosition.fix_context_fix_context_alt.
-      unfold PCUICPosition.fix_context_alt.
-      apply All2_rev in X.
-      rewrite 2!rev_mapi.
-      rewrite <- 2!map_rev.
-      assert (e0 : #|List.rev mfix0| = #|mfix0| - 0).
-      { rewrite List.rev_length. lia. }
-      assert (e1 : #|List.rev mfix1| = #|mfix1| - 0).
-      { rewrite List.rev_length. lia. }
-      revert e0 e1 X.
-      generalize (List.rev mfix0). generalize (List.rev mfix1).
-      intros m1 m0 e0 e1 h.
-      unfold mapi.
-      revert e0 e1.
-      generalize 0 at 1 2 4 6.
-      intros n e0 e1.
-      induction h as [| ? ? ? ? [[? hp] ?] h ih] in n, e0, e1 |- *.
-      1: constructor.
-      cbn. cbn in e0, e1.
-      constructor.
-      * eapply ih. all: lia.
-      * cbn. unfold on_decl_over.
-        eapply weakening_pred1_pred1_eq. 1: auto.
-        3,4: rewrite mapi_rec_length.
-        3,4: rewrite !map_length.
-        3,4: lia.
-        -- eapply ih. all: lia.
-        -- eapply hp. auto.
+    + eapply pred1_extra_pred1_fix_context. all: eauto.
     + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
       cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
       unfold on_Trel. cbn.
       intuition auto.
       eapply h.
-      (* Similar to the above! *)
-      admit.
+      eapply pred1_extra_pred1_fix_context in X. 2,3: eauto.
+      clear - X hctx. induction X.
+      * auto.
+      * cbn. constructor. all: auto.
+      * cbn. constructor. all: auto.
     + eapply All2_impl. 1: eauto.
       cbn. intuition auto.
   - econstructor. all: eauto.
