@@ -654,19 +654,29 @@ Proof.
       apply All2_rev in X.
       rewrite 2!rev_mapi.
       rewrite <- 2!map_rev.
-      revert X. generalize (List.rev mfix0). generalize (List.rev mfix1).
-      intros m0 m1 h.
-      unfold mapi. generalize 0 at 2 4.
-      intros n.
-      induction h as [| ? ? ? ? [[? hp] ?] h ih] in n |- *. 1: constructor.
-      cbn. constructor.
-      * eapply ih.
+      assert (e0 : #|List.rev mfix0| = #|mfix0| - 0).
+      { rewrite List.rev_length. lia. }
+      assert (e1 : #|List.rev mfix1| = #|mfix1| - 0).
+      { rewrite List.rev_length. lia. }
+      revert e0 e1 X.
+      generalize (List.rev mfix0). generalize (List.rev mfix1).
+      intros m1 m0 e0 e1 h.
+      unfold mapi.
+      revert e0 e1.
+      generalize 0 at 1 2 4 6.
+      intros n e0 e1.
+      induction h as [| ? ? ? ? [[? hp] ?] h ih] in n, e0, e1 |- *.
+      1: constructor.
+      cbn. cbn in e0, e1.
+      constructor.
+      * eapply ih. all: lia.
       * cbn. unfold on_decl_over.
         eapply weakening_pred1_pred1_eq.
         4,5: rewrite mapi_rec_length.
         4,5: rewrite !map_length.
-        (* NEED to conclude something about #|l| and #|l'| *)
+        4,5: lia.
         3: eapply hp ; auto.
+        2: eapply ih ; lia.
         all: admit.
     + unfold All2_prop2_eq. eapply All2_impl. 1: eauto.
       cbn. intros [] []. cbn. intros [[? ?] [[? h] ?]].
