@@ -7002,26 +7002,14 @@ Section Triangle.
         eapply All2_local_env_over_firstn_skipn. auto.
       + noconf heq_option_map.
 
-    - (* simp rho lhs_viewc.
-      destruct nth_error eqn:Heq.
-      + simpl in X0.
-        pose proof Heq. apply nth_error_Some_length in Heq.
-        destruct c as [na [?|] ?]; noconf heq_option_map.
-        simpl in X0.
-        eapply (f_equal (option_map decl_body)) in H.
-        eapply nth_error_pred1_ctx_l in H; eauto.
-        destruct H. intuition. rewrite a. simp rho.
-        rewrite -{1}(firstn_skipn (S i) Γ').
-        rewrite -{1}(firstn_skipn (S i) (rho_ctx _ _ Γ)).
-        pose proof (All2_local_env_length X0).
-        assert (S i = #|firstn (S i) Γ'|).
-        { rewrite !firstn_length_le; try lia. }
-        assert (S i = #|firstn (S i) (rho_ctx Σ None Γ)|).
-        { rewrite !firstn_length_le; try lia. }
-        rewrite {5}H0 {6}H1.
-        eapply weakening_pred1_pred1; eauto.
-        eapply All2_local_env_over_firstn_skipn. auto.
-      + noconf heq_option_map. *)
+    - simp rho lhs_viewc.
+      destruct nth_error eqn:Heq. 2: discriminate.
+      destruct c as [na [?|] ?]. all: noconf heq_option_map.
+      simpl in X0.
+      (* I see no way out here.
+        Γ ⇒ Γ' ⇒ rho Γ
+        but here I would need Γ ⇒ rho Γ I think...
+      *)
       admit.
 
     - simp rho lhs_viewc. simpl in *.
