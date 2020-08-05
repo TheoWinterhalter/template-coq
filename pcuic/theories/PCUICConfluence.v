@@ -376,6 +376,99 @@ Proof.
 (* Qed. *)
 Admitted.
 
+Definition on_elim2 (P : term -> term -> Type) e1 e2 : Type :=
+  match e1, e2 with
+  | eApp p1, eApp p2 => P p1 p2
+  | eCase ind1 p1 brs1, eCase ind2 p2 brs2 =>
+    ind1 = ind2 × P p1 p2 × All2 (fun b1 b2 => P b1.2 b2.2) brs1 brs2
+  | eProj p1, eProj p2 => True
+  | _, _ => False
+  end.
+
+Lemma eq_term_upto_univ_elims_l_inv :
+  forall Re Rle k n ui l t,
+    eq_term_upto_univ Re Rle (mkElims (tSymb k n ui) l) t ->
+    ∑ l',
+      All2 (on_elim2 (eq_term_upto_univ Re Rle)) l l' ×
+      t = mkElims (tSymb k n ui) l'.
+Proof.
+  intros Re Rle k n ui l t h.
+  remember (mkElims (tSymb k n ui) l) as t' eqn:e.
+  induction h in k, n, ui, l, e |- *.
+  all: try solve [
+    apply (f_equal isElimSymb) in e ;
+    rewrite isElimSymb_mkElims in e ;
+    cbn in e ;
+    discriminate
+  ].
+  - destruct l as [| a l _] using list_rect_rev. 1: discriminate.
+    rewrite mkElims_app in e. cbn in e.
+    destruct a. all: try discriminate.
+    cbn in e. inversion e. subst. clear e.
+    specialize IHh1 with (1 := eq_refl).
+    destruct IHh1 as [l' [h ?]]. subst.
+    eexists (l' ++ [ eApp _ ]). split.
+    + apply All2_app. 1: auto.
+      constructor. 2: constructor.
+      cbn. (* Should it be Re instead of Rle in conclusion? *)
+      admit.
+    + rewrite mkElims_app. cbn. reflexivity.
+  - destruct l as [| a l _] using list_rect_rev.
+    2:{
+      rewrite mkElims_app in e. cbn in e.
+      destruct a. all: discriminate.
+    }
+    cbn in e. inversion e. subst. clear e.
+    exists []. split.
+    + constructor.
+    + (* reflexivity. *)
+      (* Needs to relax the universes as well. *)
+      admit.
+  - destruct l as [| ex l _] using list_rect_rev. 1: discriminate.
+    rewrite mkElims_app in e. cbn in e.
+    destruct ex. all: try discriminate.
+    cbn in e. symmetry in e. inversion e. subst. clear e.
+    specialize IHh2 with (1 := eq_refl).
+    destruct IHh2 as [l' [h ?]]. subst.
+    eexists (l' ++ [ eCase _ _ _ ]). split.
+    + apply All2_app. (* Should it be Re instead of Rle in conclusion? *)
+      (* 1: auto.
+      constructor. 2: constructor.
+      cbn. (* Should it be Re instead of Rle in conclusion? *)
+      admit.
+    + rewrite mkElims_app. cbn. reflexivity. *)
+  (* - *)
+Admitted.
+
+Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
+  forall Σ Re Rle k ui decl Γ σ n r u,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (rules decl) n = Some r ->
+    let ss := symbols_subst k 0 ui #|symbols decl| in
+    untyped_subslet Γ σ (subst_context ss 0 (pat_context r)) ->
+    eq_term_upto_univ Re Rle (subst0 σ (subst ss #|σ| (lhs r))) u ->
+    ∑ σ',
+      All2 (eq_term_upto_univ Re Rle) σ σ' ×
+      u = subst0 σ' (subst ss #|σ'| (lhs r)).
+Proof.
+  intros Σ Re Rle k ui decl Γ σ n r u hΣ hd hn ss hσ h.
+  unfold lhs in h.
+  rewrite mkElims_subst in h.
+  subst ss.
+  erewrite rule_symbols_subst with (n := n + #|prules decl|) in h. 2,3: eauto.
+  2:{
+    unfold PCUICPredExtra.all_rewrite_rules.
+    rewrite nth_error_app_ge. 1: lia.
+    rewrite <- hn. f_equal. lia.
+  }
+  2:{
+    apply untyped_subslet_length in hσ.
+    rewrite subst_context_length in hσ.
+    auto.
+  }
+  rewrite mkElims_subst in h. cbn in h.
+Abort.
 
 Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' :
   RelationClasses.Reflexive Re ->
