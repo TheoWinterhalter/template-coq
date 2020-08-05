@@ -6,7 +6,7 @@ From Coq Require Import String Bool List Utf8 Lia.
 From MetaCoq.Template Require Import config utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICLiftSubst PCUICTyping
      PCUICReduction PCUICWeakening PCUICEquality PCUICUnivSubstitution
-     PCUICParallelReduction PCUICParallelReductionConfluence.
+     PCUICParallelReduction PCUICParallelReductionConfluence PCUICInduction.
 
 (* Type-valued relations. *)
 Require Import CRelationClasses.
@@ -394,27 +394,30 @@ Lemma eq_term_upto_univ_elims_l_inv :
       t = mkElims (tSymb k n ui') l'.
 Proof.
   intros Re Rle k n ui l t h.
-  remember (mkElims (tSymb k n ui) l) as t' eqn:e.
-  induction h in k, n, ui, l, e |- *.
+  remember (mkElims (tSymb k n ui) l) as u eqn:e.
+  induction u in k, n, ui, l, e, t, Rle, h |- * using term_forall_list_ind.
   all: try solve [
     apply (f_equal isElimSymb) in e ;
     rewrite isElimSymb_mkElims in e ;
     cbn in e ;
     discriminate
   ].
-  - destruct l as [| a l _] using list_rect_rev. 1: discriminate.
+  - dependent destruction h.
+    destruct l as [| a l _] using list_rect_rev. 1: discriminate.
     rewrite mkElims_app in e. cbn in e.
     destruct a. all: try discriminate.
     cbn in e. inversion e. subst. clear e.
-    specialize IHh1 with (1 := eq_refl).
-    destruct IHh1 as [l' [ui' [h [hui ?]]]]. subst.
+    specialize IHu1 with (1 := eq_refl).
+    specialize IHu1 with (1 := h1).
+    destruct IHu1 as [l' [ui' [h [hui ?]]]]. subst.
     eexists (l' ++ [ eApp _ ]), ui'. split. 2: split.
     + apply All2_app. 1: auto.
       constructor. 2: constructor.
       cbn. eauto.
     + auto.
     + rewrite mkElims_app. cbn. reflexivity.
-  - destruct l as [| a l _] using list_rect_rev.
+  - dependent destruction h.
+    destruct l as [| a l _] using list_rect_rev.
     2:{
       rewrite mkElims_app in e. cbn in e.
       destruct a. all: discriminate.
@@ -424,35 +427,39 @@ Proof.
     + constructor.
     + eauto.
     + reflexivity.
-  - destruct l as [| ex l _] using list_rect_rev. 1: discriminate.
+  - dependent destruction h.
+    destruct l as [| ex l _] using list_rect_rev. 1: discriminate.
     rewrite mkElims_app in e. cbn in e.
     destruct ex. all: try discriminate.
     cbn in e. symmetry in e. inversion e. subst. clear e.
-    specialize IHh2 with (1 := eq_refl).
-    destruct IHh2 as [l' [ui' [h [hui ?]]]]. subst.
+    specialize IHu2 with (1 := eq_refl).
+    specialize IHu2 with (1 := h2).
+    destruct IHu2 as [l' [ui' [h [hui ?]]]]. subst.
+    unfold tCaseBrsProp in X.
+    eapply All2_All_mix_left in X. 2: eauto.
     eexists (l' ++ [ eCase _ _ _ ]), _. split. 2: split.
     + apply All2_app. 1: auto.
       constructor. 2: constructor.
       cbn. intuition eauto.
       eapply All2_impl. 1: eauto.
-      intros [] []. cbn.
-      (* TODO Use the proper induction principle *)
-      admit.
+      intros [] []. cbn. intros [? [? ?]]. auto.
     + eauto.
     + rewrite mkElims_app. cbn. reflexivity.
-  - destruct l as [| a l _] using list_rect_rev. 1: discriminate.
+  - dependent destruction h.
+    destruct l as [| a l _] using list_rect_rev. 1: discriminate.
     rewrite mkElims_app in e. cbn in e.
     destruct a. all: try discriminate.
     cbn in e. symmetry in e. inversion e. subst. clear e.
-    specialize IHh with (1 := eq_refl).
-    destruct IHh as [l' [ui' [h' [hui ?]]]]. subst.
+    specialize IHu with (1 := eq_refl).
+    specialize IHu with (1 := h).
+    destruct IHu as [l' [ui' [h' [hui ?]]]]. subst.
     eexists (l' ++ [ eProj _ ]), ui'. split. 2: split.
     + apply All2_app. 1: auto.
       constructor. 2: constructor.
       cbn. auto.
     + auto.
     + rewrite mkElims_app. cbn. reflexivity.
-Admitted.
+Qed.
 
 Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
   forall Σ Re Rle k ui decl Γ σ n r u,
