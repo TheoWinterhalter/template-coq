@@ -388,9 +388,10 @@ Definition on_elim2 (P : term -> term -> Type) e1 e2 : Type :=
 Lemma eq_term_upto_univ_elims_l_inv :
   forall Re Rle k n ui l t,
     eq_term_upto_univ Re Rle (mkElims (tSymb k n ui) l) t ->
-    ∑ l',
-      All2 (on_elim2 (eq_term_upto_univ Re Rle)) l l' ×
-      t = mkElims (tSymb k n ui) l'.
+    ∑ l' ui',
+      All2 (on_elim2 (eq_term_upto_univ Re Re)) l l' ×
+      R_universe_instance Re ui ui' ×
+      t = mkElims (tSymb k n ui') l'.
 Proof.
   intros Re Rle k n ui l t h.
   remember (mkElims (tSymb k n ui) l) as t' eqn:e.
@@ -406,12 +407,12 @@ Proof.
     destruct a. all: try discriminate.
     cbn in e. inversion e. subst. clear e.
     specialize IHh1 with (1 := eq_refl).
-    destruct IHh1 as [l' [h ?]]. subst.
-    eexists (l' ++ [ eApp _ ]). split.
+    destruct IHh1 as [l' [ui' [h [hui ?]]]]. subst.
+    eexists (l' ++ [ eApp _ ]), ui'. split. 2: split.
     + apply All2_app. 1: auto.
       constructor. 2: constructor.
-      cbn. (* Should it be Re instead of Rle in conclusion? *)
-      admit.
+      cbn. eauto.
+    + auto.
     + rewrite mkElims_app. cbn. reflexivity.
   - destruct l as [| a l _] using list_rect_rev.
     2:{
@@ -419,25 +420,38 @@ Proof.
       destruct a. all: discriminate.
     }
     cbn in e. inversion e. subst. clear e.
-    exists []. split.
+    eexists [], _. split. 2: split.
     + constructor.
-    + (* reflexivity. *)
-      (* Needs to relax the universes as well. *)
-      admit.
+    + eauto.
+    + reflexivity.
   - destruct l as [| ex l _] using list_rect_rev. 1: discriminate.
     rewrite mkElims_app in e. cbn in e.
     destruct ex. all: try discriminate.
     cbn in e. symmetry in e. inversion e. subst. clear e.
     specialize IHh2 with (1 := eq_refl).
-    destruct IHh2 as [l' [h ?]]. subst.
-    eexists (l' ++ [ eCase _ _ _ ]). split.
-    + apply All2_app. (* Should it be Re instead of Rle in conclusion? *)
-      (* 1: auto.
+    destruct IHh2 as [l' [ui' [h [hui ?]]]]. subst.
+    eexists (l' ++ [ eCase _ _ _ ]), _. split. 2: split.
+    + apply All2_app. 1: auto.
       constructor. 2: constructor.
-      cbn. (* Should it be Re instead of Rle in conclusion? *)
+      cbn. intuition eauto.
+      eapply All2_impl. 1: eauto.
+      intros [] []. cbn.
+      (* TODO Use the proper induction principle *)
       admit.
-    + rewrite mkElims_app. cbn. reflexivity. *)
-  (* - *)
+    + eauto.
+    + rewrite mkElims_app. cbn. reflexivity.
+  - destruct l as [| a l _] using list_rect_rev. 1: discriminate.
+    rewrite mkElims_app in e. cbn in e.
+    destruct a. all: try discriminate.
+    cbn in e. symmetry in e. inversion e. subst. clear e.
+    specialize IHh with (1 := eq_refl).
+    destruct IHh as [l' [ui' [h' [hui ?]]]]. subst.
+    eexists (l' ++ [ eProj _ ]), ui'. split. 2: split.
+    + apply All2_app. 1: auto.
+      constructor. 2: constructor.
+      cbn. auto.
+    + auto.
+    + rewrite mkElims_app. cbn. reflexivity.
 Admitted.
 
 Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
