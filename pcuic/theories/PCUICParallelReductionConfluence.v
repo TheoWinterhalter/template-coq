@@ -4124,7 +4124,7 @@ Section Rho.
     ctxmap Γ' Δ' τ ->
     pred1_subst Γ Δ Δ' σ τ ->
     pred1 Σ Δ Δ' s.[σ] t.[τ].
-  Proof.
+  Proof using cf Σ wfΣ.
     intros redst.
     revert Δ Δ' σ τ.
     revert Γ Γ' s t redst.
@@ -7071,7 +7071,6 @@ Section Triangle.
           rewrite !subst_inst. simpl_pred.
           rewrite /rho_fix_context -fold_fix_context_rho_ctx. 1,2: cbn ; eauto.
           eapply strong_substitutivity; eauto.
-          { (* TODO Will go away *) instantiate (1 := None). cbn. auto. }
           -- apply ctxmap_fix_subst.
           -- rewrite -rho_fix_subst. 1,2: cbn ; eauto.
              rewrite -{1}fix_context_map_fix. 1,2: cbn ; eauto.
@@ -7112,7 +7111,6 @@ Section Triangle.
           set (rhoΓ := rho_ctx _ _ Γ ,,, rho_ctx_over _ _ (rho_ctx _ _ Γ) (fix_context mfix0)) in *.
           rewrite !subst_inst. eapply simpl_pred; try now sigma.
           eapply strong_substitutivity; eauto.
-          { (* TODO Will go away *) instantiate (1 := None). cbn. auto. }
           -- apply ctxmap_cofix_subst.
           -- unfold rhoΓ.
              rewrite -{1}fix_context_map_fix. 1,2: cbn ; eauto.
