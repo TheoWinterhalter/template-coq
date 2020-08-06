@@ -558,11 +558,12 @@ Lemma eq_term_upto_univ_subst_pattern_mask_l :
     #|σ| = npat →
     pattern_mask npat p = Some m →
     eq_term_upto_univ Re Re (subst0 σ p) t →
-    ∑ σ',
+    ∑ σ' p',
+      eq_term_upto_univ Re Re p p' ×
       All2_mask_subst (eq_term_upto_univ Re Re) m σ σ' ×
       ∀ θ,
         subs_complete σ' θ →
-        t = subst0 θ p.
+        t = subst0 θ p'.
 Proof.
   intros Re npat σ p t m [] hm h.
   induction p in σ, m, hm, t, h |- * using term_forall_list_ind.
@@ -584,7 +585,8 @@ Proof.
     forward h'.
     { eapply All2_mask_subst_linear_mask_init. reflexivity. }
     destruct h' as [σ' [h1 h2]].
-    eexists. split.
+    eexists _,_. split. 2: split.
+    + constructor.
     + eauto.
     + intros θ hc. cbn.
       replace (n - 0) with n by lia.
@@ -597,22 +599,24 @@ Proof.
     dependent destruction h.
     specialize IHp1 with (1 := e1) (2 := h1).
     specialize IHp2 with (1 := e2) (2 := h2).
-    destruct IHp1 as [σ1 [? c1]].
-    destruct IHp2 as [σ2 [? c2]].
+    destruct IHp1 as [σ1 [p1' [? [? c1]]]].
+    destruct IHp2 as [σ2 [p2' [? [? c2]]]].
     eapply All2_mask_subst_lin_merge in hm as h'. 2,3: eauto.
     destruct h' as [σ' []].
-    eexists. intuition eauto.
-    cbn. eapply subs_merge_complete in e as h'. 2: eauto.
-    destruct h'.
-    erewrite c1. 2: eauto.
-    erewrite c2. 2: eauto.
-    reflexivity.
+    eexists _,_. intuition eauto.
+    + constructor. all: eauto.
+    + cbn. eapply subs_merge_complete in e3 as h'. 2: eauto.
+      destruct h'.
+      erewrite c1. 2: eauto.
+      erewrite c2. 2: eauto.
+      reflexivity.
   - cbn in h, hm. apply some_inj in hm. subst.
     dependent destruction h.
-    eexists. split.
+    eexists _,_. split. 2: split.
+    + constructor. eauto.
     + eapply All2_mask_subst_linear_mask_init. reflexivity.
-    + intros θ hc. (* reflexivity. *)
-Admitted.
+    + intros θ hc. reflexivity.
+Qed.
 
 Lemma eq_term_upto_univ_subst_elim_mask_l :
   ∀ Re npat σ e e' m,
