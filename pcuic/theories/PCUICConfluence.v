@@ -623,17 +623,38 @@ Lemma eq_term_upto_univ_subst_elim_mask_l :
     #|σ| = npat →
     elim_mask npat e = Some m →
     on_elim2 (eq_term_upto_univ Re Re) (subst_elim σ 0 e) e' →
-    ∑ σ',
+    ∑ σ' e'',
+      on_elim2 (eq_term_upto_univ Re Re) e e'' ×
       All2_mask_subst (eq_term_upto_univ Re Re) m σ σ' ×
       ∀ θ,
         subs_complete σ' θ →
-        e' = subst_elim θ 0 e.
+        e' = subst_elim θ 0 e''.
 Proof.
   intros Re npat σ e e' m [] hm h.
   destruct e.
-  - cbn in hm. admit.
-  - admit.
-  - admit.
+  - cbn in hm, h.
+    destruct e'. all: try contradiction.
+    eapply eq_term_upto_univ_subst_pattern_mask_l in h.
+    3: eauto. 2: reflexivity.
+    destruct h as [σ' [p' [? [? h]]]].
+    eexists _, (eApp _). cbn. intuition eauto.
+    erewrite h. 2: eauto.
+    reflexivity.
+  - cbn in hm, h.
+    destruct e'. all: try contradiction.
+    destruct pattern_mask eqn:e1. 2: discriminate.
+    destruct monad_map eqn:e2. 2: discriminate.
+    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct h as [e [hp h]].
+    eapply eq_term_upto_univ_subst_pattern_mask_l in hp.
+    3: eauto. 2: reflexivity.
+    destruct hp as [σ' [p' [? [? hp]]]].
+    admit.
+  - cbn in hm, h.
+    destruct e'. all: try contradiction.
+    apply some_inj in hm. subst.
+    eexists _, (eProj _). cbn. intuition eauto.
+    eapply All2_mask_subst_linear_mask_init. reflexivity.
 Admitted.
 
 Lemma eq_term_upto_univ_subst_elims_mask_l :
