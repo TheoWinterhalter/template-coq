@@ -644,12 +644,30 @@ Proof.
     destruct e'. all: try contradiction.
     destruct pattern_mask eqn:e1. 2: discriminate.
     destruct monad_map eqn:e2. 2: discriminate.
-    destruct monad_fold_right eqn:e3. 2: discriminate.
+    destruct monad_fold_right as [m1|] eqn:e3. 2: discriminate.
     destruct h as [e [hp h]].
     eapply eq_term_upto_univ_subst_pattern_mask_l in hp.
     3: eauto. 2: reflexivity.
-    destruct hp as [σ' [p' [? [? hp]]]].
-    admit.
+    destruct hp as [σ1 [p' [? [? hp]]]].
+    assert (
+      h' :
+        ∑ σ' brs',
+          All2 (λ b1 b2, eq_term_upto_univ Re Re b1.2 b2.2) brs brs' ×
+          All2_mask_subst (eq_term_upto_univ Re Re) m1 σ σ' ×
+          ∀ θ,
+            subs_complete σ' θ →
+            brs0 = map (on_snd (subst0 θ)) brs'
+    ).
+    { admit. }
+    destruct h' as [σ2 [brs' [? [? hb]]]].
+    eapply All2_mask_subst_lin_merge in hm as h'. 2,3: eauto.
+    destruct h' as [σ' [sm ?]].
+    eexists _, (eCase _ _ _). cbn. intuition eauto.
+    eapply subs_merge_complete in sm. 2: eauto.
+    destruct sm.
+    erewrite hp. 2: eauto.
+    erewrite hb. 2: eauto.
+    f_equal. auto.
   - cbn in hm, h.
     destruct e'. all: try contradiction.
     apply some_inj in hm. subst.
