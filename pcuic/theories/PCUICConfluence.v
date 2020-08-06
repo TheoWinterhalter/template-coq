@@ -591,8 +591,27 @@ Proof.
       eapply subs_add_complete in hc as hc'. 2: eauto.
       destruct hc' as [hc' e].
       rewrite e. rewrite lift0_id. reflexivity.
-  - admit.
-  - admit.
+  - cbn in h, hm. destruct pattern_mask eqn:e1. 2: discriminate.
+    move hm at top.
+    destruct pattern_mask eqn:e2. 2: discriminate.
+    dependent destruction h.
+    specialize IHp1 with (1 := e1) (2 := h1).
+    specialize IHp2 with (1 := e2) (2 := h2).
+    destruct IHp1 as [σ1 [? c1]].
+    destruct IHp2 as [σ2 [? c2]].
+    eapply All2_mask_subst_lin_merge in hm as h'. 2,3: eauto.
+    destruct h' as [σ' []].
+    eexists. intuition eauto.
+    cbn. eapply subs_merge_complete in e as h'. 2: eauto.
+    destruct h'.
+    erewrite c1. 2: eauto.
+    erewrite c2. 2: eauto.
+    reflexivity.
+  - cbn in h, hm. apply some_inj in hm. subst.
+    dependent destruction h.
+    eexists. split.
+    + eapply All2_mask_subst_linear_mask_init. reflexivity.
+    + intros θ hc. (* reflexivity. *)
 Admitted.
 
 Lemma eq_term_upto_univ_subst_elim_mask_l :
