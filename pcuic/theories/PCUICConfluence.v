@@ -3,15 +3,18 @@ Set Warnings "-notation-overridden".
 Require Import ssreflect.
 From Equations Require Import Equations.
 From Coq Require Import String Bool List Utf8 Lia.
-From MetaCoq.Template Require Import config utils.
+From MetaCoq.Template Require Import config utils monad_utils.
 From MetaCoq.PCUIC Require Import PCUICAst PCUICLiftSubst PCUICTyping
-     PCUICReduction PCUICWeakening PCUICEquality PCUICUnivSubstitution
-     PCUICParallelReduction PCUICParallelReductionConfluence PCUICInduction.
+  PCUICReduction PCUICWeakening PCUICEquality PCUICUnivSubstitution
+  PCUICParallelReduction PCUICParallelReductionConfluence PCUICInduction
+  PCUICRW PCUICPattern.
 
 (* Type-valued relations. *)
 Require Import CRelationClasses.
 Require Import Equations.Prop.DepElim.
 Require Import Equations.Type.Relation Equations.Type.Relation_Properties.
+
+Import MonadNotation.
 
 Ltac tc := try typeclasses eauto 10.
 
@@ -461,6 +464,199 @@ Proof.
     + rewrite mkElims_app. cbn. reflexivity.
 Qed.
 
+Lemma subs_add_S_cons' :
+  ∀ n u v σ σ',
+    subs_add n u σ = Some σ' →
+    subs_add (S n) u (v :: σ) = Some (v :: σ').
+Proof.
+  intros n u v σ σ' h.
+  unfold subs_add in *. cbn.
+  destruct nth_error as [[]|]. 1,3 : discriminate.
+  apply some_inj in h. subst. reflexivity.
+Qed.
+
+Lemma All2_mask_subst_lin_set' :
+  ∀ P n m m' t u σ θ,
+    lin_set n m = Some m' →
+    nth_error θ n = Some t →
+    P t u →
+    All2_mask_subst P m θ σ →
+    ∑ σ',
+      subs_add n u σ = Some σ' ×
+      All2_mask_subst P m' θ σ'.
+Proof.
+  intros P n m m' t u σ θ hm hθ h hs.
+  induction hs in n, m', hm, t, hθ, u, h |- *.
+  - destruct n. all: cbn in hm. all: discriminate.
+  - destruct n. 1: discriminate.
+    cbn in *.
+    destruct lin_set eqn:e. 2: discriminate.
+    apply some_inj in hm. subst.
+    specialize IHhs with (1 := e) (2 := hθ) (3 := h).
+    destruct IHhs as [σ' [h1 h2]].
+    eapply subs_add_S_cons' in h1 as h3.
+    erewrite h3.
+    eexists. intuition eauto.
+    constructor. all: auto.
+  - destruct n.
+    + cbn in *. apply some_inj in hm. subst.
+      apply some_inj in hθ. subst.
+      rewrite skipn_S. unfold skipn.
+      eexists. intuition eauto.
+      constructor. all: assumption.
+    + cbn in *.
+      destruct lin_set eqn:e. 2: discriminate.
+      apply some_inj in hm. subst.
+      specialize IHhs with (1 := e) (2 := hθ) (3 := h).
+      destruct IHhs as [σ' [h1 h2]].
+      eapply subs_add_S_cons' in h1 as h3.
+      erewrite h3.
+      eexists. intuition eauto.
+      constructor. auto.
+Qed.
+
+Lemma subs_add_complete :
+  ∀ σ n u σ' θ,
+    subs_add n u σ = Some σ' →
+    subs_complete σ' θ →
+    subs_complete σ θ ×
+    nth_error θ n = Some u.
+Proof.
+  intros σ n u σ' θ h hc.
+  unfold subs_add in h. destruct nth_error as [[]|] eqn:e. 1,3: discriminate.
+  apply some_inj in h.
+  induction hc in n, u, σ, h, e |- *.
+  - exfalso. eapply app_cons_not_nil. eauto.
+  - destruct σ as [| [] σ].
+    + destruct n. all: discriminate.
+    + destruct n. 1: discriminate.
+      cbn in e. cbn in h. rewrite skipn_S in h.
+      specialize IHhc with (1 := e).
+      inversion h. subst.
+      specialize IHhc with (1 := eq_refl).
+      intuition eauto.
+      constructor. assumption.
+    + destruct n. 2: discriminate.
+      cbn in h. rewrite skipn_S in h. inversion h. subst. clear h.
+      intuition eauto.
+      constructor. assumption.
+  - destruct σ as [| [] σ].
+    + destruct n. all: discriminate.
+    + destruct n. 1: discriminate.
+      cbn in e. cbn in h. rewrite skipn_S in h.
+      inversion h.
+    + destruct n.
+      * cbn in h. rewrite skipn_S in h. inversion h.
+      * cbn in e. cbn in h. rewrite skipn_S in h. inversion h. subst. clear h.
+        specialize IHhc with (1 := e) (2 := eq_refl).
+        intuition eauto.
+        constructor. assumption.
+Qed.
+
+Lemma eq_term_upto_univ_subst_pattern_mask_l :
+  ∀ Re npat σ p t m,
+    #|σ| = npat →
+    pattern_mask npat p = Some m →
+    eq_term_upto_univ Re Re (subst0 σ p) t →
+    ∑ σ',
+      All2_mask_subst (eq_term_upto_univ Re Re) m σ σ' ×
+      ∀ θ,
+        subs_complete σ' θ →
+        t = subst0 θ p.
+Proof.
+  intros Re npat σ p t m [] hm h.
+  induction p in σ, m, hm, t, h |- * using term_forall_list_ind.
+  all: try discriminate.
+  - cbn in h, hm. destruct nth_error eqn:e1.
+    2:{
+      apply nth_error_None in e1.
+      rewrite lin_set_eq in hm.
+      destruct nth_error as [[]|] eqn:e2. 1,3: discriminate.
+      eapply nth_error_Some_length in e2.
+      rewrite linear_mask_init_length in e2.
+      lia.
+    }
+    rewrite lift0_id in h.
+    replace (n - 0) with n in e1 by lia.
+    pose proof All2_mask_subst_lin_set' as h'.
+    specialize h' with (1 := hm) (2 := e1) (3 := h).
+    specialize (h' (subs_empty #|σ|)).
+    forward h'.
+    { eapply All2_mask_subst_linear_mask_init. reflexivity. }
+    destruct h' as [σ' [h1 h2]].
+    eexists. split.
+    + eauto.
+    + intros θ hc. cbn.
+      replace (n - 0) with n by lia.
+      eapply subs_add_complete in hc as hc'. 2: eauto.
+      destruct hc' as [hc' e].
+      rewrite e. rewrite lift0_id. reflexivity.
+  - admit.
+  - admit.
+Admitted.
+
+Lemma eq_term_upto_univ_subst_elim_mask_l :
+  ∀ Re npat σ e e' m,
+    #|σ| = npat →
+    elim_mask npat e = Some m →
+    on_elim2 (eq_term_upto_univ Re Re) (subst_elim σ 0 e) e' →
+    ∑ σ',
+      All2_mask_subst (eq_term_upto_univ Re Re) m σ σ' ×
+      ∀ θ,
+        subs_complete σ' θ →
+        e' = subst_elim θ 0 e.
+Proof.
+  intros Re npat σ e e' m [] hm h.
+  destruct e.
+  - cbn in hm. admit.
+  - admit.
+  - admit.
+Admitted.
+
+Lemma eq_term_upto_univ_subst_elims_mask_l :
+  ∀ Re npat σ l m l',
+    #|σ| = npat →
+    linear_mask npat l = Some m →
+    All2 (on_elim2 (eq_term_upto_univ Re Re)) (map (subst_elim σ 0) l) l' →
+    ∑ σ',
+      All2_mask_subst (eq_term_upto_univ Re Re) m σ σ' ×
+      ∀ θ,
+        subs_complete σ' θ →
+        l' = map (subst_elim θ 0) l.
+Proof.
+  intros Re npat σ l m l' hσ hm h.
+  apply All2_map_inv_left in h.
+  induction h as [| a b l l' he hl ih ] in m, hm |- *.
+  - cbn in hm. apply some_inj in hm. subst.
+    cbn. eexists. split.
+    + eapply All2_mask_subst_linear_mask_init. reflexivity.
+    + reflexivity.
+  - rewrite linear_mask_cons in hm.
+    destruct elim_mask eqn:e1. 2: discriminate.
+    destruct linear_mask eqn:e2. 2: discriminate.
+    cbn in hm.
+    specialize ih with (1 := eq_refl).
+    destruct ih as [σ' [h1 h2]].
+    (* Prove lemma on elim *)
+    eapply All2_mask_subst_lin_merge in hm as h. 2,3: eauto.
+    (* eexists. split. *)
+    (* +
+    + *)
+Admitted.
+
+Lemma eq_term_upto_univ_subst_elim_l :
+  forall Re npat σ l l',
+    linear npat l ->
+    All2 (on_elim2 (eq_term_upto_univ Re Re)) (map (subst_elim σ 0) l) l' ->
+    ∑ σ',
+      All2 (eq_term_upto_univ Re Re) σ σ' ×
+      l' = map (subst_elim σ' 0) l.
+Proof.
+  intros Re npat σ l l' hl h.
+  unfold linear in hl.
+  destruct linear_mask eqn:e. 2: discriminate.
+Admitted.
+
 Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
   forall Σ Re Rle k ui decl Γ σ n r u,
     wf Σ ->
@@ -489,6 +685,9 @@ Proof.
     auto.
   }
   rewrite mkElims_subst in h. cbn in h.
+  eapply eq_term_upto_univ_elims_l_inv in h.
+  destruct h as [l' [ui' [el [eu ?]]]]. subst.
+  (* Now need linearity for a nice lemma to apply to el *)
 Abort.
 
 Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' :
