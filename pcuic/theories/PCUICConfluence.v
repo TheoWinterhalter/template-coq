@@ -768,9 +768,10 @@ Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
     let ss := symbols_subst k 0 ui #|symbols decl| in
     untyped_subslet Γ σ (subst_context ss 0 (pat_context r)) ->
     eq_term_upto_univ Re Rle (subst0 σ (subst ss #|σ| (lhs r))) u ->
-    ∑ σ',
-      All2 (eq_term_upto_univ Re Rle) σ σ' ×
-      u = subst0 σ' (subst ss #|σ'| (lhs r)).
+    ∑ σ' ui',
+      let ss' := symbols_subst k 0 ui' #|symbols decl| in
+      All2 (eq_term_upto_univ Re Re) σ σ' ×
+      u = subst0 σ' (subst ss' #|σ'| (lhs r)).
 Proof.
   intros Σ Re Rle k ui decl Γ σ n r u hΣ hd hn ss hσ h.
   unfold lhs in h.
@@ -790,7 +791,31 @@ Proof.
   rewrite mkElims_subst in h. cbn in h.
   eapply eq_term_upto_univ_elims_l_inv in h.
   destruct h as [l' [ui' [el [eu ?]]]]. subst.
-  (* Now need linearity for a nice lemma to apply to el *)
+  eapply untyped_subslet_length in hσ as σl.
+  rewrite subst_context_length in σl.
+  rewrite subst_elims_symbols_subst in el.
+  { rewrite σl. eapply declared_symbol_pattern. all: eauto. }
+  eapply eq_term_upto_univ_subst_elim_l in el.
+  3:{ eapply declared_symbol_linear. all: eauto. }
+  2: assumption.
+  destruct el as [σ' [l'' [? [h ?]]]].
+  eexists _, _. cbn. intuition eauto.
+  unfold lhs.
+  rewrite mkElims_subst.
+  apply All2_length in h.
+  erewrite rule_symbols_subst with (n := n + #|prules decl|). 2,3: eauto.
+  3: lia.
+  2:{
+    unfold PCUICPredExtra.all_rewrite_rules.
+    rewrite nth_error_app_ge. 1: lia.
+    rewrite <- hn. f_equal. lia.
+  }
+  rewrite mkElims_subst. cbn. subst.
+  rewrite subst_elims_symbols_subst.
+  { rewrite <- h. rewrite σl. eapply declared_symbol_pattern. all: eauto. }
+  (* I have a problem here, because it seems to suggest that
+    being a lhs is not stable by eq_term...
+  *)
 Abort.
 
 Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' :
