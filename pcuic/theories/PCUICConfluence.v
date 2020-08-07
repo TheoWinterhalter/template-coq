@@ -643,7 +643,7 @@ Proof.
   - cbn in hm, h.
     destruct e'. all: try contradiction.
     destruct pattern_mask eqn:e1. 2: discriminate.
-    destruct monad_map eqn:e2. 2: discriminate.
+    destruct monad_map as [m0|] eqn:e2. 2: discriminate.
     destruct monad_fold_right as [m1|] eqn:e3. 2: discriminate.
     destruct h as [e [hp h]].
     eapply eq_term_upto_univ_subst_pattern_mask_l in hp.
@@ -658,7 +658,32 @@ Proof.
             subs_complete σ' θ →
             brs0 = map (on_snd (subst0 θ)) brs'
     ).
-    { admit. }
+    { clear - e3 e2 h.
+      apply All2_map_inv_left in h.
+      induction h as [| [n t] [n' t'] brs brs0 ht hb ih] in m0, e2, m1, e3 |- *.
+      - cbn in e2. apply some_inj in e2. subst.
+        cbn in e3. apply some_inj in e3. subst.
+        eexists _, _. intuition eauto.
+        eapply All2_mask_subst_linear_mask_init. reflexivity.
+      - cbn in ht.
+        cbn in e2. destruct pattern_mask eqn:e1. 2: discriminate.
+        destruct monad_map eqn:e4. 2: discriminate.
+        apply some_inj in e2. subst.
+        cbn in e3. destruct monad_fold_right eqn:e2. 2: discriminate.
+        eapply eq_term_upto_univ_subst_pattern_mask_l in ht.
+        3: eauto. 2: reflexivity.
+        destruct ht as [σ1 [p' [? [? hp]]]].
+        specialize ih with (1 := eq_refl) (2 := e2).
+        destruct ih as [σ2 [brs' [? [? hb']]]].
+        eapply All2_mask_subst_lin_merge in e3 as h'. 2,3: eauto.
+        destruct h' as [σ' [sm ?]].
+        eexists _, ((n',p') :: _). intuition eauto.
+        cbn. eapply subs_merge_complete in sm. 2: eauto.
+        destruct sm.
+        erewrite hp. 2: eauto.
+        erewrite hb'. 2: eauto.
+        reflexivity.
+    }
     destruct h' as [σ2 [brs' [? [? hb]]]].
     eapply All2_mask_subst_lin_merge in hm as h'. 2,3: eauto.
     destruct h' as [σ' [sm ?]].
@@ -673,7 +698,7 @@ Proof.
     apply some_inj in hm. subst.
     eexists _, (eProj _). cbn. intuition eauto.
     eapply All2_mask_subst_linear_mask_init. reflexivity.
-Admitted.
+Qed.
 
 Lemma eq_term_upto_univ_subst_elims_mask_l :
   ∀ Re npat σ l m l',
