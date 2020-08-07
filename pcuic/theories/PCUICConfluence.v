@@ -741,16 +741,24 @@ Qed.
 
 Lemma eq_term_upto_univ_subst_elim_l :
   forall Re npat σ l l',
+    #|σ| = npat →
     linear npat l ->
     All2 (on_elim2 (eq_term_upto_univ Re Re)) (map (subst_elim σ 0) l) l' ->
-    ∑ σ',
+    ∑ σ' l'',
+      All2 (on_elim2 (eq_term_upto_univ Re Re)) l l'' ×
       All2 (eq_term_upto_univ Re Re) σ σ' ×
-      l' = map (subst_elim σ' 0) l.
+      l' = map (subst_elim σ' 0) l''.
 Proof.
-  intros Re npat σ l l' hl h.
+  intros Re npat σ l l' eσ hl h.
   unfold linear in hl.
   destruct linear_mask eqn:e. 2: discriminate.
-Admitted.
+  eapply eq_term_upto_univ_subst_elims_mask_l in h. 2,3: eauto.
+  destruct h as [σ' [l'' [h1 [h2 h3]]]].
+  eapply All2_mask_subst_all in h2. 2: auto.
+  destruct h2 as [θ [? ?]].
+  eexists _,_. intuition eauto.
+  eapply h3. apply map_option_out_subs_complete. assumption.
+Qed.
 
 Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
   forall Σ Re Rle k ui decl Γ σ n r u,
