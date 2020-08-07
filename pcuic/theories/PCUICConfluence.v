@@ -705,17 +705,19 @@ Lemma eq_term_upto_univ_subst_elims_mask_l :
     #|σ| = npat →
     linear_mask npat l = Some m →
     All2 (on_elim2 (eq_term_upto_univ Re Re)) (map (subst_elim σ 0) l) l' →
-    ∑ σ',
+    ∑ σ' l'',
+      All2 (on_elim2 (eq_term_upto_univ Re Re)) l l'' ×
       All2_mask_subst (eq_term_upto_univ Re Re) m σ σ' ×
       ∀ θ,
         subs_complete σ' θ →
-        l' = map (subst_elim θ 0) l.
+        l' = map (subst_elim θ 0) l''.
 Proof.
   intros Re npat σ l m l' hσ hm h.
   apply All2_map_inv_left in h.
   induction h as [| a b l l' he hl ih ] in m, hm |- *.
   - cbn in hm. apply some_inj in hm. subst.
-    cbn. eexists. split.
+    cbn. eexists _,_. split. 2: split.
+    + constructor.
     + eapply All2_mask_subst_linear_mask_init. reflexivity.
     + reflexivity.
   - rewrite linear_mask_cons in hm.
@@ -723,13 +725,19 @@ Proof.
     destruct linear_mask eqn:e2. 2: discriminate.
     cbn in hm.
     specialize ih with (1 := eq_refl).
-    destruct ih as [σ' [h1 h2]].
-    (* Prove lemma on elim *)
+    destruct ih as [σ1 [l'' [? [? h1]]]].
+    eapply eq_term_upto_univ_subst_elim_mask_l in he as h'.
+    3: eauto. 2: auto.
+    destruct h' as [σ2 [e'' [? [? h2]]]].
     eapply All2_mask_subst_lin_merge in hm as h. 2,3: eauto.
-    (* eexists. split. *)
-    (* +
-    + *)
-Admitted.
+    destruct h as [σ' [h3 ?]].
+    eexists _, (_ :: _). intuition eauto.
+    cbn. eapply subs_merge_complete in h3. 2: eauto.
+    destruct h3.
+    erewrite h1. 2: eauto.
+    erewrite h2. 2: eauto.
+    reflexivity.
+Qed.
 
 Lemma eq_term_upto_univ_subst_elim_l :
   forall Re npat σ l l',
