@@ -4129,7 +4129,7 @@ Section Rho.
     revert Δ Δ' σ τ.
     revert Γ Γ' s t redst.
     set (P' := fun Γ Γ' => pred1_ctx Σ Γ Γ').
-    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); subst P';
+    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); subst P';
       try (intros until Δ; intros Δ' σ τ Hσ Hτ Hrel); trivial.
 
     (* induction redst using ; sigma; intros Δ Δ' σ τ Hσ Hτ Hrel. *)
@@ -4171,7 +4171,7 @@ Section Rho.
     }
 
     (** Let-in delta case (left) *)
-    2:{ rewrite lift_rename rename_inst.
+    (* 2:{ rewrite lift_rename rename_inst.
         simpl. rewrite lift_renaming_0. clear X0.
         (* destruct (nth_error_pred1_ctx _ _ X H) as [bodyΓ [? ?]]; eauto.
         move e after H.
@@ -4190,7 +4190,7 @@ Section Rho.
         - now rewrite -ren_shiftk -Hb''.
         - rewrite Hi eqi'. rewrite -lift0_inst. constructor. all: auto. *)
       admit.
-    }
+    } *)
 
     (** Zeta *)
     1:{ sigma.
@@ -4576,7 +4576,7 @@ Section Rho.
     - sigma. simpl. constructor; auto with pcuic. solve_all.
 
     - rewrite !pred_atom_inst; auto. eapply pred1_refl_gen; auto with pcuic.
-  Admitted.
+  Qed.
 
 End Rho.
 
@@ -5575,7 +5575,7 @@ Section Triangle.
     remember (mkElims (tSymb k n ui) el) as u eqn:e.
     revert Γ Γ' u t h k n ui el notlhs e.
     pose (Pctx := fun (Γ Δ : context) => True).
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
     all: subst Pctx.
     all: intros.
     all: try solve [
@@ -6961,7 +6961,7 @@ Section Triangle.
     pred1 Σ Δ (rho_ctx Σ None Γ) u (rho Σ None (rho_ctx Σ None Γ) t).
   Proof with solve_discr.
     intros Pctx H. revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
       subst Pctx; intros *.
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;
@@ -7002,7 +7002,7 @@ Section Triangle.
         eapply All2_local_env_over_firstn_skipn. auto.
       + noconf heq_option_map.
 
-    - simp rho lhs_viewc.
+    (* - simp rho lhs_viewc.
       destruct nth_error eqn:Heq. 2: discriminate.
       destruct c as [na [?|] ?]. all: noconf heq_option_map.
       simpl in X0.
@@ -7010,7 +7010,7 @@ Section Triangle.
         Γ ⇒ Γ' ⇒ rho Γ
         but here I would need Γ ⇒ rho Γ I think...
       *)
-      admit.
+      admit. *)
 
     - simp rho lhs_viewc. simpl in *.
       destruct option_map eqn:Heq.
@@ -8540,7 +8540,7 @@ Section Triangle.
       intros. simpl in X. intuition.
 
     - destruct t; noconf H; simpl; constructor; eauto.
-  Admitted.
+  Qed.
 
 End Triangle.
 

@@ -488,10 +488,10 @@ Section ParallelReduction.
       option_map decl_body (nth_error Γ' i) = Some (Some body) ->
       pred1 Γ Γ' (tRel i) (lift0 (S i) body)
 
-  | pred_rel_def_unfold_left i body :
+  (* | pred_rel_def_unfold_left i body :
       All2_local_env (on_decl pred1) Γ Γ' ->
       option_map decl_body (nth_error Γ i) = Some (Some body) ->
-      pred1 Γ Γ' (tRel i) (lift0 (S i) body)
+      pred1 Γ Γ' (tRel i) (lift0 (S i) body) *)
 
   | pred_rel_refl i :
       All2_local_env (on_decl pred1) Γ Γ' ->
@@ -847,11 +847,11 @@ Section ParallelReduction.
           Pctx Γ Γ' ->
           option_map decl_body (nth_error Γ' i) = Some (Some body) ->
           P Γ Γ' (tRel i) (lift0 (S i) body)) ->
-      (forall (Γ Γ' : context) (i : nat) (body : term),
+      (* (forall (Γ Γ' : context) (i : nat) (body : term),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
           option_map decl_body (nth_error Γ i) = Some (Some body) ->
-          P Γ Γ' (tRel i) (lift0 (S i) body)) ->
+          P Γ Γ' (tRel i) (lift0 (S i) body)) -> *)
       (forall (Γ Γ' : context) (i : nat),
           All2_local_env (on_decl pred1) Γ Γ' ->
           Pctx Γ Γ' ->
@@ -999,8 +999,8 @@ Section ParallelReduction.
       forall (Γ Γ' : context) (t t0 : term), pred1 Γ Γ' t t0 -> P Γ Γ' t t0.
   Proof.
     intros P Pctx P' Hctx.
-    intros X X0 X1 Xlr X2 X3 X4 X5 X6 X7 Xrw Xprw X8 X9 X10 X11 X12 X13 X14 X15 X16
-      X17 X18 X19 X20 Γ Γ' t t0 X21.
+    intros X X0 X1 (* Xlr *) X2 X3 X4 X5 X6 X7 Xrw Xprw X8 X9 X10 X11 X12 X13 X14
+    X15 X16 X17 X18 X19 X20 Γ Γ' t t0 X21.
     revert Γ Γ' t t0 X21.
     fix aux 5. intros Γ Γ' t t'.
     move aux at top.
@@ -1019,9 +1019,9 @@ Section ParallelReduction.
     - simpl. apply X1; auto. apply Hctx.
       + apply (All2_local_env_impl a). intros. eapply X21.
       + apply (All2_local_env_impl a). intros. eapply (aux _ _ _ _ X21).
-    - simpl. apply Xlr; auto. apply Hctx.
+    (* - simpl. apply Xlr; auto. apply Hctx.
       + apply (All2_local_env_impl a). intros. eapply X21.
-      + apply (All2_local_env_impl a). intros. eapply (aux _ _ _ _ X21).
+      + apply (All2_local_env_impl a). intros. eapply (aux _ _ _ _ X21). *)
     - simpl. apply X2; auto.
       apply Hctx, (All2_local_env_impl a).
       + exact a.
@@ -1151,7 +1151,7 @@ Section ParallelReduction.
   Lemma pred1_pred1_ctx {Γ Δ t u} : pred1 Γ Δ t u -> pred1_ctx Γ Δ.
   Proof.
     intros H; revert Γ Δ t u H.
-    refine (pred1_ind_all_ctx _ (fun Γ Γ' => pred1_ctx Γ Γ') _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *.
+    refine (pred1_ind_all_ctx _ (fun Γ Γ' => pred1_ctx Γ Γ') _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *.
     all:try intros **; rename_all_hyps;
       try solve [specialize (forall_Γ _ X3); eauto]; eauto;
         try solve [eexists; split; constructor; eauto].
@@ -1363,7 +1363,7 @@ Section ParallelWeakening.
              All2_local_env_over (pred1 Σ) Γ Δ Γ'' Δ'' ->
              pred1_ctx Σ (Γ ,,, Γ'' ,,, lift_context #|Γ''| 0 Γ') (Δ ,,, Δ'' ,,, lift_context #|Δ''| 0 Δ')).
 
-    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; intros; subst Pctx;
+    refine (pred1_ind_all_ctx Σ _ Pctx _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; intros; subst Pctx;
       rename_all_hyps; try subst Γ Γ'; simplify_IH_hyps; cbn -[iota_red];
       match goal with
         |- context [iota_red _ _ _ _] => idtac
@@ -1434,7 +1434,7 @@ Section ParallelWeakening.
         rewrite (weaken_nth_error_lt); try lia.
         now rewrite option_map_decl_body_map_decl heq_option_map.
 
-    - (* Rel unfold (left) *)
+    (* - Rel unfold (left)
       assert(#|Γ''| = #|Δ''|).
       { red in X1. pcuic. }
       elim (leb_spec_Set); intros Hn.
@@ -1461,7 +1461,7 @@ Section ParallelWeakening.
         eapply pred_rel_def_unfold_left ; auto.
         rewrite (weaken_nth_error_lt); try lia.
         rewrite option_map_decl_body_map_decl heq_option_map.
-        cbn. rewrite H. f_equal. f_equal. f_equal. lia.
+        cbn. rewrite H. f_equal. f_equal. f_equal. lia. *)
 
     - (* Rel refl *)
       pose proof (All2_local_env_length predΓ').
@@ -1986,7 +1986,7 @@ Section ParallelSubstitution.
                 #|Γ| = #|Γ1| ->
                All2_local_env_over (pred1 Σ) Γ Γ1 Δ Δ1 ->
                pred1_ctx Σ (Γ ,,, subst_context s 0 Γ') (Γ1 ,,, subst_context s' 0 Γ'1)).
-    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; !intros;
+    refine (pred1_ind_all_ctx Σ _ P' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _); intros *; !intros;
       try subst Γ Γ'; simplify_IH_hyps; cbn -[iota_red];
       match goal with
         |- context [iota_red _ _ _ _] => idtac
@@ -2101,7 +2101,7 @@ Section ParallelSubstitution.
         rewrite option_map_decl_body_map_decl heq_option_map.
         simpl. do 3 f_equal. lia.
 
-    - (* Rel (left) *)
+    (* - Rel (left)
       pose proof (psubst_length Hs) as Hlens.
       elim (leb_spec_Set); intros Hn.
       + red in X0.
@@ -2171,7 +2171,7 @@ Section ParallelSubstitution.
         rewrite nth_error_subst_context.
         (* rewrite option_map_decl_body_map_decl heq_option_map.
         simpl. do 3 f_equal. lia. *)
-        admit.
+        admit. *)
 
     - specialize (X0 _ _ _ eq_refl _ _ _ _ _ Hs eq_refl heq_length HΔ).
       rewrite {1}heq_length0. elim (leb_spec_Set); intros Hn.
@@ -2476,7 +2476,7 @@ Section ParallelSubstitution.
 
     - revert H. induction t; intros; try discriminate; try solve [ constructor; simpl; eauto ];
                   try solve [ apply (pred_atom); auto ].
-  Admitted.
+  Qed.
 
   Hint Constructors psubst : pcuic.
   Hint Transparent vass vdef : pcuic.

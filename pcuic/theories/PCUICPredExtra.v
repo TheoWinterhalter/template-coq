@@ -48,10 +48,10 @@ Section ParallelReductionExtra.
       pred1_extra (Γ ,, vdef na d0 t0) b0 b1 ->
       pred1_extra Γ (tLetIn na d0 t0 b0) (subst10 d1 b1)
 
-  (** Local variables *)
-  | predx_rel_def_unfold i body :
+  (** Local variables (should not be necessary) *)
+  (* | predx_rel_def_unfold i body :
       option_map decl_body (nth_error Γ i) = Some (Some body) ->
-      pred1_extra Γ (tRel i) (lift0 (S i) body)
+      pred1_extra Γ (tRel i) (lift0 (S i) body) *)
 
   | predx_rel_refl i :
       pred1_extra Γ (tRel i)  (tRel i)
@@ -244,10 +244,10 @@ Section ParallelReductionExtra.
           P (Γ ,, vdef na d0 t0) b0 b1 ->
           P Γ (tLetIn na d0 t0 b0) (b1 {0 := d1})
       ) ->
-      (forall (Γ : context) (i : nat) (body : term),
+      (* (forall (Γ : context) (i : nat) (body : term),
           option_map decl_body (nth_error Γ i) = Some (Some body) ->
           P Γ (tRel i) (lift0 (S i) body)
-      ) ->
+      ) -> *)
       (forall (Γ : context) (i : nat),
           P Γ (tRel i) (tRel i)
       ) ->
@@ -424,8 +424,8 @@ Section ParallelReductionExtra.
       forall (Γ : context) (t t0 : term), pred1_extra Γ t t0 -> P Γ t t0.
   Proof.
     intros P P'.
-    intros X X0 X1 X2 X3 X4 X5 X6 X7 Xrw Xprw Xxrw X8 X9 X10 X11 X12 X13 X14 X15 X16
-      X17 X18 X19 X20 Γ t t0 X21.
+    intros X X0 (* X1 *) X2 X3 X4 X5 X6 X7 Xrw Xprw Xxrw X8 X9 X10 X11 X12 X13
+    X14 X15 X16 X17 X18 X19 X20 Γ t t0 X21.
     revert Γ t t0 X21.
     fix aux 4. intros Γ t t'.
     move aux at top.
@@ -441,11 +441,11 @@ Section ParallelReductionExtra.
                 | lhs := _, rhs := _ |- _ => idtac
                 | H : _ |- _ => eapply H; eauto
                 end.
-    - apply X1. auto.
+    (* - apply X1. auto. *)
     - apply X2.
     - eapply All2_impl_def. 1: exact a.
       intros. split. 1: auto.
-      apply (aux _ _ _ X21).
+      apply (aux _ _ _ X1).
     - eapply All2_impl_def. 1: eauto.
       intros [? ?] [? ?]. cbn. intros [? ?].
       split. 2: auto.
@@ -673,7 +673,7 @@ Lemma pred1_extra_pred1 `{cf : checker_flags} :
 Proof.
   intros Σ Γ Δ u v e hΣ he h hctx.
   revert Γ u v h Δ hctx.
-  refine (pred1_extra_ind_all_ctx Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+  refine (pred1_extra_ind_all_ctx Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
   all: try solve [ econstructor ; eauto ].
   all: try solve [
     intros ;
@@ -786,7 +786,7 @@ Lemma weakening_env_pred1_extra :
 Proof.
   intros cf Σ Σ' e Γ u v hΣ hx h.
   revert Γ u v h.
-  refine (pred1_extra_ind_all_ctx Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
+  refine (pred1_extra_ind_all_ctx Σ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).
   all: try solve [ econstructor ; eauto ].
   all: try solve [
     intros ;

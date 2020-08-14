@@ -1964,8 +1964,8 @@ Section PredRed.
         * eapply nth_error_Some_length in Heq. lia.
         * noconf Hnth.
 
-    - (* Rel in context (left) *)
-      eapply red1_red; constructor; auto.
+    (* - (* Rel in context (left) *)
+      eapply red1_red; constructor; auto. *)
 
     - (* Iota *)
       transitivity (tCase (ind, pars) p (mkApps (tConstruct ind c u) args1) brs1).
@@ -2187,7 +2187,7 @@ Section PredRed.
        pred1 Σ Γ0 Γ'0 M N ->
        pred1_ctx Σ (Γ' ,,, Δ) (Γ' ,,, Δ') ->
        pred1 Σ (Γ' ,,, Δ) (Γ' ,,, Δ') M N)) Γ Γ')%type
-       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
       intros; subst; try solve [econstructor; eauto].
 
     - eapply (All2_local_env_impl _ _ _ _ X0). clear X0; intros.
@@ -2209,13 +2209,13 @@ Section PredRed.
       + eapply X2; auto.
       + eapply X0; auto.
 
-    - destruct nth_error eqn:e. 2: discriminate.
+    (* - destruct nth_error eqn:e. 2: discriminate.
       apply PCUICPattern.nth_error_app_dec in e as [[h e] | [h e]].
       + eapply pred_rel_def_unfold_left. 1: auto.
         rewrite nth_error_app_lt. 1: auto.
         rewrite e. auto.
       + (* We don't know if |Δ| = |Δ'| do we? *)
-        admit.
+        admit. *)
 
     - econstructor; eauto.
       + solve_all.
@@ -2317,8 +2317,7 @@ Section PredRed.
       red. eapply X0; eauto.
 
     - econstructor; eauto. solve_all.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma pred1_pred1_r Γ Γ' : forall M N, pred1 Σ Γ Γ' M N ->
     pred1 Σ Γ' Γ' M N.
