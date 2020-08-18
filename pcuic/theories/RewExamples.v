@@ -72,7 +72,7 @@ Definition natdecl :=
     ind_variance := None
   |}.
 
-Definition Σnat := (natpath, natdecl).
+Definition Σnat := [ ((natpath, "nat"), natdecl) ].
 
 Lemma on_nat :
   on_global_decl (PCUICEnvTyping.lift_typing typing) ([], nouniv)
@@ -171,3 +171,101 @@ Definition pplus_decl :=
     ] ;
     rew_universes := nouniv
   |}.
+
+Definition Σpplus := ((pplus_path, "pplus"), pplus_decl) :: Σnat.
+
+Lemma tApp_mkApps :
+  ∀ u v,
+    tApp u v = mkApps u [ v ].
+Proof.
+  cbn. reflexivity.
+Qed.
+
+Lemma noApp_mkApps :
+  ∀ t, t = mkApps t [].
+Proof.
+  reflexivity.
+Qed.
+
+Lemma on_pplus :
+  on_global_decl (PCUICEnvTyping.lift_typing typing) (Σnat, nouniv)
+    (pplus_path, "pplus") pplus_decl.
+Proof.
+  cbn. red. intuition idtac.
+  - cbn. constructor. 1: constructor.
+    cbn. eexists.
+    econstructor.
+    + admit.
+    + cbn. econstructor.
+      * admit.
+      * admit.
+  - cbn. constructor. 2: constructor. 3: constructor. 4: constructor. 5: auto.
+    + exists tNat. all: cbn. all: auto.
+      * admit.
+      * admit.
+      * {
+        constructor. 2: constructor. 3: constructor.
+        - constructor. unfold tS. rewrite tApp_mkApps.
+          constructor. constructor. 2: constructor.
+          constructor. auto.
+        - constructor. constructor. auto.
+      }
+      * constructor. constructor. constructor.
+    + exists tNat. all: cbn. all: auto.
+      * admit.
+      * admit.
+      * {
+        constructor. 2: constructor. 3: constructor.
+        - constructor. constructor. auto.
+        - constructor. unfold tS. rewrite tApp_mkApps.
+          constructor. constructor. 2: constructor.
+          constructor. auto.
+      }
+      * constructor. constructor. constructor.
+    + exists tNat. all: cbn. all: auto.
+      * admit.
+      * admit.
+      * {
+        constructor. 2: constructor. 3: constructor.
+        - constructor. unfold t0. erewrite noApp_mkApps.
+          constructor. constructor.
+        - constructor. constructor. auto.
+      }
+      * constructor. constructor.
+    + exists tNat. all: cbn. all: auto.
+      * admit.
+      * admit.
+      * {
+        constructor. 2: constructor. 3: constructor.
+        - constructor. constructor. auto.
+        - constructor. unfold t0. erewrite noApp_mkApps.
+          constructor. constructor.
+      }
+      * constructor. constructor.
+  - cbn. constructor. 2: constructor.
+    exists tNat. all: cbn. all: auto.
+    + admit.
+    + admit.
+    + constructor. 2: constructor. 3: constructor.
+      * constructor. unfold tS. rewrite tApp_mkApps.
+        constructor. constructor. 2: constructor.
+        constructor. auto.
+      * constructor. unfold tS. rewrite tApp_mkApps.
+        constructor. constructor. 2: constructor.
+        constructor. auto.
+    + constructor. constructor. constructor.
+  - cbn. constructor. 2: constructor.
+    red. cbn. red.
+    eapply trans_trans.
+    + eapply trans_step. right.
+      eexists _, _, PCUICPosition.Empty. split.
+      * cbn. eapply red1_rules_rewrite_rule with (n := 0) (s := [ _ ; _ ]).
+        1: cbn. 1: reflexivity.
+        constructor. constructor. constructor.
+      * cbn. rewrite !lift0_id.
+        (* This requirement is wrong because we're comparing something
+          with symbols and one with local variables representing symbols.
+          This might change anyway when fixing the universe instances.
+        *)
+    (* + *)
+Admitted.
