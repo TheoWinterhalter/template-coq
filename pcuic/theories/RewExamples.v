@@ -93,15 +93,81 @@ Admitted.
 
 (** Parallel plus
 
-plus : nat → nat → nat
-----------------------
-n,m : nat ⊢ plus (S n) m ↦ S (plus n m)
-n,m : nat ⊢ plus n (S m) ↦ S (plus n m)
-m : nat   ⊢ plus 0 m     ↦ m
-n : nat   ⊢ plus n 0     ↦ n
+pplus : nat → nat → nat
+-----------------------------------------
+n,m : nat ⊢ pplus (S n) m ↦ S (pplus n m)
+n,m : nat ⊢ pplus n (S m) ↦ S (pplus n m)
+m : nat   ⊢ pplus 0 m     ↦ m
+n : nat   ⊢ pplus n 0     ↦ n
 
 To prove the local triangle property we add the following parallel rule:
 
-n,m : nat ⊢ plus (S n) (S m) ↦ S (S (plus n m))
+n,m : nat ⊢ pplus (S n) (S m) ↦ S (S (plus n m))
 
 *)
+
+Definition pplus_path := MPfile [ "pplus" ].
+
+Definition tArrow A B :=
+  tProd nAnon A (lift0 1 B).
+
+Definition tNat :=
+  tInd {|
+    inductive_mind := (MPfile [], "nat") ;
+    inductive_ind := 0
+  |} Instance.empty.
+
+Definition t0 :=
+  tConstruct {|
+    inductive_mind := (MPfile [], "nat") ;
+    inductive_ind := 0
+  |} 0 Instance.empty.
+
+Definition cS :=
+  tConstruct {|
+    inductive_mind := (MPfile [], "nat") ;
+    inductive_ind := 0
+  |} 1 Instance.empty.
+
+Definition tS (t : term) :=
+  tApp cS t.
+
+Definition pplus_decl :=
+  RewriteDecl {|
+    symbols := [ tArrow tNat (tArrow tNat tNat) ] ;
+    rules := [
+      {|
+        pat_context := [] ,, vass (nNamed "n") tNat ,, vass (nNamed "m") tNat ;
+        head := 0 ;
+        elims := [ eApp (tS (tRel 1)) ; eApp (tRel 0) ] ;
+        rhs := tS (mkApps (tRel 2) [ tRel 1 ; tRel 0 ])
+      |} ;
+      {|
+        pat_context := [] ,, vass (nNamed "n") tNat ,, vass (nNamed "m") tNat ;
+        head := 0 ;
+        elims := [ eApp (tRel 1) ; eApp (tS (tRel 0)) ] ;
+        rhs := tS (mkApps (tRel 2) [ tRel 1 ; tRel 0 ])
+      |} ;
+      {|
+        pat_context := [] ,, vass (nNamed "m") tNat ;
+        head := 0 ;
+        elims := [ eApp t0 ; eApp (tRel 0) ] ;
+        rhs := tRel 0
+      |} ;
+      {|
+        pat_context := [] ,, vass (nNamed "n") tNat ;
+        head := 0 ;
+        elims := [ eApp (tRel 0) ; eApp t0 ] ;
+        rhs := tRel 0
+      |}
+    ] ;
+    prules := [
+      {|
+        pat_context := [] ,, vass (nNamed "n") tNat ,, vass (nNamed "m") tNat ;
+        head := 0 ;
+        elims := [ eApp (tS (tRel 1)) ; eApp (tS (tRel 0)) ] ;
+        rhs := tS (tS (mkApps (tRel 2) [ tRel 1 ; tRel 0 ]))
+      |}
+    ] ;
+    rew_universes := nouniv
+  |}.
