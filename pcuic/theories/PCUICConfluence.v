@@ -1920,6 +1920,20 @@ Section PredRed.
     - now eapply (red_ctx (tCtxProd_r _ _ tCtxHole)).
   Qed.
 
+  Lemma untyped_subslet_symbols_subst :
+    ∀ Γ k ui symb,
+      untyped_subslet Γ (symbols_subst k 0 ui #|symb|) (map (vass nAnon) symb).
+  Proof.
+    intros Γ k ui symb.
+    unfold symbols_subst.
+    replace (#|symb| - 0) with #|symb| by lia.
+    generalize 0.
+    intro n.
+    induction symb in n |- *.
+    - constructor.
+    - cbn. constructor. eapply IHsymb.
+  Qed.
+
   (** Parallel reduction is included in the reflexive transitive closure of 1-step reduction *)
   Lemma pred1_red Γ Γ' :
     forall M N,
@@ -2031,22 +2045,64 @@ Section PredRed.
       destruct h as [hctx [hr [hpr hprr]]].
       eapply All_nth_error in hprr as h. 2: eassumption.
       red in h. cbn in h.
-      assert (r' : red Σ (map (vass nAnon) decl.(symbols) ,,, r.(pat_context)) (lhs r) (rhs r)).
+      (* assert (r' : red Σ ([] ,,, subst_context ss 0 r.(pat_context)) (subst ss #|s| (lhs r)) (subst ss #|s| (rhs r))).
       { induction h as [x y h|x y z h].
         - destruct h as [|x y h].
-          + assumption.
+          + eapply untyped_subslet_length in X2 as el.
+            rewrite subst_context_length in el.
+            rewrite el.
+            eapply PCUICSubstitution.untyped_substitution_red.
+            1: auto.
+            2: rewrite app_context_nil_l. 2: eauto.
+            eapply untyped_subslet_symbols_subst.
           + eapply PCUICReduction.ctred_red.
             constructor.
             destruct h as [u [v [π [r' [? ?]]]]]. subst.
-            eexists _, _, _. intuition eauto.
-            induction r'.
-            econstructor. all: eauto.
+            eexists _, _, _. rewrite !PCUICSubstitution.subst_zipc.
+            intuition eauto.
+            induction r'. subst lhs rhs.
+            apply untyped_subslet_length in u as el.
+            (* econstructor. all: eauto. *)
+            admit.
         - eapply red_trans. all: eauto.
-      }
+      } *)
       apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
       + eapply PCUICSubstitution.untyped_substitution_red with (Γ'0 := []).
-        all: eauto.
+        1,2: eauto.
         cbn.
+        (* eapply untyped_subslet_length in X2 as el.
+        rewrite subst_context_length in el.
+        rewrite el.
+        eapply PCUICSubstitution.untyped_substitution_red.
+        1: auto.
+        1: eapply untyped_subslet_symbols_subst.
+        replace (red Σ (Γ ,,, map (vass nAnon) (symbols decl) ,,, pat_context r) (lhs r) (rhs r))
+        with (
+          red
+            Σ
+            ([] ,,, Γ ,,, lift_context #|Γ| 0 (map (vass nAnon) (symbols decl) ,,, pat_context r))
+            (lift #|Γ| #|map (vass nAnon) (symbols decl) ,,, pat_context r| (lhs r))
+            (lift #|Γ| #|map (vass nAnon) (symbols decl) ,,, pat_context r| (rhs r))
+        ).
+        2:{
+          admit.
+        }
+        eapply weakening_red. 1: auto.
+        rewrite app_context_nil_l.
+        { induction h as [x y h|x y z h].
+          - destruct h as [|x y h].
+            + assumption.
+            + eapply PCUICReduction.ctred_red.
+              constructor.
+              destruct h as [u [v [π [r' [? ?]]]]]. subst.
+              eexists _, _, _.
+              intuition eauto.
+              induction r'. subst lhs rhs.
+              econstructor. all: eauto.
+              admit.
+          - eapply red_trans. all: eauto.
+        }
+
         assert (hu : untyped_subslet Γ ss (map (vass nAnon) decl.(symbols))).
         { subst ss. clear.
           unfold symbols_subst.
@@ -2076,7 +2132,8 @@ Section PredRed.
         { eapply PCUICClosed.closed_prule_lhs. all: eauto. }
         rewrite lift_closed in r'.
         { eapply PCUICClosed.closed_prule_rhs. all: eauto. }
-        assumption.
+        assumption. *)
+        admit.
       + generalize (subst ss #|s| (rhs r)). intro t.
         eapply PCUICSubstitution.red_red with (Σ0 := empty_ext Σ) (Γ'0 := []).
         all: cbn. all: eauto.
@@ -2102,7 +2159,8 @@ Section PredRed.
   Unshelve.
   1: constructor.
   1: exact (tRel 0).
-  Qed.
+  (* Qed. *)
+  Admitted.
 
   Lemma All2_local_env_mix P Q x y : All2_local_env P x y -> All2_local_env Q x y ->
     All2_local_env (fun Γ Γ' d t T =>

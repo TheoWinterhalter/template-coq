@@ -547,12 +547,16 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Inductive red1_rules
       (k : kername) (symbols : list term) (rules : list rewrite_rule) (Γ : context)
       : term -> term -> Type :=
-    | red1_rules_rewrite_rule ui n r s :
+    | red1_rules_rewrite_rule n r s :
         nth_error rules n = Some r ->
-        let ss := symbols_subst k 0 ui #|symbols| in
-        untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+        (* This is local so the symbols do not exist yet! *)
+        (* let ss := symbols_subst k 0 ui #|symbols| in *)
+        (* untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
         let lhs := subst s 0 (subst ss #|s| (lhs r)) in
-        let rhs := subst s 0 (subst ss #|s| (rhs r)) in
+        let rhs := subst s 0 (subst ss #|s| (rhs r)) in *)
+        untyped_subslet Γ s r.(pat_context) ->
+        let lhs := subst s 0 (lhs r) in
+        let rhs := subst s 0 (rhs r) in
         red1_rules k symbols rules Γ lhs rhs.
 
     Definition red_rules k symbols rules :=
