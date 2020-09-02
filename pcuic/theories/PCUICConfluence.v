@@ -2044,7 +2044,6 @@ Section PredRed.
       red in h. red in h.
       destruct h as [hctx [hr [hpr hprr]]].
       eapply All_nth_error in hprr as h. 2: eassumption.
-      red in h. cbn in h.
       (* assert (r' : red Σ ([] ,,, subst_context ss 0 r.(pat_context)) (subst ss #|s| (lhs r)) (subst ss #|s| (rhs r))).
       { induction h as [x y h|x y z h].
         - destruct h as [|x y h].
@@ -2070,6 +2069,40 @@ Section PredRed.
       + eapply PCUICSubstitution.untyped_substitution_red with (Γ'0 := []).
         1,2: eauto.
         cbn.
+        red in h. cbn in h.
+        match goal with
+        | |- red ?Σ (?Γ ,,, ?Δ) ?l ?r =>
+          replace (red Σ (Γ ,,, Δ) l r)
+          with (
+            red Σ ([] ,,, Γ ,,, lift_context #|Γ| 0 Δ)
+              (lift #|Γ| #|Δ| l)
+              (lift #|Γ| #|Δ| r)
+          )
+        end.
+        2:{
+          admit.
+        }
+        eapply weakening_red. 1: auto.
+        (* rewrite app_context_nil_l. *)
+        eapply untyped_subslet_length in X2 as el.
+        rewrite subst_context_length in el.
+        rewrite el.
+        induction h as [x y [| ? ? h] | x y z h].
+        * eapply PCUICSubstitution.untyped_substitution_red.
+          1: auto.
+          1: eapply untyped_subslet_symbols_subst.
+          rewrite app_context_nil_l.
+          assumption.
+        * eapply PCUICReduction.ctred_red.
+          constructor.
+          destruct h as [u [v [π [r' [? ?]]]]]. subst.
+          eexists _, _, _. rewrite !PCUICSubstitution.subst_zipc.
+          intuition eauto.
+          induction r'. subst lhs rhs.
+          apply untyped_subslet_length in u as el'.
+          (* econstructor. all: eauto. *)
+          admit.
+        * eapply red_trans. all: eauto.
         (* eapply untyped_subslet_length in X2 as el.
         rewrite subst_context_length in el.
         rewrite el.
@@ -2133,7 +2166,6 @@ Section PredRed.
         rewrite lift_closed in r'.
         { eapply PCUICClosed.closed_prule_rhs. all: eauto. }
         assumption. *)
-        admit.
       + generalize (subst ss #|s| (rhs r)). intro t.
         eapply PCUICSubstitution.red_red with (Σ0 := empty_ext Σ) (Γ'0 := []).
         all: cbn. all: eauto.
