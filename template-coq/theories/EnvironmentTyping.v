@@ -547,16 +547,12 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Inductive red1_rules
       (k : kername) (symbols : list term) (rules : list rewrite_rule) (Γ : context)
       : term -> term -> Type :=
-    | red1_rules_rewrite_rule n r s :
+    | red1_rules_rewrite_rule n r s ui :
         nth_error rules n = Some r ->
-        (* This is local so the symbols do not exist yet! *)
-        (* let ss := symbols_subst k 0 ui #|symbols| in *)
-        (* untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
+        let ss := symbols_subst k 0 ui #|symbols| in
+        untyped_subslet Γ s (subst_context ss 0 r.(pat_context)) ->
         let lhs := subst s 0 (subst ss #|s| (lhs r)) in
-        let rhs := subst s 0 (subst ss #|s| (rhs r)) in *)
-        untyped_subslet Γ s r.(pat_context) ->
-        let lhs := subst s 0 (lhs r) in
-        let rhs := subst s 0 (rhs r) in
+        let rhs := subst s 0 (subst ss #|s| (rhs r)) in
         red1_rules k symbols rules Γ lhs rhs.
 
     Definition red_rules k symbols rules :=
@@ -578,15 +574,19 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Definition red' Σ Γ k symbols rules :=
       clos_trans (or_rel (red Σ Γ) (red_rules k symbols rules Γ)).
 
-    Definition prule_red Σ Δ kn symbols rules (r : rewrite_rule) :=
-      red' Σ (Δ ,,, r.(pat_context)) kn symbols rules (lhs r) (rhs r).
+    Definition prule_red Σ kn symbols rules (r : rewrite_rule) :=
+      forall ui,
+        let ss := symbols_subst kn 0 ui #|symbols| in
+        let lhs := subst ss #|pat_context r| (lhs r) in
+        let rhs := subst ss #|pat_context r| (rhs r) in
+        red' Σ (subst_context ss 0 (pat_context r)) kn symbols rules lhs rhs.
 
     Definition on_rewrite_decl Σ kn d :=
       let Δ := map (vass nAnon) d.(symbols) in
       on_context Σ Δ ×
       All (on_rewrite_rule Σ Δ) d.(rules) ×
       All (on_rewrite_rule Σ Δ) d.(prules) ×
-      All (prule_red Σ.1 Δ kn d.(symbols) d.(rules)) d.(prules).
+      All (prule_red Σ.1 kn d.(symbols) d.(rules)) d.(prules).
 
     Definition on_global_decl Σ kn decl :=
       match decl with

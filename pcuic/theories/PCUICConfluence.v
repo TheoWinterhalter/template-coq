@@ -1934,6 +1934,8 @@ Section PredRed.
     - cbn. constructor. eapply IHsymb.
   Qed.
 
+  (* Lemma red1_rules  *)
+
   (** Parallel reduction is included in the reflexive transitive closure of 1-step reduction *)
   Lemma pred1_red Γ Γ' :
     forall M N,
@@ -2044,128 +2046,92 @@ Section PredRed.
       red in h. red in h.
       destruct h as [hctx [hr [hpr hprr]]].
       eapply All_nth_error in hprr as h. 2: eassumption.
-      (* assert (r' : red Σ ([] ,,, subst_context ss 0 r.(pat_context)) (subst ss #|s| (lhs r)) (subst ss #|s| (rhs r))).
-      { induction h as [x y h|x y z h].
-        - destruct h as [|x y h].
-          + eapply untyped_subslet_length in X2 as el.
-            rewrite subst_context_length in el.
-            rewrite el.
-            eapply PCUICSubstitution.untyped_substitution_red.
-            1: auto.
-            2: rewrite app_context_nil_l. 2: eauto.
-            eapply untyped_subslet_symbols_subst.
-          + eapply PCUICReduction.ctred_red.
-            constructor.
-            destruct h as [u [v [π [r' [? ?]]]]]. subst.
-            eexists _, _, _. rewrite !PCUICSubstitution.subst_zipc.
-            intuition eauto.
-            induction r'. subst lhs rhs.
-            apply untyped_subslet_length in u as el.
-            (* econstructor. all: eauto. *)
-            admit.
-        - eapply red_trans. all: eauto.
-      } *)
       apply red_trans with (subst0 s (subst ss #|s| r.(rhs))).
       + eapply PCUICSubstitution.untyped_substitution_red with (Γ'0 := []).
         1,2: eauto.
         cbn.
         red in h. cbn in h.
-        match goal with
-        | |- red ?Σ (?Γ ,,, ?Δ) ?l ?r =>
-          replace (red Σ (Γ ,,, Δ) l r)
-          with (
-            red Σ ([] ,,, Γ ,,, lift_context #|Γ| 0 Δ)
-              (lift #|Γ| #|Δ| l)
-              (lift #|Γ| #|Δ| r)
-          )
-        end.
-        2:{
-          admit.
-        }
-        eapply weakening_red. 1: auto.
-        (* rewrite app_context_nil_l. *)
+        specialize (h ui).
         eapply untyped_subslet_length in X2 as el.
         rewrite subst_context_length in el.
         rewrite el.
-        induction h as [x y [| ? ? h] | x y z h].
-        * eapply PCUICSubstitution.untyped_substitution_red.
-          1: auto.
-          1: eapply untyped_subslet_symbols_subst.
-          rewrite app_context_nil_l.
-          assumption.
-        * eapply PCUICReduction.ctred_red.
-          constructor.
-          destruct h as [u [v [π [r' [? ?]]]]]. subst.
-          eexists _, _, _. rewrite !PCUICSubstitution.subst_zipc.
-          intuition eauto.
-          induction r'. subst lhs rhs.
-          apply untyped_subslet_length in u as el'.
-          (* econstructor. all: eauto. *)
-          admit.
-        * eapply red_trans. all: eauto.
-        (* eapply untyped_subslet_length in X2 as el.
-        rewrite subst_context_length in el.
-        rewrite el.
-        eapply PCUICSubstitution.untyped_substitution_red.
-        1: auto.
-        1: eapply untyped_subslet_symbols_subst.
-        replace (red Σ (Γ ,,, map (vass nAnon) (symbols decl) ,,, pat_context r) (lhs r) (rhs r))
-        with (
-          red
-            Σ
-            ([] ,,, Γ ,,, lift_context #|Γ| 0 (map (vass nAnon) (symbols decl) ,,, pat_context r))
-            (lift #|Γ| #|map (vass nAnon) (symbols decl) ,,, pat_context r| (lhs r))
-            (lift #|Γ| #|map (vass nAnon) (symbols decl) ,,, pat_context r| (rhs r))
-        ).
+        match goal with
+        | |- red ?Σ (?Γ ,,, ?Δ) ?l ?r =>
+          replace (red Σ (Γ ,,, Δ) l r : Type)
+          with (
+            red Σ ([] ,,, Γ ,,, lift_context #|Γ| 0 Δ)
+              (lift #|Γ| #|Δ| l)
+              (lift #|Γ| #|Δ| r) : Type
+          )
+        end.
         2:{
-          admit.
+          rewrite app_context_nil_l.
+          rewrite subst_context_length.
+          rewrite lift_closed.
+          {
+            eapply PCUICClosed.closedn_subst with (k := 0).
+            - subst ss. unfold symbols_subst.
+              generalize (#|symbols decl| - 0).
+              generalize 0 at 2.
+              intros m p.
+              induction p in m |- *.
+              + cbn. reflexivity.
+              + cbn. eapply IHp.
+            - cbn. subst ss. rewrite symbols_subst_length.
+              replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+              eapply PCUICClosed.closed_prule_lhs.
+              all: eauto.
+          }
+          rewrite lift_closed.
+          {
+            eapply PCUICClosed.closedn_subst with (k := 0).
+            - subst ss. unfold symbols_subst.
+              generalize (#|symbols decl| - 0).
+              generalize 0 at 2.
+              intros m p.
+              induction p in m |- *.
+              + cbn. reflexivity.
+              + cbn. eapply IHp.
+            - cbn. subst ss. rewrite symbols_subst_length.
+              replace (#|symbols decl| - 0) with #|symbols decl| by lia.
+              eapply PCUICClosed.closed_prule_rhs.
+              all: eauto.
+          }
+          f_equal. f_equal.
+          rewrite distr_lift_subst_context. f_equal.
+          - subst ss. unfold symbols_subst.
+            generalize (#|symbols decl| - 0).
+            generalize 0 at 2 3.
+            intros m p.
+            induction p in m |- *.
+            + cbn. reflexivity.
+            + cbn. f_equal. eapply IHp.
+          - unfold ss. rewrite symbols_subst_length.
+            replace (#|symbols decl| - 0 + 0) with #|symbols decl| by lia.
+            eapply PCUICClosed.closed_ctx_lift.
+            eapply PCUICClosed.closed_declared_symbol_par_pat_context.
+            all: eauto.
         }
         eapply weakening_red. 1: auto.
         rewrite app_context_nil_l.
-        { induction h as [x y h|x y z h].
-          - destruct h as [|x y h].
-            + assumption.
-            + eapply PCUICReduction.ctred_red.
-              constructor.
-              destruct h as [u [v [π [r' [? ?]]]]]. subst.
-              eexists _, _, _.
-              intuition eauto.
-              induction r'. subst lhs rhs.
-              econstructor. all: eauto.
-              admit.
-          - eapply red_trans. all: eauto.
-        }
-
-        assert (hu : untyped_subslet Γ ss (map (vass nAnon) decl.(symbols))).
-        { subst ss. clear.
-          unfold symbols_subst.
-          generalize 0 at 1. intro n.
-          replace (#|symbols decl| - 0) with #|symbols decl| by lia.
-          generalize decl.(symbols). intro l.
-          induction l in n |- *.
-          - cbn. constructor.
-          - cbn. constructor. eapply IHl.
-        }
-        apply untyped_subslet_length in X2 as es.
-        rewrite subst_context_length in es.
-        rewrite es.
-        eapply PCUICSubstitution.untyped_substitution_red. all: eauto.
-        match type of r' with
-        | red _ ?Δ _ _ =>
-          replace Δ with ([] ,,, Δ) in r' by eauto using app_context_nil_l
+        lazymatch goal with
+        | |- red ?Σ ?Γ ?l ?r =>
+          lazymatch type of h with
+          | red' _ ?Γ' ?k ?d ?rl ?l' ?r' =>
+            change (red' Σ Γ' k d rl l' r') with (red' Σ Γ' k d rl l r) in h
+          end
         end.
-        eapply weakening_red with (Γ0 := []) (Γ'' := Γ) in r'. 2: auto.
-        rewrite app_context_nil_l in r'.
-        rewrite closed_ctx_lift in r'.
-        { eapply PCUICClosed.closed_declared_symbol_par_context. all: eauto. }
-        rewrite app_context_assoc in r'.
-        rewrite app_length in r'.
-        rewrite map_length in r'.
-        rewrite lift_closed in r'.
-        { eapply PCUICClosed.closed_prule_lhs. all: eauto. }
-        rewrite lift_closed in r'.
-        { eapply PCUICClosed.closed_prule_rhs. all: eauto. }
-        assumption. *)
+        induction h as [x y [| ? ? h] | x y z h].
+        * assumption.
+        * eapply PCUICReduction.ctred_red.
+          constructor.
+          destruct h as [u [v [π [r' [? ?]]]]]. subst.
+          eexists _, _, _.
+          intuition eauto.
+          induction r'. subst lhs rhs.
+          apply untyped_subslet_length in u as el'.
+          econstructor. all: eauto.
+        * eapply red_trans. all: eauto.
       + generalize (subst ss #|s| (rhs r)). intro t.
         eapply PCUICSubstitution.red_red with (Σ0 := empty_ext Σ) (Γ'0 := []).
         all: cbn. all: eauto.

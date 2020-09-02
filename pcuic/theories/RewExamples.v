@@ -256,6 +256,7 @@ Proof.
     + constructor. constructor. constructor.
   - cbn. constructor. 2: constructor.
     red. cbn. red.
+    intro ui.
     eapply trans_trans.
     + eapply trans_step. right.
       eexists _, _, PCUICPosition.Empty. split.
@@ -263,9 +264,13 @@ Proof.
         1: cbn. 1: reflexivity.
         constructor. constructor. constructor.
       * cbn. rewrite !lift0_id.
-        (* This requirement is wrong because we're comparing something
-          with symbols and one with local variables representing symbols.
-          This might change anyway when fixing the universe instances.
-        *)
-    (* + *)
+        intuition eauto.
+    + eapply trans_step. right.
+      eexists _, _, (PCUICPosition.coApp _ PCUICPosition.Empty). cbn.
+      split.
+      * eapply red1_rules_rewrite_rule with (n := 1) (s := [ _ ; _ ]).
+        1: cbn. 1: reflexivity.
+        constructor. constructor. constructor.
+      * cbn. rewrite !lift0_id.
+        intuition eauto.
 Admitted.

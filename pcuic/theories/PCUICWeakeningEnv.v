@@ -477,7 +477,7 @@ Proof.
       + assumption.
       + assumption.
     - cbn in *. eapply All_impl. 1: exact hprr.
-      unfold prule_red. intros rw h.
+      unfold prule_red. intros rw h ui.
       eapply weakening_env_red'. 3: eauto. all: auto.
   }
 Qed.
