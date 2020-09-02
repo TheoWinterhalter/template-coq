@@ -2057,15 +2057,15 @@ Section PredRed.
         rewrite el.
         match goal with
         | |- red ?Σ (?Γ ,,, ?Δ) ?l ?r =>
-          replace (red Σ (Γ ,,, Δ) l r : Type)
-          with (
-            red Σ ([] ,,, Γ ,,, lift_context #|Γ| 0 Δ)
-              (lift #|Γ| #|Δ| l)
-              (lift #|Γ| #|Δ| r) : Type
+          assert (
+            rep :
+              red Σ ([] ,,, Γ ,,, lift_context #|Γ| 0 Δ)
+                (lift #|Γ| #|Δ| l)
+                (lift #|Γ| #|Δ| r)
+              = red Σ (Γ ,,, Δ) l r
           )
         end.
-        2:{
-          rewrite app_context_nil_l.
+        { rewrite app_context_nil_l.
           rewrite subst_context_length.
           rewrite lift_closed.
           {
@@ -2112,6 +2112,7 @@ Section PredRed.
             eapply PCUICClosed.closed_declared_symbol_par_pat_context.
             all: eauto.
         }
+        rewrite <- rep. clear rep.
         eapply weakening_red. 1: auto.
         rewrite app_context_nil_l.
         lazymatch goal with
@@ -2157,8 +2158,7 @@ Section PredRed.
   Unshelve.
   1: constructor.
   1: exact (tRel 0).
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma All2_local_env_mix P Q x y : All2_local_env P x y -> All2_local_env Q x y ->
     All2_local_env (fun Γ Γ' d t T =>
