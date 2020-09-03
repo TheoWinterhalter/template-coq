@@ -108,6 +108,14 @@ Proof.
   + intro. auto.
 Qed.
 
+Lemma confluenv_Σnat :
+  confluenv Σnat.
+Proof.
+  constructor.
+  - constructor.
+  - constructor.
+Qed.
+
 (** Parallel plus
 
 pplus : nat → nat → nat
@@ -458,3 +466,13 @@ Proof.
   + intro. exact BinNums.xH.
   + intro. auto.
 Qed.
+
+Lemma confluenv_Σpplus :
+  confluenv Σpplus.
+Proof.
+  constructor.
+  - apply confluenv_Σnat.
+  - constructor.
+    + red. admit.
+    + red. admit.
+Admitted.
