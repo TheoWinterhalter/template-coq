@@ -91,6 +91,23 @@ Proof.
   - admit.
 Admitted.
 
+Lemma wf_Σnat :
+  wf Σnat.
+Proof.
+  constructor.
+  - constructor.
+  - constructor.
+  - red. cbn. intuition auto.
+    + red. intros l h1 h2. inversion h1.
+    + red. intros [[? ?] ?] h. inversion h.
+    + red. red. eexists. red. red.
+      intros [[? ?] ?] h. inversion h.
+  - apply on_nat.
+  Unshelve. constructor.
+  + intro. exact BinNums.xH.
+  + intro. auto.
+Qed.
+
 (** Parallel plus
 
 pplus : nat → nat → nat
@@ -422,4 +439,22 @@ Proof.
         constructor. constructor. constructor.
       * cbn. rewrite !lift0_id.
         intuition eauto.
+Qed.
+
+Lemma wf_Σpplus :
+  wf Σpplus.
+Proof.
+  constructor.
+  - apply wf_Σnat.
+  - constructor. 2: constructor.
+    discriminate.
+  - red. cbn. intuition auto.
+    + red. intros l h1 h2. inversion h1.
+    + red. intros [[? ?] ?] h. inversion h.
+    + red. red. eexists. red. red.
+      intros [[? ?] ?] h. inversion h.
+  - apply on_pplus.
+  Unshelve. constructor.
+  + intro. exact BinNums.xH.
+  + intro. auto.
 Qed.
