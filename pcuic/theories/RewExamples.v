@@ -214,6 +214,55 @@ Proof.
   - cbn. reflexivity.
 Qed.
 
+Lemma type_0 :
+  ∀ Σ Γ,
+    wf_local Σ Γ →
+    lookup_env Σ (natpath, "nat") = Some natdecl →
+    Σ ;;; Γ |- t0 : tNat.
+Proof.
+  intros Σ Γ hΓ hΣ.
+  eapply meta_conv.
+  - econstructor.
+    + assumption.
+    + red. cbn. unfold declared_inductive. cbn.
+      unfold declared_minductive. rewrite hΣ.
+      intuition eauto.
+    + cbn. reflexivity.
+  - cbn. reflexivity.
+Qed.
+
+Lemma type_cS :
+  ∀ Σ Γ,
+    wf_local Σ Γ →
+    lookup_env Σ (natpath, "nat") = Some natdecl →
+    Σ ;;; Γ |- cS : tArrow tNat tNat.
+Proof.
+  intros Σ Γ hΓ hΣ.
+  eapply meta_conv.
+  - econstructor.
+    + assumption.
+    + red. cbn. unfold declared_inductive. cbn.
+      unfold declared_minductive. rewrite hΣ.
+      intuition eauto.
+    + cbn. reflexivity.
+  - cbn. reflexivity.
+Qed.
+
+Lemma type_S :
+  ∀ Σ Γ n,
+    wf_local Σ Γ →
+    lookup_env Σ (natpath, "nat") = Some natdecl →
+    Σ ;;; Γ |- n : tNat →
+    Σ ;;; Γ |- tS n : tNat.
+Proof.
+  intros Σ Γ n hΓ hΣ h.
+  eapply meta_conv.
+  - econstructor.
+    + eapply type_cS. all: auto.
+    + assumption.
+  - cbn. reflexivity.
+Qed.
+
 Ltac minicheck :=
   lazymatch goal with
   | |- _ ;;; _ |- tNat : _ =>
@@ -252,6 +301,31 @@ Ltac minicheck :=
       ]
     | cbn ; reflexivity
     ]
+  | |- _ ;;; _ |- t0 : _ =>
+    eapply meta_conv ; [
+      cbn ; eapply type_0 ; [
+        minicheck
+      | reflexivity
+      ]
+    | cbn ; reflexivity
+    ]
+  | |- _ ;;; _ |- cS : _ =>
+    eapply meta_conv ; [
+      cbn ; eapply type_cS ; [
+        minicheck
+      | reflexivity
+      ]
+    | cbn ; reflexivity
+    ]
+  | |- _ ;;; _ |- tS _ : _ =>
+    eapply meta_conv ; [
+      cbn ; eapply type_S ; [
+        minicheck
+      | reflexivity
+      | cbn ; minicheck
+      ]
+    | cbn ; reflexivity
+    ]
   | |- _ ;;; _ |- _ : _ =>
     eapply meta_conv ; [
       cbn ; econstructor ; minicheck
@@ -276,21 +350,8 @@ Proof.
   - cbn. red. minicheck.
   - cbn. constructor. 2: constructor. 3: constructor. 4: constructor. 5: auto.
     + exists tNat. all: cbn. all: auto.
-      * (* minicheck. *)
-        {
-        eapply meta_conv.
-        - (* minicheck. *) econstructor.
-          + eapply meta_conv.
-            * {
-              econstructor.
-              - minicheck.
-              - (* minicheck *) admit.
-            }
-            * cbn. reflexivity.
-          + minicheck.
-        - cbn. reflexivity.
-      }
-      * admit.
+      * minicheck.
+      * minicheck.
       * {
         constructor. 2: constructor. 3: constructor.
         - constructor. unfold tS. rewrite tApp_mkApps.
@@ -300,8 +361,8 @@ Proof.
       }
       * constructor. constructor. constructor.
     + exists tNat. all: cbn. all: auto.
-      * admit.
-      * admit.
+      * minicheck.
+      * minicheck.
       * {
         constructor. 2: constructor. 3: constructor.
         - constructor. constructor. auto.
@@ -311,7 +372,7 @@ Proof.
       }
       * constructor. constructor. constructor.
     + exists tNat. all: cbn. all: auto.
-      * admit.
+      * minicheck.
       * minicheck.
       * {
         constructor. 2: constructor. 3: constructor.
@@ -321,7 +382,7 @@ Proof.
       }
       * constructor. constructor.
     + exists tNat. all: cbn. all: auto.
-      * admit.
+      * minicheck.
       * minicheck.
       * {
         constructor. 2: constructor. 3: constructor.
@@ -332,8 +393,8 @@ Proof.
       * constructor. constructor.
   - cbn. constructor. 2: constructor.
     exists tNat. all: cbn. all: auto.
-    + admit.
-    + admit.
+    + minicheck.
+    + minicheck.
     + constructor. 2: constructor. 3: constructor.
       * constructor. unfold tS. rewrite tApp_mkApps.
         constructor. constructor. 2: constructor.
@@ -361,4 +422,4 @@ Proof.
         constructor. constructor. constructor.
       * cbn. rewrite !lift0_id.
         intuition eauto.
-Admitted.
+Qed.
