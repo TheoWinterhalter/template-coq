@@ -113,19 +113,19 @@ Definition tArrow A B :=
 
 Definition tNat :=
   tInd {|
-    inductive_mind := (MPfile [], "nat") ;
+    inductive_mind := (natpath, "nat") ;
     inductive_ind := 0
   |} Instance.empty.
 
 Definition t0 :=
   tConstruct {|
-    inductive_mind := (MPfile [], "nat") ;
+    inductive_mind := (natpath, "nat") ;
     inductive_ind := 0
   |} 0 Instance.empty.
 
 Definition cS :=
   tConstruct {|
-    inductive_mind := (MPfile [], "nat") ;
+    inductive_mind := (natpath, "nat") ;
     inductive_ind := 0
   |} 1 Instance.empty.
 
@@ -187,6 +187,33 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma meta_conv :
+  ∀ Σ Γ t A B,
+    Σ ;;; Γ |- t : A →
+    A = B →
+    Σ ;;; Γ |- t : B.
+Proof.
+  intros Σ Γ t A B h []. exact h.
+Qed.
+
+Lemma type_Nat :
+  ∀ Σ Γ,
+    wf_local Σ Γ →
+    lookup_env Σ (natpath, "nat") = Some natdecl →
+    Σ ;;; Γ |- tNat :
+    tSort (Universe.make' (UnivExpr.npe (NoPropLevel.lSet, false))).
+Proof.
+  intros Σ Γ hΓ hΣ.
+  eapply meta_conv.
+  - econstructor.
+    + assumption.
+    + red. cbn. unfold declared_minductive.
+      rewrite hΣ.
+      intuition eauto.
+    + cbn. reflexivity.
+  - cbn. reflexivity.
+Qed.
+
 Lemma on_pplus :
   on_global_decl (PCUICEnvTyping.lift_typing typing) (Σnat, nouniv)
     (pplus_path, "pplus") pplus_decl.
@@ -195,13 +222,81 @@ Proof.
   - cbn. constructor. 1: constructor.
     cbn. eexists.
     econstructor.
-    + admit.
+    + eapply type_Nat.
+      * constructor.
+      * cbn. reflexivity.
     + cbn. econstructor.
-      * admit.
-      * admit.
+      * eapply type_Nat. 2: reflexivity.
+        constructor. 1: constructor.
+        cbn. eexists. eapply type_Nat.
+        all: constructor.
+      * eapply type_Nat. 2: reflexivity.
+        { constructor.
+          - constructor. 1: constructor.
+            cbn. eexists. eapply type_Nat.
+            all: constructor.
+          - cbn. eexists. eapply type_Nat. 2: reflexivity.
+            constructor. 1: constructor.
+            cbn. eexists. eapply type_Nat. all: constructor.
+        }
   - cbn. constructor. 2: constructor. 3: constructor. 4: constructor. 5: auto.
     + exists tNat. all: cbn. all: auto.
-      * admit.
+      * {
+        eapply meta_conv.
+        - econstructor.
+          + eapply meta_conv.
+            * {
+              econstructor.
+              - eapply meta_conv.
+                + econstructor. 2: reflexivity.
+                  constructor.
+                  * {
+                    constructor.
+                    - constructor. 1: constructor.
+                      cbn. eexists. econstructor.
+                      + eapply type_Nat. all: constructor.
+                      + cbn. econstructor.
+                        * eapply type_Nat. 2: reflexivity.
+                          constructor. 1: constructor.
+                          cbn. eexists. eapply type_Nat. all: constructor.
+                        * eapply type_Nat. 2: reflexivity.
+                          { constructor.
+                            - constructor. 1: constructor.
+                              cbn. eexists. eapply type_Nat. all: auto.
+                            - cbn. eexists. eapply type_Nat. 2: auto.
+                              constructor. 1: constructor.
+                              cbn. eexists. eapply type_Nat. all: auto.
+                          }
+                    - cbn. eexists. eapply type_Nat. 2: auto.
+                      constructor. 1: constructor.
+                      cbn. eexists. econstructor.
+                      + eapply type_Nat. all: auto.
+                      + cbn. econstructor.
+                        * eapply type_Nat. 2: reflexivity.
+                          constructor. 1: constructor.
+                          cbn. eexists. eapply type_Nat. all: auto.
+                        * eapply type_Nat. 2: reflexivity.
+                          { constructor.
+                            - constructor. 1: constructor.
+                              cbn. eexists. eapply type_Nat. all: auto.
+                            - cbn. eexists. eapply type_Nat. 2: auto.
+                              constructor. 1: constructor.
+                              cbn. eexists. eapply type_Nat. all: auto.
+                          }
+                  }
+                  * cbn. eexists. eapply type_Nat. 2: auto.
+                    { constructor.
+                      - constructor. 1: constructor.
+                        cbn. eexists. admit.
+                      - admit.
+                    }
+                + cbn. reflexivity.
+              - admit.
+            }
+            * cbn. reflexivity.
+          + admit.
+        - cbn. reflexivity.
+      }
       * admit.
       * {
         constructor. 2: constructor. 3: constructor.
