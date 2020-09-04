@@ -467,12 +467,39 @@ Proof.
   + intro. auto.
 Qed.
 
+Ltac fin_nth_error h :=
+  lazymatch type of h with
+  | nth_error (?x :: ?l) ?n = _ =>
+    destruct n ; [
+      idtac
+    | progress (cbn in h) ; fin_nth_error h
+    ]
+  | nth_error [] ?n = _ =>
+    destruct n ; discriminate
+  end.
+
 Lemma confluenv_Σpplus :
   confluenv Σpplus.
 Proof.
   constructor.
   - apply confluenv_Σnat.
   - constructor.
-    + red. admit.
+    + red. intros r n npat' Γ σ ui θ r' hn pσ uσ fm.
+      simpl in hn.
+      fin_nth_error hn.
+      * simpl in hn. apply some_inj in hn. subst.
+        cbn - [first_match] in fm.
+        apply untyped_subslet_length in uσ as lσ.
+        cbn in lσ. rewrite lσ in fm.
+        cbn - [first_match] in fm.
+        destruct pσ as [| p1 ? hp1 [| p2 ? hp2 [|]]]. 1,2,4: discriminate.
+        rewrite !lift0_id in fm.
+        simpl in fm.
+        unfold match_lhs in fm. lazy in fm.
+        admit.
+      * admit.
+      * admit.
+      * admit.
+      * admit.
     + red. admit.
 Admitted.
