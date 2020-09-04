@@ -218,7 +218,7 @@ Defined.
 }.
 Next Obligation.
   intros; unfold eq_kername; destruct kername_eq_dec; now constructor.
-Qed.
+Defined.
 
 
 #[program] Instance reflect_inductive : ReflectEq inductive := {
@@ -269,7 +269,7 @@ Qed.
 
 (* move in Universes.v ?? *)
 Instance eq_dec_UnivExpr : EqDec UnivExpr.t.
-Proof. intros e e'. repeat decide equality. Qed.
+Proof. intros e e'. repeat decide equality. Defined.
 
 Instance eq_dec_univ : EqDec Universe.t.
 Proof.
@@ -279,7 +279,7 @@ Proof.
     repeat decide equality. }
   destruct H as [H|H]; [left; now apply eq_universe_iff' in H|right].
   intro X; apply H; now apply eq_universe_iff' in X.
-Qed.
+Defined.
 
 Local Ltac finish :=
   let h := fresh "h" in
