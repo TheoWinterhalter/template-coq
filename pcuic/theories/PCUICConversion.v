@@ -43,9 +43,10 @@ Qed.
 Instance conv_trans {cf:checker_flags} (Σ : global_env_ext) {Γ} :
   wf Σ ->
   confluenv Σ ->
+  Minimal (eq_universe Σ) ->
   Transitive (conv Σ Γ).
 Proof.
-  intros wfΣ cΣ t u v X0 X1.
+  intros wfΣ cΣ mΣ t u v X0 X1.
   eapply conv_alt_red in X0 as [t' [u' [[tt' uu'] eq]]].
   eapply conv_alt_red in X1 as [u'' [v' [[uu'' vv'] eq']]].
   eapply conv_alt_red.
@@ -62,9 +63,10 @@ Qed.
 Instance cumul_trans {cf:checker_flags} (Σ : global_env_ext) Γ :
   wf Σ ->
   confluenv Σ ->
+  Minimal (eq_universe Σ) ->
   Transitive (cumul Σ Γ).
 Proof.
-  intros wfΣ cΣ t u v X X0.
+  intros wfΣ cΣ mΣ t u v X X0.
   eapply cumul_alt in X as [v' [v'' [[redl redr] eq]]].
   eapply cumul_alt in X0 as [w [w' [[redl' redr'] eq']]].
   destruct (red_confluence wfΣ cΣ redr redl') as [nf [nfl nfr]].
@@ -80,12 +82,13 @@ Proof.
   - eapply leq_term_trans with nf; eauto.
 Qed.
 
-Instance conv_context_trans {cf:checker_flags} Σ :
+Instance conv_context_trans {cf:checker_flags} (Σ : global_env_ext) :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   Transitive (fun Γ Γ' => conv_context Σ Γ Γ').
 Proof.
-  intros wfΣ cΣ.
+  intros wfΣ cΣ mΣ.
   eapply context_relation_trans.
   intros.
   depelim X2; depelim X3; try constructor; auto.
@@ -232,17 +235,18 @@ Proof.
 Qed.
 
 Lemma congr_cumul_prod :
-  forall `{checker_flags} Σ Γ na na' M1 M2 N1 N2,
+  forall `{checker_flags} (Σ : global_env_ext) Γ na na' M1 M2 N1 N2,
     wf Σ.1 ->
     confluenv Σ.1 ->
+    Minimal (eq_universe Σ) ->
     Σ ;;; Γ |- M1 = N1 ->
     Σ ;;; (Γ ,, vass na M1) |- M2 <= N2 ->
     Σ ;;; Γ |- (tProd na M1 M2) <= (tProd na' N1 N2).
 Proof.
-  intros * wfΣ cΣ ? ?.
+  intros * wfΣ cΣ mΣ ? ?.
   transitivity (tProd na' N1 M2).
   - eapply congr_cumul_prod_l; eauto.
-  - eapply (cumul_conv_ctx _ _ _ _ (Γ ,, vass na' N1)) in X0.
+  - eapply (cumul_conv_ctx _ _ _ _ _ (Γ ,, vass na' N1)) in X0.
     2:{ constructor; [apply conv_ctx_refl|constructor; auto]. }
     clear X.
     eapply cumul_alt in X0 as (codom & codom' & (rcodom & rcodom') & eqcodom).
@@ -598,6 +602,7 @@ Section Inversions.
   Context (Σ : global_env_ext).
   Context (wfΣ : wf Σ).
   Context (cΣ : confluenv Σ).
+  Context (mΣ : Minimal (eq_universe Σ)).
 
   Definition Is_conv_to_Arity Σ Γ T :=
     exists T', ∥ red Σ Γ T T' ∥ /\ isArity T'.
@@ -1051,7 +1056,7 @@ Section Inversions.
     destruct cumtu as [v [v' [[redl redr] eq]]].
     apply cumul_alt.
     destruct (red_confluence wfΣ cΣ redr red) as [nf [nfl nfr]].
-    eapply (fill_le _ wfΣ) in eq. 2: auto. 3:eapply nfl. 2:eapply reflexivity.
+    eapply (fill_le _ wfΣ) in eq. 2,3: auto. 3:eapply nfl. 2:eapply reflexivity.
     destruct eq as [t'' [u'' [[l r] eq]]].
     exists t''. exists u''. repeat split; auto.
     - now transitivity v.
@@ -1069,7 +1074,7 @@ Section Inversions.
     destruct cumtu as [v [v' [[redl redr] eq]]].
     apply cumul_alt.
     destruct (red_confluence wfΣ cΣ redl red) as [nf [nfl nfr]].
-    eapply (fill_le _ wfΣ) in eq. 2: auto. 2:eapply nfl. 2:eapply reflexivity.
+    eapply (fill_le _ wfΣ) in eq. 2,3: auto. 2:eapply nfl. 2:eapply reflexivity.
     destruct eq as [t'' [u'' [[l r] eq]]].
     exists t''. exists u''. repeat split; auto.
     - now transitivity nf.
@@ -1174,13 +1179,14 @@ Qed.
 Lemma it_mkProd_or_LetIn_ass_inv {cf : checker_flags} (Σ : global_env_ext) Γ ctx ctx' s s' :
   wf Σ ->
   confluenv Σ ->
+  Minimal (eq_universe Σ) ->
   assumption_context ctx ->
   assumption_context ctx' ->
   Σ ;;; Γ |- it_mkProd_or_LetIn ctx (tSort s) <= it_mkProd_or_LetIn ctx' (tSort s') ->
   context_relation (fun ctx ctx' => conv_decls Σ (Γ ,,, ctx) (Γ ,,, ctx')) ctx ctx' *
    leq_term Σ (tSort s) (tSort s').
 Proof.
-  intros wfΣ cΣ.
+  intros wfΣ cΣ mΣ.
   revert Γ ctx' s s'.
   induction ctx using rev_ind.
   - intros. destruct ctx' using rev_ind.
@@ -1242,14 +1248,15 @@ Proof.
 Qed.
 
 (** Injectivity of products, the essential property of cumulativity needed for subject reduction. *)
-Lemma cumul_Prod_inv {cf:checker_flags} Σ Γ na na' A B A' B' :
+Lemma cumul_Prod_inv {cf:checker_flags} (Σ : global_env_ext) Γ na na' A B A' B' :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   wf_local Σ Γ ->
   Σ ;;; Γ |- tProd na A B <= tProd na' A' B' ->
    ((Σ ;;; Γ |- A = A') * (Σ ;;; Γ ,, vass na' A' |- B <= B'))%type.
 Proof.
-  intros wfΣ cΣ wfΓ H; depind H.
+  intros wfΣ cΣ mΣ wfΓ H; depind H.
   - depelim l.
     split; auto.
     all: now constructor.
@@ -1269,11 +1276,12 @@ Proof.
         eapply PCUICParallelReduction.declared_symbol_head in d. all: eauto.
       }
       discriminate.
-    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ _ wfΓ eq_refl).
       intuition auto.
       econstructor 2; eauto.
-    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ _ wfΓ eq_refl).
       intuition auto. apply cumul_trans with N2.
+      * auto.
       * auto.
       * auto.
       * eapply cumul_conv_ctx; eauto.
@@ -1297,14 +1305,14 @@ Proof.
         eapply PCUICParallelReduction.declared_symbol_head in d. all: eauto.
       }
       discriminate.
-    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ _ wfΓ eq_refl).
       intuition auto.
       * econstructor 3. 2:eauto. auto.
-      * eapply cumul_conv_ctx in b. 1: eauto. 1: auto. 1: auto.
+      * eapply cumul_conv_ctx in b. 1: eauto. 1,2: auto. 1: auto.
         constructor. 1: eapply conv_ctx_refl.
         constructor. eapply conv_sym; auto.
-    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ wfΓ eq_refl).
-      intuition auto. apply cumul_trans with N2. 1-3: auto.
+    + simplify_dep_elim. specialize (IHcumul _ _ _ _ _ _ wfΣ cΣ _ wfΓ eq_refl).
+      intuition auto. apply cumul_trans with N2. 1-4: auto.
       eapply cumul_red_r; eauto. reflexivity.
 Qed.
 
@@ -1329,6 +1337,7 @@ Section Inversions.
   Context {cf : checker_flags}.
   Context (Σ : global_env_ext) (wfΣ : wf Σ).
   Context (cΣ : confluenv Σ).
+  Context (mΣ : Minimal (eq_universe Σ)).
 
   Lemma cumul_App_r {Γ f u v} :
     Σ ;;; Γ |- u = v ->
@@ -1476,7 +1485,8 @@ Section Inversions.
   Global Instance conv_cum_trans {leq Γ} :
     RelationClasses.Transitive (conv_cum leq Σ Γ).
   Proof.
-    intros u v w h1 h2. destruct leq; cbn in *; sq; etransitivity; eassumption.
+    intros u v w h1 h2.
+    destruct leq; cbn in *; sq; etransitivity; eassumption.
   Qed.
 
   Lemma red_conv_cum_l {leq Γ u v} :
@@ -1520,7 +1530,7 @@ Section Inversions.
       + eapply conv_Prod_r. eassumption.
       + eapply conv_Prod_l. eassumption.
     - simpl in *. destruct h2 as [h2]. constructor.
-      eapply cumul_trans. 1,2: auto.
+      eapply cumul_trans. 1-3: auto.
       + eapply cumul_Prod_r. eassumption.
       + eapply conv_cumul. eapply conv_Prod_l. assumption.
   Qed.
@@ -1937,7 +1947,7 @@ Section Inversions.
             eapply OnOne2_impl. 1: eassumption.
             intros [na ty bo ra] [na' ty' bo' ra'] [? [hh ?]].
             simpl in *. intuition eauto.
-            eapply conv_eq_context_upto. 2: eassumption.
+            eapply conv_eq_context_upto. 1,2: auto. 2: eassumption.
             eapply eq_context_impl. 2: eassumption.
             intros ? ? []. eapply eq_universe_refl.
         + eapply eq_ctx_trans.
@@ -2383,15 +2393,16 @@ Section Inversions.
 
 End Inversions.
 
-Lemma cum_LetIn `{cf:checker_flags} Σ Γ na1 na2 t1 t2 A1 A2 u1 u2 :
+Lemma cum_LetIn `{cf:checker_flags} (Σ : global_env_ext) Γ na1 na2 t1 t2 A1 A2 u1 u2 :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   Σ;;; Γ |- t1 = t2 ->
   Σ;;; Γ |- A1 = A2 ->
   cumul Σ (Γ ,, vdef na1 t1 A1) u1 u2 ->
   cumul Σ Γ (tLetIn na1 t1 A1 u1) (tLetIn na2 t2 A2 u2).
 Proof.
-  intros wfΣ cΣ X H H'.
+  intros wfΣ cΣ mΣ X H H'.
   - eapply cumul_trans => //.
     + eapply cumul_LetIn_bo. eassumption.
     + etransitivity.
@@ -2450,12 +2461,13 @@ Derive Signature for untyped_subslet.
 Lemma conv_subst_conv {cf:checker_flags} (Σ : global_env_ext) Γ Δ Δ' Γ' s s' b :
   wf Σ ->
   confluenv Σ ->
+  Minimal (eq_universe Σ) ->
   All2 (conv Σ Γ) s s' ->
   untyped_subslet Γ s Δ ->
   untyped_subslet Γ s' Δ' ->
   conv Σ (Γ ,,, Γ') (subst s #|Γ'| b) (subst s' #|Γ'| b).
 Proof.
-  move=> wfΣ cΣ eqsub subs subs'.
+  move=> wfΣ cΣ mΣ eqsub subs subs'.
   assert(∑ s0 s'0, All2 (red Σ Γ) s s0 * All2 (red Σ Γ) s' s'0 * All2 (eq_term Σ) s0 s'0)
     as [s0 [s'0 [[redl redr] eqs]]].
   { induction eqsub in Δ, subs |- *.
@@ -2480,9 +2492,10 @@ Proof.
   induction 1; constructor; auto.
 Qed.
 
-Lemma untyped_subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
+Lemma untyped_subst_conv {cf:checker_flags} {Σ : global_env_ext} Γ Γ0 Γ1 Δ s s' T U :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   untyped_subslet Γ s Γ0 ->
   untyped_subslet Γ s' Γ1 ->
   All2 (conv Σ Γ) s s' ->
@@ -2490,7 +2503,7 @@ Lemma untyped_subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
   Σ;;; Γ ,,, Γ0 ,,, Δ |- T = U ->
   Σ;;; Γ ,,, subst_context s 0 Δ |- subst s #|Δ| T = subst s' #|Δ| U.
 Proof.
-  move=> wfΣ cΣ subss subss' eqsub wfctx eqty.
+  move=> wfΣ cΣ mΣ subss subss' eqsub wfctx eqty.
   eapply conv_trans => //.
   * eapply untyped_substitution_conv => //.
   ** eapply wfctx.
@@ -2501,9 +2514,10 @@ Proof.
     eapply conv_subst_conv => //; eauto using subslet_untyped_subslet.
 Qed.
 
-Lemma subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
+Lemma subst_conv {cf:checker_flags} {Σ : global_env_ext} Γ Γ0 Γ1 Δ s s' T U :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   subslet Σ Γ s Γ0 ->
   subslet Σ Γ s' Γ1 ->
   All2 (conv Σ Γ) s s' ->
@@ -2511,7 +2525,7 @@ Lemma subst_conv {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ s s' T U :
   Σ;;; Γ ,,, Γ0 ,,, Δ |- T = U ->
   Σ;;; Γ ,,, subst_context s 0 Δ |- subst s #|Δ| T = subst s' #|Δ| U.
 Proof.
-  move=> wfΣ cΣ subss subss' eqsub wfctx eqty.
+  move=> wfΣ cΣ mΣ subss subss' eqsub wfctx eqty.
   eapply conv_trans => //.
   * eapply substitution_conv => //.
   ** eapply wfctx.
@@ -2522,9 +2536,10 @@ Proof.
     eapply conv_subst_conv => //; eauto using subslet_untyped_subslet.
 Qed.
 
-Lemma context_relation_subst {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ Δ' s s' :
+Lemma context_relation_subst {cf:checker_flags} {Σ : global_env_ext} Γ Γ0 Γ1 Δ Δ' s s' :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   wf_local Σ (Γ ,,, Γ0 ,,, Δ) ->
   subslet Σ Γ s Γ0 ->
   subslet Σ Γ s' Γ1 ->
@@ -2538,7 +2553,7 @@ Lemma context_relation_subst {cf:checker_flags} {Σ} Γ Γ0 Γ1 Δ Δ' s s' :
   (subst_context s 0 Δ)
   (subst_context s' 0 Δ').
 Proof.
-  move=> wfΣ cΣ wfl subss subss' eqsub ctxr.
+  move=> wfΣ cΣ mΣ wfl subss subss' eqsub ctxr.
   assert (hlen: #|Γ0| = #|Γ1|).
   { rewrite -(subslet_length subss) -(subslet_length subss').
     now apply All2_length in eqsub. }
@@ -2676,11 +2691,12 @@ Lemma cumul_it_mkProd_or_LetIn {cf : checker_flags} (Σ : PCUICAst.global_env_ex
   (Δ Γ Γ' : PCUICAst.context) (B B' : term) :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   context_relation (fun Γ Γ' => conv_decls Σ (Δ ,,, Γ) (Δ  ,,, Γ')) Γ Γ' ->
   Σ ;;; Δ ,,, Γ |- B <= B' ->
   Σ ;;; Δ |- PCUICAst.it_mkProd_or_LetIn Γ B <= PCUICAst.it_mkProd_or_LetIn Γ' B'.
 Proof.
-  move=> wfΣ cΣ; move: B B' Γ' Δ.
+  move=> wfΣ cΣ mΣ; move: B B' Γ' Δ.
   induction Γ as [|d Γ] using rev_ind; move=> B B' Γ' Δ;
   destruct Γ' as [|d' Γ'] using rev_ind; try clear IHΓ';
     move=> H; try solve [simpl; auto].
