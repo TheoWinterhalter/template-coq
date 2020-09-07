@@ -1875,7 +1875,7 @@ Section Inversions.
       rewrite map_app in r. simpl in r.
       unfold def_sig at 2 in r. simpl in r.
       eapply red1_eq_context_upto_l in r as [v' [r e]].
-      4:{
+      5:{
         instantiate (1 := Γ ,,, fix_context_alt (map def_sig l1 ++ (na', ty') :: map def_sig l2)).
         eapply eq_context_upto_cat.
         - eapply eq_context_upto_refl. instantiate (1 := eq). auto.
@@ -1887,6 +1887,7 @@ Section Inversions.
             * eapply eq_context_upto_refl. auto.
           + eapply eq_context_upto_refl. auto.
       }
+      2: auto.
       2: auto.
       2:{ intros ? ? ? e. apply eq_univ_make in e. subst. reflexivity. }
       etransitivity; tea.
