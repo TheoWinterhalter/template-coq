@@ -383,8 +383,10 @@ Definition on_elim2 (P : term -> term -> Type) e1 e2 : Type :=
   match e1, e2 with
   | eApp p1, eApp p2 => P p1 p2
   | eCase ind1 p1 brs1, eCase ind2 p2 brs2 =>
-    ind1 = ind2 × P p1 p2 × All2 (fun b1 b2 => P b1.2 b2.2) brs1 brs2
-  | eProj p1, eProj p2 => True
+    ind1 = ind2 ×
+    P p1 p2 ×
+    All2 (fun b1 b2 => b1.1 = b2.1 × P b1.2 b2.2) brs1 brs2
+  | eProj p1, eProj p2 => p1 = p2
   | _, _ => False
   end.
 
@@ -444,8 +446,6 @@ Proof.
     + apply All2_app. 1: auto.
       constructor. 2: constructor.
       cbn. intuition eauto.
-      eapply All2_impl. 1: eauto.
-      intros [] []. cbn. intros [? [? ?]]. auto.
     + eauto.
     + rewrite mkElims_app. cbn. reflexivity.
   - dependent destruction h.
@@ -652,7 +652,7 @@ Proof.
     assert (
       h' :
         ∑ σ' brs',
-          All2 (λ b1 b2, eq_term_upto_univ Re Re b1.2 b2.2) brs brs' ×
+          All2 (λ b1 b2, b1.1 = b2.1 × eq_term_upto_univ Re Re b1.2 b2.2) brs brs' ×
           All2_mask_subst (eq_term_upto_univ Re Re) m1 σ σ' ×
           ∀ θ,
             subs_complete σ' θ →
@@ -665,7 +665,7 @@ Proof.
         cbn in e3. apply some_inj in e3. subst.
         eexists _, _. intuition eauto.
         eapply All2_mask_subst_linear_mask_init. reflexivity.
-      - cbn in ht.
+      - cbn in ht. destruct ht as [? ht].
         cbn in e2. destruct pattern_mask eqn:e1. 2: discriminate.
         destruct monad_map eqn:e4. 2: discriminate.
         apply some_inj in e2. subst.
@@ -798,26 +798,27 @@ Proof.
     eapply All2_eq.
     eapply All2_All_mix_left in a. 2: eauto.
     eapply All2_impl. 1: eauto.
-    intros [] []. cbn. intros [].
-    (* Why is there no equality on the natural numbers? *)
-    admit.
-  - (* Even worse here, am I missing something? *)
-Abort.
+    intros [] []. cbn. intros [? [? ?]].
+    subst. f_equal.
+    eapply eq_term_pattern_inv. all: eauto.
+  - f_equal. auto.
+Qed.
 
 Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
-  forall Σ Re Rle k ui decl Γ σ n r u,
-    wf Σ ->
-    declared_symbol Σ k decl ->
-    nth_error (rules decl) n = Some r ->
+  ∀ Σ Re Rle k ui decl Γ σ n r u,
+    Minimal Re →
+    wf Σ →
+    declared_symbol Σ k decl →
+    nth_error (rules decl) n = Some r →
     let ss := symbols_subst k 0 ui #|symbols decl| in
-    untyped_subslet Γ σ (subst_context ss 0 (pat_context r)) ->
-    eq_term_upto_univ Re Rle (subst0 σ (subst ss #|σ| (lhs r))) u ->
+    untyped_subslet Γ σ (subst_context ss 0 (pat_context r)) →
+    eq_term_upto_univ Re Rle (subst0 σ (subst ss #|σ| (lhs r))) u →
     ∑ σ' ui',
       let ss' := symbols_subst k 0 ui' #|symbols decl| in
       All2 (eq_term_upto_univ Re Re) σ σ' ×
       u = subst0 σ' (subst ss' #|σ'| (lhs r)).
 Proof.
-  intros Σ Re Rle k ui decl Γ σ n r u hΣ hd hn ss hσ h.
+  intros Σ Re Rle k ui decl Γ σ n r u hRe hΣ hd hn ss hσ h.
   unfold lhs in h.
   rewrite mkElims_subst in h.
   subst ss.
@@ -858,10 +859,12 @@ Proof.
   rewrite subst_elims_symbols_subst.
   { rewrite <- h. rewrite σl. eapply declared_symbol_pattern. all: eauto. }
   f_equal. f_equal.
-  (* I have a problem here, because it seems to suggest that
-    being a lhs is not stable by eq_term...
-  *)
-Abort.
+  symmetry. eapply All2_eq.
+  eapply declared_symbol_pattern in hd as hp. 2,3: eauto.
+  eapply All2_All_mix_left in hp. 2: eauto.
+  eapply All2_impl. 1: eauto.
+  intros ? ? []. eapply eq_term_elim_inv. all: eauto.
+Qed.
 
 Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' :
   RelationClasses.Reflexive Re ->
