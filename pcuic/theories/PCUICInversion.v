@@ -14,6 +14,7 @@ Section Inversion.
   Context (Σ : global_env_ext).
   Context (wfΣ : wf Σ).
   Context (cΣ : PCUICParallelReductionConfluence.confluenv Σ).
+  Context (mΣ : PCUICConfluence.Minimal (eq_universe Σ)).
 
   Ltac insum :=
     match goal with

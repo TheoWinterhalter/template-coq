@@ -6,7 +6,7 @@ From MetaCoq.PCUIC Require Import PCUICAst
      PCUICParallelReductionConfluence
      PCUICUnivSubstitution PCUICConversion PCUICContexts PCUICArities
      PCUICSpine PCUICInductives PCUICContexts
-     PCUICSigmaCalculus PCUICClosed.
+     PCUICSigmaCalculus PCUICClosed PCUICConfluence.
 
 From Equations Require Import Equations.
 Require Import Equations.Prop.DepElim.
@@ -84,16 +84,18 @@ Section Validity.
   Qed.
 
   Theorem validity :
-    env_prop (fun Σ Γ t T => confluenv Σ.1 -> isWfArity_or_Type Σ Γ T)
+    env_prop (fun Σ Γ t T => confluenv Σ.1 -> Minimal (eq_universe Σ) -> isWfArity_or_Type Σ Γ T)
       (fun Σ Γ wfΓ =>
       All_local_env_over typing
       (fun (Σ : global_env_ext) (Γ : context) (_ : wf_local Σ Γ)
-         (t T : term) (_ : Σ;;; Γ |- t : T) => confluenv Σ.1 -> isWfArity_or_Type Σ Γ T) Σ Γ
+         (t T : term) (_ : Σ;;; Γ |- t : T) => confluenv Σ.1 -> Minimal (eq_universe Σ) -> isWfArity_or_Type Σ Γ T) Σ Γ
       wfΓ).
   Proof.
     apply typing_ind_env; intros (* ; rename_all_hyps *).
     all: repeat match goal with
     | h : confluenv _ -> _ |- _ =>
+      forward h by auto
+    | h : Minimal _ -> _ |- _ =>
       forward h by auto
     end.
     all: rename_all_hyps.
@@ -120,7 +122,7 @@ Section Validity.
       destruct X3.
       + left. destruct i as [ctx [s [Heq Hs]]].
         red. simpl. pose proof (PCUICClosed.destArity_spec [] bty).
-        rewrite Heq in H. simpl in H. subst bty. clear Heq.
+        rewrite Heq in H0. simpl in H0. subst bty. clear Heq.
         eexists _, s. split; auto.
         * rewrite destArity_it_mkProd_or_LetIn. simpl. reflexivity.
         * apply All_local_env_app_inv; split; auto.
@@ -146,7 +148,7 @@ Section Validity.
         eexists _, s.
         simpl. split; auto.
         pose proof (PCUICClosed.destArity_spec [] b'_ty).
-        rewrite Heq in H. simpl in H. subst b'_ty.
+        rewrite Heq in H0. simpl in H0. subst b'_ty.
         rewrite destArity_it_mkProd_or_LetIn. simpl.
         reflexivity. rewrite app_context_assoc. simpl.
         apply All_local_env_app_inv; split; eauto with wf.
@@ -163,11 +165,11 @@ Section Validity.
     - (* Application *)
       destruct X1 as [[ctx [s [Heq Hs]]]|].
       simpl in Heq. pose proof (PCUICClosed.destArity_spec ([],, vass na A) B).
-      rewrite Heq in H.
-      simpl in H. unfold mkProd_or_LetIn in H. simpl in H.
-      destruct ctx using rev_ind; noconf H.
-      simpl in H. rewrite it_mkProd_or_LetIn_app in H. simpl in H.
-      destruct x as [na' [b|] ty]; noconf H.
+      rewrite Heq in H0.
+      simpl in H0. unfold mkProd_or_LetIn in H0. simpl in H0.
+      destruct ctx using rev_ind; noconf H0.
+      simpl in H0. rewrite it_mkProd_or_LetIn_app in H0. simpl in H0.
+      destruct x as [na' [b|] ty]; noconf H0.
       left. eexists _, s. split.
       unfold subst1. rewrite subst_it_mkProd_or_LetIn.
       rewrite destArity_it_mkProd_or_LetIn. simpl. reflexivity.
@@ -189,7 +191,7 @@ Section Validity.
         apply inversion_Prod in Hu' as [na' [s1 [s2 Hs]]]; tas. intuition.
         eapply type_Cumul; pcuic.
         eapply (weakening_cumul Σ Γ [] [vass na A]) in b; pcuic.
-        simpl in b. eapply cumul_trans. auto. auto. 2:eauto.
+        simpl in b. eapply cumul_trans. auto. auto. auto. 2:eauto.
         constructor. constructor. simpl. apply leq_universe_product.
 
     - admit.

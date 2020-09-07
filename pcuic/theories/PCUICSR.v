@@ -48,11 +48,13 @@ Qed.
 Definition SR_red1 {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
   forall u (Hu : red1 Σ Γ t u),
     confluenv Σ ->
+    Minimal (eq_universe Σ) ->
     Σ ;;; Γ |- u : T.
 
 Lemma wf_fixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfix1 :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   wf_fixpoint Σ.1 mfix ->
   OnOne2
   (fun x y : def term =>
@@ -60,7 +62,7 @@ Lemma wf_fixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfi
    × (dname x, dbody x, rarg x) = (dname y, dbody y, rarg y)) mfix mfix1 ->
   wf_fixpoint Σ.1 mfix1.
 Proof.
-  intros wfΣ cΣ wffix o.
+  intros wfΣ cΣ mΣ wffix o.
   move: wffix; unfold wf_fixpoint.
   enough (forall inds, map_option_out (map check_one_fix mfix) = Some inds ->
      map_option_out (map check_one_fix mfix1) = Some inds) => //.
@@ -77,7 +79,7 @@ Proof.
     apply decompose_prod_assum_it_mkProd_or_LetIn in decomp.
     simpl in decomp.
     subst dtype.
-    destruct (red1_it_mkProd_or_LetIn_smash _ _ _ _ _ _ _ wfΣ cΣ redty Hnth) as
+    destruct (red1_it_mkProd_or_LetIn_smash _ _ _ _ _ _ _ wfΣ cΣ _ redty Hnth) as
       (ctx & t' & decomp & d & [hnth di]).
     rewrite decomp hnth.
     unfold head in di. destruct decompose_app; simpl in *.
@@ -116,6 +118,7 @@ Qed.
 Lemma wf_cofixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfix1 :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   wf_cofixpoint Σ.1 mfix ->
   OnOne2
   (fun x y : def term =>
@@ -123,7 +126,7 @@ Lemma wf_cofixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix m
    × (dname x, dbody x, rarg x) = (dname y, dbody y, rarg y)) mfix mfix1 ->
   wf_cofixpoint Σ.1 mfix1.
 Proof.
-  intros wfΣ cΣ wffix o.
+  intros wfΣ cΣ mΣ wffix o.
   move: wffix; unfold wf_cofixpoint.
   enough (forall inds, map_option_out (map check_one_cofix mfix) = Some inds ->
      map_option_out (map check_one_cofix mfix1) = Some inds) => //.
@@ -188,6 +191,8 @@ Proof.
   repeat match goal with
   | h : confluenv _ -> _ |- _ =>
     forward h by auto
+  | h : Minimal _ -> _ |- _ =>
+    forward h by auto
   end ;
   rename_all_hyps; auto;
     match goal with
@@ -227,7 +232,7 @@ Proof.
   - (* Prod *)
     constructor; eauto.
     eapply (context_conversion _ wf _ _ _ typeb).
-    auto.
+    1,2: auto.
     constructor; auto with pcuic.
     constructor; auto. exists s1; auto.
 
