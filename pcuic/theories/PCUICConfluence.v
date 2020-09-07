@@ -761,8 +761,9 @@ Proof.
 Qed.
 
 (* Some requirement for things to go smoothly *)
-Definition Minimal Re :=
-  ∀ u u', R_universe_instance Re u u' → u = u'.
+Class Minimal Re := {
+  minimal : ∀ u u', R_universe_instance Re u u' → u = u'
+}.
 
 Lemma eq_term_pattern_inv :
   ∀ p1 p2 Re npat,

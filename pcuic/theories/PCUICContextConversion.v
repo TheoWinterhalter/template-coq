@@ -390,10 +390,10 @@ Section ContextConversion.
   Proof.
     intros tu tt' uu'.
     pose proof tu as tu2.
-    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc. 2: auto.
+    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc.
     destruct tu as [u'' [uu'' t'u'']].
     destruct (red_confluence wfΣ cΣ uu' uu'') as [unf [ul ur]].
-    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc. 2: auto.
+    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc.
     destruct t'u'' as [t'' [t't'' t''unf]].
     exists t'', unf. intuition auto.
   Qed.
@@ -404,10 +404,10 @@ Section ContextConversion.
   Proof.
     intros tu tt' uu'.
     pose proof tu as tu2.
-    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc. 2: auto.
+    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc.
     destruct tu as [u'' [uu'' t'u'']].
     destruct (red_confluence wfΣ cΣ uu' uu'') as [unf [ul ur]].
-    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc. 2: auto.
+    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc.
     destruct t'u'' as [t'' [t't'' t''unf]].
     exists t'', unf. intuition auto.
   Qed.
@@ -465,7 +465,8 @@ Section ContextConversion.
   Arguments red_ctx : clear implicits.
 
   Lemma red_eq_context_upto_l {Re Γ Δ u v}
-        `{RelationClasses.Reflexive _ Re} `{RelationClasses.Transitive _ Re} `{SubstUnivPreserving Re} :
+    `{Minimal Re}
+    `{RelationClasses.Reflexive _ Re} `{RelationClasses.Transitive _ Re} `{SubstUnivPreserving Re} :
     red Σ Γ u v ->
     eq_context_upto Re Γ Δ ->
     ∑ v',
@@ -480,7 +481,8 @@ Section ContextConversion.
     - exists x. split; auto. reflexivity.
     - destruct IHr1 as [v' [? ?]].
       destruct IHr2 as [v'' [? ?]].
-      unshelve eapply (red_eq_term_upto_univ_l Σ _ (u:=y) (v:=v'') (u':=v')) in e; tc. all:pcuic.
+      unshelve eapply (red_eq_term_upto_univ_l Σ _ _ (u:=y) (v:=v'') (u':=v')) in e; tc.
+      all:pcuic.
       destruct e as [? [? ?]].
       exists x0; split; eauto.
       now transitivity v'.
@@ -696,12 +698,13 @@ Hint Resolve conv_ctx_refl' : pcuic.
 (*     constructor; auto. *)
 (* Qed. *)
 
-Instance conv_context_sym {cf:checker_flags} Σ :
+Instance conv_context_sym {cf:checker_flags} (Σ : PCUICEnvironment.global_env_ext) :
   wf Σ.1 ->
   confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
   Symmetric (fun Γ Γ' => conv_context Σ Γ Γ').
 Proof.
-  intros HΣ cΣ Γ Γ'.
+  intros HΣ cΣ me Γ Γ'.
   induction Γ in Γ' |- *; try econstructor.
   intros conv; depelim conv; econstructor; eauto;
   constructor; pcuic. intros.
@@ -784,9 +787,11 @@ Lemma context_conversion {cf:checker_flags} :
   env_prop
     (fun Σ Γ t T =>
       confluenv Σ ->
+      Minimal (eq_universe Σ) ->
       forall Γ', conv_context Σ Γ Γ' -> wf_local Σ Γ' -> Σ ;;; Γ' |- t : T)
     (fun Σ Γ wfΓ =>
       confluenv Σ ->
+      Minimal (eq_universe Σ) ->
       All_local_env_over typing
       (fun (Σ : global_env_ext) (Γ : context) (_ : wf_local Σ Γ) (t T : term) (_ : Σ;;; Γ |- t : T) =>
       forall Γ' : context, conv_context Σ Γ Γ' -> wf_local Σ Γ' -> Σ;;; Γ' |- t : T) Σ Γ wfΓ).
@@ -806,9 +811,9 @@ Proof.
     eapply (context_relation_nth X1) in H as [d' [Hnth [Hrel Hconv]]].
     eapply type_Cumul.
     * econstructor. auto. eauto.
-    * unshelve eapply nth_error_All_local_env_over in forall_z.
+    * unshelve eapply nth_error_All_local_env_over in impl_forall_z.
       3:eapply heq_nth_error. 2: auto.
-      destruct forall_z as [onctx ondecl].
+      destruct impl_forall_z as [onctx ondecl].
       destruct lookup_wf_local_decl. red in ondecl.
       right.
       destruct decl as [na [b|] ty] => /=.
@@ -831,9 +836,10 @@ Proof.
         rewrite firstn_length_le. eapply nth_error_Some_length in Hnth. lia. auto.
         now rewrite /app_context firstn_skipn.
         assumption.
-    * unshelve eapply nth_error_All_local_env_over in forall_z.
+      + auto.
+    * unshelve eapply nth_error_All_local_env_over in impl_forall_z.
       3:eapply heq_nth_error. 2: auto.
-      destruct forall_z. red in o.
+      destruct impl_forall_z. red in o.
       depelim Hconv; simpl in *.
       + rewrite -(firstn_skipn (S n) Γ').
         eapply weakening_cumul0; auto.
@@ -853,14 +859,17 @@ Proof.
         pose proof heq_nth_error. eapply nth_error_Some_length in Hnth. lia.
         eapply conv_cumul; auto. eapply conv_sym; auto.
         eapply conv_conv_ctx; eauto.
+      + auto.
   - constructor; pcuic.
-    eapply impl_forall_Γ'0. 1: auto.
+    eapply impl_impl_forall_Γ'0. 1,2: auto.
     repeat (constructor; pcuic).
-    constructor; auto. red. eexists; eapply impl_forall_Γ'; auto.
+    constructor; auto. red. eexists; eapply impl_impl_forall_Γ'; auto.
   - econstructor; pcuic.
-    eapply impl_forall_Γ'0; repeat (constructor; pcuic). auto.
+    eapply impl_impl_forall_Γ'0. 1,2: auto.
+    all: repeat (constructor; pcuic).
   - econstructor; pcuic.
-    eapply impl_forall_Γ'1; repeat (constructor; pcuic). auto.
+    eapply impl_impl_forall_Γ'1. 1,2 : auto.
+    all: repeat (constructor; pcuic).
   - econstructor; pcuic. intuition auto. eapply isdecl. eapply isdecl.
     eauto. solve_all.
   - econstructor; pcuic.
@@ -869,7 +878,7 @@ Proof.
     exists s; eauto.
     eapply (All_impl X1).
     intros x [[Hs Hl] IH]. split; auto.
-    eapply IH. 1: auto.
+    eapply IH. 1,2: auto.
     now apply conv_context_app_same.
     eapply (All_mfix_wf); auto.
     apply (All_impl X0); simpl.
@@ -881,7 +890,7 @@ Proof.
     exists s; eauto.
     eapply (All_impl X1).
     intros x [Hs IH].
-    eapply IH. 1: auto.
+    eapply IH. 1,2: auto.
     now apply conv_context_app_same.
     eapply (All_mfix_wf); auto.
     apply (All_impl X0); simpl.
@@ -894,7 +903,7 @@ Proof.
       destruct x as [ctx [s [Hs Hwf]]].
       exists ctx, s. split; auto.
       simpl in  a.
-      clear -a X4 X5 X6.
+      clear -a X4 X5 X6 H.
       induction ctx; auto.
       destruct a0 as [na [b|] ty]; simpl.
       depelim Hwf; simpl in H; noconf H.
@@ -904,29 +913,30 @@ Proof.
       depelim a. specialize (IHctx _ a).
       red in l, l0. destruct l as [s Hs].
       constructor; auto; red.
-      exists s; eapply t1. 1: auto.
+      exists s; eapply t1. 1,2: auto.
       now eapply conv_context_app_same. auto.
-      eapply t0. 1: auto.
+      eapply t0. 1,2: auto.
       now eapply conv_context_app_same. auto.
       depelim Hwf; simpl in H; noconf H.
       unfold snoc in H. noconf H. simpl in H. noconf H.
       simpl in H0. subst. depelim a.
       specialize (IHctx _ a).
-      constructor; auto. eexists; eapply t0. 1: auto.
+      constructor; auto. eexists; eapply t0. 1,2: auto.
       now eapply conv_context_app_same. auto.
       unfold snoc in H; simpl in H; noconf H. simpl in H; noconf H.
      * right. destruct s as [s [ty ?]]. exists s. eauto.
     * eapply cumul_conv_ctx; eauto.
 Qed.
 
-Lemma context_conversion' {cf:checker_flags} {Σ Γ t T Γ'} :
+Lemma context_conversion' {cf:checker_flags} {Σ : global_env_ext} {Γ t T Γ'} :
     wf Σ.1 ->
     confluenv Σ.1 ->
+    Minimal (eq_universe Σ) ->
     wf_local Σ Γ' ->
     Σ ;;; Γ |- t : T ->
     conv_context Σ Γ Γ' ->
     Σ ;;; Γ' |- t : T.
 Proof.
-  intros hΣ cΣ hΓ' h e.
+  intros hΣ cΣ me hΓ' h e.
   eapply context_conversion; eauto.
 Qed.
