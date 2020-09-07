@@ -496,6 +496,11 @@ Proof.
         rewrite !lift0_id in fm.
         simpl in fm.
         unfold match_lhs in fm. lazy in fm.
+        destruct (PeanoNat.Nat.eqb_eq 0 0).
+        destruct iff_sym.
+        assert (e3 : e2 eq_refl = eq_refl) by (apply uip).
+        (* rewrite e3.
+        lazy in fm. *)
         admit.
       * admit.
       * admit.
