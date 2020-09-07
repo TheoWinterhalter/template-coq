@@ -760,6 +760,50 @@ Proof.
   eapply h3. apply map_option_out_subs_complete. assumption.
 Qed.
 
+(* Some requirement for things to go smoothly *)
+Definition Minimal Re :=
+  ∀ u u', R_universe_instance Re u u' → u = u'.
+
+Lemma eq_term_pattern_inv :
+  ∀ p1 p2 Re npat,
+    Minimal Re →
+    pattern npat p1 →
+    eq_term_upto_univ Re Re p1 p2 →
+    p1 = p2.
+Proof.
+  intros p1 p2 Re npat hRe hp h.
+  generalize_eqs h. intro e.
+  induction h in e, hRe, hp |- *.
+  all: try solve [ inversion hp ; solve_discr ].
+  - reflexivity.
+  - apply pattern_app_inv in hp as [hp1 hp2].
+    intuition eauto. subst. reflexivity.
+  - apply hRe in r. subst. reflexivity.
+Qed.
+
+Lemma eq_term_elim_inv :
+  ∀ e1 e2 Re npat,
+    Minimal Re →
+    elim_pattern npat e1 →
+    on_elim2 (eq_term_upto_univ Re Re) e1 e2 →
+    e1 = e2.
+Proof.
+  intros e1 e2 Re npat hRe hp h.
+  destruct hp, e2. all: cbn in h. all: try contradiction.
+  - eapply eq_term_pattern_inv in h. all: eauto.
+    subst. reflexivity.
+  - intuition eauto.
+    eapply eq_term_pattern_inv in p0. all: eauto.
+    subst. f_equal.
+    eapply All2_eq.
+    eapply All2_All_mix_left in a. 2: eauto.
+    eapply All2_impl. 1: eauto.
+    intros [] []. cbn. intros [].
+    (* Why is there no equality on the natural numbers? *)
+    admit.
+  - (* Even worse here, am I missing something? *)
+Abort.
+
 Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
   forall Σ Re Rle k ui decl Γ σ n r u,
     wf Σ ->
@@ -799,7 +843,7 @@ Proof.
   3:{ eapply declared_symbol_linear. all: eauto. }
   2: assumption.
   destruct el as [σ' [l'' [? [h ?]]]].
-  eexists _, _. cbn. intuition eauto.
+  eexists _, ui'. cbn. intuition eauto.
   unfold lhs.
   rewrite mkElims_subst.
   apply All2_length in h.
@@ -813,6 +857,7 @@ Proof.
   rewrite mkElims_subst. cbn. subst.
   rewrite subst_elims_symbols_subst.
   { rewrite <- h. rewrite σl. eapply declared_symbol_pattern. all: eauto. }
+  f_equal. f_equal.
   (* I have a problem here, because it seems to suggest that
     being a lhs is not stable by eq_term...
   *)
