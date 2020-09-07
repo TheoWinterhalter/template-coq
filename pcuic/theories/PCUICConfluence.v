@@ -866,21 +866,60 @@ Proof.
   intros ? ? []. eapply eq_term_elim_inv. all: eauto.
 Qed.
 
-Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' :
-  RelationClasses.Reflexive Re ->
-  SubstUnivPreserving Re ->
-  RelationClasses.Reflexive Rle ->
-  RelationClasses.Transitive Re ->
-  RelationClasses.Transitive Rle ->
-  RelationClasses.subrelation Re Rle ->
-  eq_term_upto_univ Re Rle u u' ->
-  red1 Σ Γ u v ->
-  ∑ v', red1 Σ Γ u' v' *
-        eq_term_upto_univ Re Rle v v'.
+(* TODO MOVE *)
+Lemma declared_symbol_assumption_context `{checker_flags} :
+  ∀ Σ k n decl r,
+    wf Σ →
+    declared_symbol Σ k decl →
+    nth_error decl.(rules) n = Some r →
+    assumption_context r.(pat_context).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hr. 2: eassumption.
+  destruct hr as [T hl hr hh he].
+  assumption.
+Qed.
+
+Lemma eq_term_upto_univ_symbols_subst :
+  ∀ Re k ui ui' n,
+    R_universe_instance Re ui ui' →
+    All2 (eq_term_upto_univ Re Re)
+      (symbols_subst k 0 ui n) (symbols_subst k 0 ui' n).
+Proof.
+  intros Re k ui ui' n h.
+  unfold symbols_subst.
+  replace (n - 0) with n by lia.
+  generalize 0. intro m.
+  induction n in m |- *.
+  - constructor.
+  - cbn. constructor.
+    + constructor. assumption.
+    + eapply IHn.
+Qed.
+
+Lemma red1_eq_term_upto_univ_l Σ Re Rle Γ u v u' `{cf : checker_flags} :
+  wf Σ →
+  Minimal Re →
+  RelationClasses.Reflexive Re →
+  SubstUnivPreserving Re →
+  RelationClasses.Reflexive Rle →
+  RelationClasses.Transitive Re →
+  RelationClasses.Transitive Rle →
+  RelationClasses.subrelation Re Rle →
+  eq_term_upto_univ Re Rle u u' →
+  red1 Σ Γ u v →
+  ∑ v',
+    red1 Σ Γ u' v' ×
+    eq_term_upto_univ Re Rle v v'.
 Proof.
   unfold RelationClasses.subrelation.
-  intros he he' hle tRe tRle hR e h.
-  induction h in u', e, tRle, Rle, hle, hR |- * using red1_ind_all.
+  intros hΣ mRe he he' hle tRe tRle hR e h.
+  induction h in mRe, u', e, tRle, Rle, hle, hR |- * using red1_ind_all.
   all: try solve [
     dependent destruction e ;
     edestruct IHh as [? [? ?]] ; [ .. | eassumption | ] ; eauto ;
@@ -1028,7 +1067,24 @@ Proof.
     eexists. split.
     + constructor. eassumption.
     + eapply eq_term_upto_univ_leq ; eauto.
-  - admit.
+  - eapply eq_term_upto_univ_lhs_l_inv in e. 2-6: eauto.
+    destruct e as [σ' [ui' [eσ ?]]]. subst.
+    eexists. split.
+    + econstructor. 1,2: eauto.
+      eapply untyped_subslet_assumption_context.
+      * apply assumption_context_subst_context.
+        eapply declared_symbol_assumption_context. all: eauto.
+      * rewrite subst_context_length.
+        eapply All2_length in eσ. apply untyped_subslet_length in X.
+        rewrite subst_context_length in X.
+        lia.
+    + subst rhs. eapply eq_term_upto_univ_substs. 1,3: eauto.
+      apply All2_length in eσ as σl. rewrite <- σl.
+      eapply eq_term_upto_univ_substs.
+      * auto.
+      * apply eq_term_upto_univ_refl. all: auto.
+      * subst ss. eapply eq_term_upto_univ_symbols_subst.
+        admit.
   - dependent destruction e.
     edestruct IHh as [? [? ?]] ; [ .. | eassumption | ] ; eauto.
     clear h.
