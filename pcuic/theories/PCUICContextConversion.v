@@ -349,6 +349,7 @@ Section ContextConversion.
   Context (Σ : global_env_ext).
   Context (wfΣ : wf Σ).
   Context (cΣ : confluenv Σ).
+  Context (me : Minimal (eq_universe Σ)).
 
   Inductive conv_decls (Γ Γ' : context) : forall (x y : context_decl), Type :=
   | conv_vass na na' T T' :
@@ -389,10 +390,10 @@ Section ContextConversion.
   Proof.
     intros tu tt' uu'.
     pose proof tu as tu2.
-    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc.
+    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc. 2: auto.
     destruct tu as [u'' [uu'' t'u'']].
     destruct (red_confluence wfΣ cΣ uu' uu'') as [unf [ul ur]].
-    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc.
+    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc. 2: auto.
     destruct t'u'' as [t'' [t't'' t''unf]].
     exists t'', unf. intuition auto.
   Qed.
@@ -403,10 +404,10 @@ Section ContextConversion.
   Proof.
     intros tu tt' uu'.
     pose proof tu as tu2.
-    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc.
+    eapply red_eq_term_upto_univ_l in tu; try exact tt'; tc. 2: auto.
     destruct tu as [u'' [uu'' t'u'']].
     destruct (red_confluence wfΣ cΣ uu' uu'') as [unf [ul ur]].
-    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc.
+    eapply red_eq_term_upto_univ_r in t'u''; try exact ur; tc. 2: auto.
     destruct t'u'' as [t'' [t't'' t''unf]].
     exists t'', unf. intuition auto.
   Qed.
@@ -424,7 +425,7 @@ Section ContextConversion.
     destruct leq as [? [? ?]].
     destruct (red_red_ctx _ wfΣ cΣ redr Hctx) as [rnf [redl1 redr1]].
     destruct (red_confluence wfΣ cΣ r redr1). destruct p.
-    edestruct (red_eq_term_upto_univ_r Σ (eq_universe_leq_universe _) e r0) as [lnf' [? ?]].
+    edestruct (red_eq_term_upto_univ_r Σ _ (eq_universe_leq_universe _) e r0) as [lnf' [? ?]].
     exists lnf', x0. intuition auto. now transitivity lnf.
     now transitivity rnf.
   Qed.

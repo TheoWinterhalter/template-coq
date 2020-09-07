@@ -814,6 +814,7 @@ Lemma eq_term_upto_univ_lhs_l_inv `{cf : checker_flags} :
     untyped_subslet Γ σ (subst_context ss 0 (pat_context r)) →
     eq_term_upto_univ Re Rle (subst0 σ (subst ss #|σ| (lhs r))) u →
     ∑ σ' ui',
+      R_universe_instance Re ui ui' ×
       let ss' := symbols_subst k 0 ui' #|symbols decl| in
       All2 (eq_term_upto_univ Re Re) σ σ' ×
       u = subst0 σ' (subst ss' #|σ'| (lhs r)).
@@ -1068,7 +1069,7 @@ Proof.
     + constructor. eassumption.
     + eapply eq_term_upto_univ_leq ; eauto.
   - eapply eq_term_upto_univ_lhs_l_inv in e. 2-6: eauto.
-    destruct e as [σ' [ui' [eσ ?]]]. subst.
+    destruct e as [σ' [ui' [? [eσ ?]]]]. subst.
     eexists. split.
     + econstructor. 1,2: eauto.
       eapply untyped_subslet_assumption_context.
@@ -1084,7 +1085,7 @@ Proof.
       * auto.
       * apply eq_term_upto_univ_refl. all: auto.
       * subst ss. eapply eq_term_upto_univ_symbols_subst.
-        admit.
+        assumption.
   - dependent destruction e.
     edestruct IHh as [? [? ?]] ; [ .. | eassumption | ] ; eauto.
     clear h.
@@ -1211,6 +1212,7 @@ Proof.
     { revert mfix' a.
       refine (OnOne2_ind_l _ (fun L x y => (red1 Σ (Γ ,,, fix_context L) (dbody x) (dbody y)
         × (forall Rle (u' : term),
+           Minimal Re →
            RelationClasses.Reflexive Rle ->
            RelationClasses.Transitive Rle ->
            (forall u u'0 : Universe.t, Re u u'0 -> Rle u u'0) ->
@@ -1359,6 +1361,7 @@ Proof.
     { revert mfix' a.
       refine (OnOne2_ind_l _ (fun L x y => (red1 Σ (Γ ,,, fix_context L) (dbody x) (dbody y)
         × (forall Rle (u' : term),
+           Minimal Re →
            RelationClasses.Reflexive Rle ->
            RelationClasses.Transitive Rle ->
            (forall u u'0 : Universe.t, Re u u'0 -> Rle u u'0) ->
@@ -1451,8 +1454,7 @@ Proof.
     eexists. split.
     + eapply cofix_red_body. eassumption.
     + constructor. all: eauto.
-(* Qed. *)
-Admitted.
+Qed.
 
 Lemma red1_eq_context_upto_r Σ Re Γ Δ u v :
   RelationClasses.Reflexive Re ->
@@ -1470,21 +1472,24 @@ Proof.
     now eapply eq_term_upto_univ_sym.
 Qed.
 
-Lemma red1_eq_term_upto_univ_r Σ Re Rle Γ u v u' :
-  RelationClasses.Reflexive Re ->
-  SubstUnivPreserving Re ->
-  RelationClasses.Reflexive Rle ->
-  RelationClasses.Symmetric Re ->
-  RelationClasses.Transitive Re ->
-  RelationClasses.Transitive Rle ->
-  RelationClasses.subrelation Re Rle ->
-  eq_term_upto_univ Re Rle u' u ->
-  red1 Σ Γ u v ->
-  ∑ v', red1 Σ Γ u' v' ×
-        eq_term_upto_univ Re Rle v' v.
+Lemma red1_eq_term_upto_univ_r Σ Re Rle Γ u v u' `{cf : checker_flags} :
+  wf Σ →
+  Minimal Re →
+  RelationClasses.Reflexive Re →
+  SubstUnivPreserving Re →
+  RelationClasses.Reflexive Rle →
+  RelationClasses.Symmetric Re →
+  RelationClasses.Transitive Re →
+  RelationClasses.Transitive Rle →
+  RelationClasses.subrelation Re Rle →
+  eq_term_upto_univ Re Rle u' u →
+  red1 Σ Γ u v →
+  ∑ v',
+    red1 Σ Γ u' v' ×
+    eq_term_upto_univ Re Rle v' v.
 Proof.
-  intros he he' hle tRe tRle hR e h uv.
-  destruct (red1_eq_term_upto_univ_l Σ Re (flip Rle) Γ u v u'); auto.
+  intros hΣ me he he' hle tRe tRle hR e h uv.
+  destruct (red1_eq_term_upto_univ_l Σ Re (flip Rle) Γ u v u'). all: auto.
   - now eapply flip_Transitive.
   - intros x y X. symmetry in X. apply e. auto.
   - eapply eq_term_upto_univ_flip; eauto.
@@ -1495,8 +1500,10 @@ Proof.
 Qed.
 
 Section RedEq.
-  Context (Σ : global_env_ext).
+  Context `{cf : checker_flags}.
+  Context (Σ : global_env_ext) (wfΣ : wf Σ).
   Context {Re Rle : Universe.t -> Universe.t -> Prop}
+          {mini : Minimal Re}
           {refl : RelationClasses.Reflexive Re}
           {refl': RelationClasses.Reflexive Rle}
           {pres : SubstUnivPreserving Re}
