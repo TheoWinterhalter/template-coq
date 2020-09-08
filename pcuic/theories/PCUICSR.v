@@ -182,6 +182,21 @@ Proof.
   - simpl. now rewrite IHo.
 Qed.
 
+Ltac intro_sym_revert :=
+  lazymatch goal with
+  | |- forall (e : _ = _), _ -> _ =>
+    let e' := fresh e in
+    intro e' ; intro_sym_revert ; revert e'
+  | |- forall (e : _ = _), _ =>
+    let e' := fresh e in
+    intro e' ; symmetry in e' ; revert e'
+  | |- forall (e : _), _ =>
+    let e' := fresh e in
+    intro e' ; intro_sym_revert ; revert e'
+  | |- _ =>
+    idtac
+  end.
+
 Lemma sr_red1 {cf:checker_flags} :
   env_prop SR_red1
       (fun Σ Γ wfΓ =>
@@ -198,9 +213,13 @@ Proof.
     match goal with
     | [H : (_ ;;; _ |- _ <= _) |- _ ] => idtac
     | _ =>
-      depelim Hu; try solve [apply mkApps_Fix_spec in x; noconf x];
-      try solve [econstructor; eauto] ;
+      (* depelim Hu ; *)
+      generalize_by_eqs_vars Hu ; destruct Hu ;
+      try solve [ simplify_dep_elim ] ;
+      try solve [ simplify_dep_elim ; apply mkApps_Fix_spec in x; noconf x];
+      try solve [ simplify_dep_elim ; econstructor; eauto] ;
       try solve [
+        simplify_dep_elim ;
         match goal with
         | h : _ = mkApps _ ?args |- _ =>
           let e := fresh "e" in
@@ -212,17 +231,18 @@ Proof.
     end.
 
   - (* Rel *)
+    intro_sym_revert. simplify_dep_elim.
     rewrite heq_nth_error in e. destruct decl as [na b ty]; noconf e.
     simpl.
     pose proof (nth_error_All_local_env_over heq_nth_error X); eauto.
     destruct lookup_wf_local_decl; cbn in *.
-    rewrite <- (firstn_skipn (S n) Γ).
+    rewrite <- (firstn_skipn (S i) Hu1').
     eapply weakening_length; auto.
     { rewrite firstn_length_le; auto. apply nth_error_Some_length in heq_nth_error. auto with arith. }
     now unfold app_context; rewrite firstn_skipn.
     apply o.
 
-  - (* Stuff related to rewrite rules but depelim didn't do its job *)
+  - subst lhs rhs. simplify_dep_elim.
     todo_sr.
 
   - todo_sr.
@@ -230,6 +250,7 @@ Proof.
   - todo_sr.
 
   - (* Prod *)
+    simplify_dep_elim.
     constructor; eauto.
     eapply (context_conversion _ wf _ _ _ typeb).
     1,2: auto.
@@ -239,6 +260,7 @@ Proof.
   - todo_sr.
 
   - (* Lambda *)
+    simplify_dep_elim. rename Hu1' into Γ, na into n, M into t, N into b.
     eapply type_Cumul. eapply type_Lambda; eauto.
     eapply (context_conversion _ wf _ _ _ typeb).
     1,2: auto.
@@ -250,10 +272,11 @@ Proof.
     apply cumul_refl'. constructor. apply Hu.
 
   - (* LetIn body *)
+    simplify_dep_elim.
     eapply type_Cumul.
-    apply (substitution_let _ Γ n b b_ty b' b'_ty wf typeb').
+    apply (substitution_let _ _ _ b _ b' b'_ty wf typeb').
     specialize (typing_wf_local typeb') as wfd.
-    assert (Σ ;;; Γ |- tLetIn n b b_ty b' : tLetIn n b b_ty b'_ty). econstructor; eauto.
+    eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
     eapply cumul_red_r.
     apply cumul_refl'. constructor.
@@ -261,17 +284,19 @@ Proof.
   - todo_sr.
 
   - (* LetIn value *)
+    simplify_dep_elim.
     eapply type_Cumul.
     econstructor; eauto.
     eapply (context_conversion _ wf _ _ _ typeb'). 1,2: auto.
     constructor. auto with pcuic. constructor; eauto. constructor; auto.
     now exists s1. red. auto.
-    assert (Σ ;;; Γ |- tLetIn n b b_ty b' : tLetIn n b b_ty b'_ty). econstructor; eauto.
+    eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2 : auto.
     eapply cumul_red_r.
     apply cumul_refl'. now constructor.
 
   - (* LetIn type annotation *)
+    simplify_dep_elim.
     specialize (forall_u _ Hu).
     eapply type_Cumul.
     econstructor; eauto.
@@ -281,12 +306,13 @@ Proof.
     constructor. auto with pcuic. constructor; eauto. constructor; auto.
     exists s1; auto. red; eauto.
     eapply type_Cumul. eauto. right. exists s1; auto. eapply red_cumul. now eapply red1_red.
-    assert (Σ ;;; Γ |- tLetIn n b b_ty b' : tLetIn n b b_ty b'_ty). econstructor; eauto.
+    eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
     eapply cumul_red_r.
     apply cumul_refl'. now constructor.
 
   - (* Application *)
+    simplify_dep_elim.
     eapply substitution0; eauto.
     pose proof typet as typet'.
     eapply inversion_Lambda in typet' as [s1 [B' [Ht [Hb HU]]]]=>//.
@@ -301,8 +327,9 @@ Proof.
     eapply isWAT_tProd in i as [_ Hs]; intuition auto.
 
   - (* Fixpoint unfolding *)
+    simplify_dep_elim.
     assert (args <> []) by (destruct args; simpl in *; congruence).
-    apply tApp_mkApps_inj in H as [-> Hu]; auto.
+    apply tApp_mkApps_inj in H0 as [-> Hu]; auto.
     rewrite mkApps_nonempty; auto.
     epose (last_nonempty_eq H1). rewrite <- Hu in e1. rewrite <- e1.
     clear e1.
@@ -319,19 +346,21 @@ Proof.
   - todo_sr.
 
   - (* Congruence *)
+    simplify_dep_elim.
     eapply type_Cumul; [eapply type_App| |]; eauto with wf.
     eapply validity. eauto. eauto.
     eapply type_App; eauto. 1,2: auto. eapply red_cumul_inv.
-    eapply (red_red Σ Γ [vass na A] [] [u] [N2]); auto.
+    eapply (red_red Σ _ [vass na A] [] [_] [N2]); auto.
     constructor. constructor.
 
   - todo_sr.
 
   - (* Constant unfolding *)
+    simplify_dep_elim. rename Hu1' into Γ.
     unshelve epose proof (declared_constant_inj decl decl0 _ _); tea; subst decl.
     destruct decl0 as [ty body' univs]; simpl in *; subst body'.
     eapply on_declared_constant in H; tas; cbn in H.
-    rewrite <- (app_context_nil_l Γ).
+    rewrite <- (app_context_nil_l _).
     apply typecheck_closed in H as H'; tas.
     destruct H' as [_ H']. apply andb_and in H'.
     replace (subst_instance_constr u body)
@@ -348,6 +377,7 @@ Proof.
   - todo_sr.
 
   - (* iota reduction *)
+    simplify_dep_elim.
     subst npar.
     clear forall_u forall_u0 X X0.
     pose proof typec as typec''.
@@ -1022,6 +1052,7 @@ Proof.
     * todo_sr.
 
   - (* Case congruence: on a cofix, impossible *)
+    simplify_dep_elim.
     eapply inversion_mkApps in typec as [? [tcof ?]] =>  //.
     eapply type_tCoFix_inv in tcof as [d [[[Hnth wfcofix] ?] ?]] => //.
     unfold unfold_cofix in e.
@@ -1038,6 +1069,7 @@ Proof.
   - todo_sr.
 
   - (* Case congruence on the predicate *)
+    simplify_dep_elim.
     eapply (type_Cumul _ _ _ (mkApps p' (skipn npar args ++ [c]))).
     eapply build_branches_type_red in heq_map_option_out as [brtys' [eqbrtys alleq]]; eauto.
     eapply type_Case; eauto.
@@ -1074,6 +1106,7 @@ Proof.
     * now eapply conv_cumul, conv_sym, red_conv, red_mkApps_f, red1_red.
 
   - (* Case congruence on discriminee *)
+    simplify_dep_elim.
     eapply type_Cumul. eapply type_Case; eauto.
     * solve_all.
     * right.
@@ -1105,6 +1138,7 @@ Proof.
       eapply All2_app; [eapply All2_refl; reflexivity|now constructor].
 
   - (* Case congruence on branches *)
+    simplify_dep_elim.
     eapply type_Case; eauto.
     eapply (OnOne2_All2_All2 o X5).
     intros [] []; simpl. intros.
@@ -1114,6 +1148,7 @@ Proof.
     reflexivity.
 
   - (* Proj CoFix congruence *)
+    simplify_dep_elim.
     assert(typecofix : Σ ;;; Γ |- tProj p (mkApps (tCoFix mfix idx) args0) : subst0 (mkApps (tCoFix mfix idx) args0 :: List.rev args)
       (subst_instance_constr u pdecl.2)).
     { econstructor; eauto. }
@@ -1188,6 +1223,7 @@ Proof.
       eapply X2.
 
   - (* Proj Constructor reduction *)
+    simplify_dep_elim.
     pose proof (env_prop_typing _ _ validity _ _ _ _ _ typec).
     simpl in typec.
     pose proof typec as typec'.
@@ -1551,6 +1587,7 @@ Proof.
   - todo_sr.
 
   - (* Proj congruence: discriminee reduction *)
+    simplify_dep_elim.
     eapply type_Cumul ; [econstructor|..]; eauto.
     eapply validity; eauto.
     instantiate (1:= tProj p c).
@@ -1568,12 +1605,14 @@ Proof.
     rewrite destArity_tInd in dA. discriminate.
 
   - (* Fix congruence *)
+    simplify_dep_elim.
     symmetry in H0; apply mkApps_Fix_spec in H0. simpl in H0. subst args.
     simpl. destruct narg; discriminate.
 
   - todo_sr.
 
   - (* Fix congruence: type reduction *)
+    simplify_dep_elim.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
     assert(convctx : conv_context Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix1)).
     { clear -wf X o fixl.
@@ -1623,6 +1662,7 @@ Proof.
       constructor. apply red1_red. apply red.
 
   - (* Fix congruence in body *)
+    simplify_dep_elim.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
     assert(convctx : fix_context mfix = fix_context mfix1).
     { clear -wf o.
@@ -1667,6 +1707,7 @@ Proof.
   - todo_sr.
 
   - (* CoFix congruence type *)
+    simplify_dep_elim.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
     assert(convctx : conv_context Σ (Γ ,,, fix_context mfix) (Γ ,,, fix_context mfix1)).
     { clear -wf X o fixl.
@@ -1714,6 +1755,7 @@ Proof.
       constructor. apply red1_red. apply red.
 
   - (* CoFix congruence in body *)
+    simplify_dep_elim.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
     assert(convctx : fix_context mfix = fix_context mfix1).
     { clear -wf o.
@@ -1752,6 +1794,7 @@ Proof.
       constructor. noconf eq. simpl in H0; noconf H0. rewrite H3; constructor.
 
   - (* Conversion *)
+    simplify_dep_elim.
     specialize (forall_u _ Hu).
     eapply type_Cumul; eauto.
     destruct X2 as [[wf' _]|[s Hs]].
