@@ -1767,15 +1767,26 @@ Definition sr_stmt {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
   forall u, red Σ Γ t u -> Σ ;;; Γ |- u : T.
 
 Theorem subject_reduction {cf:checker_flags} :
-  forall (Σ : global_env_ext) Γ t u T, wf Σ -> Σ ;;; Γ |- t : T -> red Σ Γ t u -> Σ ;;; Γ |- u : T.
+  forall (Σ : global_env_ext) Γ t u T,
+    wf Σ ->
+    confluenv Σ ->
+    Minimal (eq_universe Σ) ->
+    Σ ;;; Γ |- t : T ->
+    red Σ Γ t u ->
+    Σ ;;; Γ |- u : T.
 Proof.
-  intros * wfΣ Hty Hred.
+  intros * wfΣ cΣ mΣ Hty Hred.
   induction Hred. auto.
-  eapply sr_red1 in IHHred; eauto with wf.
+  eapply sr_red1 in IHHred ; eauto with wf.
 Qed.
 
-Lemma subject_reduction1 {cf:checker_flags} {Σ Γ t u T}
-  : wf Σ.1 -> Σ ;;; Γ |- t : T -> red1 Σ.1 Γ t u -> Σ ;;; Γ |- u : T.
+Lemma subject_reduction1 {cf:checker_flags} {Σ : global_env_ext} {Γ t u T} :
+  wf Σ.1 ->
+  confluenv Σ ->
+  Minimal (eq_universe Σ) ->
+  Σ ;;; Γ |- t : T ->
+  red1 Σ.1 Γ t u ->
+  Σ ;;; Γ |- u : T.
 Proof.
   intros. eapply subject_reduction; try eassumption.
   now apply red1_red.
@@ -1796,12 +1807,14 @@ Section SRContext.
   Qed.
 
   Definition cumul_red_l' `{checker_flags} :
-    forall Σ Γ t u,
+    forall (Σ : global_env_ext) Γ t u,
       wf Σ.1 ->
+      confluenv Σ ->
+      Minimal (eq_universe Σ) ->
       red (fst Σ) Γ t u ->
       Σ ;;; Γ |- t <= u.
   Proof.
-    intros Σ Γ t u hΣ h.
+    intros Σ Γ t u hΣ cΣ mΣ h.
     induction h.
     - eapply cumul_refl'.
     - eapply PCUICConversion.cumul_trans ; try eassumption.
@@ -1891,8 +1904,10 @@ Section SRContext.
   Ltac invs H := inversion H; subst.
   Ltac invc H := inversion H; subst; clear H.
 
-  Lemma subject_reduction_ctx Σ Γ Γ' t T :
+  Lemma subject_reduction_ctx (Σ : global_env_ext) Γ Γ' t T :
     wf Σ.1 ->
+    confluenv Σ ->
+    Minimal (eq_universe Σ) ->
     red1_ctx Σ.1 Γ Γ' ->
     Σ ;;; Γ |- t : T -> Σ ;;; Γ' |- t : T.
   Proof.
@@ -1910,7 +1925,7 @@ Section SRContext.
         apply conv_ctx_refl. destruct p as [red ->].
         constructor; auto; now apply red_conv, red1_red.
       - destruct d as [na [b|] ?]; constructor; auto; constructor; auto. }
-    intros wfΣ r H.
+    intros wfΣ cΣ mΣ r H.
     specialize (X r).
     assert(wf_local Σ Γ').
     apply typing_wf_local in H.
@@ -1944,11 +1959,13 @@ Section SRContext.
     - eapply context_conversion; eauto.
   Qed.
 
-  Lemma wf_local_red1 {Σ Γ Γ'} :
+  Lemma wf_local_red1 {Σ : global_env_ext} {Γ Γ'} :
     wf Σ.1 ->
+    confluenv Σ ->
+    Minimal (eq_universe Σ) ->
     red1_ctx Σ.1 Γ Γ' -> wf_local Σ Γ -> wf_local Σ Γ'.
   Proof.
-    intro hΣ. induction 1; cbn in *.
+    intros hΣ cΣ mΣ. induction 1; cbn in *.
     - intro e. inversion e; subst; cbn in *.
       constructor; tas. destruct X0 as [s Ht]. exists s.
       eapply subject_reduction1; tea.
@@ -1976,11 +1993,15 @@ Section SRContext.
   Qed.
 
 
-  Lemma wf_local_red {Σ Γ Γ'} :
+  Lemma wf_local_red {Σ : global_env_ext} {Γ Γ'} :
     wf Σ.1 ->
-    red_ctx Σ.1 Γ Γ' -> wf_local Σ Γ -> wf_local Σ Γ'.
+    confluenv Σ ->
+    Minimal (eq_universe Σ) ->
+    red_ctx Σ.1 Γ Γ' ->
+    wf_local Σ Γ ->
+    wf_local Σ Γ'.
   Proof.
-    intros hΣ h. apply red_ctx_clos_rt_red1_ctx in h.
+    intros hΣ cΣ mΣ h. apply red_ctx_clos_rt_red1_ctx in h.
     induction h; eauto using wf_local_red1.
     apply eq_context_upto_names_upto_names in e.
     eauto using wf_local_alpha.
@@ -2028,14 +2049,16 @@ Section SRContext.
   Qed.
 
 
-   Lemma isWfArity_red1 {Σ Γ A B} :
-     wf Σ.1 ->
-       red1 (fst Σ) Γ A B ->
-       isWfArity typing Σ Γ A ->
-       isWfArity typing Σ Γ B.
+  Lemma isWfArity_red1 {Σ : global_env_ext} {Γ A B} :
+    wf Σ.1 ->
+    confluenv Σ ->
+    Minimal (eq_universe Σ) ->
+    red1 (fst Σ) Γ A B ->
+    isWfArity typing Σ Γ A ->
+    isWfArity typing Σ Γ B.
    Proof.
-     intro wfΣ. induction 1 using red1_ind_all.
-     all: intros [ctx [s [H1 H2]]]; cbn in *; try discriminate.
+     intros wfΣ cΣ mΣ. induction 1 using red1_ind_all.
+     all: intros [ctx [s0 [H1 H2]]]; cbn in *; try discriminate.
      - rewrite destArity_app in H1.
        case_eq (destArity [] b'); [intros [ctx' s']|]; intro ee;
          [|rewrite ee in H1; discriminate].
@@ -2045,6 +2068,7 @@ Section SRContext.
        rewrite app_context_assoc in H2.
        now eapply wf_local_subst1.
      - rewrite destArity_tFix in H1; discriminate.
+     - admit.
      - rewrite destArity_app in H1.
        case_eq (destArity [] b'); [intros [ctx' s']|]; intro ee;
          rewrite ee in H1; [|discriminate].
@@ -2087,9 +2111,10 @@ Section SRContext.
        destruct IHX as [ctx'' [s'' [ee' ?]]].
        eexists _, s''; split. cbn. rewrite destArity_app ee'. reflexivity.
        now rewrite app_context_assoc.
-   Qed.
+   (* Qed. *)
+   Admitted.
 
-   Lemma isWfArity_red {Σ Γ A B} :
+   (* Lemma isWfArity_red {Σ Γ A B} :
      wf Σ.1 ->
      red (fst Σ) Γ A B ->
      isWfArity typing Σ Γ A ->
@@ -2121,11 +2146,11 @@ Section SRContext.
     - left. eapply isWfArity_red; try eassumption.
     - destruct i as [s HA]. right.
       exists s. eapply subject_reduction; eassumption.
-  Defined.
+  Defined. *)
 
 End SRContext.
 
-Lemma isWAT_tLetIn {cf:checker_flags} {Σ : global_env_ext} (HΣ' : wf Σ)
+(* Lemma isWAT_tLetIn {cf:checker_flags} {Σ : global_env_ext} (HΣ' : wf Σ)
       {Γ} (HΓ : wf_local Σ Γ) {na t A B}
   : isWfArity_or_Type Σ Γ (tLetIn na t A B)
     <~> (isType Σ Γ A × (Σ ;;; Γ |- t : A)
@@ -2161,4 +2186,4 @@ Proof.
         apply HA.π2.
       * apply red1_red.
         apply red_zeta with (b':=tSort sB).
-Defined.
+Defined. *)
