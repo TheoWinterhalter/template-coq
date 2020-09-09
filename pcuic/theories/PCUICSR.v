@@ -178,8 +178,8 @@ Proof.
     discriminate.
 Qed.
 
-Axiom todo_sr : forall {A}, A.
-Tactic Notation "todo_sr" := exact todo_sr.
+(* Axiom todo_sr : forall {A}, A.
+Tactic Notation "todo_sr" := exact todo_sr. *)
 
 Lemma wf_cofixpoint_red1_body {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfix1 :
   wf Σ.1 ->
@@ -256,6 +256,24 @@ Proof.
         end
       ]
     end.
+  all: try solve [
+    subst lhs rhs ; simplify_dep_elim ;
+    exfalso ;
+    apply diff_false_true ;
+    match goal with
+    | h : _ = subst0 ?σ (subst ?ss _ (lhs ?r)),
+      u : untyped_subslet _ ?σ _
+      |- _ =>
+      apply (f_equal isElimSymb) in h ;
+      cbn in h ;
+      rewrite h ;
+      apply isElimSymb_subst ;
+      apply untyped_subslet_length in u ;
+      rewrite u ; rewrite subst_context_length ;
+      eapply isElimSymb_lhs ;
+      eapply declared_symbol_head ; eauto
+    end
+  ].
 
   - (* Rel *)
     simplify_dep_elim.
@@ -269,27 +287,6 @@ Proof.
     now unfold app_context; rewrite firstn_skipn.
     apply o.
 
-  - subst lhs rhs. simplify_dep_elim.
-    exfalso.
-    apply diff_false_true.
-    match goal with
-    | h : _ = subst0 ?σ (subst ?ss _ (lhs ?r)),
-      u : untyped_subslet _ ?σ _
-      |- _ =>
-      apply (f_equal isElimSymb) in h ;
-      cbn in h ;
-      rewrite h ;
-      apply isElimSymb_subst ;
-      apply untyped_subslet_length in u ;
-      rewrite u ; rewrite subst_context_length ;
-      eapply isElimSymb_lhs ;
-      eapply declared_symbol_head ; eauto
-    end.
-
-  - todo_sr.
-
-  - todo_sr.
-
   - (* Prod *)
     simplify_dep_elim.
     constructor; eauto.
@@ -298,8 +295,6 @@ Proof.
     constructor; auto with pcuic.
     constructor; auto.
     exists s1; auto.
-
-  - todo_sr.
 
   - (* Lambda *)
     simplify_dep_elim.
@@ -322,8 +317,6 @@ Proof.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
     eapply cumul_red_r.
     apply cumul_refl'. constructor.
-
-  - todo_sr.
 
   - (* LetIn value *)
     simplify_dep_elim.
@@ -419,10 +412,6 @@ Proof.
     eapply weakening; tea.
     now rewrite app_context_nil_l.
     eapply typing_subst_instance_decl with (Γ0:=[]); tea.
-
-  - todo_sr.
-  - todo_sr.
-  - todo_sr.
 
   - (* iota reduction *)
     simplify_dep_elim.
@@ -1092,7 +1081,7 @@ Proof.
     * simpl in Hbr. rewrite Hbr in a. intuition discriminate.
     * eapply on_declared_minductive => //.
       destruct isdecl; auto.
-    * todo_sr.
+    * eapply H5. destruct declc. eauto.
 
   - (* Case congruence: on a cofix, impossible *)
     simplify_dep_elim.
@@ -1109,7 +1098,12 @@ Proof.
     apply PCUICReflect.eqb_eq in t. rewrite t /= in heq_isCoFinite.
     discriminate.
 
-  - todo_sr.
+  - subst lhs rhs. simplify_dep_elim.
+    eapply X7. 1-3: eauto.
+    subst ss. rewrite <- H.
+    econstructor. all: eauto.
+    eapply All2_impl. 1: eauto.
+    intuition eauto.
 
   - (* Case congruence on the predicate *)
     simplify_dep_elim.
@@ -1655,8 +1649,6 @@ Proof.
     symmetry in H0; apply mkApps_Fix_spec in H0. simpl in H0. subst args.
     simpl. destruct narg; discriminate.
 
-  - todo_sr.
-
   - (* Fix congruence: type reduction *)
     simplify_dep_elim.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
@@ -1749,8 +1741,6 @@ Proof.
     * eapply All_nth_error in X4; eauto.
     * apply conv_cumul, conv_sym, red_conv. destruct disj as [<-|[_ eq]].
       constructor. noconf eq. simpl in H0; noconf H0. rewrite H4; constructor.
-
-  - todo_sr.
 
   - (* CoFix congruence type *)
     simplify_dep_elim.
