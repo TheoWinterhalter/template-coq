@@ -423,7 +423,8 @@ Section Validity.
       + rewrite app_context_nil_l. eapply wf_local_subst_instance. 2: eauto.
         * eapply declared_symbol_wf_global_ext. all: eauto.
         * eapply All_local_env_skipn. auto.
-      + admit.
+      + eapply subslet_symbols_subst. all: auto.
+        apply nth_error_Some_length in heq_nth_error. auto.
 
     - destruct decl as [ty [b|] univs]; simpl in *.
       * eapply declared_constant_inv in X; eauto.
@@ -537,8 +538,7 @@ Section Validity.
     - (* Conv *)
       destruct X2. red in i. left. exact (projT1 i).
       right. destruct s as [u [Hu _]]. now exists u.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
 End Validity.
 
