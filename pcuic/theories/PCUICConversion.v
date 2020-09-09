@@ -569,20 +569,43 @@ Lemma cumul_Prod_r_inv {cf:checker_flags} (Σ : global_env_ext) Γ na' dom' codo
 Qed. *)
 Admitted.
 
-Lemma cumul_Prod_Sort_inv {cf:checker_flags} Σ Γ s na dom codom :
+Lemma cumul_Prod_Sort_inv {cf:checker_flags} (Σ : global_env_ext) Γ s na dom codom :
+  wf Σ ->
   Σ ;;; Γ |- tProd na dom codom <= tSort s -> False.
-(* Proof.
-  intros H; depind H; auto.
+Proof.
+  intros wfΣ H; depind H; auto.
   - now inversion l.
-  - depelim r.
+  - generalize_by_eqs r. destruct r.
+    all: try subst lhs rhs.
+    all: simplify_dep_elim.
     + solve_discr.
-    + eapply IHcumul; reflexivity.
-    + eapply IHcumul; reflexivity.
-  - depelim r. solve_discr.
-  - todoeta.
-  - todoeta.
-Qed. *)
-Admitted.
+    + exfalso.
+      apply diff_false_true.
+      apply (f_equal PCUICParallelReduction.isElimSymb) in H0.
+      cbn in H0.
+      rewrite H0.
+      apply PCUICParallelReduction.isElimSymb_subst.
+      apply untyped_subslet_length in u.
+      rewrite u. rewrite subst_context_length.
+      eapply PCUICParallelReduction.isElimSymb_lhs.
+      eapply PCUICParallelReduction.declared_symbol_head. all: eauto.
+    + eapply IHcumul; auto.
+    + eapply IHcumul; auto.
+  - generalize_by_eqs r. destruct r.
+    all: try subst lhs rhs.
+    all: simplify_dep_elim.
+    + solve_discr.
+    + exfalso.
+      apply diff_false_true.
+      apply (f_equal PCUICParallelReduction.isElimSymb) in H0.
+      cbn in H0.
+      rewrite H0.
+      apply PCUICParallelReduction.isElimSymb_subst.
+      apply untyped_subslet_length in u.
+      rewrite u. rewrite subst_context_length.
+      eapply PCUICParallelReduction.isElimSymb_lhs.
+      eapply PCUICParallelReduction.declared_symbol_head. all: eauto.
+Qed.
 
 Lemma cumul_Prod_Prod_inv {cf:checker_flags} (Σ : global_env_ext) Γ na na' dom dom' codom codom' :
   wf Σ ->
