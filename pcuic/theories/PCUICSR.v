@@ -270,7 +270,21 @@ Proof.
     apply o.
 
   - subst lhs rhs. simplify_dep_elim.
-    todo_sr.
+    exfalso.
+    apply diff_false_true.
+    match goal with
+    | h : _ = subst0 ?σ (subst ?ss _ (lhs ?r)),
+      u : untyped_subslet _ ?σ _
+      |- _ =>
+      apply (f_equal isElimSymb) in h ;
+      cbn in h ;
+      rewrite h ;
+      apply isElimSymb_subst ;
+      apply untyped_subslet_length in u ;
+      rewrite u ; rewrite subst_context_length ;
+      eapply isElimSymb_lhs ;
+      eapply declared_symbol_head ; eauto
+    end.
 
   - todo_sr.
 
