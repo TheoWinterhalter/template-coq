@@ -852,15 +852,32 @@ Proof.
   apply conv_ctx_refl.
 Qed.
 
-Lemma isLambda_red1 Σ Γ b b' : isLambda b -> red1 Σ Γ b b' -> isLambda b'.
+Lemma isLambda_red1 `{cf :checker_flags} Σ Γ b b' :
+  wf Σ ->
+  isLambda b ->
+  red1 Σ Γ b b' ->
+  isLambda b'.
 Proof.
+  intro wfΣ.
   destruct b; simpl; try discriminate.
   intros _ red.
-  (* depelim red.
-  symmetry in H; apply mkApps_Fix_spec in H. simpl in H. intuition.
-  constructor. constructor.
-Qed. *)
-Admitted.
+  generalize_by_eqs red. destruct red.
+  all: try subst lhs rhs.
+  all: simplify_dep_elim.
+  all: try solve [ solve_discr ].
+  - exfalso.
+    apply diff_false_true.
+    apply (f_equal isElimSymb) in H.
+    cbn in H.
+    rewrite H.
+    apply isElimSymb_subst.
+    apply untyped_subslet_length in u.
+    rewrite u. rewrite subst_context_length.
+    eapply isElimSymb_lhs.
+    eapply declared_symbol_head. all: eauto.
+  - reflexivity.
+  - reflexivity.
+Qed.
 
 Lemma Case_Construct_ind_eq {cf:checker_flags} (Σ : global_env_ext) (hΣ : ∥ wf Σ.1 ∥) (cΣ : ∥ confluenv Σ.1 ∥) (mΣ : ∥ Minimal (eq_universe Σ) ∥) (mi : ∥ minimal_inds Σ ∥) (mc : ∥ minimal_cst Σ ∥)
   {Γ ind ind' npar pred i u brs args} :
