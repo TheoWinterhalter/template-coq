@@ -1011,17 +1011,29 @@ Section Inversions.
       red Σ.1 Γ ty ty' *
       red Σ.1 (Γ ,, vdef na d ty) b b')) +
     (red Σ.1 Γ (subst10 d b) C)%type.
-  (* Proof.
+  Proof.
     generalize_eq x (tLetIn na d ty b).
     intros e H. apply red_alt in H.
     revert na d ty b e.
     eapply clos_rt_rt1n_iff in H.
-    induction H; simplify_dep_elim.
+    induction H.
+    all: simplify_dep_elim.
     + left; do 4 eexists. repeat split; eauto with pcuic.
-    + depelim r; try specialize (IHclos_refl_trans_1n _ _ _ _ eq_refl) as
-      [(? & ? & ? & ? & ((? & ?) & ?) & ?)|?].
+    + generalize_by_eqs r. destruct r.
+      all: try subst lhs rhs.
+      all: simplify_dep_elim.
+      all: try specialize (IHclos_refl_trans_1n _ _ _ _ eq_refl) as
+        [(? & ? & ? & ? & ((? & ?) & ?) & ?)|?].
       - right. now apply red_alt, clos_rt_rt1n_iff.
       - solve_discr.
+      - apply (f_equal PCUICParallelReduction.isElimSymb) in H0.
+        cbn in H0. exfalso. apply diff_false_true.
+        rewrite H0.
+        apply PCUICParallelReduction.isElimSymb_subst.
+        apply untyped_subslet_length in u.
+        rewrite u. rewrite subst_context_length.
+        eapply PCUICParallelReduction.isElimSymb_lhs.
+        eapply PCUICParallelReduction.declared_symbol_head. all: eauto.
       - left. do 4 eexists. repeat split; eauto with pcuic.
         * now transitivity r.
         * eapply PCUICConfluence.red_red_ctx; eauto.
@@ -1042,8 +1054,7 @@ Section Inversions.
         transitivity (r {0 := d}); auto.
         eapply (substitution_untyped_let_red _ _ [vdef na d ty] []); eauto.
         rewrite -{1}(subst_empty 0 d). constructor. constructor.
-  Qed. *)
-  Admitted.
+  Qed.
 
   Lemma cumul_red_r_inv :
     forall (Γ : context) T U U',
