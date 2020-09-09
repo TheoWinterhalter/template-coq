@@ -542,12 +542,17 @@ Section Validity.
 
 End Validity.
 
-Lemma validity_term {cf:checker_flags} {Σ Γ t T} :
-  wf Σ.1 -> Σ ;;; Γ |- t : T -> isWfArity_or_Type Σ Γ T.
+Lemma validity_term {cf:checker_flags} {Σ : global_env_ext} {Γ t T} :
+  wf Σ.1 ->
+  confluenv Σ.1 ->
+  Minimal (eq_universe Σ) ->
+  minimal_inds Σ ->
+  minimal_cst Σ ->
+  Σ ;;; Γ |- t : T ->
+  isWfArity_or_Type Σ Γ T.
 Proof.
-  intros. eapply validity; try eassumption.
-(* Defined. *)
-Admitted.
+  intros. eapply validity; eassumption.
+Defined.
 
 (* This corollary relies strongly on validity.
    It should be used instead of the weaker [invert_type_mkApps],
