@@ -43,12 +43,25 @@ Proof.
   - case => /= // _ <-. now left.
 Qed.
 
+(* REWRITE RULES criterion
+  It is global and not local unfortunately.
+*)
+Definition type_preserving `{cf : checker_flags} (Σ : global_env_ext) :=
+  forall k decl n r ui σ Γ A,
+    declared_symbol Σ k decl ->
+    nth_error (rules decl) n = Some r ->
+    let ss := symbols_subst k 0 ui #|symbols decl| in
+    untyped_subslet Γ σ (subst_context ss 0 (pat_context r)) ->
+    Σ ;;; Γ |- subst0 σ (subst ss #|σ| (lhs r)) : A ->
+    Σ ;;; Γ |- subst0 σ (subst ss #|σ| (rhs r)) : A.
+
 (** The subject reduction property of the system: *)
 
 Definition SR_red1 {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
   forall u (Hu : red1 Σ Γ t u),
     confluenv Σ ->
     Minimal (eq_universe Σ) ->
+    type_preserving Σ ->
     Σ ;;; Γ |- u : T.
 
 Lemma wf_fixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfix1 :
@@ -198,15 +211,18 @@ Ltac intro_sym_revert :=
   end.
 
 Lemma sr_red1 {cf:checker_flags} :
-  env_prop SR_red1
-      (fun Σ Γ wfΓ =>
-        All_local_env_over typing (fun  Σ Γ _ t T _ => SR_red1 Σ Γ t T) Σ Γ wfΓ).
+  forall Σ Γ t A,
+    wf Σ.1 ->
+    Σ ;;; Γ |- t : A ->
+    SR_red1 Σ Γ t A.
 Proof.
-  apply typing_ind_env; intros Σ wfΣ Γ wfΓ; unfold SR_red1; intros **;
+  red. intros Σ Γ t A wfΣ. induction 1 ; intros **;
   repeat match goal with
   | h : confluenv _ -> _ |- _ =>
     forward h by auto
   | h : Minimal _ -> _ |- _ =>
+    forward h by auto
+  | h : type_preserving _ -> _ |- _ =>
     forward h by auto
   end ;
   rename_all_hyps; auto;
@@ -214,7 +230,7 @@ Proof.
     | [H : (_ ;;; _ |- _ <= _) |- _ ] => idtac
     | _ =>
       (* depelim Hu ; *)
-      generalize_by_eqs_vars Hu ; destruct Hu ;
+      generalize_by_eqs Hu ; destruct Hu ;
       try solve [ simplify_dep_elim ] ;
       try solve [ simplify_dep_elim ; apply mkApps_Fix_spec in x; noconf x];
       try solve [ simplify_dep_elim ; econstructor; eauto] ;
@@ -231,16 +247,17 @@ Proof.
     end.
 
   - (* Rel *)
-    intro_sym_revert. simplify_dep_elim.
+    simplify_dep_elim.
     rewrite heq_nth_error in e. destruct decl as [na b ty]; noconf e.
     simpl.
-    pose proof (nth_error_All_local_env_over heq_nth_error X); eauto.
+    (* pose proof (nth_error_All_local_env_over heq_nth_error X); eauto.
     destruct lookup_wf_local_decl; cbn in *.
-    rewrite <- (firstn_skipn (S i) Hu1').
+    rewrite <- (firstn_skipn (S n) Γ).
     eapply weakening_length; auto.
     { rewrite firstn_length_le; auto. apply nth_error_Some_length in heq_nth_error. auto with arith. }
     now unfold app_context; rewrite firstn_skipn.
-    apply o.
+    apply o. *)
+    admit.
 
   - subst lhs rhs. simplify_dep_elim.
     todo_sr.
@@ -252,35 +269,56 @@ Proof.
   - (* Prod *)
     simplify_dep_elim.
     constructor; eauto.
-    eapply (context_conversion _ wf _ _ _ typeb).
+    eapply (context_conversion _ wf _ _ _ typeB).
     1,2: auto.
     constructor; auto with pcuic.
-    constructor; auto. exists s1; auto.
+    constructor; auto.
+    eapply typing_wf_local ; eauto.
+    exists s1; auto.
 
   - todo_sr.
 
   - (* Lambda *)
-    simplify_dep_elim. rename Hu1' into Γ, na into n, M into t, N into b.
+    simplify_dep_elim.
     eapply type_Cumul. eapply type_Lambda; eauto.
-    eapply (context_conversion _ wf _ _ _ typeb).
+    eapply (context_conversion _ wf _ _ _ typet).
     1,2: auto.
     constructor; auto with pcuic.
-    constructor; auto. exists s1; auto.
-    assert (Σ ;;; Γ |- tLambda n t b : tProd n t bty). econstructor; eauto.
-    edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
+    constructor; auto. eapply typing_wf_local ; eauto. exists s1; auto.
+    assert (Σ ;;; Γ |- tLambda na A t : tProd na A B). econstructor; eauto.
+    edestruct (validity _ wf _ _ _ X1). apply i. 1,2: auto.
     eapply cumul_red_r.
     apply cumul_refl'. constructor. apply Hu.
 
   - (* LetIn body *)
     simplify_dep_elim.
-    eapply type_Cumul.
-    apply (substitution_let _ _ _ b _ b' b'_ty wf typeb').
+    (* eapply type_Cumul. *)
+    (* apply (substitution_let _ _ _ b _ b' b'_ty wf typeb').
     specialize (typing_wf_local typeb') as wfd.
     eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
     eapply cumul_red_r.
-    apply cumul_refl'. constructor.
+    apply cumul_refl'. constructor. *)
+    todo_sr.
 
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - subst lhs rhs. simplify_dep_elim.
+    eapply X0. 1-3: eauto.
+    subst ss. rewrite <- H0.
+    econstructor. all: eauto.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
+  - todo_sr.
   - todo_sr.
 
   - (* LetIn value *)
@@ -356,7 +394,7 @@ Proof.
   - todo_sr.
 
   - (* Constant unfolding *)
-    simplify_dep_elim. rename Hu1' into Γ.
+    simplify_dep_elim. clear X X0.
     unshelve epose proof (declared_constant_inj decl decl0 _ _); tea; subst decl.
     destruct decl0 as [ty body' univs]; simpl in *; subst body'.
     eapply on_declared_constant in H; tas; cbn in H.
