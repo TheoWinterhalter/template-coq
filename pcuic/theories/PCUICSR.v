@@ -55,6 +55,12 @@ Definition type_preserving `{cf : checker_flags} (Σ : global_env_ext) :=
     Σ ;;; Γ |- subst0 σ (subst ss #|σ| (lhs r)) : A ->
     Σ ;;; Γ |- subst0 σ (subst ss #|σ| (rhs r)) : A.
 
+(* Universe requirement on inductives *)
+Definition minimal_inds `{cf : checker_flags} (Σ : global_env_ext) :=
+  forall mdecl ind idecl,
+    declared_inductive Σ mdecl ind idecl ->
+    Minimal (eq_universe ((Σ.1, ind_universes mdecl) : global_env_ext)).
+
 (** The subject reduction property of the system: *)
 
 Definition SR_red1 {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
@@ -62,6 +68,7 @@ Definition SR_red1 {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
     confluenv Σ ->
     Minimal (eq_universe Σ) ->
     type_preserving Σ ->
+    minimal_inds Σ ->
     Σ ;;; Γ |- u : T.
 
 Lemma wf_fixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfix1 :
@@ -308,7 +315,7 @@ Proof.
   - todo_sr.
   - subst lhs rhs. simplify_dep_elim.
     eapply X0. 1-3: eauto.
-    subst ss. rewrite <- H0.
+    subst ss. rewrite <- H1.
     econstructor. all: eauto.
   - todo_sr.
   - todo_sr.
@@ -323,19 +330,20 @@ Proof.
 
   - (* LetIn value *)
     simplify_dep_elim.
-    eapply type_Cumul.
-    econstructor; eauto.
-    eapply (context_conversion _ wf _ _ _ typeb'). 1,2: auto.
+    (* eapply type_Cumul.
+    econstructor; eauto. *)
+    (* eapply (context_conversion _ wf _ _ _ typeb'). 1,2: auto.
     constructor. auto with pcuic. constructor; eauto. constructor; auto.
     now exists s1. red. auto.
     eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2 : auto.
     eapply cumul_red_r.
-    apply cumul_refl'. now constructor.
+    apply cumul_refl'. now constructor. *)
+    todo_sr.
 
   - (* LetIn type annotation *)
     simplify_dep_elim.
-    specialize (forall_u _ Hu).
+    (* specialize (forall_u _ Hu).
     eapply type_Cumul.
     econstructor; eauto.
     eapply type_Cumul. eauto. right; exists s1; auto.
@@ -347,11 +355,12 @@ Proof.
     eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
     edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
     eapply cumul_red_r.
-    apply cumul_refl'. now constructor.
+    apply cumul_refl'. now constructor. *)
+    todo_sr.
 
   - (* Application *)
     simplify_dep_elim.
-    eapply substitution0; eauto.
+    (* eapply substitution0; eauto.
     pose proof typet as typet'.
     eapply inversion_Lambda in typet' as [s1 [B' [Ht [Hb HU]]]]=>//.
     apply cumul_Prod_inv in HU as [eqA leqB] => //.
@@ -362,11 +371,12 @@ Proof.
     constructor. auto with pcuic. constructor ; eauto.
     constructor; auto with pcuic. red; eauto.
     eapply isWAT_tProd in i as [Hs _]; auto.
-    eapply isWAT_tProd in i as [_ Hs]; intuition auto.
+    eapply isWAT_tProd in i as [_ Hs]; intuition auto. *)
+    todo_sr.
 
   - (* Fixpoint unfolding *)
     simplify_dep_elim.
-    assert (args <> []) by (destruct args; simpl in *; congruence).
+    (* assert (args <> []) by (destruct args; simpl in *; congruence).
     apply tApp_mkApps_inj in H0 as [-> Hu]; auto.
     rewrite mkApps_nonempty; auto.
     epose (last_nonempty_eq H1). rewrite <- Hu in e1. rewrite <- e1.
@@ -379,22 +389,24 @@ Proof.
     eapply type_mkApps. eapply type_Cumul; eauto.
     eapply vT'. 1,2: auto.
     eapply spty.
-    eauto.
+    eauto. *)
+    todo_sr.
 
   - todo_sr.
 
   - (* Congruence *)
     simplify_dep_elim.
-    eapply type_Cumul; [eapply type_App| |]; eauto with wf.
+    (* eapply type_Cumul; [eapply type_App| |]; eauto with wf.
     eapply validity. eauto. eauto.
     eapply type_App; eauto. 1,2: auto. eapply red_cumul_inv.
     eapply (red_red Σ _ [vass na A] [] [_] [N2]); auto.
-    constructor. constructor.
+    constructor. constructor. *)
+    todo_sr.
 
   - todo_sr.
 
   - (* Constant unfolding *)
-    simplify_dep_elim. clear X X0.
+    simplify_dep_elim. (* clear X X0.
     unshelve epose proof (declared_constant_inj decl decl0 _ _); tea; subst decl.
     destruct decl0 as [ty body' univs]; simpl in *; subst body'.
     eapply on_declared_constant in H; tas; cbn in H.
@@ -408,7 +420,8 @@ Proof.
     2-3: rewrite lift_subst_instance_constr lift_closed; cbnr; apply H'.
     eapply weakening; tea.
     now rewrite app_context_nil_l.
-    eapply typing_subst_instance_decl with (Γ0:=[]); tea.
+    eapply typing_subst_instance_decl with (Γ0:=[]); tea. *)
+    todo_sr.
 
   - todo_sr.
   - todo_sr.
