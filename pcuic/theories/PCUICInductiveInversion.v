@@ -326,6 +326,8 @@ Lemma on_constructor_subst {cf:checker_flags} Σ ind mdecl idecl cshape cdecl :
   wf Σ ->
   confluenv Σ ->
   Minimal (eq_universe ((Σ, ind_universes mdecl) : global_env_ext)) ->
+  minimal_inds (Σ, ind_universes mdecl) ->
+  minimal_cst (Σ, ind_universes mdecl) ->
   declared_inductive Σ mdecl ind idecl ->
   on_inductive (lift_typing typing) (Σ, ind_universes mdecl) (inductive_mind ind) mdecl ->
   forall (oib : on_ind_body (lift_typing typing) (Σ, ind_universes mdecl) (inductive_mind ind) mdecl
@@ -343,7 +345,7 @@ Lemma on_constructor_subst {cf:checker_flags} Σ ind mdecl idecl cshape cdecl :
               (cshape_indices cshape)) inst
           (ind_params mdecl ,,, ind_indices oib).
 Proof.
-  move=> wfΣ cΣ mΣ declm oi oib onc.
+  move=> wfΣ cΣ mΣ mi mc declm oi oib onc.
   pose proof (onc.(on_cargs)). simpl in X.
   split. split. split.
   2:{ eapply (weaken_lookup_on_global_env'' _ _ (InductiveDecl mdecl)); pcuic. destruct declm; pcuic. }
@@ -395,6 +397,8 @@ Lemma on_constructor_inst {cf:checker_flags} (Σ : global_env_ext) ind u mdecl i
   wf Σ.1 ->
   confluenv Σ.1 ->
   Minimal (eq_universe ((Σ.1, ind_universes mdecl) : global_env_ext)) ->
+  minimal_inds (Σ.1, ind_universes mdecl) ->
+  minimal_cst (Σ.1, ind_universes mdecl) ->
   declared_inductive Σ.1 mdecl ind idecl ->
   on_inductive (lift_typing typing) (Σ.1, ind_universes mdecl) (inductive_mind ind) mdecl ->
   forall (oib : on_ind_body (lift_typing typing) (Σ.1, ind_universes mdecl) (inductive_mind ind) mdecl
@@ -415,8 +419,8 @@ Lemma on_constructor_inst {cf:checker_flags} (Σ : global_env_ext) ind u mdecl i
           (subst_instance_context u (ind_params mdecl) ,,,
            subst_instance_context u (ind_indices oib)).
 Proof.
-  move=> wfΣ cΣ mΣ declm oi oib onc cext.
-  destruct (on_constructor_subst Σ.1 ind mdecl idecl _ cdecl wfΣ cΣ _ declm oi oib onc) as [[wfext wfl] [inst sp]].
+  move=> wfΣ cΣ mΣ mi mc declm oi oib onc cext.
+  destruct (on_constructor_subst Σ.1 ind mdecl idecl _ cdecl wfΣ cΣ mΣ mi mc declm oi oib onc) as [[wfext wfl] [inst sp]].
   eapply wf_local_subst_instance in wfl; eauto. split=> //.
   eapply spine_subst_inst in sp; eauto.
   rewrite map_app in sp. rewrite -subst_instance_context_app.
@@ -630,8 +634,8 @@ Proof.
   injection Heqp. intros indeq _.
   move: onc Heqp. rewrite -indeq.
   intros onc Heqp. clear Heqp. simpl in onc.
-  unshelve epose proof (on_constructor_inst _ _ _ _ _ _ _ wfΣ cΣ _ decli onmind onind onc const).
-  1: eauto.
+  unshelve epose proof (on_constructor_inst _ _ _ _ _ _ _ wfΣ cΣ _ _ _ decli onmind onind onc const).
+  1-3: eauto.
   destruct onc as [argslength conclhead cshape_eq [cs' t] cargs cinds]; simpl.
   simpl in *.
   unfold type_of_constructor in hs. simpl in hs.

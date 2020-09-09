@@ -559,12 +559,16 @@ Defined.
    which is only used as a stepping stone to validity.
  *)
 Lemma inversion_mkApps :
-  forall `{checker_flags} {Σ Γ t l T},
+  forall `{checker_flags} {Σ : global_env_ext} {Γ t l T},
     wf Σ.1 ->
+    confluenv Σ.1 ->
+    Minimal (eq_universe Σ) ->
+    minimal_inds Σ ->
+    minimal_cst Σ ->
     Σ ;;; Γ |- mkApps t l : T ->
     ∑ A, Σ ;;; Γ |- t : A × typing_spine Σ Γ A l T.
 Proof.
-  (* intros cf Σ Γ f u T wfΣ; induction u in f, T |- *. simpl. intros.
+  intros cf Σ Γ f u T wfΣ cΣ mΣ mi mc; induction u in f, T |- *. simpl. intros.
   { exists T. intuition pcuic. constructor. eapply validity; auto with pcuic.
     eauto. eapply cumul_refl'. }
   intros Hf. simpl in Hf.
@@ -576,11 +580,10 @@ Proof.
     constructor. all:eauto with pcuic.
   - specialize (IHu (tApp f a) T).
     specialize (IHu Hf) as [T' [H' H'']].
-    eapply inversion_App in H' as [na' [A' [B' [Hf' [Ha HA''']]]]]. 2:{ eassumption. }
+    eapply inversion_App in H' as [na' [A' [B' [Hf' [Ha HA''']]]]]. 2-4: auto.
     exists (tProd na' A' B'). intuition; eauto.
     econstructor. eapply validity; eauto with wf.
     eapply cumul_refl'. auto.
-    clear -H'' HA''' wfΣ. depind H''.
+    clear -H'' HA''' wfΣ cΣ mΣ. depind H''.
     econstructor; eauto. eapply cumul_trans; eauto.
-Qed. *)
-Admitted.
+Qed.

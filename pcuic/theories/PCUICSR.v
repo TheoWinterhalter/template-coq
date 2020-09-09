@@ -366,7 +366,7 @@ Proof.
     rewrite mkApps_nonempty; auto.
     epose (last_nonempty_eq H2). rewrite <- Hu in e1. rewrite <- e1.
     clear e1.
-    specialize (inversion_mkApps wf typet) as [T' [appty spty]].
+    specialize (inversion_mkApps wf _ _ H0 mc typet) as [T' [appty spty]].
     specialize (validity _ wf _ _ _ appty) as [_ vT'].
     eapply type_tFix_inv in appty as [T [arg [fn' [[[Hnth wffix] Hty]]]]]; auto.
     rewrite e in Hnth. noconf Hnth.
