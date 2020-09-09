@@ -207,6 +207,36 @@ Section Validity.
     red. simpl. split; auto.
   Qed.
 
+  (* WARNING Not general *)
+  Lemma nth_error_subslet :
+    forall Σ Γ σ Δ,
+      #|Δ| = #|σ| ->
+      (forall n t,
+        nth_error σ n = Some t ->
+        ∑ na A,
+          nth_error Δ n = Some (vass na A) ×
+          Σ ;;; Γ |- t : subst0 (skipn (S n) σ) A
+      ) ->
+      subslet Σ Γ σ Δ.
+  Proof.
+    intros Σ Γ σ Δ e h.
+    induction σ in Δ, e, h |- *.
+    - destruct Δ. 2: discriminate.
+      constructor.
+    - destruct Δ. 1: discriminate.
+      cbn in e.
+      specialize (h 0) as h'.
+      cbn in h'. specialize h' with (1 := eq_refl).
+      destruct h' as [na [A [h1 h2]]]. apply some_inj in h1. subst.
+      constructor.
+      + eapply IHσ.
+        * lia.
+        * intros n t hn. specialize (h (S n) t).
+          cbn in h. forward h by auto.
+          assumption.
+      + unfold skipn in h2. assumption.
+  Qed.
+
   Lemma subslet_symbols_subst :
     forall Σ k n u Δ,
       n < #|Δ| ->
