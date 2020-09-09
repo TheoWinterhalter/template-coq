@@ -1850,11 +1850,13 @@ Theorem subject_reduction {cf:checker_flags} :
     wf Σ ->
     confluenv Σ ->
     Minimal (eq_universe Σ) ->
+    type_preserving Σ ->
+    minimal_inds Σ ->
     Σ ;;; Γ |- t : T ->
     red Σ Γ t u ->
     Σ ;;; Γ |- u : T.
 Proof.
-  intros * wfΣ cΣ mΣ Hty Hred.
+  intros * wfΣ cΣ mΣ tp mi Hty Hred.
   induction Hred. auto.
   eapply sr_red1 in IHHred ; eauto with wf.
 Qed.
@@ -1863,6 +1865,8 @@ Lemma subject_reduction1 {cf:checker_flags} {Σ : global_env_ext} {Γ t u T} :
   wf Σ.1 ->
   confluenv Σ ->
   Minimal (eq_universe Σ) ->
+  type_preserving Σ ->
+  minimal_inds Σ ->
   Σ ;;; Γ |- t : T ->
   red1 Σ.1 Γ t u ->
   Σ ;;; Γ |- u : T.
