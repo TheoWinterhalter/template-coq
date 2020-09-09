@@ -69,20 +69,6 @@ Section Validity.
       simpl. now eapply wf_extends.
   Qed.
 
-  Lemma weaken_env_prop_isWAT :
-    weaken_env_prop
-    (lift_typing
-        (fun (Σ0 : PCUICEnvironment.global_env_ext)
-          (Γ0 : PCUICEnvironment.context) (_ T : term) =>
-          (* confluenv Σ0.1 -> *)
-        isWfArity_or_Type Σ0 Γ0 T)).
-  Proof.
-    red. intros.
-    red in X1 |- *.
-    destruct T. eapply isWfArity_or_Type_extends. all: eauto.
-    destruct X1 as [s Hs]; exists s; now eapply isWfArity_or_Type_extends.
-  Qed.
-
   (* Universe requirement on inductives *)
   Definition minimal_inds `{cf : checker_flags} (Σ : global_env_ext) :=
     forall mdecl ind idecl,
@@ -94,6 +80,96 @@ Section Validity.
     forall cst decl,
       declared_constant Σ cst decl ->
       Minimal (eq_universe ((Σ.1, cst_universes decl) : global_env_ext)).
+
+  Lemma confluenv_sub :
+    forall Σ Σ',
+      extends Σ Σ' ->
+      confluenv Σ' ->
+      confluenv Σ.
+  Proof.
+    intros Σ Σ' e h.
+    destruct e as [Σ1 e]. subst.
+    induction Σ1 in Σ, h |- *.
+    - assumption.
+    - cbn in h. eapply IHΣ1. inversion h. auto.
+  Qed.
+
+  Lemma R_universe_instance_weak :
+    forall Σ Σ' φ u u',
+      extends Σ Σ' ->
+      PCUICEquality.R_universe_instance (eq_universe ((Σ, φ) : global_env_ext)) u u' ->
+      PCUICEquality.R_universe_instance (eq_universe ((Σ', φ) : global_env_ext)) u u'.
+  Admitted.
+
+  Lemma Minimal_sub :
+    forall Σ Σ' φ,
+      extends Σ Σ' ->
+      Minimal (eq_universe ((Σ', φ) : global_env_ext)) ->
+      Minimal (eq_universe ((Σ, φ) : global_env_ext)).
+  Proof.
+    intros Σ Σ' φ e h.
+    constructor. intros u u' ?.
+    eapply h. eapply R_universe_instance_weak. all: eauto.
+  Qed.
+
+  Lemma minimal_inds_sub :
+    forall Σ Σ' φ,
+      wf Σ' ->
+      extends Σ Σ' ->
+      minimal_inds (Σ', φ) ->
+      minimal_inds (Σ, φ).
+  Proof.
+    intros Σ Σ' φ hg e h.
+    intros mdecl ind idecl hd.
+    constructor. intros u u' ?.
+    eapply h.
+    - eapply weakening_env_declared_inductive. all: eauto.
+    - eapply R_universe_instance_weak. all: eauto.
+  Qed.
+
+  Lemma minimal_cst_sub :
+    forall Σ Σ' φ,
+      wf Σ' ->
+      extends Σ Σ' ->
+      minimal_cst (Σ', φ) ->
+      minimal_cst (Σ, φ).
+  Proof.
+    intros Σ Σ' φ hg e h.
+    intros cst decl hd.
+    constructor. intros u u' ?.
+    eapply h.
+    - eapply weakening_env_declared_constant. all: eauto.
+    - eapply R_universe_instance_weak. all: eauto.
+  Qed.
+
+  Lemma weaken_env_prop_isWAT :
+    weaken_env_prop
+    (lift_typing
+        (fun (Σ0 : PCUICEnvironment.global_env_ext)
+          (Γ0 : PCUICEnvironment.context) (_ T : term) =>
+          confluenv Σ0.1 ->
+          Minimal (eq_universe Σ0) ->
+          minimal_inds Σ0 ->
+          minimal_cst Σ0 ->
+        isWfArity_or_Type Σ0 Γ0 T)).
+  Proof.
+    red. intros.
+    red in X1 |- *.
+    destruct T.
+    - intros. eapply isWfArity_or_Type_extends. all: eauto.
+      eapply X1.
+      + eapply confluenv_sub. all: eauto.
+      + eapply Minimal_sub. all: eauto.
+      + eapply minimal_inds_sub. all: eauto.
+      + eapply minimal_cst_sub. all: eauto.
+    - destruct X1 as [s Hs]. exists s.
+      intros. eapply isWfArity_or_Type_extends. all: eauto.
+      eapply Hs.
+      + eapply confluenv_sub. all: eauto.
+      + eapply Minimal_sub. all: eauto.
+      + eapply minimal_inds_sub. all: eauto.
+      + eapply minimal_cst_sub. all: eauto.
+  Qed.
 
   Theorem validity :
     env_prop (fun Σ Γ t T => confluenv Σ.1 -> Minimal (eq_universe Σ) -> minimal_inds Σ -> minimal_cst Σ -> isWfArity_or_Type Σ Γ T)
@@ -224,7 +300,7 @@ Section Validity.
           |- _ =>
           refine (m _ _ h)
         end.
-        (* apply weaken_env_prop_isWAT.
+        apply weaken_env_prop_isWAT.
       * eapply isWAT_weaken; eauto.
         have ond := on_declared_constant _ _ _ wf H.
         do 2 red in ond. simpl in ond.
@@ -253,7 +329,7 @@ Section Validity.
       eapply subslet_inds; eauto. destruct isdecl; eauto.
       now rewrite app_context_nil_l.
 
-    - (* Case predicate application *)
+    (* - Case predicate application
       right. red.
       eapply (isWAT_mkApps_Ind wf isdecl) in X4 as [parsubst [argsubst Hind]]; auto.
       destruct (on_declared_inductive wf isdecl) as [onmind oib]. simpl in Hind.
