@@ -341,35 +341,45 @@ Proof.
   - todoeta. *)
 Qed.
 
-Lemma cumul_Sort_Prod_inv {cf:checker_flags} Σ Γ s na dom codom :
+Lemma cumul_Sort_Prod_inv {cf:checker_flags} (Σ : global_env_ext) Γ s na dom codom :
+  wf Σ ->
   Σ ;;; Γ |- tSort s <= tProd na dom codom ->
   False.
-(* Proof.
+Proof.
+  intro wΣ.
   intros H. depind H.
   - now inversion l.
-  - depelim r. solve_discr.
-  - depelim r.
+  - generalize_by_eqs r. destruct r. all: try subst lhs rhs.
+    all: simplify_dep_elim.
     + solve_discr.
-    + eapply IHcumul. reflexivity.
-    + eapply IHcumul. reflexivity.
-  - destruct e as [nb [A [f [π [e1 e2]]]]].
-    assert (π = ε).
-    { clear - e1. induction π in f, e1 |- *.
-      1: reflexivity.
-      all: solve [
-        cbn in e1 ; apply IHπ in e1 as ? ; subst ;
-        cbn in e1 ; discriminate
-      ].
-    } subst.
-    cbn in e1. subst.
-    cbn in *.
-    (* TODO It seems a bit hard to prove
-      Might be we need a stronger hypothesis on any eta expansion of a sort.
-    *)
-    todoeta.
-  - todoeta.
-Qed. *)
-Admitted.
+    + exfalso.
+      apply diff_false_true.
+      apply (f_equal PCUICParallelReduction.isElimSymb) in H0.
+      cbn in H0.
+      rewrite H0.
+      apply PCUICParallelReduction.isElimSymb_subst.
+      apply untyped_subslet_length in u.
+      rewrite u. rewrite subst_context_length.
+      eapply PCUICParallelReduction.isElimSymb_lhs.
+      eapply PCUICParallelReduction.declared_symbol_head. all: eauto.
+  - generalize_by_eqs r. destruct r. all: try subst lhs rhs.
+    all: simplify_dep_elim.
+    + solve_discr.
+    + exfalso.
+      apply diff_false_true.
+      apply (f_equal PCUICParallelReduction.isElimSymb) in H0.
+      cbn in H0.
+      rewrite H0.
+      apply PCUICParallelReduction.isElimSymb_subst.
+      apply untyped_subslet_length in u.
+      rewrite u. rewrite subst_context_length.
+      eapply PCUICParallelReduction.isElimSymb_lhs.
+      eapply PCUICParallelReduction.declared_symbol_head. all: eauto.
+    + eapply IHcumul. 1: auto.
+      reflexivity.
+    + eapply IHcumul. 1: auto.
+      reflexivity.
+Qed.
 
 Lemma cumul_Sort_l_inv {cf:checker_flags} Σ Γ s T :
   Σ ;;; Γ |- tSort s <= T ->
@@ -1225,7 +1235,7 @@ Proof.
         specialize (IHctx' H0).
         simpl in IHctx'. simpl in X.
         unfold mkProd_or_LetIn in X. simpl in X.
-        eapply cumul_Sort_Prod_inv in X. depelim X.
+        eapply cumul_Sort_Prod_inv in X. 2: auto. depelim X.
   - intros.
     rewrite it_mkProd_or_LetIn_app in X.
     simpl in X.
