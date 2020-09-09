@@ -329,9 +329,9 @@ Section Validity.
       eapply subslet_inds; eauto. destruct isdecl; eauto.
       now rewrite app_context_nil_l.
 
-    (* - Case predicate application
+    - (* Case predicate application *)
       right. red.
-      eapply (isWAT_mkApps_Ind wf isdecl) in X4 as [parsubst [argsubst Hind]]; auto.
+      eapply (isWAT_mkApps_Ind wf _ _ isdecl) in X4 as [parsubst [argsubst Hind]]; auto.
       destruct (on_declared_inductive wf isdecl) as [onmind oib]. simpl in Hind.
       destruct Hind as [[sparsubst sargsubst] cu].
       subst npar.
@@ -387,6 +387,7 @@ Section Validity.
       rewrite subst_instance_context_smash.
       rewrite (spine_subst_subst_to_extended_list_k sppar).
       assumption.
+      eapply H1. destruct isdecl'. eauto.
 
     - (* Fix *)
       eapply nth_error_all in X0; eauto.
@@ -398,7 +399,7 @@ Section Validity.
 
     - (* Conv *)
       destruct X2. red in i. left. exact (projT1 i).
-      right. destruct s as [u [Hu _]]. now exists u. *)
+      right. destruct s as [u [Hu _]]. now exists u.
   (* Qed. *)
   Admitted.
 
