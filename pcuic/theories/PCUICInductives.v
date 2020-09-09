@@ -1298,33 +1298,62 @@ Qed.
 
 Hint Rewrite context_assumptions_app context_assumptions_subst : len.
 
-Lemma red1_destInd (Σ : global_env_ext) Γ t t' ind u :
-  red1 Σ.1 Γ t t' -> destInd (head t) = Some (ind, u) ->
+Lemma destInd_spec :
+  forall t ind u,
+    destInd t = Some (ind, u) ->
+    t = tInd ind u.
+Proof.
+  intros t ind u e.
+  destruct t. all: try discriminate.
+  cbn in e. inversion e.
+  reflexivity.
+Qed.
+
+Lemma red1_destInd `{cf : checker_flags} (Σ : global_env_ext) Γ t t' ind u :
+  wf Σ ->
+  red1 Σ.1 Γ t t' ->
+  destInd (head t) = Some (ind, u) ->
   destInd (head t') = Some (ind, u).
 Proof.
+  intro wfΣ.
   induction 1; simpl in *; try discriminate.
-  unfold head.
-  remember (mkApps (tFix mfix idx) args) eqn:decapp.
-  symmetry in decapp. pose proof (mkApps_Fix_spec _ _ _ _ decapp).
-  destruct (decompose_app t); simpl in *; try discriminate.
-  destruct t0; try discriminate.
-  elim H.
-  (* TODO *)
-  (* rewrite !head_tapp. auto.
-  rewrite !head_tapp. auto.
-Qed. *)
-Admitted.
+  - unfold head.
+    remember (mkApps (tFix mfix idx) args) eqn:decapp.
+    symmetry in decapp. pose proof (mkApps_Fix_spec _ _ _ _ decapp).
+    destruct (decompose_app t); simpl in *; try discriminate.
+    destruct t0; try discriminate.
+    elim H.
+  - unfold head. destruct decompose_app eqn:e1.
+    apply decompose_app_inv in e1 as e2.
+    cbn. intro e3. apply destInd_spec in e3. subst.
+    exfalso.
+    apply diff_false_true.
+    apply (f_equal isElimSymb) in e2.
+    rewrite isElimSymb_mkApps in e2.
+    cbn in e2.
+    rewrite <- e2.
+    apply isElimSymb_subst.
+    apply untyped_subslet_length in u0.
+    rewrite u0. rewrite subst_context_length.
+    eapply isElimSymb_lhs.
+    eapply declared_symbol_head. all: eauto.
+  - rewrite !head_tapp. auto.
+  - rewrite !head_tapp. auto.
+Qed.
 
-Lemma red_destInd (Σ : global_env_ext) Γ t t' ind u :
+Lemma red_destInd `{cf : checker_flags} (Σ : global_env_ext) Γ t t' ind u :
+  wf Σ ->
   red Σ.1 Γ t t' -> destInd (head t) = Some (ind, u) ->
   destInd (head t') = Some (ind, u).
 Proof.
+  intro wfΣ.
   intros r%red_alt.
   apply Relation_Properties.clos_rt_rt1n_iff in r.
   induction r.
   auto.
   intros.
   eapply red1_destInd in H. apply IHr. eauto.
+  eauto.
   eauto.
 Qed.
 
@@ -1478,7 +1507,7 @@ Proof.
   exists ctx', t'; intuition auto.
   exists d; intuition auto.
   destruct destInd as [[ind u']|] eqn:di; auto.
-  now eapply (red_destInd _ _ _ _ _ _ r').
+  now eapply (red_destInd _ _ _ _ _ _ _ r').
 Qed.
 
 Lemma red_it_mkProd_or_LetIn_mkApps_Ind {cf:checker_flags} (Σ : global_env_ext) Γ ctx ind u args v :
