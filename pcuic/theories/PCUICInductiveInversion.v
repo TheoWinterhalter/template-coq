@@ -52,12 +52,14 @@ Lemma declared_constructor_valid_ty {cf:checker_flags} (Σ : global_env_ext) Γ 
   wf Σ.1 ->
   confluenv Σ.1 ->
   Minimal (eq_universe Σ) ->
+  minimal_inds Σ ->
+  minimal_cst Σ ->
   wf_local Σ Γ ->
   declared_constructor Σ.1 mdecl idecl (i, n) cdecl ->
   consistent_instance_ext Σ (ind_universes mdecl) u ->
   isType Σ Γ (type_of_constructor mdecl cdecl (i, n) u).
 Proof.
-  move=> wfΣ cΣ mΣ wfΓ declc Hu.
+  move=> wfΣ cΣ mΣ mi mc wfΓ declc Hu.
   epose proof (env_prop_typing _ _ validity Σ wfΣ Γ (tConstruct i n u)
     (type_of_constructor mdecl cdecl (i, n) u)).
   forward X by eapply type_Construct; eauto.
@@ -67,7 +69,7 @@ Proof.
   destruct s as [cshape [Hsorc Hc]].
   destruct Hc as [_ chead cstr_eq [cs Hcs] _ _].
   destruct cshape. rewrite /cdecl_type in cstr_eq.
-  rewrite cstr_eq in X |- *. clear -wfΣ cΣ mΣ declc X.
+  rewrite cstr_eq in X |- *. clear -wfΣ cΣ mΣ mi mc declc X.
   move: X. simpl.
   rewrite /subst1 !subst_instance_constr_it_mkProd_or_LetIn !subst_it_mkProd_or_LetIn.
   rewrite !subst_instance_constr_mkApps !subst_mkApps.
@@ -568,7 +570,8 @@ Qed.
 
 Lemma Construct_Ind_ind_eq {cf:checker_flags} {Σ : global_env_ext} (wfΣ : wf Σ.1) (cΣ : confluenv Σ.1) (mΣ : Minimal (eq_universe Σ)):
   forall {Γ n i args u i' args' u' mdecl idecl cdecl},
-  Minimal (eq_universe ((Σ.1, ind_universes mdecl) : global_env_ext)) ->
+  minimal_inds Σ ->
+  minimal_cst Σ ->
   Σ ;;; Γ |- mkApps (tConstruct i n u) args : mkApps (tInd i' u') args' ->
   forall (Hdecl : declared_constructor Σ.1 mdecl idecl (i, n) cdecl),
   let '(onind, oib, existT cshape (hnth, onc)) := on_declared_constructor wfΣ Hdecl in
@@ -605,7 +608,7 @@ Lemma Construct_Ind_ind_eq {cf:checker_flags} {Σ : global_env_ext} (wfΣ : wf �
       (skipn mdecl.(ind_npars) args')).
 
 Proof.
-  intros Γ n i args u i' args' u' mdecl idecl cdecl mm h declc.
+  intros Γ n i args u i' args' u' mdecl idecl cdecl mi mc h declc.
   unfold on_declared_constructor.
   destruct (on_declared_constructor _ declc). destruct s as [? [_ onc]].
   unshelve epose proof (env_prop_typing _ _ validity _ _ _ _ _ h) as vi'; eauto using typing_wf_local.
@@ -613,7 +616,7 @@ Proof.
   destruct h as [T [hC hs]].
   apply inversion_Construct in hC
     as [mdecl' [idecl' [cdecl' [hΓ [isdecl [const htc]]]]]]; auto.
-  assert (vty:=declared_constructor_valid_ty _ _ _ _ _ _ _ _ wfΣ cΣ _ hΓ isdecl const).
+  assert (vty:=declared_constructor_valid_ty _ _ _ _ _ _ _ _ wfΣ cΣ _ mi mc hΓ isdecl const).
   eapply typing_spine_strengthen in hs. 5:eapply htc. all:eauto.
   destruct (declared_constructor_inj isdecl declc) as [? [? ?]].
   subst mdecl' idecl' cdecl'. clear isdecl.
@@ -627,7 +630,8 @@ Proof.
   injection Heqp. intros indeq _.
   move: onc Heqp. rewrite -indeq.
   intros onc Heqp. clear Heqp. simpl in onc.
-  pose proof (on_constructor_inst _ _ _ _ _ _ _ wfΣ cΣ _ decli onmind onind onc const).
+  unshelve epose proof (on_constructor_inst _ _ _ _ _ _ _ wfΣ cΣ _ decli onmind onind onc const).
+  1: eauto.
   destruct onc as [argslength conclhead cshape_eq [cs' t] cargs cinds]; simpl.
   simpl in *.
   unfold type_of_constructor in hs. simpl in hs.
@@ -858,12 +862,13 @@ Proof.
 Qed. *)
 Admitted.
 
-Lemma Case_Construct_ind_eq {cf:checker_flags} (Σ : global_env_ext) (hΣ : ∥ wf Σ.1 ∥) (cΣ : ∥ confluenv Σ.1 ∥) (mΣ : ∥ Minimal (eq_universe Σ) ∥)
+Lemma Case_Construct_ind_eq {cf:checker_flags} (Σ : global_env_ext) (hΣ : ∥ wf Σ.1 ∥) (cΣ : ∥ confluenv Σ.1 ∥) (mΣ : ∥ Minimal (eq_universe Σ) ∥) (mi : ∥ minimal_inds Σ ∥) (mc : ∥ minimal_cst Σ ∥)
   {Γ ind ind' npar pred i u brs args} :
   (∑ T, Σ ;;; Γ |- tCase (ind, npar) pred (mkApps (tConstruct ind' i u) args) brs : T) ->
   ind = ind'.
 Proof.
   destruct hΣ as [wΣ]. destruct cΣ as [cΣ]. destruct mΣ as [mΣ].
+  destruct mi as [mi], mc as [mc].
   intros [A h].
   apply inversion_Case in h as ih ; auto.
   destruct ih
@@ -871,31 +876,31 @@ Proof.
     pose proof ht0 as typec.
     eapply inversion_mkApps in typec as [A' [tyc tyargs]]; auto.
     eapply (inversion_Construct Σ wΣ) in tyc as [mdecl' [idecl' [cdecl' [wfl [declc [Hu tyc]]]]]].
-    epose proof (PCUICInductiveInversion.Construct_Ind_ind_eq _ _ _ _ ht0 declc); eauto.
+    epose proof (PCUICInductiveInversion.Construct_Ind_ind_eq _ _ _ _ _ ht0 declc); eauto.
     destruct on_declared_constructor as [[onmind oib] [cs [? ?]]].
     simpl in *.
     intuition auto. auto. auto.
-  Unshelve.
-(* Qed. *)
-Admitted.
+  Unshelve. all: auto.
+Qed.
 
-Lemma Proj_Constuct_ind_eq {cf:checker_flags} Σ (hΣ : ∥ wf Σ.1 ∥) (cΣ : ∥ confluenv Σ.1 ∥) {Γ i i' pars narg c u l} :
+Lemma Proj_Constuct_ind_eq {cf:checker_flags} (Σ : global_env_ext) (hΣ : ∥ wf Σ.1 ∥) (cΣ : ∥ confluenv Σ.1 ∥) (mΣ : ∥ Minimal (eq_universe Σ) ∥) (mi : ∥ minimal_inds Σ ∥) (mc : ∥ minimal_cst Σ ∥) {Γ i i' pars narg c u l} :
   (∑ T, Σ ;;; Γ |- tProj (i, pars, narg) (mkApps (tConstruct i' c u) l) : T) ->
   i = i'.
 Proof.
-  destruct hΣ as [wΣ]. destruct cΣ as [cΣ].
+  destruct hΣ as [wΣ]. destruct cΣ as [cΣ], mΣ as [mΣ].
+  destruct mi as [mi], mc as [mc].
   intros [T h].
   apply inversion_Proj in h ; auto.
   destruct h as [uni [mdecl [idecl [pdecl [args' [? [hc [? ?]]]]]]]].
   pose proof hc as typec.
   eapply inversion_mkApps in typec as [A' [tyc tyargs]]; auto.
   eapply (inversion_Construct Σ wΣ) in tyc as [mdecl' [idecl' [cdecl' [wfl [declc [Hu tyc]]]]]].
-  epose proof (PCUICInductiveInversion.Construct_Ind_ind_eq _ _ _ _ hc declc); eauto.
+  epose proof (PCUICInductiveInversion.Construct_Ind_ind_eq _ _ _ _ _ hc declc); eauto.
   destruct on_declared_constructor as [[onmind oib] [cs [? ?]]].
   simpl in *.
-  intuition auto. auto.
-(* Qed. *)
-Admitted.
+  intuition auto. auto. auto.
+  Unshelve. all: auto.
+Qed.
 
 Lemma Proj_Constuct_projargs {cf:checker_flags} Σ (hΣ : ∥ wf Σ.1 ∥) (cΣ : ∥ confluenv Σ.1 ∥) {Γ i pars narg c u l} :
   (∑ T, Σ ;;; Γ |- tProj (i, pars, narg) (mkApps (tConstruct i c u) l) : T) ->

@@ -55,12 +55,6 @@ Definition type_preserving `{cf : checker_flags} (Σ : global_env_ext) :=
     Σ ;;; Γ |- subst0 σ (subst ss #|σ| (lhs r)) : A ->
     Σ ;;; Γ |- subst0 σ (subst ss #|σ| (rhs r)) : A.
 
-(* Universe requirement on inductives *)
-Definition minimal_inds `{cf : checker_flags} (Σ : global_env_ext) :=
-  forall mdecl ind idecl,
-    declared_inductive Σ mdecl ind idecl ->
-    Minimal (eq_universe ((Σ.1, ind_universes mdecl) : global_env_ext)).
-
 (** The subject reduction property of the system: *)
 
 Definition SR_red1 {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
@@ -69,6 +63,7 @@ Definition SR_red1 {cf:checker_flags} (Σ : global_env_ext) Γ t T :=
     Minimal (eq_universe Σ) ->
     type_preserving Σ ->
     minimal_inds Σ ->
+    minimal_cst Σ ->
     Σ ;;; Γ |- u : T.
 
 Lemma wf_fixpoint_red1_type {cf:checker_flags} (Σ : global_env_ext) Γ mfix mfix1 :
@@ -235,6 +230,8 @@ Proof.
     forward h by auto
   | h : minimal_inds _ -> _ |- _ =>
     forward h by auto
+  | h : minimal_cst _ -> _ |- _ =>
+    forward h by auto
   end ;
   rename_all_hyps; auto;
     match goal with
@@ -304,7 +301,7 @@ Proof.
     constructor; auto with pcuic.
     constructor; auto. exists s1; auto.
     assert (Σ ;;; Γ |- tLambda n t b : tProd n t bty). econstructor; eauto.
-    edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
+    edestruct (validity _ wf _ _ _ X0). apply i. 1-4: auto.
     eapply cumul_red_r.
     apply cumul_refl'. constructor. apply Hu.
 
@@ -314,7 +311,7 @@ Proof.
     apply (substitution_let _ _ _ b _ b' b'_ty wf typeb').
     specialize (typing_wf_local typeb') as wfd.
     eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
-    edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
+    edestruct (validity _ wf _ _ _ X0). apply i. 1-4: auto.
     eapply cumul_red_r.
     apply cumul_refl'. constructor.
 
@@ -326,7 +323,7 @@ Proof.
     constructor. auto with pcuic. constructor; eauto. constructor; auto.
     now exists s1. red. auto.
     eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
-    edestruct (validity _ wf _ _ _ X0). apply i. 1,2 : auto.
+    edestruct (validity _ wf _ _ _ X0). apply i. 1-4 : auto.
     eapply cumul_red_r.
     apply cumul_refl'. now constructor.
 
@@ -342,7 +339,7 @@ Proof.
     exists s1; auto. red; eauto.
     eapply type_Cumul. eauto. right. exists s1; auto. eapply red_cumul. now eapply red1_red.
     eassert (Σ ;;; _ |- tLetIn _ b _ b' : tLetIn _ b _ b'_ty). econstructor; eauto.
-    edestruct (validity _ wf _ _ _ X0). apply i. 1,2: auto.
+    edestruct (validity _ wf _ _ _ X0). apply i. 1-4: auto.
     eapply cumul_red_r.
     apply cumul_refl'. now constructor.
 
@@ -364,6 +361,7 @@ Proof.
   - (* Fixpoint unfolding *)
     simplify_dep_elim.
     assert (args <> []) by (destruct args; simpl in *; congruence).
+    rename H1 into mc, H2 into H1, H3 into H2.
     apply tApp_mkApps_inj in H1 as [-> Hu]; auto.
     rewrite mkApps_nonempty; auto.
     epose (last_nonempty_eq H2). rewrite <- Hu in e1. rewrite <- e1.
@@ -374,20 +372,20 @@ Proof.
     rewrite e in Hnth. noconf Hnth.
     eapply type_App.
     eapply type_mkApps. eapply type_Cumul; eauto.
-    eapply vT'. 1,2: auto.
+    eapply vT'. 1-4: auto.
     eapply spty.
     eauto.
 
   - subst lhs rhs. simplify_dep_elim.
     eapply X5. 1-3: eauto.
-    subst ss. rewrite <- H1.
+    subst ss. rewrite <- H2.
     econstructor. all: eauto.
 
   - (* Congruence *)
     simplify_dep_elim.
     eapply type_Cumul; [eapply type_App| |]; eauto with wf.
     eapply validity. eauto. eauto.
-    eapply type_App; eauto. 1,2: auto. eapply red_cumul_inv.
+    eapply type_App; eauto. 1-4: auto. eapply red_cumul_inv.
     eapply (red_red Σ _ [vass na A] [] [_] [N2]); auto.
     constructor. constructor.
 
@@ -872,7 +870,7 @@ Proof.
          simpl.
          apply wf_arity_spine_typing_spine => //.
          split.
-         unshelve epose proof (declared_constructor_valid_ty _ _ _ _ _ _ _ u1 wf _ _ (spine_dom_wf _ _ _ _ _ instsp) _ Hu); eauto.
+         unshelve epose proof (declared_constructor_valid_ty _ _ _ _ _ _ _ u1 wf _ _ _ _ (spine_dom_wf _ _ _ _ _ instsp) _ Hu); eauto.
          split; eauto.
          right; eauto.
 
@@ -1081,7 +1079,6 @@ Proof.
     * simpl in Hbr. rewrite Hbr in a. intuition discriminate.
     * eapply on_declared_minductive => //.
       destruct isdecl; auto.
-    * eapply H5. destruct declc. eauto.
 
   - (* Case congruence: on a cofix, impossible *)
     simplify_dep_elim.
@@ -1254,20 +1251,20 @@ Proof.
     ** rewrite -projs_inst_lift.
       rewrite -subst_projs_inst.
       assert (p.2 = context_assumptions (cshape_args c) - (context_assumptions (cshape_args c) - p.2)) by lia.
-      rewrite {1}H2. rewrite -skipn_projs map_skipn subst_projs_inst.
+      rewrite {1}H3. rewrite -skipn_projs map_skipn subst_projs_inst.
       eapply untyped_subslet_skipn. destruct p as [[[? ?] ?] ?]. simpl in *.
       rewrite /indsubst.
       eapply X2.
 
   - (* Proj Constructor reduction *)
-    simplify_dep_elim.
+    simplify_dep_elim. rename H2 into mc.
     pose proof (env_prop_typing _ _ validity _ _ _ _ _ typec).
     simpl in typec.
     pose proof typec as typec'.
     eapply inversion_mkApps in typec as [A [tyc tyargs]]; auto.
     eapply (inversion_Construct Σ wf) in tyc as [mdecl' [idecl' [cdecl' [wfl [declc [Hu tyc]]]]]]. 2,3: auto.
     pose proof typec' as typec''.
-    unshelve eapply Construct_Ind_ind_eq in typec'; eauto. 2: eapply H1. 2: destruct declc ; eauto.
+    unshelve eapply Construct_Ind_ind_eq in typec'; eauto.
     unfold on_declared_constructor in typec'.
     destruct declc as [decli declc].
     unfold on_declared_inductive in typec'.
@@ -1304,7 +1301,7 @@ Proof.
     rewrite firstn_length_le. lia. lia.
     rewrite nth_error_app_ge in e. lia.
     rewrite H in e. replace (ind_npars mdecl + narg - ind_npars mdecl) with narg in e by lia.
-    epose proof (declared_constructor_valid_ty _ _ _ _ _ 0 cdecl' _ wf _ _ wfΓ) as Hty.
+    epose proof (declared_constructor_valid_ty _ _ _ _ _ 0 cdecl' _ wf _ _ _ _ wfΓ) as Hty.
     forward Hty by (split; eauto).
     forward Hty. eapply Hu.
     unfold type_of_constructor in tyargs, Hty.
@@ -1700,7 +1697,7 @@ Proof.
       constructor. apply red1_red. apply red.
 
   - (* Fix congruence in body *)
-    simplify_dep_elim.
+    simplify_dep_elim. rename H4 into mc.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
     assert(convctx : fix_context mfix = fix_context mfix1).
     { clear -wf o.
@@ -1791,7 +1788,7 @@ Proof.
       constructor. apply red1_red. apply red.
 
   - (* CoFix congruence in body *)
-    simplify_dep_elim.
+    simplify_dep_elim. rename H4 into mc.
     assert(fixl :#|fix_context mfix| = #|fix_context mfix1|) by now (rewrite !fix_context_length; apply (OnOne2_length o)).
     assert(convctx : fix_context mfix = fix_context mfix1).
     { clear -wf o.
@@ -1837,7 +1834,7 @@ Proof.
     now left.
     now right.
 
-  Unshelve. eauto.
+  Unshelve. all:eauto.
 Qed.
 
 Print Assumptions sr_red1.
@@ -1852,11 +1849,12 @@ Theorem subject_reduction {cf:checker_flags} :
     Minimal (eq_universe Σ) ->
     type_preserving Σ ->
     minimal_inds Σ ->
+    minimal_cst Σ ->
     Σ ;;; Γ |- t : T ->
     red Σ Γ t u ->
     Σ ;;; Γ |- u : T.
 Proof.
-  intros * wfΣ cΣ mΣ tp mi Hty Hred.
+  intros * wfΣ cΣ mΣ tp mi mc Hty Hred.
   induction Hred. auto.
   eapply sr_red1 in IHHred ; eauto with wf.
 Qed.
@@ -1867,6 +1865,7 @@ Lemma subject_reduction1 {cf:checker_flags} {Σ : global_env_ext} {Γ t u T} :
   Minimal (eq_universe Σ) ->
   type_preserving Σ ->
   minimal_inds Σ ->
+  minimal_cst Σ ->
   Σ ;;; Γ |- t : T ->
   red1 Σ.1 Γ t u ->
   Σ ;;; Γ |- u : T.
@@ -1875,7 +1874,7 @@ Proof.
   now apply red1_red.
 Defined.
 
-Section SRContext.
+(* Section SRContext.
   Context {cf:checker_flags}.
 
   (* todo: rename wf_local_app *)
@@ -2269,4 +2268,4 @@ Proof.
         apply HA.π2.
       * apply red1_red.
         apply red_zeta with (b':=tSort sB).
-Defined. *)
+Defined. *) *)

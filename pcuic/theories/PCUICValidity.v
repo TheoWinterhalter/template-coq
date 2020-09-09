@@ -83,12 +83,24 @@ Section Validity.
     destruct X1 as [s Hs]; exists s; now eapply isWfArity_or_Type_extends.
   Qed.
 
+  (* Universe requirement on inductives *)
+  Definition minimal_inds `{cf : checker_flags} (Σ : global_env_ext) :=
+    forall mdecl ind idecl,
+      declared_inductive Σ mdecl ind idecl ->
+      Minimal (eq_universe ((Σ.1, ind_universes mdecl) : global_env_ext)).
+
+  (* Universe requirement on constants *)
+  Definition minimal_cst `{cf : checker_flags} (Σ : global_env_ext) :=
+    forall cst decl,
+      declared_constant Σ cst decl ->
+      Minimal (eq_universe ((Σ.1, cst_universes decl) : global_env_ext)).
+
   Theorem validity :
-    env_prop (fun Σ Γ t T => confluenv Σ.1 -> Minimal (eq_universe Σ) -> isWfArity_or_Type Σ Γ T)
+    env_prop (fun Σ Γ t T => confluenv Σ.1 -> Minimal (eq_universe Σ) -> minimal_inds Σ -> minimal_cst Σ -> isWfArity_or_Type Σ Γ T)
       (fun Σ Γ wfΓ =>
       All_local_env_over typing
       (fun (Σ : global_env_ext) (Γ : context) (_ : wf_local Σ Γ)
-         (t T : term) (_ : Σ;;; Γ |- t : T) => confluenv Σ.1 -> Minimal (eq_universe Σ) -> isWfArity_or_Type Σ Γ T) Σ Γ
+         (t T : term) (_ : Σ;;; Γ |- t : T) => confluenv Σ.1 -> Minimal (eq_universe Σ) -> minimal_inds Σ -> minimal_cst Σ -> isWfArity_or_Type Σ Γ T) Σ Γ
       wfΓ).
   Proof.
     apply typing_ind_env; intros (* ; rename_all_hyps *).
@@ -96,6 +108,10 @@ Section Validity.
     | h : confluenv _ -> _ |- _ =>
       forward h by auto
     | h : Minimal _ -> _ |- _ =>
+      forward h by auto
+    | h : minimal_inds _ -> _ |- _ =>
+      forward h by auto
+    | h : minimal_cst _ -> _ |- _ =>
       forward h by auto
     end.
     all: rename_all_hyps.
@@ -122,7 +138,7 @@ Section Validity.
       destruct X3.
       + left. destruct i as [ctx [s [Heq Hs]]].
         red. simpl. pose proof (PCUICClosed.destArity_spec [] bty).
-        rewrite Heq in H0. simpl in H0. subst bty. clear Heq.
+        rewrite Heq in H2. simpl in H2. subst bty. clear Heq.
         eexists _, s. split; auto.
         * rewrite destArity_it_mkProd_or_LetIn. simpl. reflexivity.
         * apply All_local_env_app_inv; split; auto.
@@ -148,7 +164,7 @@ Section Validity.
         eexists _, s.
         simpl. split; auto.
         pose proof (PCUICClosed.destArity_spec [] b'_ty).
-        rewrite Heq in H0. simpl in H0. subst b'_ty.
+        rewrite Heq in H2. simpl in H2. subst b'_ty.
         rewrite destArity_it_mkProd_or_LetIn. simpl.
         reflexivity. rewrite app_context_assoc. simpl.
         apply All_local_env_app_inv; split; eauto with wf.
@@ -165,11 +181,11 @@ Section Validity.
     - (* Application *)
       destruct X1 as [[ctx [s [Heq Hs]]]|].
       simpl in Heq. pose proof (PCUICClosed.destArity_spec ([],, vass na A) B).
-      rewrite Heq in H0.
-      simpl in H0. unfold mkProd_or_LetIn in H0. simpl in H0.
-      destruct ctx using rev_ind; noconf H0.
-      simpl in H0. rewrite it_mkProd_or_LetIn_app in H0. simpl in H0.
-      destruct x as [na' [b|] ty]; noconf H0.
+      rewrite Heq in H2.
+      simpl in H2. unfold mkProd_or_LetIn in H2. simpl in H2.
+      destruct ctx using rev_ind; noconf H2.
+      simpl in H2. rewrite it_mkProd_or_LetIn_app in H2. simpl in H2.
+      destruct x as [na' [b|] ty]; noconf H2.
       left. eexists _, s. split.
       unfold subst1. rewrite subst_it_mkProd_or_LetIn.
       rewrite destArity_it_mkProd_or_LetIn. simpl. reflexivity.
@@ -201,6 +217,13 @@ Section Validity.
         red in X. simpl in X.
         eapply isWAT_weaken; eauto.
         eapply (isWAT_subst_instance_decl (Γ:=[])); eauto.
+        eapply X. 1-4: eauto.
+        match goal with
+        | h : declared_constant _ _ _,
+          m : minimal_cst _
+          |- _ =>
+          refine (m _ _ h)
+        end.
         (* apply weaken_env_prop_isWAT.
       * eapply isWAT_weaken; eauto.
         have ond := on_declared_constant _ _ _ wf H.
