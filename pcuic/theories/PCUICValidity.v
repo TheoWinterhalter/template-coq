@@ -171,6 +171,70 @@ Section Validity.
       + eapply minimal_cst_sub. all: eauto.
   Qed.
 
+  (* TODO MOVE *)
+  Lemma declared_symbol_inv Σ P cst decl :
+    weaken_env_prop (lift_typing P) ->
+    wf Σ ->
+    Forall_decls_typing P Σ ->
+    declared_symbol Σ cst decl ->
+    on_rewrite_decl (lift_typing P) (Σ, rew_universes decl) cst decl.
+  Proof.
+    intros.
+    eapply weaken_lookup_on_global_env in X1; eauto. apply X1.
+  Qed.
+
+  (* TODO MOVE *)
+  Lemma on_declared_symbol Σ cst decl :
+    wf Σ ->
+    declared_symbol Σ cst decl ->
+    on_rewrite_decl (lift_typing typing) (Σ, rew_universes decl) cst decl.
+  Proof.
+    intros.
+    eapply declared_symbol_inv. all: eauto.
+    apply weaken_env_prop_typing.
+  Qed.
+
+  (* TODO MOVE *)
+  Lemma declared_symbol_wf_global_ext Σ k decl :
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    wf_global_ext Σ (rew_universes decl).
+  Proof.
+    intros wfΣ decli.
+    epose proof (weaken_lookup_on_global_env'' _ _ (RewriteDecl decl) wfΣ decli); eauto with pcuic.
+    split; auto.
+    epose proof (weaken_lookup_on_global_env' _ _ (RewriteDecl decl) wfΣ decli); eauto.
+    red. simpl. split; auto.
+  Qed.
+
+  Lemma subslet_symbols_subst :
+    forall Σ k n u Δ,
+      n < #|Δ| ->
+      subslet Σ [] (symbols_subst k (S n) u #|Δ|)
+        (subst_instance_context u (skipn (S n) (map (vass nAnon) Δ))).
+  Proof.
+    intros Σ k n u Δ h.
+    unfold symbols_subst.
+    set (m := #|Δ| - S n).
+    replace (S n) with (#|Δ| - m) by lia.
+    assert (h' : m < #|Δ|) by lia.
+    clearbody m. clear h.
+    induction m in Δ, h' |- *.
+    - cbn.
+      replace (#|Δ| - 0) with #|map (vass nAnon) Δ|.
+      2:{ rewrite map_length. lia. }
+      rewrite skipn_all. constructor.
+    - cbn. destruct Δ as [| d Δ _] using list_rect_rev. 1: cbn in h' ; lia.
+      rewrite app_length in h'. cbn in h'.
+      rewrite app_length. cbn.
+      replace (#|Δ| + 1 - S m) with (#|Δ| - m) by lia.
+      rewrite map_app. rewrite skipn_app.
+      rewrite map_length.
+      replace (#|Δ| - m - #|Δ|) with 0 by lia.
+      rewrite skipn_0. cbn.
+      (* Is it wrong, or a wrong proof? *)
+  Abort.
+
   Theorem validity :
     env_prop (fun Σ Γ t T => confluenv Σ.1 -> Minimal (eq_universe Σ) -> minimal_inds Σ -> minimal_cst Σ -> isWfArity_or_Type Σ Γ T)
       (fun Σ Γ wfΓ =>
@@ -286,7 +350,25 @@ Section Validity.
         simpl in b. eapply cumul_trans. auto. auto. auto. 2:eauto.
         constructor. constructor. simpl. apply leq_universe_product.
 
-    - admit.
+    - eapply isWAT_weaken. 1,2: eauto.
+      apply on_declared_symbol in H as ond. 2: auto.
+      red in ond. destruct ond as [hctx ?].
+      red in hctx.
+      eapply All_local_env_lookup in hctx as hn.
+      2:{ rewrite nth_error_map. erewrite heq_nth_error. cbn. reflexivity. }
+      red in hn. cbn in hn.
+      destruct hn as [s hty].
+      eapply isWAT_subst.
+      4:{
+        rewrite app_context_nil_l.
+        eapply (isWAT_subst_instance_decl); eauto.
+        right. exists s. cbn. eauto.
+      }
+      + auto.
+      + rewrite app_context_nil_l. eapply wf_local_subst_instance. 2: eauto.
+        * eapply declared_symbol_wf_global_ext. all: eauto.
+        * eapply All_local_env_skipn. auto.
+      + admit.
 
     - destruct decl as [ty [b|] univs]; simpl in *.
       * eapply declared_constant_inv in X; eauto.
