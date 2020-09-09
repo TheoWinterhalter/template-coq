@@ -237,33 +237,58 @@ Section Validity.
       + unfold skipn in h2. assumption.
   Qed.
 
-  Lemma subslet_symbols_subst :
-    forall Σ k n u Δ,
-      n < #|Δ| ->
-      subslet Σ [] (symbols_subst k (S n) u #|Δ|)
-        (subst_instance_context u (skipn (S n) (map (vass nAnon) Δ))).
+  Lemma skipn_list_make :
+    forall A (f : nat -> A) i n m,
+      skipn m (list_make f i n) = list_make f (i + m) (n - m).
   Proof.
-    intros Σ k n u Δ h.
+    intros A f i n m.
+    induction n in i, m |- *.
+    - cbn. rewrite skipn_nil. reflexivity.
+    - cbn. destruct m.
+      + rewrite skipn_0. replace (i + 0) with i by lia. reflexivity.
+      + rewrite skipn_S. rewrite IHn. f_equal. lia.
+  Qed.
+
+  Lemma skipn_symbols_subst :
+    forall k n u l m,
+      skipn m (symbols_subst k n u l) = symbols_subst k (n + m) u l.
+  Proof.
+    intros k n u l m.
     unfold symbols_subst.
-    set (m := #|Δ| - S n).
-    replace (S n) with (#|Δ| - m) by lia.
-    assert (h' : m < #|Δ|) by lia.
-    clearbody m. clear h.
-    induction m in Δ, h' |- *.
-    - cbn.
-      replace (#|Δ| - 0) with #|map (vass nAnon) Δ|.
-      2:{ rewrite map_length. lia. }
-      rewrite skipn_all. constructor.
-    - cbn. destruct Δ as [| d Δ _] using list_rect_rev. 1: cbn in h' ; lia.
-      rewrite app_length in h'. cbn in h'.
-      rewrite app_length. cbn.
-      replace (#|Δ| + 1 - S m) with (#|Δ| - m) by lia.
-      rewrite map_app. rewrite skipn_app.
-      rewrite map_length.
-      replace (#|Δ| - m - #|Δ|) with 0 by lia.
-      rewrite skipn_0. cbn.
-      (* Is it wrong, or a wrong proof? *)
-  Abort.
+    rewrite skipn_list_make. f_equal. lia.
+  Qed.
+
+  Lemma subslet_symbols_subst :
+    forall Σ k n u decl,
+      declared_symbol Σ.1 k decl ->
+      consistent_instance_ext Σ (rew_universes decl) u ->
+      n < #|symbols decl| ->
+      subslet Σ [] (symbols_subst k (S n) u #|symbols decl|)
+      (subst_instance_context u (skipn (S n) (map (vass nAnon) (symbols decl)))).
+  Proof.
+    intros Σ k n u decl hdecl hcu h.
+    apply nth_error_subslet.
+    - rewrite subst_instance_context_length.
+      rewrite symbols_subst_length.
+      rewrite skipn_length.
+      { rewrite map_length. lia. }
+      rewrite map_length. reflexivity.
+    - intros m t hm.
+      eapply PCUICParallelReduction.symbols_subst_nth_error in hm as ?.
+      subst.
+      unfold subst_instance_context. unfold map_context.
+      rewrite nth_error_map. rewrite nth_error_skipn.
+      apply nth_error_Some_length in hm as hl.
+      rewrite symbols_subst_length in hl.
+      rewrite nth_error_map.
+      destruct (nth_error (symbols decl) _) eqn:e1.
+      2:{ apply nth_error_None in e1. lia. }
+      cbn. eexists _,_. intuition eauto.
+      rewrite skipn_symbols_subst.
+      replace (S n + S m) with (S (m + S n)) by lia.
+      eapply type_Symb. all: auto.
+      cbn. rewrite <- e1. f_equal. lia.
+  Qed.
 
   Theorem validity :
     env_prop (fun Σ Γ t T => confluenv Σ.1 -> Minimal (eq_universe Σ) -> minimal_inds Σ -> minimal_cst Σ -> isWfArity_or_Type Σ Γ T)
