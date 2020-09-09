@@ -1775,6 +1775,8 @@ Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
   Definition lift_context := lift_context.
   Definition subst_telescope := subst_telescope.
   Definition lift := lift.
+  Definition closedn := closedn.
+  Definition closedn_ctx := closedn_ctx.
   Definition inds := inds.
   Definition elim_pattern := elim_pattern.
   Definition linear := @linear.
@@ -2245,55 +2247,11 @@ Proof.
            simpl in IH. simpl. exists s. apply IH.
            constructor 1. simpl. lia.
       * eapply All_impl. 1: eassumption.
-        intros rw [T onlhs onrhs onhead onlin onelims asscon].
-        exists T.
-        -- match type of IH with
-           | ?T -> _ =>
-             unshelve epose (y := _ : T)
-           end.
-           ++ exists (Σ, udecl). exists X13.
-              unshelve eexists _, _, _.
-              4: exact onlhs.
-           ++ specialize (IH y). subst y. simpl in IH.
-              apply IH. constructor 1. simpl. lia.
-        -- match type of IH with
-           | ?T -> _ =>
-             unshelve epose (y := _ : T)
-           end.
-           ++ exists (Σ, udecl). exists X13.
-              unshelve eexists _, _, _.
-              4: exact onrhs.
-           ++ specialize (IH y). subst y. simpl in IH.
-              apply IH. constructor 1. simpl. lia.
-        -- assumption.
-        -- assumption.
-        -- assumption.
-        -- assumption.
+        intros rw [onlhs onrhs onhead onlin onelims asscon].
+        constructor. all: assumption.
       * eapply All_impl. 1: exact hpr.
-        intros rw [T onlhs onrhs onhead onlin onelims asscon].
-        exists T.
-        -- match type of IH with
-          | ?T -> _ =>
-            unshelve epose (y := _ : T)
-          end.
-          ++ exists (Σ, udecl). exists X13.
-             unshelve eexists _, _, _.
-             4: exact onlhs.
-          ++ specialize (IH y). subst y. simpl in IH.
-             apply IH. constructor 1. simpl. lia.
-        -- match type of IH with
-          | ?T -> _ =>
-            unshelve epose (y := _ : T)
-          end.
-          ++ exists (Σ, udecl). exists X13.
-             unshelve eexists _, _, _.
-             4: exact onrhs.
-          ++ specialize (IH y). subst y. simpl in IH.
-             apply IH. constructor 1. simpl. lia.
-        -- assumption.
-        -- assumption.
-        -- assumption.
-        -- assumption.
+        intros rw [onlhs onrhs onhead onlin onelims asscon].
+        constructor. all: assumption.
       * eapply All_impl. 1: exact hprr.
         cbn. intros rw h. auto.
 

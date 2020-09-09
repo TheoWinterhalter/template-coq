@@ -10,12 +10,6 @@ Require Import Equations.Prop.DepElim.
 
 (** * Lemmas about the [closedn] predicate *)
 
-Definition closed_decl n d :=
-  option_default (closedn n) d.(decl_body) true && closedn n d.(decl_type).
-
-Definition closedn_ctx n ctx :=
-  forallb id (mapi (fun k d => closed_decl (n + k) d) (List.rev ctx)).
-
 Notation closed_ctx ctx := (closedn_ctx 0 ctx).
 
 Lemma lift_decl_closed n k d : closed_decl k d -> lift_decl n k d = d.
@@ -789,23 +783,11 @@ Proof.
     + eapply All_local_env_impl. 1: eassumption.
       intros. eapply X. all: auto.
     + eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onlin onelims oncon].
-      exists T.
-      * eapply X. all: eauto.
-      * eapply X. all: eauto.
-      * assumption.
-      * assumption.
-      * assumption.
-      * assumption.
+      intros rw [onlhs onrhs onhead onlin onelims oncon].
+      constructor. all: assumption.
     + eapply All_impl. 1: exact hpr.
-      intros rw [T onlhs onrhs onhead onlin onelims oncon].
-      exists T.
-      * eapply X. all: eauto.
-      * eapply X. all: eauto.
-      * assumption.
-      * assumption.
-      * assumption.
-      * assumption.
+      intros rw [onlhs onrhs onhead onlin onelims oncon].
+      constructor. all: assumption.
     + cbn. eapply All_impl. 1: exact hprr.
       cbn. intros x h. assumption.
 Qed.
@@ -916,12 +898,8 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply All_nth_error in hr. 2: eassumption.
-  destruct hr as [T hl hr hh he]. clear - wfΣ' hl.
-  eapply typing_wf_local in hl.
-  apply wf_local_closed_ctx in hl. 2: auto.
-  rewrite closedn_ctx_app in hl.
-  apply MCProd.andP in hl as [? h]. cbn in h.
-  rewrite map_length in h. assumption.
+  destruct hr as [hc hl hr hh he]. clear - wfΣ' hc.
+  rewrite map_length in hc. assumption.
 Qed.
 
 Lemma closed_declared_symbol_par_pat_context `{checker_flags} :
@@ -938,12 +916,8 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply All_nth_error in hpr. 2: eassumption.
-  destruct hpr as [T hl hpr hh he]. clear - wfΣ' hl.
-  eapply typing_wf_local in hl.
-  apply wf_local_closed_ctx in hl. 2: auto.
-  rewrite closedn_ctx_app in hl.
-  apply MCProd.andP in hl as [? h]. cbn in h.
-  rewrite map_length in h. assumption.
+  destruct hpr as [hc hl hpr hh he]. clear - wfΣ' hc.
+  rewrite map_length in hc. assumption.
 Qed.
 
 Lemma closed_declared_symbol_par_context `{checker_flags} :
@@ -960,10 +934,10 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply All_nth_error in hpr. 2: eassumption.
-  destruct hpr as [T hl hpr hh he]. clear - wfΣ' hl.
-  eapply typing_wf_local in hl.
-  apply wf_local_closed_ctx in hl. 2: auto.
-  assumption.
+  destruct hpr as [hc hl hpr hh he].
+  rewrite closedn_ctx_app. cbn. rewrite hc.
+  red in hctx. eapply wf_local_closed_ctx in hctx. 2: auto.
+  rewrite hctx. reflexivity.
 Qed.
 
 Lemma closed_rule_lhs `{checker_flags} :
@@ -980,13 +954,11 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr hpr]].
   eapply nth_error_all in hn. 2: eassumption.
-  destruct hn as [T h _ _ _]. simpl in *.
-  eapply typecheck_closed in h.
-  2: assumption.
-  destruct h as [_ h].
-  apply MCProd.andP in h. destruct h as [h _].
-  rewrite app_context_length in h.
+  destruct hn as [_ h _ _ _].
   rewrite map_length in h.
+  replace (#|pat_context r| + #|symbols decl|)
+  with (#|symbols decl| + #|pat_context r|)
+  by lia.
   assumption.
 Qed.
 
@@ -1004,13 +976,11 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr hpr]].
   eapply nth_error_all in hn. 2: eassumption.
-  destruct hn as [T _ h _ _]. simpl in *.
-  eapply typecheck_closed in h.
-  2: assumption.
-  destruct h as [_ h].
-  apply MCProd.andP in h. destruct h as [h _].
-  rewrite app_context_length in h.
+  destruct hn as [_ _ h _ _].
   rewrite map_length in h.
+  replace (#|pat_context r| + #|symbols decl|)
+  with (#|symbols decl| + #|pat_context r|)
+  by lia.
   assumption.
 Qed.
 
@@ -1028,13 +998,11 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply nth_error_all in hn. 2: exact hpr.
-  destruct hn as [T h _ _ _]. simpl in *.
-  eapply typecheck_closed in h.
-  2: assumption.
-  destruct h as [_ h].
-  apply MCProd.andP in h. destruct h as [h _].
-  rewrite app_context_length in h.
+  destruct hn as [_ h _ _ _].
   rewrite map_length in h.
+  replace (#|pat_context r| + #|symbols decl|)
+  with (#|symbols decl| + #|pat_context r|)
+  by lia.
   assumption.
 Qed.
 
@@ -1052,13 +1020,11 @@ Proof.
   red in decl'. red in decl'.
   destruct decl' as [hctx [hr [hpr hprr]]].
   eapply nth_error_all in hn. 2: exact hpr.
-  destruct hn as [T _ h _ _]. simpl in *.
-  eapply typecheck_closed in h.
-  2: assumption.
-  destruct h as [_ h].
-  apply MCProd.andP in h. destruct h as [h _].
-  rewrite app_context_length in h.
+  destruct hn as [_ _ h _ _].
   rewrite map_length in h.
+  replace (#|pat_context r| + #|symbols decl|)
+  with (#|symbols decl| + #|pat_context r|)
+  by lia.
   assumption.
 Qed.
 

@@ -262,6 +262,8 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
   Parameter Inline subst_telescope : list term -> nat -> context -> context.
   Parameter Inline lift : nat -> nat -> term -> term.
   Parameter Inline subst : list term -> nat -> term -> term.
+  Parameter Inline closedn : nat -> term -> bool.
+  Parameter Inline closedn_ctx : nat -> context -> bool.
   Parameter Inline inds :
     kername -> Instance.t -> list one_inductive_body -> list term.
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
@@ -530,10 +532,11 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
           assumption_context Γ ->
           assumption_context (vass na t :: Γ).
 
-    Record on_rewrite_rule Σ (Δ : context) (r : rewrite_rule) := {
-      rewCommonType : term ;
-      lhsTyped  : P Σ (Δ ,,, r.(pat_context)) (lhs r) (Some rewCommonType) ;
-      rhsTyped  : P Σ (Δ ,,, r.(pat_context)) (rhs r) (Some rewCommonType) ;
+    Record on_rewrite_rule (Δ : context) (r : rewrite_rule) := {
+      (* typePre   : forall Γ σ A, P Σ Γ (subst σ 0 (lhs r)) A -> P Σ Γ (subst σ 0 (rhs r)) A ; *)
+      ctxClosed : closedn_ctx #|Δ| r.(pat_context) ;
+      lhsClosed : closedn (#|Δ| + #|r.(pat_context)|) (lhs r) ;
+      rhsClosed : closedn (#|Δ| + #|r.(pat_context)|) (rhs r) ;
       onHead    : r.(head) < #|Δ| ;
       lhsLinear : linear #|r.(pat_context)| r.(elims) ;
       onElims   : All (elim_pattern #|r.(pat_context)|) r.(elims) ;
@@ -584,8 +587,8 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
     Definition on_rewrite_decl Σ kn d :=
       let Δ := map (vass nAnon) d.(symbols) in
       on_context Σ Δ ×
-      All (on_rewrite_rule Σ Δ) d.(rules) ×
-      All (on_rewrite_rule Σ Δ) d.(prules) ×
+      All (on_rewrite_rule Δ) d.(rules) ×
+      All (on_rewrite_rule Δ) d.(prules) ×
       All (prule_red Σ.1 kn d.(symbols) d.(rules)) d.(prules).
 
     Definition on_global_decl Σ kn decl :=

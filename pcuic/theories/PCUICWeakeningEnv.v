@@ -459,23 +459,11 @@ Proof.
     split. 2: split. 3: split.
     - eapply All_local_env_impl; eauto.
     - eapply All_impl. 1: eassumption.
-      intros rw [T onlhs onrhs onhead onlin onelims oncon].
-      exists T.
-      + eapply HPΣ. all: eauto.
-      + eapply HPΣ. all: eauto.
-      + assumption.
-      + assumption.
-      + assumption.
-      + assumption.
+      intros rw [onlhs onrhs onhead onlin onelims oncon].
+      constructor. all: assumption.
     - eapply All_impl. 1: exact hpr.
-      intros rw [T onlhs onrhs onhead onlin onelims oncon].
-      exists T.
-      + eapply HPΣ. all: eauto.
-      + eapply HPΣ. all: eauto.
-      + assumption.
-      + assumption.
-      + assumption.
-      + assumption.
+      intros rw [onlhs onrhs onhead onlin onelims oncon].
+      constructor. all: assumption.
     - cbn in *. eapply All_impl. 1: exact hprr.
       unfold prule_red. intros rw h ui.
       eapply weakening_env_red'. 3: eauto. all: auto.

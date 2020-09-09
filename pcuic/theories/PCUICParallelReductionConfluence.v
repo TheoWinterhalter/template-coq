@@ -1224,21 +1224,19 @@ Section Rho.
       intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
       + rewrite map_length in hh. assumption.
       + assumption.
-      + eapply typecheck_closed in hrhs. 2: auto.
-        destruct hrhs as [_ hrhs].
-        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
-        rewrite app_context_length in hrhs.
-        rewrite map_length in hrhs.
+      + rewrite map_length in hrhs.
+        replace (#|pat_context r| + #|symbols rd|)
+        with (#|symbols rd| + #|pat_context r|)
+        by lia.
         assumption.
     - eapply All_impl. 1: exact hpr.
       intros r [? ? hrhs hh ? he ?]. unfold onrr. split. 2: split.
       + rewrite map_length in hh. assumption.
       + assumption.
-      + eapply typecheck_closed in hrhs. 2: auto.
-        destruct hrhs as [_ hrhs].
-        apply MCProd.andP in hrhs. destruct hrhs as [hrhs _].
-        rewrite app_context_length in hrhs.
-        rewrite map_length in hrhs.
+      + rewrite map_length in hrhs.
+        replace (#|pat_context r| + #|symbols rd|)
+        with (#|symbols rd| + #|pat_context r|)
+        by lia.
         assumption.
   Qed.
 
@@ -4938,11 +4936,8 @@ Section Triangle.
     destruct h as [Σ' [? hd]].
     destruct hd as [? [hr [hpr ?]]].
     assert (h :
-      All (on_rewrite_rule
-        (lift_typing typing)
-        Σ'
-        (map (vass nAnon) rd.(symbols))
-      ) (all_rewrite_rules rd)
+      All (on_rewrite_rule (map (vass nAnon) rd.(symbols)))
+        (all_rewrite_rules rd)
     ).
     { unfold all_rewrite_rules. apply All_app_inv. all: auto. }
     eapply All_nth_error in h. 2: eauto.
@@ -5029,25 +5024,23 @@ Section Triangle.
     ∀ k rd,
       lookup_env Σ k = Some (RewriteDecl rd) →
       let Δ := map (vass nAnon) rd.(symbols) in
-      ∑ Σ',
-        All (on_rewrite_rule (lift_typing typing) Σ' Δ) (all_rewrite_rules rd).
+      All (on_rewrite_rule Δ) (all_rewrite_rules rd).
   Proof.
     intros k rd h Δ.
     eapply lookup_on_global_env in wfΣ as h'. 2: eauto.
     destruct h' as [Σ' [_ hd]].
     red in hd. red in hd.
     destruct hd as [? [? [? ?]]].
-    exists Σ'.
     unfold all_rewrite_rules. apply All_app_inv. all: auto.
   Qed.
 
-  Lemma all_rewrite_rules_on_rewrite_rule' :
+  (* Lemma all_rewrite_rules_on_rewrite_rule' :
     ∀ k rd,
       lookup_env Σ k = Some (RewriteDecl rd) →
       let Δ := map (vass nAnon) rd.(symbols) in
       ∑ Σ',
         wf Σ'.1 ×
-        All (on_rewrite_rule (lift_typing typing) Σ' Δ) (all_rewrite_rules rd).
+        All (on_rewrite_rule Δ) (all_rewrite_rules rd).
   Proof.
     intros k rd h Δ.
     eapply lookup_on_global_env in wfΣ as h'. 2: eauto.
@@ -5056,7 +5049,7 @@ Section Triangle.
     destruct hd as [? [? [? ?]]].
     exists Σ'. intuition auto.
     unfold all_rewrite_rules. apply All_app_inv. all: auto.
-  Qed.
+  Qed. *)
 
   Lemma lhs_footprint_first_match :
     ∀ k r t ui σ rd,
@@ -5070,14 +5063,13 @@ Section Triangle.
   Proof.
     intros k r t ui σ rd hrd l e.
     apply all_rewrite_rules_on_rewrite_rule in hrd. subst l.
-    destruct hrd as [Σ' hrd].
     set (l := all_rewrite_rules rd) in *. clearbody l.
     induction l in ui, σ, r, e, hrd |- *. 1: discriminate.
     cbn - [ match_lhs ] in e. destruct match_lhs as [[]|] eqn:e1.
     - inversion e. subst. clear e.
       inversion hrd. subst.
       match goal with
-      | h : on_rewrite_rule _ _ _ _ |- _ =>
+      | h : on_rewrite_rule _ _ |- _ =>
         destruct h as [_ _ _ _ _ he _]
       end.
       eapply lhs_footprint_match_lhs in e1. 2: auto.
@@ -5086,7 +5078,7 @@ Section Triangle.
       cbn - [ match_lhs ]. rewrite e2. reflexivity.
     - inversion hrd. subst.
       match goal with
-      | h : on_rewrite_rule _ _ _ _ |- _ =>
+      | h : on_rewrite_rule _ _ |- _ =>
         destruct h as [_ _ _ _ hl he _]
       end.
       eapply IHl in e. 2: auto.
@@ -5171,7 +5163,6 @@ Section Triangle.
   Proof.
     intros k rd n r h hr.
     eapply all_rewrite_rules_on_rewrite_rule in h.
-    destruct h as [? h].
     eapply All_nth_error in h. 2: eauto.
     destruct h as [].
     assumption.
@@ -5184,16 +5175,13 @@ Section Triangle.
       closedn (#|r.(pat_context)| + #|rd.(symbols)|) (rhs r).
   Proof.
     intros k rd n r h hr.
-    eapply all_rewrite_rules_on_rewrite_rule' in h.
-    destruct h as [? [? h]].
+    eapply all_rewrite_rules_on_rewrite_rule in h.
     eapply All_nth_error in h. 2: eauto.
     destruct h as [? ? h].
-    eapply typecheck_closed in h.
-    2: assumption.
-    destruct h as [_ h].
-    apply MCProd.andP in h. destruct h as [h _].
-    rewrite app_context_length in h.
     rewrite map_length in h.
+    replace (#|pat_context r| + #|symbols rd|)
+    with (#|symbols rd| + #|pat_context r|)
+    by lia.
     assumption.
   Qed.
 
@@ -5205,7 +5193,6 @@ Section Triangle.
   Proof.
     intros k rd n r h hr.
     eapply all_rewrite_rules_on_rewrite_rule in h.
-    destruct h as [? h].
     eapply All_nth_error in h. 2: eauto.
     destruct h as [].
     assumption.
@@ -5219,7 +5206,6 @@ Section Triangle.
   Proof.
     intros k rd n r h hr.
     eapply all_rewrite_rules_on_rewrite_rule in h.
-    destruct h as [? h].
     eapply All_nth_error in h. 2: eauto.
     destruct h as [? ? ? h].
     rewrite map_length in h.
@@ -5234,7 +5220,6 @@ Section Triangle.
   Proof.
     intros k rd n r h hr.
     eapply all_rewrite_rules_on_rewrite_rule in h.
-    destruct h as [? h].
     eapply All_nth_error in h. 2: eauto.
     destruct h as [].
     assumption.
@@ -6509,7 +6494,6 @@ Section Triangle.
   Proof.
     intros k r k' n' ui' el ui σ rd npat hel hll hk l e.
     apply all_rewrite_rules_on_rewrite_rule in hk as hrd.
-    destruct hrd as [Σ' hrd].
     eapply first_match_rule_list in e as hr. destruct hr as [n hr].
     eapply All_nth_error in hr. 2: eauto. clear n.
     destruct hr as [T lT rT hh ll he hΔ].

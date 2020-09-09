@@ -161,6 +161,12 @@ Fixpoint closedn k (t : term) : bool :=
 
 Notation closed t := (closedn 0 t).
 
+Definition closed_decl n d : bool :=
+  option_default (closedn n) d.(decl_body) true && closedn n d.(decl_type).
+
+Definition closedn_ctx n ctx :=
+  forallb id (mapi (fun k d => closed_decl (n + k) d) (List.rev ctx)).
+
 Create HintDb terms.
 
 Ltac arith_congr := repeat (try lia; progress f_equal).

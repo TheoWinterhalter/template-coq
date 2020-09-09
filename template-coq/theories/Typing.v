@@ -888,6 +888,8 @@ Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTypi
   Definition smash_context := smash_context.
   Definition lift := lift.
   Definition subst := subst.
+  Definition closedn := closedn.
+  Definition closedn_ctx := fun (n : nat) (Γ : context) => false.
   Definition lift_context := lift_context.
   Definition subst_telescope := subst_telescope.
   Definition inds := inds.

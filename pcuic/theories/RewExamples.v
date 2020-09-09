@@ -374,9 +374,7 @@ Proof.
   cbn. red. intuition idtac.
   - cbn. red. minicheck.
   - cbn. constructor. 2: constructor. 3: constructor. 4: constructor. 5: auto.
-    + exists tNat. all: cbn. all: auto.
-      * minicheck.
-      * minicheck.
+    + constructor. all: cbn. all: auto.
       * {
         constructor. 2: constructor. 3: constructor.
         - constructor. unfold tS. rewrite tApp_mkApps.
@@ -385,9 +383,7 @@ Proof.
         - constructor. constructor. auto.
       }
       * constructor. constructor. constructor.
-    + exists tNat. all: cbn. all: auto.
-      * minicheck.
-      * minicheck.
+    + constructor. all: cbn. all: auto.
       * {
         constructor. 2: constructor. 3: constructor.
         - constructor. constructor. auto.
@@ -396,9 +392,7 @@ Proof.
           constructor. auto.
       }
       * constructor. constructor. constructor.
-    + exists tNat. all: cbn. all: auto.
-      * minicheck.
-      * minicheck.
+    + constructor. all: cbn. all: auto.
       * {
         constructor. 2: constructor. 3: constructor.
         - constructor. unfold t0. erewrite noApp_mkApps.
@@ -406,9 +400,7 @@ Proof.
         - constructor. constructor. auto.
       }
       * constructor. constructor.
-    + exists tNat. all: cbn. all: auto.
-      * minicheck.
-      * minicheck.
+    + constructor. all: cbn. all: auto.
       * {
         constructor. 2: constructor. 3: constructor.
         - constructor. constructor. auto.
@@ -417,9 +409,7 @@ Proof.
       }
       * constructor. constructor.
   - cbn. constructor. 2: constructor.
-    exists tNat. all: cbn. all: auto.
-    + minicheck.
-    + minicheck.
+    constructor. all: cbn. all: auto.
     + constructor. 2: constructor. 3: constructor.
       * constructor. unfold tS. rewrite tApp_mkApps.
         constructor. constructor. 2: constructor.
