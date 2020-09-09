@@ -3759,7 +3759,7 @@ Section ConfluenceFacts.
     eapply red_pred in Hred; tas.
     generalize_eq x (mkApps (tInd ind u) args).
     induction Hred in ind, u, args |- * ; simplify *.
-    - eapply pred1_mkApps_tInd in r as [r' [eq redargs]].
+    - eapply pred1_mkApps_tInd in r as [r' [eq redargs]]. 2: auto.
       subst y. exists r'. intuition auto. solve_all. now apply pred1_red in X.
     - exists args; split; eauto. apply All2_same; auto.
     - specialize IHHred1 as [? [? ?]]. 1: reflexivity.

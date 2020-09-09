@@ -462,29 +462,72 @@ Section Pred1_inversion.
     destruct p. now eapply mkApps_eq_inj in e as [_ <-].
   Qed.
 
-  Lemma pred1_mkApps_tInd (Σ : global_env) (Γ Δ : context)
+  Lemma pred1_mkApps_tInd `{cf : checker_flags} (Σ : global_env) (Γ Δ : context)
         ind u (args : list term) c :
+    wf Σ ->
     pred1 Σ Γ Δ (mkApps (tInd ind u) args) c ->
     {args' : list term & (c = mkApps (tInd ind u) args') * (All2 (pred1 Σ Γ Δ) args args') }%type.
   Proof with solve_discr.
+    intro wfΣ.
     revert c. induction args using rev_ind; intros; simpl in *.
-    - depelim X...
-      + (* TODO Rewrite rules *) admit.
-      + (* TODO Rewrite rules *) admit.
+    - generalize_by_eqs X. destruct X.
+      all: try subst lhs rhs.
+      all: simplify_dep_elim.
+      all: try solve_discr.
+      + exfalso.
+        apply diff_false_true.
+        apply (f_equal isElimSymb) in H.
+        cbn in H.
+        rewrite H.
+        apply isElimSymb_subst.
+        apply untyped_subslet_length in u0.
+        rewrite u0. rewrite subst_context_length.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_head. all: eauto.
+      + exfalso.
+        apply diff_false_true.
+        apply (f_equal isElimSymb) in H.
+        cbn in H.
+        rewrite H.
+        apply isElimSymb_subst.
+        apply untyped_subslet_length in u0.
+        rewrite u0. rewrite subst_context_length.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_par_head. all: eauto.
       + exists []. intuition auto.
     - intros. rewrite <- mkApps_nested in X.
-      depelim X...
+      generalize_by_eqs X. destruct X.
+      all: try subst lhs rhs.
+      all: simplify_dep_elim.
+      all: try solve_discr.
       + simpl in H; noconf H. solve_discr.
       + prepare_discr. apply mkApps_eq_decompose_app in H.
         rewrite !decompose_app_rec_mkApps in H. noconf H.
-      + admit.
-      + admit.
+      + exfalso.
+        apply diff_false_true.
+        apply (f_equal isElimSymb) in H.
+        cbn in H. rewrite isElimSymb_mkApps in H. cbn in H.
+        rewrite H.
+        apply isElimSymb_subst.
+        apply untyped_subslet_length in u0.
+        rewrite u0. rewrite subst_context_length.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_head. all: eauto.
+      + exfalso.
+        apply diff_false_true.
+        apply (f_equal isElimSymb) in H.
+        cbn in H. rewrite isElimSymb_mkApps in H. cbn in H.
+        rewrite H.
+        apply isElimSymb_subst.
+        apply untyped_subslet_length in u0.
+        rewrite u0. rewrite subst_context_length.
+        eapply isElimSymb_lhs.
+        eapply declared_symbol_par_head. all: eauto.
       + destruct (IHargs _ X1) as [args' [-> Hargs']].
         exists (args' ++ [N1])%list.
         rewrite <- mkApps_nested. intuition auto.
         eapply All2_app; auto.
-  (* Qed. *)
-  Admitted.
+  Qed.
 
   Lemma pred1_mkApps_tConst_axiom (Σ : global_env) (Γ Δ : context)
         cst u (args : list term) cb c :
