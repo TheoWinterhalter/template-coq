@@ -387,19 +387,31 @@ Lemma cumul_Sort_l_inv {cf:checker_flags} Σ Γ s T :
 Qed. *)
 Admitted.
 
-Lemma cumul_Sort_r_inv {cf:checker_flags} Σ Γ s T :
+Lemma cumul_Sort_r_inv {cf:checker_flags} (Σ : global_env_ext) Γ s T :
+  wf Σ.1 ->
   Σ ;;; Γ |- T <= tSort s ->
   ∑ s', red Σ Γ T (tSort s') * leq_universe Σ s' s.
-(* Proof.
+Proof.
+  intro wΣ.
   intros H. depind H.
   - now inversion l.
-  - destruct IHcumul as [s' [redv leq]].
+  - destruct IHcumul as [s' [redv leq]]. 1: auto.
     exists s'. split; auto. now eapply red_step with v.
-  - depelim r. solve_discr.
-  - todoeta. (* The lemma is now WRONG *)
-  - todoeta.
-Qed. *)
-Admitted.
+  - generalize_by_eqs r. destruct r.
+    all: try subst lhs rhs.
+    all: simplify_dep_elim.
+    all: try solve_discr.
+    exfalso.
+    apply diff_false_true.
+    apply (f_equal PCUICParallelReduction.isElimSymb) in H0.
+    cbn in H0.
+    rewrite H0.
+    apply PCUICParallelReduction.isElimSymb_subst.
+    apply untyped_subslet_length in u.
+    rewrite u. rewrite subst_context_length.
+    eapply PCUICParallelReduction.isElimSymb_lhs.
+    eapply PCUICParallelReduction.declared_symbol_head. all: eauto.
+Qed.
 
 Lemma cumul_LetIn_l_inv {cf:checker_flags} (Σ : global_env_ext) Γ na b B codom T :
   wf Σ ->

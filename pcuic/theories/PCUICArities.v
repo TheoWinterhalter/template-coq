@@ -629,9 +629,9 @@ Proof.
   + right. exists s.
     apply inversion_LetIn in H; tas. destruct H as [s1 [A' [HA [Ht [HB H]]]]].
     eapply type_Cumul with (A' {0 := t}). eapply substitution_let in HB; eauto.
-    * left. apply cumul_Sort_r_inv in H.
+    * left. apply cumul_Sort_r_inv in H. 2: auto.
       destruct H as [s' [H H']]. exists [], s; intuition auto.
-    * eapply cumul_Sort_r_inv in H.
+    * eapply cumul_Sort_r_inv in H. 2: auto.
       destruct H as [s' [H H']].
       eapply cumul_trans with (tSort s'); eauto.
       eapply red_cumul.
