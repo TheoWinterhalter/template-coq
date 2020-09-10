@@ -99,7 +99,13 @@ Section Validity.
       extends Σ Σ' ->
       PCUICEquality.R_universe_instance (eq_universe ((Σ, φ) : global_env_ext)) u u' ->
       PCUICEquality.R_universe_instance (eq_universe ((Σ', φ) : global_env_ext)) u u'.
-  Admitted.
+  Proof.
+    intros Σ Σ' φ u u' e h.
+    eapply PCUICEquality.R_universe_instance_impl. 2: eauto.
+    intros x y h'. eapply eq_universe_subset. 2: eauto.
+    clear - e.
+    eapply weakening_env_global_ext_constraints. assumption.
+  Qed.
 
   Lemma Minimal_sub :
     forall Σ Σ' φ,
