@@ -954,7 +954,7 @@ Qed.
 
 Lemma subst_instance_constr_lhs :
   forall Σ k decl n r u,
-    (* wf Σ -> *)
+    wf Σ ->
     declared_symbol Σ k decl ->
     nth_error (rules decl) n = Some r ->
     subst_instance_constr u (lhs r) = lhs r.
@@ -962,7 +962,7 @@ Admitted.
 
 Lemma subst_instance_constr_rhs :
   forall Σ k decl n r u,
-    (* wf Σ -> *)
+    wf Σ ->
     declared_symbol Σ k decl ->
     nth_error (rules decl) n = Some r ->
     subst_instance_constr u (rhs r) = rhs r.
@@ -1023,11 +1023,12 @@ Proof.
 Qed.
 
 Lemma red1_subst_instance Σ Γ u s t :
+  wf Σ ->
   red1 Σ Γ s t ->
   red1 Σ (subst_instance_context u Γ)
        (subst_instance_constr u s) (subst_instance_constr u t).
 Proof.
-  intros X0. pose proof I as X.
+  intros wfΣ X0. pose proof I as X.
   intros. induction X0 using red1_ind_all.
   all: try (cbn; econstructor; eauto; fail).
   - cbn. rewrite <- subst_subst_instance_constr. econstructor.
@@ -1086,18 +1087,17 @@ Proof.
     rewrite e.
     replace #|s| with #|map (subst_instance_constr u) s|
     by (now rewrite map_length).
-    erewrite subst_instance_constr_lhs. 2,3: eauto.
-    erewrite subst_instance_constr_rhs. 2,3: eauto.
+    erewrite subst_instance_constr_lhs. 2-4: eauto.
+    erewrite subst_instance_constr_rhs. 2-4: eauto.
     eapply red_rewrite_rule. 1,2: eauto.
-    eapply untyped_subslet_subst_instance in X0.
-    rewrite subst_instance_context_subst_context in X0.
-    erewrite e in X0.
-    (* We can either ask for the pat_context to be closed
-      or rather use the fact that it is an assumption context
-      and conclude in a much easier fashion since in both
-      cases we need wf Σ
-    *)
-    admit.
+    eapply untyped_subslet_assumption_context.
+    + apply assumption_context_subst_context.
+      eapply declared_symbol_assumption_context. all: eauto.
+    + rewrite subst_context_length.
+      apply untyped_subslet_length in X0.
+      rewrite subst_context_length in X0.
+      rewrite map_length.
+      auto.
   - cbn. econstructor; eauto.
     eapply OnOne2_map. eapply OnOne2_impl. 1: eassumption.
     firstorder.
@@ -1126,8 +1126,7 @@ Proof.
     unfold subst_instance_context, map_context in *. rewrite map_app in *.
     eassumption.
     Grab Existential Variables. all:repeat econstructor.
-(* Qed. *)
-Admitted.
+Qed.
 
 Fixpoint subst_instance_stack l π :=
   match π with
@@ -1214,6 +1213,7 @@ Proof.
 Qed.
 
 Lemma cumul_subst_instance (Σ : global_env_ext) Γ u A B univs :
+  wf Σ ->
   forallb (fun x => negb (Level.is_prop x)) u ->
   valid_constraints (global_ext_constraints (Σ.1, univs))
                     (subst_instance_cstrs u Σ) ->
@@ -1221,7 +1221,7 @@ Lemma cumul_subst_instance (Σ : global_env_ext) Γ u A B univs :
   (Σ.1,univs) ;;; subst_instance_context u Γ
                    |- subst_instance_constr u A <= subst_instance_constr u B.
 Proof.
-  intros Hu HH X0. induction X0.
+  intros wΣ Hu HH X0. induction X0.
   - econstructor.
     eapply leq_term_subst_instance; tea.
   - econstructor 2. 1: eapply red1_subst_instance; cbn; eauto. eauto.

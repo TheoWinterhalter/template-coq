@@ -512,25 +512,6 @@ Proof.
   intros ? ? []. eapply eq_term_elim_inv. all: eauto.
 Qed.
 
-(* TODO MOVE *)
-Lemma declared_symbol_assumption_context `{checker_flags} :
-  ∀ Σ k n decl r,
-    wf Σ →
-    declared_symbol Σ k decl →
-    nth_error decl.(rules) n = Some r →
-    assumption_context r.(pat_context).
-Proof.
-  intros Σ k n decl r hΣ h e.
-  unfold declared_symbol in h.
-  eapply lookup_on_global_env in h. 2: eauto.
-  destruct h as [Σ' [wfΣ' decl']].
-  red in decl'. red in decl'.
-  destruct decl' as [hctx [hr [hpr hprr]]].
-  eapply All_nth_error in hr. 2: eassumption.
-  destruct hr as [T hl hr hh he].
-  assumption.
-Qed.
-
 Lemma eq_term_upto_univ_symbols_subst :
   ∀ Re k ui ui' n,
     R_universe_instance Re ui ui' →

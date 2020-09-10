@@ -124,11 +124,11 @@ Definition subst_context s k (Γ : context) : context :=
 
 (** Assumptions contexts do not contain let-ins. *)
 
-Inductive assumption_context : context -> Prop :=
+(* Inductive assumption_context : context -> Prop :=
 | assumption_context_nil : assumption_context []
-| assumption_context_vass na t Γ : assumption_context Γ -> assumption_context (vass na t :: Γ).
+| assumption_context_vass na t Γ : assumption_context Γ -> assumption_context (vass na t :: Γ). *)
 
-Derive Signature for assumption_context.
+(* Derive Signature for assumption_context. *)
 
 (** Smashing a context produces an assumption context. *)
 

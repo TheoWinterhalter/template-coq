@@ -2651,6 +2651,7 @@ Proof.
 Qed.
 
 Lemma conv_subst_instance {cf:checker_flags} (Σ : global_env_ext) Γ u A B univs :
+  wf Σ ->
   forallb (fun x => negb (Level.is_prop x)) u ->
   valid_constraints (global_ext_constraints (Σ.1, univs))
                     (subst_instance_cstrs u Σ) ->
@@ -2658,7 +2659,7 @@ Lemma conv_subst_instance {cf:checker_flags} (Σ : global_env_ext) Γ u A B univ
   (Σ.1,univs) ;;; subst_instance_context u Γ
                    |- subst_instance_constr u A = subst_instance_constr u B.
 Proof.
-  intros Hu HH X0. induction X0.
+  intros wΣ Hu HH X0. induction X0.
   - econstructor.
     eapply eq_term_subst_instance; tea.
   - econstructor 2. 1: eapply red1_subst_instance; cbn; eauto. eauto.

@@ -4954,24 +4954,6 @@ Section ParallelSubstitution.
     the right length.
   *)
 
-  Lemma untyped_subslet_assumption_context :
-    forall Γ Δ σ,
-      assumption_context Δ ->
-      #|σ| = #|Δ| ->
-      untyped_subslet Γ σ Δ.
-  Proof.
-    intros Γ Δ σ hΔ e.
-    induction Δ as [| [na [t|] A] Δ ih] in σ, hΔ, e |- *.
-    - destruct σ. 2: discriminate.
-      constructor.
-    - exfalso. inversion hΔ.
-    - destruct σ. 1: discriminate.
-      cbn in e. constructor.
-      apply ih.
-      + inversion hΔ. assumption.
-      + congruence.
-  Qed.
-
   (* TODO MOVE *)
   Lemma subs_add_length :
     forall n t σ θ,

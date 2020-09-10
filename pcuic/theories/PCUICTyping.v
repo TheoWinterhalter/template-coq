@@ -2675,3 +2675,55 @@ Section All_local_env.
   Qed.
 
 End All_local_env.
+
+Lemma untyped_subslet_assumption_context :
+  forall Γ Δ σ,
+    assumption_context Δ ->
+    #|σ| = #|Δ| ->
+    untyped_subslet Γ σ Δ.
+Proof.
+  intros Γ Δ σ hΔ e.
+  induction Δ as [| [na [t|] A] Δ ih] in σ, hΔ, e |- *.
+  - destruct σ. 2: discriminate.
+    constructor.
+  - exfalso. inversion hΔ.
+  - destruct σ. 1: discriminate.
+    cbn in e. constructor.
+    apply ih.
+    + inversion hΔ. assumption.
+    + congruence.
+Qed.
+
+Lemma assumption_context_subst_context :
+  forall Γ s n,
+    assumption_context Γ ->
+    assumption_context (subst_context s n Γ).
+Proof.
+  intros Γ s n h.
+  induction h in s, n |- *.
+  - constructor.
+  - match goal with
+    | |- context [ ?x :: ?l ] =>
+      change (x :: l) with (l ,,, [x])
+    end.
+    rewrite subst_context_app. cbn. constructor.
+    eapply IHh.
+Qed.
+
+Lemma declared_symbol_assumption_context `{checker_flags} :
+  forall Σ k n decl r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error decl.(rules) n = Some r ->
+    assumption_context r.(pat_context).
+Proof.
+  intros Σ k n decl r hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [hctx [hr [hpr hprr]]].
+  eapply All_nth_error in hr. 2: eassumption.
+  destruct hr as [T hl hr hh he].
+  assumption.
+Qed.

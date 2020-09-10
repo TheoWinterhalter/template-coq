@@ -5752,22 +5752,6 @@ Section Triangle.
       cbn in e. discriminate.
   Qed.
 
-  Lemma assumption_context_subst_context :
-    ∀ Γ s n,
-      assumption_context Γ →
-      assumption_context (subst_context s n Γ).
-  Proof.
-    intros Γ s n h.
-    induction h in s, n |- *.
-    - constructor.
-    - match goal with
-      | |- context [ ?x :: ?l ] =>
-        change (x :: l) with (l ,,, [x])
-      end.
-      rewrite subst_context_app. cbn. constructor.
-      eapply IHh.
-  Qed.
-
   Lemma cons_inv :
     ∀ {A} (x y : A) l l',
       x :: l = y :: l' →
