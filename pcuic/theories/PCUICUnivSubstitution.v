@@ -952,6 +952,76 @@ Proof.
   unfold subst_instance_context, map_context; now rewrite map_app.
 Qed.
 
+Lemma subst_instance_constr_lhs :
+  forall Σ k decl n r u,
+    (* wf Σ -> *)
+    declared_symbol Σ k decl ->
+    nth_error (rules decl) n = Some r ->
+    subst_instance_constr u (lhs r) = lhs r.
+Admitted.
+
+Lemma subst_instance_constr_rhs :
+  forall Σ k decl n r u,
+    (* wf Σ -> *)
+    declared_symbol Σ k decl ->
+    nth_error (rules decl) n = Some r ->
+    subst_instance_constr u (rhs r) = rhs r.
+Admitted.
+
+Lemma untyped_subslet_subst_instance :
+  forall Γ Δ σ u,
+    untyped_subslet Γ σ Δ ->
+    untyped_subslet
+      (subst_instance_context u Γ)
+      (map (subst_instance_constr u) σ)
+      (subst_instance_context u Δ).
+Proof.
+  intros Γ Δ σ u h.
+  induction h.
+  - constructor.
+  - cbn. constructor. assumption.
+  - cbn. rewrite <- subst_subst_instance_constr. constructor. assumption.
+Qed.
+
+Lemma subst_instance_context_cons :
+  forall u Γ d,
+    subst_instance_context u (d :: Γ) =
+    subst_instance_context u Γ ,, map_decl (subst_instance_constr u) d.
+Proof.
+  intros u Γ d. cbn. reflexivity.
+Qed.
+
+Lemma subst_instance_context_subst_context :
+  forall u Γ σ,
+    subst_instance_context u (subst_context σ 0 Γ) =
+    subst_context (map (subst_instance_constr u) σ) 0 (subst_instance_context u Γ).
+Proof.
+  intros u Γ σ.
+  induction Γ as [| [na [bo|] ty] Γ ih].
+  - cbn. reflexivity.
+  - rewrite subst_context_snoc0.
+    rewrite subst_instance_context_cons.
+    rewrite subst_context_snoc0.
+    rewrite subst_instance_context_cons. f_equal.
+    + apply ih.
+    + unfold subst_decl. unfold map_decl. cbn. f_equal.
+      * f_equal. rewrite <- subst_subst_instance_constr.
+        rewrite subst_instance_context_length.
+        reflexivity.
+      * rewrite <- subst_subst_instance_constr.
+        rewrite subst_instance_context_length.
+        reflexivity.
+  - rewrite subst_context_snoc0.
+    rewrite subst_instance_context_cons.
+    rewrite subst_context_snoc0.
+    rewrite subst_instance_context_cons. f_equal.
+    + apply ih.
+    + unfold subst_decl. unfold map_decl. cbn. f_equal.
+      rewrite <- subst_subst_instance_constr.
+      rewrite subst_instance_context_length.
+      reflexivity.
+Qed.
+
 Lemma red1_subst_instance Σ Γ u s t :
   red1 Σ Γ s t ->
   red1 Σ (subst_instance_context u Γ)
@@ -1016,8 +1086,17 @@ Proof.
     rewrite e.
     replace #|s| with #|map (subst_instance_constr u) s|
     by (now rewrite map_length).
-    Fail eapply red_rewrite_rule.
-    (* We're missing some closedness hyp for universes? *)
+    erewrite subst_instance_constr_lhs. 2,3: eauto.
+    erewrite subst_instance_constr_rhs. 2,3: eauto.
+    eapply red_rewrite_rule. 1,2: eauto.
+    eapply untyped_subslet_subst_instance in X0.
+    rewrite subst_instance_context_subst_context in X0.
+    erewrite e in X0.
+    (* We can either ask for the pat_context to be closed
+      or rather use the fact that it is an assumption context
+      and conclude in a much easier fashion since in both
+      cases we need wf Σ
+    *)
     admit.
   - cbn. econstructor; eauto.
     eapply OnOne2_map. eapply OnOne2_impl. 1: eassumption.
