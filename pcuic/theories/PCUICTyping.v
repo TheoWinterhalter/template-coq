@@ -1777,6 +1777,7 @@ Module PCUICTypingDef <: Typing PCUICTerm PCUICEnvironment PCUICEnvTyping.
   Definition lift := lift.
   Definition closedn := closedn.
   Definition closedn_ctx := closedn_ctx.
+  Definition closedu := closedu.
   Definition inds := inds.
   Definition elim_pattern := elim_pattern.
   Definition linear := @linear.

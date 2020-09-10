@@ -890,6 +890,7 @@ Module TemplateTyping <: Typing TemplateTerm TemplateEnvironment TemplateEnvTypi
   Definition subst := subst.
   Definition closedn := closedn.
   Definition closedn_ctx := fun (n : nat) (Γ : context) => false.
+  Definition closedu := closedu.
   Definition lift_context := lift_context.
   Definition subst_telescope := subst_telescope.
   Definition inds := inds.

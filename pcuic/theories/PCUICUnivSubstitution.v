@@ -952,13 +952,53 @@ Proof.
   unfold subst_instance_context, map_context; now rewrite map_app.
 Qed.
 
+Lemma declared_symbol_lhs_closedu :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (rules decl) n = Some r ->
+    closedu 0 (lhs r).
+Proof.
+  intros Σ k n decl ty hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [? [hr [? ?]]].
+  eapply All_nth_error in hr. 2: eauto.
+  destruct hr as [? ? ? ? ? ? ? hl hr].
+  assumption.
+Qed.
+
+Lemma declared_symbol_rhs_closedu :
+  forall Σ k decl n r,
+    wf Σ ->
+    declared_symbol Σ k decl ->
+    nth_error (rules decl) n = Some r ->
+    closedu 0 (rhs r).
+Proof.
+  intros Σ k n decl ty hΣ h e.
+  unfold declared_symbol in h.
+  eapply lookup_on_global_env in h. 2: eauto.
+  destruct h as [Σ' [wfΣ' decl']].
+  red in decl'. red in decl'.
+  destruct decl' as [? [hr [? ?]]].
+  eapply All_nth_error in hr. 2: eauto.
+  destruct hr as [? ? ? ? ? ? ? hl hr].
+  assumption.
+Qed.
+
 Lemma subst_instance_constr_lhs :
   forall Σ k decl n r u,
     wf Σ ->
     declared_symbol Σ k decl ->
     nth_error (rules decl) n = Some r ->
     subst_instance_constr u (lhs r) = lhs r.
-Admitted.
+Proof.
+  intros Σ k decl n r u hΣ hd e.
+  apply closedu_subst_instance_constr.
+  eapply declared_symbol_lhs_closedu. all: eauto.
+Qed.
 
 Lemma subst_instance_constr_rhs :
   forall Σ k decl n r u,
@@ -966,7 +1006,11 @@ Lemma subst_instance_constr_rhs :
     declared_symbol Σ k decl ->
     nth_error (rules decl) n = Some r ->
     subst_instance_constr u (rhs r) = rhs r.
-Admitted.
+Proof.
+  intros Σ k decl n r u hΣ hd e.
+  apply closedu_subst_instance_constr.
+  eapply declared_symbol_rhs_closedu. all: eauto.
+Qed.
 
 Lemma untyped_subslet_subst_instance :
   forall Γ Δ σ u,

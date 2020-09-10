@@ -264,6 +264,7 @@ Module Type Typing (T : Term) (E : EnvironmentSig T) (ET : EnvTypingSig T E).
   Parameter Inline subst : list term -> nat -> term -> term.
   Parameter Inline closedn : nat -> term -> bool.
   Parameter Inline closedn_ctx : nat -> context -> bool.
+  Parameter Inline closedu : nat -> term -> bool.
   Parameter Inline inds :
     kername -> Instance.t -> list one_inductive_body -> list term.
   Notation wf_local Σ Γ := (All_local_env (lift_typing typing Σ) Γ).
@@ -533,14 +534,15 @@ Module DeclarationTyping (T : Term) (E : EnvironmentSig T)
           assumption_context (vass na t :: Γ).
 
     Record on_rewrite_rule (Δ : context) (r : rewrite_rule) := {
-      (* typePre   : forall Γ σ A, P Σ Γ (subst σ 0 (lhs r)) A -> P Σ Γ (subst σ 0 (rhs r)) A ; *)
       ctxClosed : closedn_ctx #|Δ| r.(pat_context) ;
       lhsClosed : closedn (#|Δ| + #|r.(pat_context)|) (lhs r) ;
       rhsClosed : closedn (#|Δ| + #|r.(pat_context)|) (rhs r) ;
       onHead    : r.(head) < #|Δ| ;
       lhsLinear : linear #|r.(pat_context)| r.(elims) ;
       onElims   : All (elim_pattern #|r.(pat_context)|) r.(elims) ;
-      assPatCon : assumption_context r.(pat_context)
+      assPatCon : assumption_context r.(pat_context) ;
+      lClosedU  : closedu 0 (lhs r) ;
+      rClosedU  : closedu 0 (rhs r)
     }.
 
     Inductive or_rel {A} (R R' : A -> A -> Type) : A -> A -> Type :=
