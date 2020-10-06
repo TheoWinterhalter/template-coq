@@ -3,18 +3,27 @@ MetaCoq with Rewrite Rules
 
 This branch contains an extension of MetaCoq with rewrite rules and constitutes the artifact associated with the paper "The Taming of the Rew: A Type Theory with Computational Assumptions".
 
-With respect to the MetaCoq repository, I introduce four new files (in `pcuic/theories`):
-- `PCUICPattern.v`
-- `PCUICRw.v`
-- `PCUICPredExtra.v`
-- `RewExamples.v`
-and modify several, I will only list the most important changes.
+## Quick jump:
 
-### `pcuic/theories/PCUICAst.v`: 
+- [Building the project](#building-the-project)
+- [High-level description of changes](#changes)
+
+
+## Changes
+
+With respect to the MetaCoq repository, we introduce four new files (in `pcuic/theories`):
+- `PCUICPattern.v`,
+- `PCUICRw.v`,
+- `PCUICPredExtra.v`,
+- `RewExamples.v`
+
+and modify several, we will only list the most important changes.
+
+#### [`pcuic/theories/PCUICAst.v`](pcuic/theories/PCUICAst.v):
 A new constructor `tSymb` is added to the syntax (i.e. to the inductive type `term`) representing fresh symbols for rewrite rules.
 
-### `pcuic/theories/PCUICConfluence.v`:
-Here the proof of confluence is modified. In particular it contains the confluence theorem 
+#### [`pcuic/theories/PCUICConfluence.v`](pcuic/theories/PCUICConfluence.v):
+Here the proof of confluence is modified. In particular it contains the confluence theorem
 ```coq
 Lemma red_confluence {Γ t u v} :
   red Σ Γ t u ->
@@ -30,7 +39,7 @@ cΣ : confluenv Σ
 cf : checker_flags
 Axioms:
 ind_guard : mutual_inductive_body → bool
-FunctionalExtensionality.functional_extensionality_dep : 
+FunctionalExtensionality.functional_extensionality_dep :
 ∀ (A : Type) (B : A → Type) (f g : ∀ x : A, B x),
   (∀ x : A, f x = g x) → f = g
 fix_guard : mfixpoint term → bool
@@ -38,7 +47,7 @@ cofix_guard : mfixpoint term → bool
 ```
 meaning that only functional extensionality is required to prove the theorem (the other axioms only refer to the guard condition in a way to remain modular with respect to it).
 
-### `pcuic/theories/PCUICParallelReduction.v`:
+#### [`pcuic/theories/PCUICParallelReduction.v`](pcuic/theories/PCUICParallelReduction.v):
 
 The definition of the parallel reduction is extended with three cases:
 ```coq
@@ -69,26 +78,26 @@ The definition of the parallel reduction is extended with three cases:
     pred1 Γ Γ' lhs rhs
 ```
 
-### `pcuic/theories/PCUICParallelReductionConfluence.v`:
+#### [`pcuic/theories/PCUICParallelReductionConfluence.v`](pcuic/theories/PCUICParallelReductionConfluence.v):
 
 We adapt the proof of confluence for the parallel reduction. The section `Confluenv` defines the `confluenv` predicate corresponding to the requirements placed
 on the rewrite rules to ensure confluence (via the triangle property).
 
-### `pcuic/theories/PCUICPattern.v`:
+#### [`pcuic/theories/PCUICPattern.v`](pcuic/theories/PCUICPattern.v):
 
 Definition of the notion of pattern and properties about them, including matching.
 
-### `pcuic/theories/PCUICPredExtra.v`:
+#### [`pcuic/theories/PCUICPredExtra.v`](pcuic/theories/PCUICPredExtra.v):
 
 Definition of a notion of parallel reduction `pred1_extra` extended with a set of rewrite rules and relate it to `pred1`.
 
-### `pcuic/theories/PCUICRW.v`:
+#### [`pcuic/theories/PCUICRW.v`](pcuic/theories/PCUICRW.v):
 
-Various properties on rewrite rules. In particular, define the notion of `pattern_footprint` which corresponds to the largest subterm of a term which is a 
+Various properties on rewrite rules. In particular, define the notion of `pattern_footprint` which corresponds to the largest subterm of a term which is a
 pattern (in case the term is not a pattern, this will return a variable) and a substitution yielding the original term. This is a factorisation procedure.
 In the end we get `lhs_footprint` which returns the footprint of a left-hand side which behaves the same way with respect to matching.
 
-### `pcuic/theories/PCUICSR.v`:
+#### [`pcuic/theories/PCUICSR.v`](pcuic/theories/PCUICSR.v):
 
 Updated proof of subject reduction.
 The proof is done by assuming the (global) property that rewrite rules are type preserving.
@@ -107,7 +116,7 @@ Once again, printing assumptions yields:
 ```coq
 Axioms:
 ind_guard : mutual_inductive_body -> bool
-FunctionalExtensionality.functional_extensionality_dep : 
+FunctionalExtensionality.functional_extensionality_dep :
 forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
 (forall x : A, f x = g x) -> f = g
 fix_guard_subst_instance : forall (mfix : mfixpoint term) (u : Instance.t),
@@ -141,7 +150,7 @@ cofix_guard_subst : forall (mfix : list (def term)) (s : list term) (k : nat),
                       in
                     cofix_guard mfix -> cofix_guard mfix'
 cofix_guard_red1 : forall (Σ : global_env) (Γ : context)
-                     (mfix mfix' : mfixpoint term) 
+                     (mfix mfix' : mfixpoint term)
                      (idx : nat),
                    cofix_guard mfix ->
                    red1 Σ Γ (tCoFix mfix idx) (tCoFix mfix' idx) ->
@@ -154,7 +163,7 @@ cofix_guard : mfixpoint term -> bool
 ```
 Besides `FunctionalExtensionality.functional_extensionality_dep` all axioms have to do with guard conditions.
 
-### `pcuic/theories/PCUICTyping.v`:
+#### [`pcuic/theories/PCUICTyping.v`](pcuic/theories/PCUICTyping.v):
 
 Here we only introduce a typing rule for (rewrite rule) symbols:
 ```coq
@@ -166,21 +175,38 @@ type_Symb k n u :
     Σ ;;; Γ |- tSymb k n u : subst (symbols_subst k (S n) u #|decl.(symbols)|) 0 (subst_instance_constr u ty)
 ```
 
-### `pcuic/theories/PCUICWeakeningEnv.v`:
+#### [`pcuic/theories/PCUICWeakeningEnv.v`](pcuic/theories/PCUICWeakeningEnv.v):
 
 This file makes sure that properties holding on a subenvironment of a global environment still hold on the bigger one. This means in particular that the properties we require on our rewrite rules are indeed modular (in fact they are even local).
 
-### `pcuic/theories/PCUICRewExamples.v`:
+#### [`pcuic/theories/PCUICRewExamples.v`](pcuic/theories/PCUICRewExamples.v):
 
 This is a work-in-progress example file showing how one can define rewrite rules and inhabit the predicates required of them.
 
-### `template-coq/theories/Environment.v`:
+#### [`template-coq/theories/Environment.v`](template-coq/theories/Environment.v):
 
 We extend the notion of global environment to add rewrite rule declarations (`rewrite_decl`) to it.
 
-### `template-coq/theories/EnvironmentTyping.v`:
+#### [`template-coq/theories/EnvironmentTyping.v`](template-coq/theories/EnvironmentTyping.v):
 
 We define the `on_rewrite_decl` predicate indicating what properties must rewrite rules verify for the environment to be well-formed.
+
+## Building the project
+
+In order to build this project you need to have
+- Coq 8.11.0
+- Equations 1.2.1+8.11
+
+They can be installed using opam:
+```sh
+opam install coq.8.11.0 coq-equations.1.2.1+8.11
+```
+
+Once you have them you can simply build the project using
+```
+./configure local
+make pcuic -j4
+```
 
 -------------------------------------------------
 Below is MetaCoq's README.
@@ -222,13 +248,13 @@ Branches and compatibility
 Coq's kernel API is not stable yet, and changes there are reflected in MetaCoq's reified structures,
 so we do not ensure any compatibility from version to version.
 
-The [master](https://github.com/MetaCoq/metacoq/tree/master) branch is following Coq's master 
-branch and gets regular updates from the the main development branch which follows the latest 
+The [master](https://github.com/MetaCoq/metacoq/tree/master) branch is following Coq's master
+branch and gets regular updates from the the main development branch which follows the latest
 stable release of Coq.
 
 Currently, the [coq-8.11](https://github.com/MetaCoq/metacoq/tree/coq-8.11) branch is the main stable branch.
-The branch [coq-8.10](https://github.com/MetaCoq/metacoq/tree/coq-8.10) 
-gets backports from `coq-8.11` when possible. Both `coq-8.11` and `coq-8.10` have associated 
+The branch [coq-8.10](https://github.com/MetaCoq/metacoq/tree/coq-8.10)
+gets backports from `coq-8.11` when possible. Both `coq-8.11` and `coq-8.10` have associated
 "alpha"-quality `opam` packages.
 
 The branches [coq-8.6](https://github.com/MetaCoq/metacoq/tree/coq-8.6),
@@ -263,7 +289,7 @@ Once in the right switch, you can install `Coq` and the `Equations` package usin
 
 Pinning the packages prevents opam from trying to upgrade it afterwards, in
 this switch. If the commands are successful you should have `coq`
-available (check with `coqc -v`). 
+available (check with `coqc -v`).
 
 Installing from GitHub repository (for developers)
 ------------------------------
@@ -290,7 +316,7 @@ Requirements
 
 To compile the library, you need:
 
-- The `Coq` version corrsponding to your branch (you can use the `coq.dev` package 
+- The `Coq` version corrsponding to your branch (you can use the `coq.dev` package
   for the `master` branch).
 - `OCaml` (tested with `4.06.1` and `4.07.1`, beware that `OCaml 4.06.0`
   can produce linking errors on some platforms)
