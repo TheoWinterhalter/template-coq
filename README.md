@@ -111,7 +111,24 @@ Definition type_preserving `{cf : checker_flags} (Σ : global_env_ext) :=
     Σ ;;; Γ |- subst0 σ (subst ss #|σ| (lhs r)) : A ->
     Σ ;;; Γ |- subst0 σ (subst ss #|σ| (rhs r)) : A.
 ```
-This allows us to conclude that the interaction between rewrite rules and the rest of the system does not compromise the subject reduction property.
+This allows us to conclude that the interaction between rewrite rules and the
+rest of the system does not compromise the subject reduction property.
+```coq
+Theorem subject_reduction :
+  forall (Σ : global_env_ext) Γ t u T,
+    wf Σ ->
+    confluenv Σ ->
+    Minimal (eq_universe Σ) ->
+    type_preserving Σ ->
+    minimal_inds Σ ->
+    minimal_cst Σ ->
+    Σ ;;; Γ |- t : T ->
+    red Σ Γ t u ->
+    Σ ;;; Γ |- u : T.
+```
+(The `Minimal`, `minimal_inds` and `minimal_cst` predicates ensure that the
+universe graph is minimal in that it does not contain two universes defined to
+be  equal.)
 Once again, printing assumptions yields:
 ```coq
 Axioms:
