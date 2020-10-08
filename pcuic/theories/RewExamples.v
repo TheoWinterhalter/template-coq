@@ -485,12 +485,32 @@ Proof.
         destruct pσ as [| p1 ? hp1 [| p2 ? hp2 [|]]]. 1,2,4: discriminate.
         rewrite !lift0_id in fm.
         simpl in fm.
-        unfold match_lhs in fm. lazy in fm.
-        destruct (PeanoNat.Nat.eqb_eq 0 0).
-        destruct iff_sym.
-        assert (e3 : e2 eq_refl = eq_refl) by (apply uip).
-        (* rewrite e3.
-        lazy in fm. *)
+        unfold match_lhs in fm.
+        cbn - [ match_prelhs ] in fm.
+        cbn - [ match_pattern ] in fm.
+        lazy in fm.
+        (* Compute (eq_inductive ({| inductive_mind := (natpath, "nat"); inductive_ind := 0 |}) ({| inductive_mind := (natpath, "nat"); inductive_ind := 0 |})).
+        clear.
+        assert (let x := PCUICReflect.eqb
+        (tConstruct
+           {| inductive_mind := (natpath, "nat"); inductive_ind := 0 |}
+           1 Instance.empty)
+        (tConstruct
+           {| inductive_mind := (natpath, "nat"); inductive_ind := 0 |}
+           1 Instance.empty) in True).
+        { intro x.
+        set (y := eq_dec 1 1). lazy in y.
+
+
+        intro. unfold tS in x. unfold cS in x.
+          cbn - [ assert_eq ] in x.
+          unfold assert_eq in x. unfold assert_true in x.
+          lazy - [ subs_merge ] in x.
+        }
+        Compute (match_pattern 2 (tS (tRel 0))
+        (tApp
+           (tConstruct {| inductive_mind := (natpath, "nat"); inductive_ind := 0 |} 1
+              Instance.empty) p1)). *)
         admit.
       * admit.
       * admit.
