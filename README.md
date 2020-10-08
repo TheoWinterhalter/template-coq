@@ -19,33 +19,53 @@ With respect to the MetaCoq repository, we introduce four new files (in `pcuic/t
 
 and modify several, we will only list the most important changes.
 
+#### [`template-coq/theories/Environment.v`](template-coq/theories/Environment.v):
+
+We extend the notion of global environment to add rewrite rule declarations
+(`rewrite_decl`) to it.
+
+#### [`template-coq/theories/EnvironmentTyping.v`](template-coq/theories/EnvironmentTyping.v):
+
+We define the `on_rewrite_decl` predicate indicating what properties must
+rewrite rules verify for the environment to be well-formed.
+
 #### [`pcuic/theories/PCUICAst.v`](pcuic/theories/PCUICAst.v):
 A new constructor `tSymb` is added to the syntax (i.e. to the inductive type `term`) representing fresh symbols for rewrite rules.
 
-#### [`pcuic/theories/PCUICConfluence.v`](pcuic/theories/PCUICConfluence.v):
-Here the proof of confluence is modified. In particular it contains the confluence theorem
+#### [`pcuic/theories/PCUICPattern.v`](pcuic/theories/PCUICPattern.v):
+
+Definition of the notion of pattern and properties about them, including
+matching.
+
+#### [`pcuic/theories/PCUICTyping.v`](pcuic/theories/PCUICTyping.v):
+
+Here we only introduce a typing rule for (rewrite rule) symbols:
 ```coq
-Lemma red_confluence {Γ t u v} :
-  red Σ Γ t u ->
-  red Σ Γ t v ->
-  ∑ v', red Σ Γ u v' * red Σ Γ v v'.
+type_Symb k n u :
+  All_local_env (lift_typing typing Σ) Γ ->
+  forall decl (isdecl : declared_symbol Σ.1 k decl) ty,
+    nth_error decl.(symbols) n = Some ty ->
+    consistent_instance_ext Σ decl.(rew_universes) u ->
+    Σ ;;; Γ |- tSymb k n u : subst (symbols_subst k (S n) u #|decl.(symbols)|) 0 (subst_instance_constr u ty)
 ```
-Printing assumptions for this theorem yields
-```coq
-Section Variables:
-Σ : global_env
-wfΣ : wf Σ
-cΣ : confluenv Σ
-cf : checker_flags
-Axioms:
-ind_guard : mutual_inductive_body → bool
-FunctionalExtensionality.functional_extensionality_dep :
-∀ (A : Type) (B : A → Type) (f g : ∀ x : A, B x),
-  (∀ x : A, f x = g x) → f = g
-fix_guard : mfixpoint term → bool
-cofix_guard : mfixpoint term → bool
-```
-meaning that only functional extensionality is required to prove the theorem (the other axioms only refer to the guard condition in a way to remain modular with respect to it).
+
+#### [`pcuic/theories/PCUICWeakeningEnv.v`](pcuic/theories/PCUICWeakeningEnv.v):
+
+This file makes sure that properties holding on a subenvironment of a global environment still hold on the bigger one. This means in particular that the properties we require on our rewrite rules are indeed modular (in fact they are even local).
+
+#### [`pcuic/theories/PCUICPredExtra.v`](pcuic/theories/PCUICPredExtra.v):
+
+Definition of a notion of parallel reduction `pred1_extra` extended with a set
+of rewrite rules and relate it to `pred1`.
+
+#### [`pcuic/theories/PCUICRW.v`](pcuic/theories/PCUICRW.v):
+
+Various properties on rewrite rules. In particular, define the notion of
+`pattern_footprint` which corresponds to the largest subterm of a term which is
+a pattern (in case the term is not a pattern, this will return a variable) and a
+substitution yielding the original term. This is a factorisation procedure.
+In the end we get `lhs_footprint` which returns the footprint of a left-hand
+side which behaves the same way with respect to matching.
 
 #### [`pcuic/theories/PCUICParallelReduction.v`](pcuic/theories/PCUICParallelReduction.v):
 
@@ -80,22 +100,34 @@ The definition of the parallel reduction is extended with three cases:
 
 #### [`pcuic/theories/PCUICParallelReductionConfluence.v`](pcuic/theories/PCUICParallelReductionConfluence.v):
 
-We adapt the proof of confluence for the parallel reduction. The section `Confluenv` defines the `confluenv` predicate corresponding to the requirements placed
-on the rewrite rules to ensure confluence (via the triangle property).
+We adapt the proof of confluence for the parallel reduction. The section
+`Confluenv` defines the `confluenv` predicate corresponding to the requirements
+placed on the rewrite rules to ensure confluence (via the triangle property).
 
-#### [`pcuic/theories/PCUICPattern.v`](pcuic/theories/PCUICPattern.v):
-
-Definition of the notion of pattern and properties about them, including matching.
-
-#### [`pcuic/theories/PCUICPredExtra.v`](pcuic/theories/PCUICPredExtra.v):
-
-Definition of a notion of parallel reduction `pred1_extra` extended with a set of rewrite rules and relate it to `pred1`.
-
-#### [`pcuic/theories/PCUICRW.v`](pcuic/theories/PCUICRW.v):
-
-Various properties on rewrite rules. In particular, define the notion of `pattern_footprint` which corresponds to the largest subterm of a term which is a
-pattern (in case the term is not a pattern, this will return a variable) and a substitution yielding the original term. This is a factorisation procedure.
-In the end we get `lhs_footprint` which returns the footprint of a left-hand side which behaves the same way with respect to matching.
+#### [`pcuic/theories/PCUICConfluence.v`](pcuic/theories/PCUICConfluence.v):
+Here the proof of confluence is modified. In particular it contains the confluence theorem
+```coq
+Lemma red_confluence {Γ t u v} :
+  red Σ Γ t u ->
+  red Σ Γ t v ->
+  ∑ v', red Σ Γ u v' * red Σ Γ v v'.
+```
+Printing assumptions for this theorem yields
+```coq
+Section Variables:
+Σ : global_env
+wfΣ : wf Σ
+cΣ : confluenv Σ
+cf : checker_flags
+Axioms:
+ind_guard : mutual_inductive_body → bool
+FunctionalExtensionality.functional_extensionality_dep :
+∀ (A : Type) (B : A → Type) (f g : ∀ x : A, B x),
+  (∀ x : A, f x = g x) → f = g
+fix_guard : mfixpoint term → bool
+cofix_guard : mfixpoint term → bool
+```
+meaning that only functional extensionality is required to prove the theorem (the other axioms only refer to the guard condition in a way to remain modular with respect to it).
 
 #### [`pcuic/theories/PCUICSR.v`](pcuic/theories/PCUICSR.v):
 
@@ -180,33 +212,9 @@ cofix_guard : mfixpoint term -> bool
 ```
 Besides `FunctionalExtensionality.functional_extensionality_dep` all axioms have to do with guard conditions.
 
-#### [`pcuic/theories/PCUICTyping.v`](pcuic/theories/PCUICTyping.v):
-
-Here we only introduce a typing rule for (rewrite rule) symbols:
-```coq
-type_Symb k n u :
-  All_local_env (lift_typing typing Σ) Γ ->
-  forall decl (isdecl : declared_symbol Σ.1 k decl) ty,
-    nth_error decl.(symbols) n = Some ty ->
-    consistent_instance_ext Σ decl.(rew_universes) u ->
-    Σ ;;; Γ |- tSymb k n u : subst (symbols_subst k (S n) u #|decl.(symbols)|) 0 (subst_instance_constr u ty)
-```
-
-#### [`pcuic/theories/PCUICWeakeningEnv.v`](pcuic/theories/PCUICWeakeningEnv.v):
-
-This file makes sure that properties holding on a subenvironment of a global environment still hold on the bigger one. This means in particular that the properties we require on our rewrite rules are indeed modular (in fact they are even local).
-
 #### [`pcuic/theories/PCUICRewExamples.v`](pcuic/theories/PCUICRewExamples.v):
 
 This is a work-in-progress example file showing how one can define rewrite rules and inhabit the predicates required of them.
-
-#### [`template-coq/theories/Environment.v`](template-coq/theories/Environment.v):
-
-We extend the notion of global environment to add rewrite rule declarations (`rewrite_decl`) to it.
-
-#### [`template-coq/theories/EnvironmentTyping.v`](template-coq/theories/EnvironmentTyping.v):
-
-We define the `on_rewrite_decl` predicate indicating what properties must rewrite rules verify for the environment to be well-formed.
 
 ## Building the project
 
