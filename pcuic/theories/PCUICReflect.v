@@ -125,10 +125,21 @@ Next Obligation.
     + constructor. assumption.
 Defined.
 
-Instance reflect_nat : ReflectEq nat := {
-  eqb n m := n =? m ;
-  eqb_spec := Nat.eqb_spec
+#[refine] Instance reflect_nat : ReflectEq nat := {
+  eqb n m := n =? m
 }.
+Proof.
+  intros x y.
+  induction x in y |- *.
+  - destruct y.
+    + left. reflexivity.
+    + right. congruence.
+  - destruct y.
+    + right. congruence.
+    + cbn. destruct (IHx y).
+      * left. f_equal. assumption.
+      * right. congruence.
+Defined.
 
 Definition eq_level l1 l2 :=
   match l1, l2 with
@@ -218,7 +229,7 @@ Defined.
   eqb := eq_kername
 }.
 Next Obligation.
-  intros; unfold eq_kername; destruct kername_eq_dec; now constructor.
+  intros. unfold eq_kername. destruct kername_eq_dec. all: now constructor.
 Defined.
 
 
@@ -226,7 +237,7 @@ Defined.
   eqb := eq_inductive
 }.
 Next Obligation.
-  intros i i'. destruct i as [m n], i' as [m' n']; cbn.
+  intros i i'. destruct i as [m n], i' as [m' n']. cbn.
   change (eq_kername m m') with (eqb m m').
   change (n =? n') with (eqb n n').
   destruct (eqb_spec m m') ; nodec.
