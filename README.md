@@ -229,7 +229,7 @@ opam install coq.8.11.0 coq-equations.1.2.1+8.11
 
 Once you have them you can simply build the project using
 ```
-./configure local
+./configure.sh local
 make pcuic -j4
 ```
 
