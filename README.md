@@ -212,7 +212,7 @@ cofix_guard : mfixpoint term -> bool
 ```
 Besides `FunctionalExtensionality.functional_extensionality_dep` all axioms have to do with guard conditions.
 
-#### [`pcuic/theories/PCUICRewExamples.v`](pcuic/theories/PCUICRewExamples.v):
+#### [`pcuic/theories/RewExamples.v`](pcuic/theories/RewExamples.v):
 
 This is a work-in-progress example file showing how one can define rewrite rules and inhabit the predicates required of them.
 
