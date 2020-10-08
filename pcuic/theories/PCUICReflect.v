@@ -19,12 +19,12 @@ Inductive reflectT (A : Type) : bool -> Type :=
 Lemma reflectT_reflect (A : Prop) b : reflectT A b -> reflect A b.
 Proof.
   destruct 1; now constructor.
-Qed.
+Defined.
 
 Lemma reflect_reflectT (A : Prop) b : reflect A b -> reflectT A b.
 Proof.
   destruct 1; now constructor.
-Qed.
+Defined.
 
 (* Some reflection / EqDec lemmata *)
 
@@ -37,7 +37,7 @@ Lemma eqb_eq {A} `{PCUICReflect.ReflectEq A} (x y : A) : PCUICReflect.eqb x y ->
 Proof.
   elim: PCUICReflect.eqb_spec; auto.
   discriminate.
-Qed.
+Defined.
 
 Instance ReflectEq_EqDec :
   forall A, ReflectEq A -> EqDec A.
@@ -126,6 +126,7 @@ Next Obligation.
 Defined.
 
 Instance reflect_nat : ReflectEq nat := {
+  eqb n m := n =? m ;
   eqb_spec := Nat.eqb_spec
 }.
 
@@ -177,7 +178,7 @@ Lemma eq_prod_refl :
 Proof.
   intros A B eqA eqB eqA_refl eqB_refl [a b].
   simpl. rewrite eqA_refl. apply eqB_refl.
-Qed.
+Defined.
 
 Definition eq_bool b1 b2 : bool :=
   if b1 then b2 else negb b2.
@@ -258,14 +259,14 @@ Lemma eq_universe_iff (u v : Universe.t) :
 Proof.
   destruct u, v; cbn; split. now inversion 1.
   intros ->. f_equal. apply uip.
-Qed.
+Defined.
 Lemma eq_universe_iff' (u v : Universe.t) :
   u = v <-> UnivExprSet.elements u = UnivExprSet.elements v.
 Proof.
   etransitivity. apply eq_universe_iff.
   destruct u as [[u1 u2] ?], v as [[v1 v2] ?]; cbn; clear; split.
   now inversion 1. intros ->. f_equal. apply uip.
-Qed.
+Defined.
 
 (* move in Universes.v ?? *)
 Instance eq_dec_UnivExpr : EqDec UnivExpr.t.
