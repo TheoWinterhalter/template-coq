@@ -53,11 +53,6 @@ type_Symb k n u :
 
 This file makes sure that properties holding on a subenvironment of a global environment still hold on the bigger one. This means in particular that the properties we require on our rewrite rules are indeed modular (in fact they are even local).
 
-#### [`pcuic/theories/PCUICPredExtra.v`](pcuic/theories/PCUICPredExtra.v):
-
-Definition of a notion of parallel reduction `pred1_extra` extended with a set
-of rewrite rules and relate it to `pred1`.
-
 #### [`pcuic/theories/PCUICRW.v`](pcuic/theories/PCUICRW.v):
 
 Various properties on rewrite rules. In particular, define the notion of
@@ -97,6 +92,11 @@ The definition of the parallel reduction is extended with three cases:
     let rhs := subst0 s' (subst ss #|s| (rhs r)) in
     pred1 Γ Γ' lhs rhs
 ```
+
+#### [`pcuic/theories/PCUICPredExtra.v`](pcuic/theories/PCUICPredExtra.v):
+
+Definition of a notion of parallel reduction `pred1_extra` extended with a set
+of rewrite rules and relate it to `pred1`.
 
 #### [`pcuic/theories/PCUICParallelReductionConfluence.v`](pcuic/theories/PCUICParallelReductionConfluence.v):
 
