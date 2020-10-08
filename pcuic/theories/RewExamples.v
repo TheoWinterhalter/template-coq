@@ -484,9 +484,38 @@ Proof.
         cbn - [first_match] in fm.
         destruct pσ as [| p1 ? hp1 [| p2 ? hp2 [|]]]. 1,2,4: discriminate.
         rewrite !lift0_id in fm.
+        simpl in fm. inversion fm. subst. clear fm.
+        simpl.
+        (* OK, by reflexivity *)
+        rewrite !lift0_id.
+        constructor. 1: repeat constructor.
+        constructor. 1: repeat constructor.
+        constructor.
+        -- constructor. 1: repeat constructor. admit.
+        -- admit.
+      * simpl in hn. apply some_inj in hn. subst.
+        cbn - [first_match] in fm.
+        apply untyped_subslet_length in uσ as lσ.
+        cbn in lσ. rewrite lσ in fm.
+        cbn - [first_match] in fm.
+        destruct pσ as [| p1 ? hp1 [| p2 ? hp2 [|]]]. 1,2,4: discriminate.
+        rewrite !lift0_id in fm.
         simpl in fm.
-        admit.
-      * admit.
+        { destruct p1. all: try solve [ exfalso ; inversion hp1 ; solve_discr ].
+          - cbn in fm. inversion fm. subst. clear fm.
+            simpl.
+            (* Reflexivity once more *)
+            admit.
+          - destruct p1_1.
+            all: try solve [ exfalso ; inversion hp1 ; solve_discr ].
+            + lazy in fm. inversion fm. subst. clear fm.
+              simpl.
+              (* Reflexivity *)
+              admit.
+            + lazy - [ eq_dec ] in fm.
+              admit.
+          - admit.
+        }
       * admit.
       * admit.
       * admit.
