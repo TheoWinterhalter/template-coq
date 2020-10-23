@@ -1,21 +1,40 @@
 MetaCoq with Rewrite Rules
 ==========================
 
-This branch contains an extension of MetaCoq with rewrite rules and constitutes the artifact associated with the paper "The Taming of the Rew: A Type Theory with Computational Assumptions".
+This branch contains an extension of MetaCoq with rewrite rules and constitutes
+the artifact associated with the paper "The Taming of the Rew: A Type Theory
+with Computational Assumptions".
+
+This artifact does not include the Agda implementation of rewrite rules and of
+the associated confluence checker. This is already available in the mainline
+release of Agda.
+
+--------------------------------------------------------------------------------
+
+Note that this artifact is built on top of [MetaCoq], [whose README] is now
+kept separate. Because of this, this artifact contains a lot of code that is
+not relevant to the paper but that is kept in order not to diverge too much from
+the original MetaCoq project. Please accept our apologies for the inconveniences
+it may cause. In order to better understand this contribution, please have a
+look a the [changes with respect to MetaCoq](#changes).
+
+[MetaCoq]: https://github.com/MetaCoq/metacoq
+[whose README]: ./MetaCoq.md
 
 ## Quick jump:
 
 - [Building the project](#building-the-project)
 - [High-level description of changes](#changes)
+- [About axioms](#about-axioms)
 
 
 ## Changes
 
-With respect to the MetaCoq repository, we introduce four new files (in `pcuic/theories`):
+With respect to the MetaCoq repository, we introduce four new files
+(in `pcuic/theories`):
 - `PCUICPattern.v`,
 - `PCUICRw.v`,
-- `PCUICPredExtra.v`,
-- `RewExamples.v`
+- `PCUICPredExtra.v`.
 
 and modify several, we will only list the most important changes.
 
@@ -30,7 +49,8 @@ We define the `on_rewrite_decl` predicate indicating what properties must
 rewrite rules verify for the environment to be well-formed.
 
 #### [`pcuic/theories/PCUICAst.v`](pcuic/theories/PCUICAst.v):
-A new constructor `tSymb` is added to the syntax (i.e. to the inductive type `term`) representing fresh symbols for rewrite rules.
+A new constructor `tSymb` is added to the syntax (i.e. to the inductive type
+`term`) representing fresh symbols for rewrite rules.
 
 #### [`pcuic/theories/PCUICPattern.v`](pcuic/theories/PCUICPattern.v):
 
@@ -51,7 +71,10 @@ type_Symb k n u :
 
 #### [`pcuic/theories/PCUICWeakeningEnv.v`](pcuic/theories/PCUICWeakeningEnv.v):
 
-This file makes sure that properties holding on a subenvironment of a global environment still hold on the bigger one. This means in particular that the properties we require on our rewrite rules are indeed modular (in fact they are even local).
+This file makes sure that properties holding on a subenvironment of a global
+environment still hold on the bigger one. This means in particular that the
+properties we require on our rewrite rules are indeed modular (in fact they are
+even local).
 
 #### [`pcuic/theories/PCUICRW.v`](pcuic/theories/PCUICRW.v):
 
@@ -105,7 +128,8 @@ We adapt the proof of confluence for the parallel reduction. The section
 placed on the rewrite rules to ensure confluence (via the triangle property).
 
 #### [`pcuic/theories/PCUICConfluence.v`](pcuic/theories/PCUICConfluence.v):
-Here the proof of confluence is modified. In particular it contains the confluence theorem
+Here the proof of confluence is modified. In particular it contains the
+confluence theorem
 ```coq
 Lemma red_confluence {Γ t u v} :
   red Σ Γ t u ->
@@ -127,12 +151,15 @@ FunctionalExtensionality.functional_extensionality_dep :
 fix_guard : mfixpoint term → bool
 cofix_guard : mfixpoint term → bool
 ```
-meaning that only functional extensionality is required to prove the theorem (the other axioms only refer to the guard condition in a way to remain modular with respect to it).
+meaning that only functional extensionality is required to prove the theorem
+(the other axioms only refer to the guard condition in a way to remain modular
+with respect to it).
 
 #### [`pcuic/theories/PCUICSR.v`](pcuic/theories/PCUICSR.v):
 
 Updated proof of subject reduction.
-The proof is done by assuming the (global) property that rewrite rules are type preserving.
+The proof is done by assuming the (global) property that rewrite rules are type
+preserving.
 ```coq
 Definition type_preserving `{cf : checker_flags} (Σ : global_env_ext) :=
   forall k decl n r ui σ Γ A,
@@ -210,7 +237,22 @@ cofix_guard_lift : forall (mfix : list (def term)) (n k : nat),
                    cofix_guard mfix -> cofix_guard mfix'
 cofix_guard : mfixpoint term -> bool
 ```
-Besides `FunctionalExtensionality.functional_extensionality_dep` all axioms have to do with guard conditions.
+Besides `FunctionalExtensionality.functional_extensionality_dep` all axioms have
+to do with guard conditions.
+
+## About axioms
+
+The projects presents several axioms and admits that we inherit from [MetaCoq].
+To prove that we are not cheating we use the `Print Assumptions` on all the
+theorems of the paper to make explicit the fact that they do not rely on
+unwanted admitted lemmata.
+You can however see in the case of subject reduction that we still rely on a lot
+of "axioms" regarding guard conditions.
+These have to do with the fact that guard conditions are not formalised in
+[MetaCoq] but are instead specified using axioms (poor-man's modularity or
+abstraction).
+They are not relevant per se to our own formalisation, they only appear because
+they are used to define typing of (co-)fixed-points.
 
 ## Building the project
 
@@ -220,6 +262,7 @@ In order to build this project you need to have
 
 They can be installed using opam:
 ```sh
+opam repo add coq-released https://coq.inria.fr/opam/released
 opam install coq.8.11.0 coq-equations.1.2.1+8.11
 ```
 
@@ -228,3 +271,12 @@ Once you have them you can simply build the project using
 ./configure.sh local
 make pcuic -j4
 ```
+
+Other building options are available but only come from [MetaCoq], they are not
+used in our project and not expected to build successfully. We might try later
+to make the other parts of the project build with rewrite rules.
+
+It is also worth noting that you will get many warnings when building the
+project, mostly related to extraction. Again this regards part that we do not
+rely on but are here nonetheless, fixing those would require to fix [MetaCoq]
+in that respect which seems out of scope for this artifact's purposes.
