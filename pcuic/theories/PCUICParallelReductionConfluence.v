@@ -529,6 +529,11 @@ Section Pred1_inversion.
         eapply All2_app; auto.
   Qed.
 
+  (* This lemma is from the master branch of MetaCoq used in file
+    PCUICConfluence.v and needs to be updated to take rewrite rules into
+    account, but it is not used for the proofs of confluence and subject
+    reduction.
+  *)
   Lemma pred1_mkApps_tConst_axiom (Σ : global_env) (Γ Δ : context)
         cst u (args : list term) cb c :
     declared_constant Σ cst cb -> cst_body cb = None ->
