@@ -1,6 +1,8 @@
 MetaCoq with Rewrite Rules
 ==========================
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4271370.svg)](https://doi.org/10.5281/zenodo.4271370)
+
 This branch contains an extension of MetaCoq with rewrite rules and constitutes
 the artifact associated with the paper "The Taming of the Rew: A Type Theory
 with Computational Assumptions".
